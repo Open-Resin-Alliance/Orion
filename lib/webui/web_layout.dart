@@ -179,36 +179,30 @@ class WebLayoutState extends State<WebLayout>
       body: FutureBuilder<void>(
         future: checkConnectionStatus(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Error loading status'));
-          } else {
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final screenWidth = MediaQuery.of(context).size.width;
-                final screenHeight = MediaQuery.of(context).size.height;
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = MediaQuery.of(context).size.width;
+              final screenHeight = MediaQuery.of(context).size.height;
 
-                if (screenWidth > 1800 && screenHeight > 900) {
-                  return _buildLargeScreenLayout();
-                } else if (screenWidth > 1200 && screenHeight > 900) {
-                  return _buildMediumScreenLayout();
-                } else if (screenWidth > 800 && screenHeight > 900) {
-                  return _buildSlimScreenLayout();
-                } else if (screenWidth > 1200 && screenHeight < 900) {
-                  return _buildHalfHeightScreenLayout();
-                } else if (screenWidth > 100 && screenHeight > 850) {
-                  return _buildSmallScreenLayout(true);
-                } else if (screenWidth > 600 && screenHeight < 850) {
-                  return _buildSmallScreenLayout(false);
-                } else {
-                  return const Center(
-                    child: Text('Sorry, this screen size is not supported.'),
-                  );
-                }
-              },
-            );
-          }
+              if (screenWidth > 1800 && screenHeight > 900) {
+                return _buildLargeScreenLayout();
+              } else if (screenWidth > 1200 && screenHeight > 900) {
+                return _buildMediumScreenLayout();
+              } else if (screenWidth > 800 && screenHeight > 900) {
+                return _buildSlimScreenLayout();
+              } else if (screenWidth > 1200 && screenHeight < 900) {
+                return _buildHalfHeightScreenLayout();
+              } else if (screenWidth > 100 && screenHeight > 850) {
+                return _buildSmallScreenLayout(true);
+              } else if (screenWidth > 600 && screenHeight < 850) {
+                return _buildSmallScreenLayout(false);
+              } else {
+                return const Center(
+                  child: Text('Sorry, this screen size is not supported.'),
+                );
+              }
+            },
+          );
         },
       ),
     );
