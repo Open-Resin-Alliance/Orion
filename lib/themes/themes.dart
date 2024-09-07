@@ -16,6 +16,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 final ThemeData themeLight = ThemeData(
@@ -27,7 +28,7 @@ final ThemeData themeLight = ThemeData(
   appBarTheme: const AppBarTheme(
     titleTextStyle: TextStyle(
       fontFamily: 'AtkinsonHyperlegible',
-      fontSize: 30,
+      fontSize: kIsWeb ? 24 : 30,
       color: Colors.black,
     ),
     centerTitle: true,
@@ -65,7 +66,7 @@ final ThemeData themeDark = ThemeData(
   appBarTheme: const AppBarTheme(
     titleTextStyle: TextStyle(
       fontFamily: 'AtkinsonHyperlegible',
-      fontSize: 30,
+      fontSize: kIsWeb ? 24 : 30,
       color: Colors.white,
     ),
     centerTitle: true,
