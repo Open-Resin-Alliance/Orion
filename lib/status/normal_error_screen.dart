@@ -182,13 +182,13 @@ class ErrorScreenState extends State<ErrorScreen> {
                 Navigator.pop(context);
               },
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(
+                backgroundColor: WidgetStateProperty.all(
                     const Color.fromARGB(255, 207, 124, 0)),
-                overlayColor: MaterialStateProperty.all(
+                overlayColor: WidgetStateProperty.all(
                     Theme.of(context).primaryColor.withOpacity(0.2)),
-                minimumSize: MaterialStateProperty.all(
+                minimumSize: WidgetStateProperty.all(
                     const Size(double.infinity, kToolbarHeight * 1.2)),
-                shape: MaterialStateProperty.all(const RoundedRectangleBorder(
+                shape: WidgetStateProperty.all(const RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero)),
               ),
               child: Text('Restart Printer',
@@ -205,13 +205,13 @@ class ErrorScreenState extends State<ErrorScreen> {
                 Navigator.pop(context);
               },
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(
+                backgroundColor: WidgetStateProperty.all(
                     const Color.fromARGB(255, 207, 124, 0)),
-                overlayColor: MaterialStateProperty.all(
+                overlayColor: WidgetStateProperty.all(
                     Theme.of(context).primaryColor.withOpacity(0.2)),
-                minimumSize: MaterialStateProperty.all(
+                minimumSize: WidgetStateProperty.all(
                     const Size(double.infinity, kToolbarHeight * 1.2)),
-                shape: MaterialStateProperty.all(const RoundedRectangleBorder(
+                shape: WidgetStateProperty.all(const RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero)),
               ),
               child: Text('Advanced Information',
