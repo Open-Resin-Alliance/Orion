@@ -18,6 +18,7 @@
 
 import 'dart:io';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/api_services/api_services.dart';
 import 'package:orion/status/status_screen.dart';
@@ -209,9 +210,15 @@ class DetailScreenState extends State<DetailScreen> {
         Expanded(
           child: Row(
             children: [
-              Expanded(
-                flex: 1,
+              Container(
+                constraints: BoxConstraints(
+                  minWidth:
+                      kIsWeb ? 100 : MediaQuery.of(context).size.width / 8,
+                  maxWidth:
+                      kIsWeb ? 260 : MediaQuery.of(context).size.width / 3,
+                ),
                 child: ListView(
+                  shrinkWrap: true,
                   children: [
                     buildNameCard(fileName),
                     buildInfoCard('Layer Height', layerHeight),
@@ -225,7 +232,7 @@ class DetailScreenState extends State<DetailScreen> {
               ),
               const SizedBox(width: 16.0),
               Flexible(
-                flex: 0,
+                flex: 1,
                 child: buildThumbnailView(context),
               ),
             ],

@@ -19,6 +19,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/api_services/api_services.dart';
@@ -31,7 +32,16 @@ import 'package:orion/util/status_card.dart';
 
 class StatusScreen extends StatefulWidget {
   final bool newPrint;
-  const StatusScreen({super.key, required this.newPrint});
+  final bool webView;
+  final bool forceVertical;
+  final bool forceHorizontal;
+
+  const StatusScreen(
+      {super.key,
+      required this.newPrint,
+      this.webView = false,
+      this.forceVertical = false,
+      this.forceHorizontal = false});
 
   @override
   StatusScreenState createState() => StatusScreenState();
@@ -83,34 +93,29 @@ class StatusScreenState extends State<StatusScreen>
     try {
       status = await _api.getStatus();
       if (status != null) {
-        if (status!['status'] == 'Printing' || status!['status'] == 'Idle') {
-          if (status!['print_data'] != null &&
-              status!['print_data']['file_data'] != null) {
-            String? thumbnailFullPath =
-                status!['print_data']['file_data']['path'];
-            fileName = status!['print_data']['file_data']['name'];
-            String location = status!['print_data']['file_data']
-                    ['location_category'] ??
-                'Local';
-            if (thumbnailFullPath != null &&
-                !isThumbnailFetched &&
-                status!['status'] == 'Printing') {
-              String thumbnailSubdir = '/';
-              if (thumbnailFullPath.contains('/')) {
-                thumbnailSubdir = thumbnailFullPath.substring(
-                    0, thumbnailFullPath.lastIndexOf('/'));
-              }
-              thumbnailNotifier.value = await ThumbnailUtil.extractThumbnail(
-                location,
-                thumbnailSubdir,
-                fileName,
-                size: 'Large',
-              );
-              isThumbnailFetched = true;
+        if (status!['print_data'] != null &&
+            status!['print_data']['file_data'] != null) {
+          String? thumbnailFullPath =
+              status!['print_data']['file_data']['path'];
+          fileName = status!['print_data']['file_data']['name'];
+          String location = status!['print_data']['file_data']
+                  ['location_category'] ??
+              'Local';
+          if (thumbnailFullPath != null) {
+            String thumbnailSubdir = '/';
+            if (thumbnailFullPath.contains('/')) {
+              thumbnailSubdir = thumbnailFullPath.substring(
+                  0, thumbnailFullPath.lastIndexOf('/'));
             }
-          } else {
-            thumbnailNotifier.value = null;
+            thumbnailNotifier.value = await ThumbnailUtil.extractThumbnail(
+              location,
+              thumbnailSubdir,
+              fileName,
+              size: widget.webView ? 'Small' : 'Large',
+            );
           }
+        } else {
+          thumbnailNotifier.value = null;
         }
       } else {
         thumbnailNotifier.value = null;
@@ -128,9 +133,9 @@ class StatusScreenState extends State<StatusScreen>
           ? Theme.of(context).colorScheme.primary
           : Colors.black54,
       'Idle': Colors.greenAccent,
-      'Shutdown': Colors.red,
-      'Canceled': Colors.red,
-      'Pause': Colors.orange,
+      'Shutdown': Colors.redAccent,
+      'Canceled': Colors.redAccent,
+      'Pause': Colors.orangeAccent,
       'Curing': Theme.of(context).brightness == Brightness.dark
           ? Theme.of(context).colorScheme.primaryContainer.withBrightness(1.7)
           : Theme.of(context).colorScheme.primary,
@@ -183,23 +188,31 @@ class StatusScreenState extends State<StatusScreen>
               appBar: AppBar(
                 title: const Text('No Print Data Available'),
               ),
-              body: Center(
-                child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const GridFilesScreen()),
-                      );
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(20),
+              body: kIsWeb
+                  ? const Center(
                       child: Text(
-                        'Go to Files',
-                        style: TextStyle(fontSize: 26),
+                        'Please Start a Print from the Files Page.',
+                        style: TextStyle(fontSize: 24),
                       ),
-                    )),
-              ),
+                    )
+                  : Center(
+                      child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const GridFilesScreen()),
+                            );
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Text(
+                              'Go to Files',
+                              style: TextStyle(fontSize: 26),
+                            ),
+                          )),
+                    ),
             );
           } else if (status != null &&
               (status!['layer'] == null ||
@@ -240,6 +253,14 @@ class StatusScreenState extends State<StatusScreen>
 
             bool isLandScape =
                 MediaQuery.of(context).orientation == Orientation.landscape;
+
+            if (widget.forceVertical) {
+              isLandScape = false;
+            }
+
+            if (widget.forceHorizontal) {
+              isLandScape = true;
+            }
 
             totalSeconds = status!['print_data']['print_time'].toInt();
             duration = Duration(seconds: totalSeconds);
@@ -309,8 +330,6 @@ class StatusScreenState extends State<StatusScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              buildNameCard(fileName),
-              const SizedBox(height: 16),
               Expanded(
                 child: Column(
                   children: [
@@ -355,9 +374,15 @@ class StatusScreenState extends State<StatusScreen>
         Expanded(
           child: Row(
             children: [
-              Expanded(
-                flex: 1,
+              Container(
+                constraints: BoxConstraints(
+                  minWidth:
+                      kIsWeb ? 100 : MediaQuery.of(context).size.width / 8,
+                  maxWidth:
+                      kIsWeb ? 260 : MediaQuery.of(context).size.width / 3,
+                ),
                 child: ListView(
+                  shrinkWrap: true,
                   children: [
                     buildNameCard(fileName),
                     buildInfoCard('Current Z Position',
@@ -373,7 +398,7 @@ class StatusScreenState extends State<StatusScreen>
               ),
               const SizedBox(width: 16.0),
               Flexible(
-                flex: 0,
+                flex: 1,
                 child: buildThumbnailView(context),
               ),
             ],
@@ -453,10 +478,12 @@ class StatusScreenState extends State<StatusScreen>
                             0, 0, 0, 1, 0,
                           ]),
                           child: thumbnail != null && thumbnail.isNotEmpty
-                              ? Image.file(
-                                  File(thumbnail),
-                                  fit: BoxFit.cover,
-                                )
+                              ? kIsWeb
+                                  ? Image.network(thumbnail, fit: BoxFit.cover)
+                                  : Image.file(
+                                      File(thumbnail),
+                                      fit: BoxFit.cover,
+                                    )
                               : const Center(
                                   child: CircularProgressIndicator(),
                                 ),
@@ -475,10 +502,13 @@ class StatusScreenState extends State<StatusScreen>
                                 alignment: Alignment.bottomCenter,
                                 heightFactor: progress,
                                 child: thumbnail != null && thumbnail.isNotEmpty
-                                    ? Image.file(
-                                        File(thumbnail),
-                                        fit: BoxFit.cover,
-                                      )
+                                    ? kIsWeb
+                                        ? Image.network(thumbnail,
+                                            fit: BoxFit.cover)
+                                        : Image.file(
+                                            File(thumbnail),
+                                            fit: BoxFit.cover,
+                                          )
                                     : const Center(
                                         child: CircularProgressIndicator(),
                                       ),
@@ -547,103 +577,134 @@ class StatusScreenState extends State<StatusScreen>
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton(
-            onPressed: isCanceling == true && status!['layer'] != null
-                ? null
-                : status!['layer'] == null || status!['status'] == 'Idle'
-                    ? null
-                    : () {
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return Dialog(
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width *
-                                    0.5, // 80% of screen width
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    const SizedBox(height: 10),
-                                    const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text(
-                                        'Options',
-                                        style: TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 20, right: 20),
-                                      child: SizedBox(
-                                        height: 65,
-                                        width: double.infinity,
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const SettingsScreen()),
-                                            );
-                                          },
-                                          child: const Text(
-                                            'Settings',
-                                            style: TextStyle(fontSize: 24),
+          child: kIsWeb
+              ? HoldButton(
+                  duration: const Duration(seconds: 3),
+                  onPressed: () {
+                    _api.cancelPrint();
+                    setState(() {
+                      isCanceling = true;
+                    });
+                  },
+                  disabled: isCanceling == true && status!['layer'] != null
+                      ? true
+                      : status!['layer'] == null || status!['status'] == 'Idle'
+                          ? true
+                          : false,
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    minimumSize: Size(
+                      0, // Subtract the padding on both sides
+                      Theme.of(context).appBarTheme.toolbarHeight as double,
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancel Print',
+                    style: TextStyle(fontSize: 24),
+                  ),
+                )
+              : ElevatedButton(
+                  onPressed: isCanceling == true && status!['layer'] != null
+                      ? null
+                      : status!['layer'] == null || status!['status'] == 'Idle'
+                          ? null
+                          : () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return Dialog(
+                                    child: SizedBox(
+                                      width: MediaQuery.of(context).size.width *
+                                          0.5, // 80% of screen width
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: <Widget>[
+                                          const SizedBox(height: 10),
+                                          const Padding(
+                                            padding: EdgeInsets.all(8.0),
+                                            child: Text(
+                                              'Options',
+                                              style: TextStyle(
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                        height:
-                                            20), // Add some spacing between the buttons
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 20, right: 20),
-                                      child: SizedBox(
-                                        height: 65,
-                                        width: double.infinity,
-                                        child: HoldButton(
-                                          duration: const Duration(seconds: 5),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            _api.cancelPrint();
-                                            setState(() {
-                                              isCanceling = true;
-                                            });
-                                          },
-                                          child: const Text(
-                                            'Cancel Print',
-                                            style: TextStyle(fontSize: 24),
+                                          const SizedBox(height: 10),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: 20, right: 20),
+                                            child: SizedBox(
+                                              height: 65,
+                                              width: double.infinity,
+                                              child: ElevatedButton(
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            const SettingsScreen()),
+                                                  );
+                                                },
+                                                child: const Text(
+                                                  'Settings',
+                                                  style:
+                                                      TextStyle(fontSize: 24),
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                          const SizedBox(
+                                              height:
+                                                  20), // Add some spacing between the buttons
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: 20, right: 20),
+                                            child: SizedBox(
+                                              height: 65,
+                                              width: double.infinity,
+                                              child: HoldButton(
+                                                duration:
+                                                    const Duration(seconds: 3),
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  _api.cancelPrint();
+                                                  setState(() {
+                                                    isCanceling = true;
+                                                  });
+                                                },
+                                                child: const Text(
+                                                  'Cancel Print',
+                                                  style:
+                                                      TextStyle(fontSize: 24),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 20),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(height: 20),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              minimumSize: Size(
-                0, // Subtract the padding on both sides
-                Theme.of(context).appBarTheme.toolbarHeight as double,
-              ),
-            ),
-            child: const Text(
-              'Options',
-              style: TextStyle(fontSize: 24),
-            ),
-          ),
+                                  );
+                                },
+                              );
+                            },
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    minimumSize: Size(
+                      0, // Subtract the padding on both sides
+                      Theme.of(context).appBarTheme.toolbarHeight as double,
+                    ),
+                  ),
+                  child: const Text(
+                    'Options',
+                    style: TextStyle(fontSize: 24),
+                  ),
+                ),
         ),
         const SizedBox(width: 20),
         Expanded(
@@ -653,14 +714,18 @@ class StatusScreenState extends State<StatusScreen>
                 : isPausing == true && status!['paused'] == false
                     ? null
                     : status!['layer'] == null
-                        ? () {
-                            Navigator.popUntil(
-                                context, ModalRoute.withName('/'));
-                          }
-                        : status!['status'] == 'Idle'
-                            ? () {
-                                Navigator.pop(context);
+                        ? kIsWeb
+                            ? null
+                            : () {
+                                Navigator.popUntil(
+                                    context, ModalRoute.withName('/'));
                               }
+                        : status!['status'] == 'Idle'
+                            ? kIsWeb
+                                ? null
+                                : () {
+                                    Navigator.pop(context);
+                                  }
                             : () {
                                 if (status!['paused'] == true) {
                                   _api.resumePrint();
@@ -683,7 +748,9 @@ class StatusScreenState extends State<StatusScreen>
                 Theme.of(context).appBarTheme.toolbarHeight as double,
               ),
             ),
-            child: Text(
+            child: AutoSizeText(
+              minFontSize: 20,
+              maxLines: 1,
               status!['layer'] == null || status!['status'] == 'Idle'
                   ? 'Return to Home'
                   : status!['paused'] == true
