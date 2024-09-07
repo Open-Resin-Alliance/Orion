@@ -26,7 +26,8 @@ import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class ExposureScreen extends StatefulWidget {
-  const ExposureScreen({super.key});
+  final bool isBusy;
+  const ExposureScreen({super.key, this.isBusy = false});
 
   @override
   ExposureScreenState createState() => ExposureScreenState();
@@ -74,10 +75,10 @@ class ExposureScreenState extends State<ExposureScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return StreamBuilder<int>(
-          stream: Stream.periodic(const Duration(milliseconds: 1),
-              (i) => countdownTime * 1000 - i).take((countdownTime * 1000) + 1),
+          stream: Stream.periodic(const Duration(milliseconds: 10),
+              (i) => countdownTime * 100 - i).take((countdownTime * 100) + 1),
           initialData:
-              countdownTime * 1000, // Provide an initial countdown value
+              countdownTime * 100, // Provide an initial countdown value
           builder: (context, snapshot) {
             if (snapshot.data == 0) {
               Future.delayed(Duration.zero, () {
@@ -125,17 +126,16 @@ class ExposureScreenState extends State<ExposureScreen> {
                                 width:
                                     180, // Make the progress indicator larger
                                 child: CircularProgressIndicator(
-                                  value:
-                                      snapshot.data! / (countdownTime * 1000),
+                                  value: snapshot.data! / (countdownTime * 100),
                                   strokeWidth:
                                       12, // Make the progress indicator thicker
                                 ),
                               ),
                               Padding(
                                 padding: const EdgeInsets.all(10.0),
-                                child: (snapshot.data! / 1000) < 999
+                                child: (snapshot.data! / 100) < 99
                                     ? Text(
-                                        (snapshot.data! / 1000)
+                                        (snapshot.data! / 100)
                                             .toStringAsFixed(0),
                                         style: const TextStyle(fontSize: 50),
                                       )
@@ -181,6 +181,9 @@ class ExposureScreenState extends State<ExposureScreen> {
 
   @override
   void initState() {
+    if (widget.isBusy) {
+      _apiErrorState = true;
+    }
     super.initState();
     getApiStatus();
   }
@@ -188,6 +191,11 @@ class ExposureScreenState extends State<ExposureScreen> {
   Future<void> getApiStatus() async {
     try {
       await _api.getConfig();
+      if (widget.isBusy) {
+        setState(() {
+          _apiErrorState = true;
+        });
+      }
     } catch (e) {
       setState(() {
         _apiErrorState = true;

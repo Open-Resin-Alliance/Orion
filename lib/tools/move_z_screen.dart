@@ -22,7 +22,8 @@ import 'package:orion/api_services/api_services.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 
 class MoveZScreen extends StatefulWidget {
-  const MoveZScreen({super.key});
+  final bool isBusy;
+  const MoveZScreen({super.key, this.isBusy = false});
 
   @override
   MoveZScreenState createState() => MoveZScreenState();
@@ -52,6 +53,9 @@ class MoveZScreenState extends State<MoveZScreen> {
       Map<String, dynamic> config = await _api.getConfig();
       setState(() {
         maxZ = config['printer']['max_z'];
+        if (widget.isBusy) {
+          _apiErrorState = true;
+        }
       });
     } catch (e) {
       setState(() {
@@ -64,6 +68,9 @@ class MoveZScreenState extends State<MoveZScreen> {
 
   @override
   void initState() {
+    if (widget.isBusy) {
+      _apiErrorState = true;
+    }
     super.initState();
     getMaxZ();
   }
