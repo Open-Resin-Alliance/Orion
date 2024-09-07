@@ -16,7 +16,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import 'dart:io';
+import 'package:universal_io/io.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -34,6 +34,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:orion/tools/tools_screen.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/webui/web_layout.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:window_size/window_size.dart';
 import 'package:provider/provider.dart';
@@ -52,21 +53,23 @@ void main() {
 
   Logger.root.level = Level.ALL; // Log all log levels
   Logger.root.onRecord.listen((record) async {
-    Directory logDir = await getApplicationSupportDirectory();
-    File logFile = File('${logDir.path}/app.log');
+    if (!kIsWeb) {
+      Directory logDir = await getApplicationSupportDirectory();
+      File logFile = File('${logDir.path}/app.log');
 
-    stdout.writeln(
-        '${record.time}\t[${record.loggerName}]\t${record.level.name}\t${record.message}');
-    final sink = logFile.openWrite(mode: FileMode.append);
-    sink.writeln(
-        '${record.time}\t[${record.loggerName}]\t${record.level.name}\t${record.message}');
-    await sink.close();
+      stdout.writeln(
+          '${record.time}\t[${record.loggerName}]\t${record.level.name}\t${record.message}');
+      final sink = logFile.openWrite(mode: FileMode.append);
+      sink.writeln(
+          '${record.time}\t[${record.loggerName}]\t${record.level.name}\t${record.message}');
+      await sink.close();
+    }
   });
   runApp(const Orion());
 }
 
 void macDebug() {
-  if (kDebugMode) {
+  if (kDebugMode && !kIsWeb) {
     setWindowTitle('Orion Debug - Prometheus mSLA');
     setWindowMinSize(const Size(480, 480));
     setWindowMaxSize(const Size(800, 800));
@@ -79,7 +82,11 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/',
       builder: (BuildContext context, GoRouterState state) {
-        return const HomeScreen();
+        if (kIsWeb) {
+          return const WebLayout();
+        } else {
+          return const HomeScreen();
+        }
       },
       routes: <RouteBase>[
         GoRoute(
