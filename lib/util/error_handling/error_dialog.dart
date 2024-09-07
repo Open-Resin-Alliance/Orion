@@ -16,35 +16,48 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:orion/util/error_handling/error_details.dart';
 
-void showErrorDialog(BuildContext context, String errorCode) {
+void showErrorDialog(BuildContext context, String errorCode,
+    {bool overrideWeb = false, VoidCallback? onClosed}) {
   ErrorDetails? errorDetails =
       errorLookupTable[errorCode] ?? errorLookupTable['default'];
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text(errorDetails!.title),
-            content: Text(
-              errorDetails.message,
-              style: const TextStyle(color: Colors.grey),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text(
-                  'Close',
-                  style: TextStyle(fontSize: 20),
-                ),
+  bool show = true;
+  show = !kIsWeb || overrideWeb;
+
+  WidgetsBinding.instance.addPostFrameCallback(
+    (_) {
+      if (show) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(errorDetails!.title),
+              content: Text(
+                errorDetails.message,
+                style: const TextStyle(color: Colors.grey),
               ),
-            ],
-          );
-        });
-  });
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    if (onClosed != null) {
+                      onClosed();
+                    }
+                  },
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(fontSize: 20),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    },
+  );
 }
