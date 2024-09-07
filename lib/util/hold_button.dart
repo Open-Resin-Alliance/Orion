@@ -5,6 +5,7 @@ class HoldButton extends StatefulWidget {
   final Widget child;
   final ButtonStyle? style;
   final Duration duration;
+  final bool disabled;
 
   const HoldButton({
     super.key,
@@ -12,6 +13,7 @@ class HoldButton extends StatefulWidget {
     required this.child,
     this.style,
     this.duration = const Duration(seconds: 3),
+    this.disabled = false,
   });
 
   @override
@@ -81,7 +83,7 @@ class HoldButtonState extends State<HoldButton>
                     width: double.infinity,
                     height: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: widget.disabled ? null : () {},
                       style: widget.style,
                       child: widget.child,
                     ),
