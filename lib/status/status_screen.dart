@@ -330,13 +330,12 @@ class StatusScreenState extends State<StatusScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              buildNameCard(fileName),
+              const SizedBox(height: 16),
               Expanded(
                 child: Column(
                   children: [
-                    const Spacer(),
                     buildThumbnailView(context),
-                    const Spacer(),
-                    buildNameCard(fileName),
                     const Spacer(),
                     Row(
                       children: [
