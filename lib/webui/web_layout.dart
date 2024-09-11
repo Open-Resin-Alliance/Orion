@@ -181,20 +181,20 @@ class WebLayoutState extends State<WebLayout>
         builder: (context, snapshot) {
           return LayoutBuilder(
             builder: (context, constraints) {
-              final screenWidth = MediaQuery.of(context).size.width;
-              final screenHeight = MediaQuery.of(context).size.height;
+              final sWidth = MediaQuery.of(context).size.width;
+              final sHeight = MediaQuery.of(context).size.height;
 
-              if (screenWidth > 1800 && screenHeight > 900) {
+              if (sWidth > 1800 && sHeight > 900) {
                 return _buildLargeScreenLayout();
-              } else if (screenWidth > 1200 && screenHeight > 900) {
+              } else if (sWidth > 1200 && sHeight > 900) {
                 return _buildMediumScreenLayout();
-              } else if (screenWidth > 800 && screenHeight > 900) {
+              } else if (sWidth > 800 && sHeight > 900) {
                 return _buildSlimScreenLayout();
-              } else if (screenWidth > 1200 && screenHeight < 900) {
+              } else if (sWidth > 1200 && sHeight < 900 && sHeight > 450) {
                 return _buildHalfHeightScreenLayout();
-              } else if (screenWidth > 100 && screenHeight > 850) {
+              } else if (sWidth > 100 && sHeight > 850) {
                 return _buildSmallScreenLayout(true);
-              } else if (screenWidth > 600 && screenHeight < 850) {
+              } else if (sWidth > 600 && sHeight < 850 && sHeight > 450) {
                 return _buildSmallScreenLayout(false);
               } else {
                 return const Center(
