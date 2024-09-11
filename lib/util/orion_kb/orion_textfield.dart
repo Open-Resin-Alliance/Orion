@@ -16,6 +16,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:orion/themes/themes.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_modal.dart';
@@ -47,6 +48,8 @@ class OrionTextFieldState extends State<OrionTextField>
   late final AnimationController _animController;
   late FocusNode _focusNode;
 
+  bool useNormalKeeb = kIsWeb || kDebugMode;
+
   @override
   void initState() {
     super.initState();
@@ -57,38 +60,39 @@ class OrionTextFieldState extends State<OrionTextField>
     )..repeat(reverse: true);
   }
 
-  final focusNode = FocusNode();
-
   @override
   Widget build(BuildContext context) {
     TextStyle style = const TextStyle(fontSize: 20);
 
     return GestureDetector(
       onTap: () {
-        widget.isKeyboardOpen.value = true;
-        if (widget.controller.text.isEmpty) {
-          widget.controller.text = '\u200B';
+        if (!useNormalKeeb) {
+          widget.isKeyboardOpen.value = true;
+          if (widget.controller.text.isEmpty) {
+            widget.controller.text = '\u200B';
+          }
+          Navigator.of(context)
+              .push(OrionKbModal(
+                  textController: widget.controller, locale: widget.locale))
+              .then(
+            (result) {
+              widget.isKeyboardOpen.value = false;
+              if (result != null) {
+                widget.controller.text = result;
+                widget.onChanged(
+                    result.replaceAll('\u200B', '').replaceAll('\u00A0', ' '));
+              }
+              if (widget.controller.text == '\u200B') {
+                widget.controller.text = '';
+              }
+            },
+          );
         }
-        Navigator.of(context)
-            .push(OrionKbModal(
-                textController: widget.controller, locale: widget.locale))
-            .then(
-          (result) {
-            widget.isKeyboardOpen.value = false;
-            if (result != null) {
-              widget.controller.text = result;
-              widget.onChanged(
-                  result.replaceAll('\u200B', '').replaceAll('\u00A0', ' '));
-            }
-            if (widget.controller.text == '\u200B') {
-              widget.controller.text = '';
-            }
-          },
-        );
       },
       child: MouseRegion(
         cursor: SystemMouseCursors.text,
         child: AbsorbPointer(
+          absorbing: !useNormalKeeb,
           child: Padding(
             padding: const EdgeInsets.only(left: 0.0, right: 0.0, top: 0.0),
             child: Stack(
@@ -99,8 +103,7 @@ class OrionTextFieldState extends State<OrionTextField>
                   builder: (context, isKeyboardOpen, child) {
                     return TextField(
                       controller: widget.controller,
-                      readOnly: true,
-
+                      readOnly: !useNormalKeeb,
                       decoration: InputDecoration(
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(
@@ -114,9 +117,9 @@ class OrionTextFieldState extends State<OrionTextField>
                         ),
                         labelText: widget.keyboardHint,
                       ),
-                      // Hide the original text, We overlay our own with an animated line (cursor)
                       style: style.copyWith(
-                          color: Colors.transparent, fontSize: 28),
+                          color: useNormalKeeb ? null : Colors.transparent,
+                          fontSize: 18),
                     );
                   },
                 ),
@@ -139,7 +142,12 @@ class OrionTextFieldState extends State<OrionTextField>
                                     .bodyLarge!
                                     .color!
                                     .withBrightness(1.2)
-                                : Theme.of(context).textTheme.bodyLarge!.color!,
+                                : useNormalKeeb
+                                    ? Colors.transparent
+                                    : Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge!
+                                        .color!,
                           ),
                           children: [
                             WidgetSpan(
