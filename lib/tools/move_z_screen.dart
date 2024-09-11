@@ -73,15 +73,15 @@ class MoveZScreenState extends State<MoveZScreen> {
     final theme = Theme.of(context).copyWith(
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
-          shape: MaterialStateProperty.resolveWith<OutlinedBorder?>(
-            (Set<MaterialState> states) {
+          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
+            (Set<WidgetState> states) {
               return RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               );
             },
           ),
-          minimumSize: MaterialStateProperty.resolveWith<Size?>(
-            (Set<MaterialState> states) {
+          minimumSize: WidgetStateProperty.resolveWith<Size?>(
+            (Set<WidgetState> states) {
               return const Size(double.infinity, double.infinity);
             },
           ),

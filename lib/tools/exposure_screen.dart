@@ -202,15 +202,15 @@ class ExposureScreenState extends State<ExposureScreen> {
     final theme = Theme.of(context).copyWith(
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
-          shape: MaterialStateProperty.resolveWith<OutlinedBorder?>(
-            (Set<MaterialState> states) {
+          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
+            (Set<WidgetState> states) {
               return RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
                   side: const BorderSide(color: Colors.transparent));
             },
           ),
-          minimumSize: MaterialStateProperty.resolveWith<Size?>(
-            (Set<MaterialState> states) {
+          minimumSize: WidgetStateProperty.resolveWith<Size?>(
+            (Set<WidgetState> states) {
               return const Size(double.infinity, double.infinity);
             },
           ),
@@ -255,9 +255,9 @@ class ExposureScreenState extends State<ExposureScreen> {
                                         : () => exposeScreen('Grid'),
                                     style: theme.elevatedButtonTheme.style
                                         ?.copyWith(
-                                      shape: MaterialStateProperty.resolveWith<
+                                      shape: WidgetStateProperty.resolveWith<
                                           OutlinedBorder?>(
-                                        (Set<MaterialState> states) {
+                                        (Set<WidgetState> states) {
                                           return const RoundedRectangleBorder(
                                             borderRadius: BorderRadius.only(
                                               bottomLeft: Radius.circular(15),
@@ -281,9 +281,9 @@ class ExposureScreenState extends State<ExposureScreen> {
                                         : () => exposeScreen('Dimensions'),
                                     style: theme.elevatedButtonTheme.style
                                         ?.copyWith(
-                                      shape: MaterialStateProperty.resolveWith<
+                                      shape: WidgetStateProperty.resolveWith<
                                           OutlinedBorder?>(
-                                        (Set<MaterialState> states) {
+                                        (Set<WidgetState> states) {
                                           return RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(0));
@@ -305,9 +305,9 @@ class ExposureScreenState extends State<ExposureScreen> {
                                         : () => exposeScreen('Blank'),
                                     style: theme.elevatedButtonTheme.style
                                         ?.copyWith(
-                                      shape: MaterialStateProperty.resolveWith<
+                                      shape: WidgetStateProperty.resolveWith<
                                           OutlinedBorder?>(
-                                        (Set<MaterialState> states) {
+                                        (Set<WidgetState> states) {
                                           return const RoundedRectangleBorder(
                                             borderRadius: BorderRadius.only(
                                               bottomRight: Radius.circular(15),
