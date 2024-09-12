@@ -43,6 +43,8 @@ class StatusScreenState extends State<StatusScreen>
   final ApiService _api = ApiService();
 
   String fileName = '';
+  bool isLandScape = false;
+  int maxNameLength = 0;
 
   int totalSeconds = 0;
   Duration duration = const Duration();
@@ -238,8 +240,9 @@ class StatusScreenState extends State<StatusScreen>
               newPrintNotifier.value = false;
             }
 
-            bool isLandScape =
+            isLandScape =
                 MediaQuery.of(context).orientation == Orientation.landscape;
+            maxNameLength = isLandScape ? 12 : 24;
 
             totalSeconds = status!['print_data']['print_time'].toInt();
             duration = Duration(seconds: totalSeconds);
@@ -314,10 +317,7 @@ class StatusScreenState extends State<StatusScreen>
               Expanded(
                 child: Column(
                   children: [
-                    const Spacer(),
                     buildThumbnailView(context),
-                    const Spacer(),
-                    buildNameCard(fileName),
                     const Spacer(),
                     Row(
                       children: [
@@ -408,8 +408,8 @@ class StatusScreenState extends State<StatusScreen>
           TextSpan(
             children: [
               TextSpan(
-                text: fileName.length >= 14
-                    ? '${fileName.substring(0, 14)}...'
+                text: fileName.length >= maxNameLength
+                    ? '${fileName.substring(0, maxNameLength)}...'
                     : fileName,
                 style: TextStyle(
                   fontSize: 24,
@@ -558,8 +558,6 @@ class StatusScreenState extends State<StatusScreen>
                           builder: (BuildContext context) {
                             return Dialog(
                               child: SizedBox(
-                                width: MediaQuery.of(context).size.width *
-                                    0.5, // 80% of screen width
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: <Widget>[
@@ -579,7 +577,7 @@ class StatusScreenState extends State<StatusScreen>
                                           left: 20, right: 20),
                                       child: SizedBox(
                                         height: 65,
-                                        width: double.infinity,
+                                        width: 450,
                                         child: ElevatedButton(
                                           onPressed: () {
                                             Navigator.pop(context);
@@ -605,7 +603,7 @@ class StatusScreenState extends State<StatusScreen>
                                           left: 20, right: 20),
                                       child: SizedBox(
                                         height: 65,
-                                        width: double.infinity,
+                                        width: 450,
                                         child: HoldButton(
                                           duration: const Duration(seconds: 5),
                                           onPressed: () {
@@ -683,7 +681,9 @@ class StatusScreenState extends State<StatusScreen>
                 Theme.of(context).appBarTheme.toolbarHeight as double,
               ),
             ),
-            child: Text(
+            child: AutoSizeText(
+              minFontSize: 16,
+              maxLines: 1,
               status!['layer'] == null || status!['status'] == 'Idle'
                   ? 'Return to Home'
                   : status!['paused'] == true
