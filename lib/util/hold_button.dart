@@ -52,7 +52,7 @@ class HoldButtonState extends State<HoldButton>
   }
 
   void _onTapCancel() {
-    _controller.reverse();
+    _controller.fling(velocity: -1);
   }
 
   @override
