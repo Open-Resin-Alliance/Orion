@@ -17,6 +17,7 @@
 */
 
 import 'dart:math';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -299,9 +300,15 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     },
                                   );
                                 },
-                                child: Text(
-                                    customUrl == '' ? 'Set URL' : customUrl,
-                                    style: const TextStyle(fontSize: 22)),
+                                child: AutoSizeText(
+                                  customUrl == ''
+                                      ? 'Set URL'
+                                      : customUrl.split('//').last,
+                                  style: const TextStyle(fontSize: 22),
+                                  minFontSize: 18,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
                           ),
@@ -321,8 +328,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               category: 'advanced');
                                         });
                                       },
-                                child: const Text('Clear URL',
-                                    style: TextStyle(fontSize: 22)),
+                                child: const Text(
+                                  'Clear URL',
+                                  style: TextStyle(fontSize: 22),
+                                ),
                               ),
                             ),
                           ),
@@ -447,11 +456,15 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       },
                                     );
                                   },
-                                  child: Text(
-                                      overrideRelease == ''
-                                          ? 'Set Release Tag'
-                                          : overrideRelease,
-                                      style: const TextStyle(fontSize: 22)),
+                                  child: AutoSizeText(
+                                    overrideRelease == ''
+                                        ? 'Set Release Tag'
+                                        : overrideRelease,
+                                    style: const TextStyle(fontSize: 22),
+                                    minFontSize: 18,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ),
                             ),
@@ -471,8 +484,16 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 category: 'developer');
                                           });
                                         },
-                                  child: const Text('Clear Release Tag',
-                                      style: TextStyle(fontSize: 22)),
+                                  child: const AutoSizeText(
+                                    'Clear Release Tag',
+                                    style: TextStyle(fontSize: 22),
+                                    minFontSize: 22,
+                                    maxLines: 1,
+                                    overflowReplacement: Text(
+                                      'Clear Tag',
+                                      style: TextStyle(fontSize: 22),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
