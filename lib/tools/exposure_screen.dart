@@ -18,7 +18,6 @@
 
 import 'dart:async';
 import 'package:async/async.dart';
-
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/api_services/api_services.dart';
@@ -74,13 +73,18 @@ class ExposureScreenState extends State<ExposureScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return StreamBuilder<int>(
-          stream: Stream.periodic(const Duration(milliseconds: 1),
-              (i) => countdownTime * 1000 - i).take((countdownTime * 1000) + 1),
+          stream: (() async* {
+            await Future.delayed(const Duration(seconds: 1));
+            yield* Stream.periodic(const Duration(milliseconds: 1),
+                    (i) => countdownTime * 1000 - i)
+                .take((countdownTime * 1000) + 1);
+          })(),
           initialData:
               countdownTime * 1000, // Provide an initial countdown value
           builder: (context, snapshot) {
             if (snapshot.data == 0) {
               Future.delayed(Duration.zero, () {
+                // ignore: use_build_context_synchronously
                 Navigator.of(context, rootNavigator: true).pop(true);
               });
               return Container(); // Return an empty container when the countdown is over
@@ -199,6 +203,47 @@ class ExposureScreenState extends State<ExposureScreen> {
 
   @override
   Widget build(BuildContext context) {
+    bool isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: isLandscape
+            ? buildLandscapeLayout(context)
+            : buildPortraitLayout(context),
+      ),
+    );
+  }
+
+  Widget buildLandscapeLayout(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: buildExposureButtons(context),
+        ),
+        const SizedBox(width: 32),
+        Expanded(
+          child: buildChoiceCards(context),
+        ),
+      ],
+    );
+  }
+
+  Widget buildPortraitLayout(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: buildExposureButtons(context),
+        ),
+        const SizedBox(height: 32),
+        Expanded(
+          child: buildChoiceCards(context),
+        ),
+      ],
+    );
+  }
+
+  Widget buildExposureButtons(BuildContext context) {
     final theme = Theme.of(context).copyWith(
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
@@ -217,203 +262,183 @@ class ExposureScreenState extends State<ExposureScreen> {
         ),
       ),
     );
-
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: <Widget>[
-            // ...
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: Card.outlined(
-                      elevation: 1,
-                      child: Column(
-                        children: [
-                          const Padding(
-                            padding: EdgeInsetsDirectional.all(2),
-                            child: Text(
-                              'Test Patterns',
-                              style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight
-                                      .bold), // Adjust the style as needed
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: _apiErrorState
-                                        ? null
-                                        : () => exposeScreen('Grid'),
-                                    style: theme.elevatedButtonTheme.style
-                                        ?.copyWith(
-                                      shape: WidgetStateProperty.resolveWith<
-                                          OutlinedBorder?>(
-                                        (Set<WidgetState> states) {
-                                          return const RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.only(
-                                              bottomLeft: Radius.circular(15),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    child: const PhosphorIcon(
-                                        PhosphorIconsFill.checkerboard,
-                                        size: 40),
-                                  ),
-                                ),
-                                const VerticalDivider(
-                                  width: 1,
-                                ),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: _apiErrorState
-                                        ? null
-                                        : () => exposeScreen('Dimensions'),
-                                    style: theme.elevatedButtonTheme.style
-                                        ?.copyWith(
-                                      shape: WidgetStateProperty.resolveWith<
-                                          OutlinedBorder?>(
-                                        (Set<WidgetState> states) {
-                                          return RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(0));
-                                        },
-                                      ),
-                                    ),
-                                    child: const PhosphorIcon(
-                                        PhosphorIconsFill.ruler,
-                                        size: 40),
-                                  ),
-                                ),
-                                const VerticalDivider(
-                                  width: 1,
-                                ),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: _apiErrorState
-                                        ? null
-                                        : () => exposeScreen('Blank'),
-                                    style: theme.elevatedButtonTheme.style
-                                        ?.copyWith(
-                                      shape: WidgetStateProperty.resolveWith<
-                                          OutlinedBorder?>(
-                                        (Set<WidgetState> states) {
-                                          return const RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.only(
-                                              bottomRight: Radius.circular(15),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    child: PhosphorIcon(PhosphorIcons.square(),
-                                        size: 40),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: Card.outlined(
-                      elevation: 1,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        Expanded(
+          child: Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
                       child: ElevatedButton(
                         onPressed:
-                            _apiErrorState ? null : () => exposeScreen('White'),
+                            _apiErrorState ? null : () => exposeScreen('Grid'),
                         style: theme.elevatedButtonTheme.style,
-                        child: const Row(
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.cleaning_services),
-                            SizedBox(width: 10),
+                            PhosphorIcon(
+                              PhosphorIconsFill.checkerboard,
+                              size: 40,
+                            ),
+                            SizedBox(
+                                height:
+                                    8), // Add some space between the icon and the label
                             Text(
-                              'Clean Vat',
+                              'Grid',
                               style: TextStyle(
-                                fontSize: 26,
+                                fontSize: 24,
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            // ...
-            const SizedBox(width: 30),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  const Text(
-                    'Exposure Time',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 5),
-                  ...[3, 10, 30, 'Persistent'].expand((value) {
-                    return [
-                      Flexible(
-                        child: ChoiceChip(
-                          label: SizedBox(
-                            width: double.infinity,
-                            child: Text(
-                              value is int ? '$value Seconds' : value as String,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 22, // Adjust the font size here.
+                    const SizedBox(width: 30),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _apiErrorState
+                            ? null
+                            : () => exposeScreen('Dimensions'),
+                        style: theme.elevatedButtonTheme.style,
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIconsFill.ruler,
+                              size: 40,
+                            ),
+                            SizedBox(
+                                height:
+                                    8), // Add some space between the icon and the label
+                            Text(
+                              'Measure',
+                              style: TextStyle(
+                                fontSize: 24,
                               ),
                             ),
-                          ),
-                          selected: exposureTime ==
-                              (value is int
-                                  ? value
-                                  : (value == 'Persistent'
-                                      ? 999999
-                                      : int.parse(value as String))),
-                          onSelected: _apiErrorState
-                              ? null
-                              : (selected) {
-                                  if (selected) {
-                                    setState(() {
-                                      exposureTime = value is int
-                                          ? value
-                                          : (value == 'Persistent'
-                                              ? 999999
-                                              : int.parse(value as String));
-                                    });
-                                  }
-                                },
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 10),
-                    ];
-                  }).toList()
-                    ..removeLast(),
-                ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 30),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed:
+                      _apiErrorState ? null : () => exposeScreen('Blank'),
+                  style: theme.elevatedButtonTheme.style,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIcons.square(),
+                        size: 40,
+                      ),
+                      const SizedBox(
+                          height:
+                              8), // Add some space between the icon and the label
+                      const Text(
+                        'Blank',
+                        style: TextStyle(
+                          fontSize: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 30),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed:
+                      _apiErrorState ? null : () => exposeScreen('White'),
+                  style: theme.elevatedButtonTheme.style,
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.cleaning_services,
+                        size: 40,
+                      ),
+                      SizedBox(
+                          height:
+                              8), // Add some space between the icon and the label
+                      Text(
+                        'Clean',
+                        style: TextStyle(
+                          fontSize: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildChoiceCards(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        ...[3, 10, 30, 'Persistent'].expand((value) {
+          return [
+            Flexible(
+              child: ChoiceChip.elevated(
+                label: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    value is int ? '$value Seconds' : value as String,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 22, // Adjust the font size here.
+                    ),
+                  ),
+                ),
+                selected: exposureTime ==
+                    (value is int
+                        ? value
+                        : (value == 'Persistent'
+                            ? 999999
+                            : int.parse(value as String))),
+                onSelected: _apiErrorState
+                    ? null
+                    : (selected) {
+                        if (selected) {
+                          setState(() {
+                            exposureTime = value is int
+                                ? value
+                                : (value == 'Persistent'
+                                    ? 999999
+                                    : int.parse(value as String));
+                          });
+                        }
+                      },
               ),
             ),
-            const SizedBox(
-              height: 10,
-            ),
-          ],
-        ),
-      ),
+            const SizedBox(height: 20),
+          ];
+        }).toList()
+          ..removeLast(),
+      ],
     );
   }
 }
