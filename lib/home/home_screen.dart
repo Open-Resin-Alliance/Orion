@@ -86,8 +86,6 @@ class HomeScreenState extends State<HomeScreen> {
                   builder: (BuildContext context) {
                     return Dialog(
                       child: SizedBox(
-                        width: MediaQuery.of(context).size.width *
-                            0.5, // 80% of screen width
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
@@ -106,9 +104,10 @@ class HomeScreenState extends State<HomeScreen> {
                                   const EdgeInsets.only(left: 20, right: 20),
                               child: SizedBox(
                                 height: 65,
-                                width: double.infinity,
+                                width: 450,
                                 child: HoldButton(
                                   onPressed: () {
+                                    Navigator.pop(context);
                                     _api.manualCommand('FIRMWARE_RESTART');
                                   },
                                   child: const Text(
@@ -127,7 +126,7 @@ class HomeScreenState extends State<HomeScreen> {
                                     const EdgeInsets.only(left: 20, right: 20),
                                 child: SizedBox(
                                   height: 65,
-                                  width: double.infinity,
+                                  width: 450,
                                   child: HoldButton(
                                     onPressed: () {
                                       Process.run('sudo', ['reboot', 'now']);
@@ -146,7 +145,7 @@ class HomeScreenState extends State<HomeScreen> {
                                     const EdgeInsets.only(left: 20, right: 20),
                                 child: SizedBox(
                                   height: 65,
-                                  width: double.infinity,
+                                  width: 450,
                                   child: HoldButton(
                                     onPressed: () {
                                       Process.run('sudo', ['shutdown', 'now']);
