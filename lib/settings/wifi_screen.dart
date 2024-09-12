@@ -469,7 +469,6 @@ class _WifiScreenState extends State<WifiScreen> {
                                 network['SIGNAL']!, platform),
                             onTap: () {
                               showDialog(
-                                barrierDismissible: false,
                                 context: context,
                                 builder: (BuildContext context) {
                                   return AlertDialog(
@@ -477,8 +476,7 @@ class _WifiScreenState extends State<WifiScreen> {
                                         child: Text(
                                             'Connect to ${network['SSID']}')),
                                     content: SizedBox(
-                                      width: MediaQuery.of(context).size.width *
-                                          0.5,
+                                      width: 450,
                                       child: ValueListenableBuilder<bool>(
                                         valueListenable:
                                             _isConnecting, // Listen to _isConnecting ValueNotifier
