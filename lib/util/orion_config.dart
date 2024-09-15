@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 /*
 * Orion - Config
 * Copyright (C) 2024 TheContrappostoShop

@@ -158,8 +158,9 @@ class _WifiScreenState extends State<WifiScreen> {
             var result = await Process.run(
                 'nmcli', ['-t', '-f', 'active,ssid', 'dev', 'wifi']);
             var lines = result.stdout.toString().split('\n');
-            var activeNetworkLine =
-                lines.firstWhere((line) => line.startsWith('yes:'));
+            var activeNetworkLine = lines.firstWhere(
+                (line) => line.startsWith('yes:'),
+                orElse: () => '');
             var activeNetworkSSID = activeNetworkLine.split(':')[1];
             if (!alreadyConnected) currentWifiSSID = activeNetworkSSID;
             _logger.info(activeNetworkSSID);
@@ -226,11 +227,11 @@ class _WifiScreenState extends State<WifiScreen> {
         });
         return mergeNetworks(networks);
       } else {
-        print('Failed to get Wi-Fi networks');
+        _logger.severe('Failed to get Wi-Fi networks: ${result?.stderr}');
         return [];
       }
     } catch (e) {
-      print('Error: $e');
+      _logger.severe('Error: $e');
       return [];
     }
   }
