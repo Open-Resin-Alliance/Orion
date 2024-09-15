@@ -39,6 +39,20 @@ Future<String> executeCommand(String command, List<String> arguments) async {
 }
 
 Future<String> getRaspberryPiModel() async {
+  if (!Platform.isLinux) {
+    switch (Platform.operatingSystem) {
+      case 'macos':
+        return 'macOS Device';
+      case 'android':
+        return 'Android Device';
+      case 'ios':
+        return 'iOS Device';
+      case 'windows':
+        return 'Windows Device';
+      default:
+        return 'Unsupported Device';
+    }
+  }
   try {
     final model = await executeCommand('cat', ['/proc/device-tree/model']);
     _logger.info('Raspberry Pi model: $model');
