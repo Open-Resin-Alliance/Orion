@@ -114,13 +114,17 @@ class SettingsScreenState extends State<SettingsScreen> {
       }
     }
 
+    logger.info('Writing to orion.service');
+    logger.info(lines.join('\n'));
+
     await serviceFile.writeAsString(lines.join('\n'));
 
-    await Process.run('systemctl', ['daemon-reload']);
-    await Process.run('systemctl', ['restart', 'orion.service']);
+    await Process.run('sudo', ['systemctl', 'daemon-reload']);
+    await Process.run('sudo', ['systemctl', 'restart', 'orion.service']);
   }
 
   bool getRestartStatus() {
+    if (!Platform.isLinux) return false;
     needsRestart = config.getFlag('needsRestart', category: 'internal');
     return needsRestart;
   }
