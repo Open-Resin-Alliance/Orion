@@ -259,10 +259,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                             final value = [0, 90, 180, 270][index];
                             return Flexible(
                               child: Padding(
-                                padding: EdgeInsets.only(
-                                    right: index < 3
-                                        ? 20.0
-                                        : 0.0), // Add padding only if it's not the last item
+                                padding: const EdgeInsets.only(
+                                    right: 10,
+                                    left:
+                                        10), // Add padding only if it's not the last item
                                 child: ChoiceChip.elevated(
                                   label: SizedBox(
                                     width: double.infinity,
@@ -392,7 +392,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 20),
                             Expanded(
                               child: SizedBox(
                                 height: 55,
@@ -548,7 +548,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 20),
                               Expanded(
                                 child: SizedBox(
                                   height: 55,
