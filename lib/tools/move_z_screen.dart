@@ -130,11 +130,17 @@ class MoveZScreenState extends State<MoveZScreen> {
   }
 
   Widget buildChoiceCards(BuildContext context) {
+    final values = [0.1, 1.0, 10.0, 50.0];
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [0.1, 1.0, 10.0, 50.0].expand((value) {
-        return [
-          Flexible(
+      children: List.generate(values.length, (index) {
+        final value = values[index];
+        return Flexible(
+          child: Padding(
+            padding: EdgeInsets.only(
+                bottom: index < values.length - 1
+                    ? 25.0
+                    : 0.0), // Add padding only if it's not the last item
             child: ChoiceChip.elevated(
               label: SizedBox(
                 width: double.infinity,
@@ -156,10 +162,8 @@ class MoveZScreenState extends State<MoveZScreen> {
                     },
             ),
           ),
-          const SizedBox(height: 20),
-        ];
-      }).toList()
-        ..removeLast(),
+        );
+      }),
     );
   }
 
@@ -209,15 +213,15 @@ class MoveZScreenState extends State<MoveZScreen> {
     final theme = Theme.of(context).copyWith(
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
-          shape: MaterialStateProperty.resolveWith<OutlinedBorder?>(
-            (Set<MaterialState> states) {
+          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
+            (Set<WidgetState> states) {
               return RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               );
             },
           ),
-          minimumSize: MaterialStateProperty.resolveWith<Size?>(
-            (Set<MaterialState> states) {
+          minimumSize: WidgetStateProperty.resolveWith<Size?>(
+            (Set<WidgetState> states) {
               return const Size(double.infinity, double.infinity);
             },
           ),
