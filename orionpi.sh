@@ -168,7 +168,7 @@ if [ "$run_only" != true ]; then
     start_msg="Copying Files to Target"
     printf "%s" "$start_msg"
     start_time=$(date +%s)
-    (sshpass -p "$password" scp -r ./build/flutter_assets $user@$ip:/home/$user/orion & show_scroller $! "$start_msg")
+    (sshpass -p "$password" scp -r ./build/flutter_assets/* $user@$ip:/home/$user/orion/ & show_scroller $! "$start_msg")
     wait $!
     end_time=$(date +%s)
     print_done "Done. [$((end_time - start_time))s]" $((end_time - start_time))
