@@ -92,6 +92,7 @@ flutter:
     - assets/images/opensource.svg
     - assets/images/placeholder.png
     - assets/images/bsod.png
+    - assets/scripts/set_orion_config.sh
     - README.md
     - CHANGELOG.md
 

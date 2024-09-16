@@ -20,9 +20,11 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:provider/provider.dart';
+import 'package:path/path.dart' as path;
 
 import 'package:about/about.dart';
 
@@ -99,28 +101,41 @@ class SettingsScreenState extends State<SettingsScreen> {
   }
 
   void restartOrion() async {
-    final String screenRotation =
-        config.getString('screenRotation', category: 'advanced');
-    final String baseUser = Platform.environment['BASE_USER'] ?? 'default_user';
+    try {
+      final String screenRotation =
+          config.getString('screenRotation', category: 'advanced');
+      final String baseUser = Platform.environment['BASE_USER'] ?? 'pi';
 
-    final File serviceFile = File('/etc/systemd/system/orion.service');
-    List<String> lines = await serviceFile.readAsLines();
+      // Load the bash script from assets
+      final String bashScript =
+          await rootBundle.loadString('assets/scripts/set_orion_config.sh');
 
-    for (int i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith('ExecStart=')) {
-        lines[i] =
-            'ExecStart=flutter-pi ${screenRotation.isNotEmpty ? '-r $screenRotation' : ''} --release /home/$baseUser/orion';
-        break;
+      // Create a temporary directory
+      final Directory tempDir = await Directory.systemTemp.createTemp();
+      final String scriptPath = path.join(tempDir.path, 'set_orion_config.sh');
+
+      // Write the bash script to the temporary file
+      final File scriptFile = File(scriptPath);
+      await scriptFile.writeAsString(bashScript);
+
+      // Make the script executable
+      await Process.run('chmod', ['+x', scriptPath]);
+
+      // Execute the script with sudo
+      final result =
+          await Process.run('sudo', [scriptPath, screenRotation, baseUser]);
+
+      if (result.exitCode != 0) {
+        logger.severe('Failed to restart Orion: ${result.stderr}');
+      } else {
+        logger.info('Orion restarted successfully');
       }
+
+      // Clean up the temporary file
+      await scriptFile.delete();
+    } catch (e) {
+      logger.severe('Failed to restart Orion: $e');
     }
-
-    logger.info('Writing to orion.service');
-    logger.info(lines.join('\n'));
-
-    await serviceFile.writeAsString(lines.join('\n'));
-
-    await Process.run('sudo', ['systemctl', 'daemon-reload']);
-    await Process.run('sudo', ['systemctl', 'restart', 'orion.service']);
   }
 
   bool getRestartStatus() {
