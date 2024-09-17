@@ -101,12 +101,6 @@ final GoRouter _router = GoRouter(
           },
           routes: <RouteBase>[
             GoRoute(
-              path: 'wifi',
-              builder: (BuildContext context, GoRouterState state) {
-                return const WifiScreen();
-              },
-            ),
-            GoRoute(
               path: 'about',
               builder: (BuildContext context, GoRouterState state) {
                 return const AboutScreen();

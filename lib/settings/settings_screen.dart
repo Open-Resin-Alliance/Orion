@@ -16,6 +16,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -23,6 +24,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as path;
 
@@ -48,6 +50,36 @@ class SettingsScreenState extends State<SettingsScreen> {
   OrionConfig config = OrionConfig();
   Logger logger = Logger('Settings');
   late bool needsRestart;
+  final GlobalKey<WifiScreenState> _wifiScreenKey =
+      GlobalKey<WifiScreenState>();
+  final ValueNotifier<bool> isConnected = ValueNotifier(false);
+  late Future<void> _wifiScreenFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    needsRestart = config.getFlag('needsRestart', category: 'internal');
+    _wifiScreenFuture = _initializeWifiScreen();
+  }
+
+  Future<void> _initializeWifiScreen() async {
+    final bool initialConnectionStatus = await _checkInitialConnectionStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        isConnected.value = initialConnectionStatus;
+      }
+    });
+  }
+
+  Future<bool> _checkInitialConnectionStatus() async {
+    try {
+      final result = await Process.run('ping', ['-c', '1', 'google.com']);
+      return result.exitCode == 0;
+    } catch (e) {
+      logger.severe('Failed to check initial connection status: $e');
+      return false;
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -55,15 +87,10 @@ class SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    needsRestart = config.getFlag('needsRestart', category: 'internal');
-  }
-
   void launchConfirmationDialog(bool closeSettings) async {
     if (!needsRestart || !Platform.isLinux) return;
     bool shouldRestart = await showDialog(
+      barrierDismissible: false,
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -97,6 +124,40 @@ class SettingsScreenState extends State<SettingsScreen> {
         needsRestart = false;
       });
       restartOrion();
+    }
+  }
+
+  Future<void> launchDisconnectDialog() async {
+    bool shouldDisconnect = await showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Disconnect from WiFi'),
+          content: const Text(
+              'Do you want to disconnect from the current WiFi network?\nThis may cause any ongoing print jobs to fail.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child:
+                  const Text('Stay Connected', style: TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(width: 20),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: const Text('Disconnect', style: TextStyle(fontSize: 20)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDisconnect) {
+      await _wifiScreenKey.currentState?.disconnect();
     }
   }
 
@@ -171,40 +232,36 @@ class SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.only(right: 16.0),
               child: _selectedIndex == 2
                   ? IconButton(
-                      icon: const Icon(
-                        Icons.info,
-                      ),
-                      iconSize: 35,
+                      icon: PhosphorIcon(PhosphorIcons.info(), size: 40),
+                      iconSize: 40,
                       onPressed: () {
                         showAboutPage(
-                            context: context,
-                            values: {
-                              'version': Pubspec.version,
-                              'buildNumber': Pubspec.versionBuild.toString(),
-                              'commit': Pubspec.versionFull
-                                          .toString()
-                                          .split('+')[1] ==
-                                      'SELFCOMPILED'
-                                  ? 'Local Build'
-                                  : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}',
-                              'year': DateTime.now().year.toString(),
-                            },
-                            applicationVersion:
-                                'Version {{ version }} - {{ commit }}',
-                            applicationName: 'Orion',
-                            applicationLegalese:
-                                'GPLv3 - Copyright © TheContrappostoShop {{ year }}',
-                            children: <Widget>[
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 10, right: 10),
-                                child: Card(
-                                    child: ListTile(
+                          context: context,
+                          values: {
+                            'version': Pubspec.version,
+                            'buildNumber': Pubspec.versionBuild.toString(),
+                            'commit': Pubspec.versionFull
+                                        .toString()
+                                        .split('+')[1] ==
+                                    'SELFCOMPILED'
+                                ? 'Local Build'
+                                : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}',
+                            'year': DateTime.now().year.toString(),
+                          },
+                          applicationVersion:
+                              'Version {{ version }} - {{ commit }}',
+                          applicationName: 'Orion',
+                          applicationLegalese:
+                              'GPLv3 - Copyright © TheContrappostoShop {{ year }}',
+                          children: <Widget>[
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 10, right: 10),
+                              child: Card(
+                                child: ListTile(
                                   leading: const Icon(Icons.list, size: 30),
-                                  title: const Text(
-                                    'Changelog',
-                                    style: TextStyle(fontSize: 24),
-                                  ),
+                                  title: const Text('Changelog',
+                                      style: _commonTextStyle),
                                   onTap: () {
                                     Navigator.push(
                                       context,
@@ -215,37 +272,59 @@ class SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                     );
                                   },
-                                )),
-                              ),
-                              const Padding(
-                                padding: EdgeInsets.all(10),
-                                child: Card(
-                                  child: LicensesPageListTile(
-                                    title: Text(
-                                      'Open-Source Licenses',
-                                      style: TextStyle(fontSize: 24),
-                                    ),
-                                    icon: Icon(
-                                      Icons.favorite,
-                                      size: 30,
-                                    ),
-                                  ),
                                 ),
                               ),
-                            ],
-                            applicationIcon: const FlutterLogo(
-                              size: 100,
-                            ));
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Card(
+                                child: LicensesPageListTile(
+                                  title: Text('Open-Source Licenses',
+                                      style: _commonTextStyle),
+                                  icon: Icon(Icons.favorite, size: 30),
+                                ),
+                              ),
+                            ),
+                          ],
+                          applicationIcon: const FlutterLogo(size: 100),
+                        );
                       },
                     )
-                  : null,
+                  : _selectedIndex == 1
+                      ? ValueListenableBuilder<bool>(
+                          valueListenable: isConnected,
+                          builder: (context, value, child) {
+                            return value
+                                ? IconButton(
+                                    onPressed: () {
+                                      launchDisconnectDialog();
+                                    },
+                                    icon: PhosphorIcon(PhosphorIcons.xCircle(),
+                                        size: 40),
+                                  )
+                                : const SizedBox.shrink();
+                          },
+                        )
+                      : const SizedBox.shrink(),
             ),
           ],
         ),
         body: _selectedIndex == 0
             ? const GeneralCfgScreen()
             : _selectedIndex == 1
-                ? const WifiScreen()
+                ? FutureBuilder<void>(
+                    future: _wifiScreenFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else {
+                        return WifiScreen(
+                          key: _wifiScreenKey,
+                          isConnected: isConnected,
+                        );
+                      }
+                    },
+                  )
                 : _selectedIndex == 2
                     ? const AboutScreen()
                     : _selectedIndex == 3
@@ -274,13 +353,13 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
           ],
           currentIndex: _selectedIndex,
-          selectedItemColor: Theme.of(context).colorScheme.primary,
+          selectedItemColor: Theme.of(context).colorScheme.primaryFixedDim,
           onTap: _onItemTapped,
-          unselectedItemColor: Theme.of(context)
-              .colorScheme
-              .secondary, // set the inactive icon color to red
+          unselectedItemColor: Theme.of(context).colorScheme.secondary,
         ),
       ),
     );
   }
 }
+
+const TextStyle _commonTextStyle = TextStyle(fontSize: 24);

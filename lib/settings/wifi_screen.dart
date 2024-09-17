@@ -20,27 +20,36 @@
 
 import 'dart:io';
 import 'dart:math';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:logging/logging.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 
 class WifiScreen extends StatefulWidget {
-  const WifiScreen({super.key});
+  const WifiScreen({super.key, required this.isConnected});
+
+  final ValueNotifier<bool> isConnected;
 
   @override
-  _WifiScreenState createState() => _WifiScreenState();
+  WifiScreenState createState() => WifiScreenState();
 }
 
-class _WifiScreenState extends State<WifiScreen> {
+class WifiScreenState extends State<WifiScreen> {
   List<String> wifiNetworks = [];
   String? currentWifiSSID;
   Future<List<Map<String, String>>>? _networksFuture;
-  Color? _standardColor = Colors.white.withOpacity(0.0);
-  final Logger _logger = Logger('Wifi');
 
+  final Color _standardColor = Colors.white.withOpacity(0.0);
+  final Logger _logger = Logger('WifiScreen');
   final ValueNotifier<bool> _isConnecting = ValueNotifier(false);
+
+  late String platform;
   bool _connectionFailed = false;
 
   final GlobalKey<SpawnOrionTextFieldState> wifiPasswordKey =
@@ -49,6 +58,9 @@ class _WifiScreenState extends State<WifiScreen> {
   @override
   void initState() {
     super.initState();
+    if (!Platform.isLinux) {
+      if (kDebugMode) currentWifiSSID = 'Local Network (Debug)';
+    }
   }
 
   @override
@@ -57,25 +69,51 @@ class _WifiScreenState extends State<WifiScreen> {
     _networksFuture = _getWifiNetworks();
   }
 
-  Future<String> _getIPAddress() async {
-    String ipAddress;
+  Future<String> getIPAddress() async {
     try {
       final List<NetworkInterface> networkInterfaces =
           await NetworkInterface.list(type: InternetAddressType.IPv4);
       if (networkInterfaces.isNotEmpty) {
-        ipAddress = networkInterfaces.first.addresses.first.address;
+        final ipAddress = networkInterfaces.first.addresses.first.address;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.isConnected.value = true; // Set isConnected to true
+        });
+        _logger.info('SSID: $currentWifiSSID');
+        _logger.info('IP Address: $ipAddress');
+        return ipAddress;
       } else {
         throw Exception('No network interfaces found.');
       }
     } on PlatformException catch (e) {
       _logger.warning('Failed to get IP Address: $e');
-      ipAddress = 'Failed to get IP Address';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.isConnected.value = false; // Set isConnected to false
+      });
+      return 'Failed to get IP Address';
     }
-    return ipAddress;
+  }
+
+  Future<void> disconnect() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.isConnected.value = false;
+      }
+    });
+    try {
+      _logger.info('Disconnecting Wi-Fi');
+      await Process.run(
+          'sudo', ['nmcli', 'dev', 'disconnect', 'iface', 'wlan0']);
+      setState(() {
+        currentWifiSSID = null;
+        _networksFuture = _getWifiNetworks(alreadyConnected: true);
+      });
+    } catch (e) {
+      _logger.warning('Failed to disconnect Wi-Fi: $e');
+    }
   }
 
   Icon getSignalStrengthIcon(dynamic signalStrengthReceived, String platform) {
-    int signalStrength = 0;
+    int signalStrength;
 
     try {
       signalStrength = int.parse(signalStrengthReceived);
@@ -84,146 +122,118 @@ class _WifiScreenState extends State<WifiScreen> {
       return const Icon(Icons.warning_rounded);
     }
 
-    // Define the icons for each platform
-    final Map<int, Icon> linuxIcons = {
-      100: Icon(Icons.network_wifi_rounded, color: Colors.green[300], size: 30),
-      80: Icon(Icons.network_wifi_rounded, color: Colors.green[300], size: 30),
-      60: Icon(Icons.network_wifi_3_bar_rounded,
-          color: Colors.green[300], size: 30),
-      40: Icon(Icons.network_wifi_2_bar_rounded,
-          color: Colors.orange[300], size: 30),
-      20: Icon(Icons.network_wifi_1_bar_rounded,
-          color: Colors.orange[300], size: 30),
-      0: Icon(Icons.warning_rounded, color: Colors.red[300], size: 30),
-    };
+    final Map<int, Icon> icons = platform == 'linux'
+        ? {
+            100: Icon(Icons.network_wifi_rounded,
+                color: Colors.green[300], size: 30),
+            80: Icon(Icons.network_wifi_rounded,
+                color: Colors.green[300], size: 30),
+            60: Icon(Icons.network_wifi_3_bar_rounded,
+                color: Colors.green[300], size: 30),
+            40: Icon(Icons.network_wifi_2_bar_rounded,
+                color: Colors.orange[300], size: 30),
+            20: Icon(Icons.network_wifi_1_bar_rounded,
+                color: Colors.orange[300], size: 30),
+            0: Icon(Icons.warning_rounded, color: Colors.red[300], size: 30),
+          }
+        : {
+            10: Icon(Icons.network_wifi_rounded,
+                color: Colors.green[300], size: 30),
+            0: Icon(Icons.network_wifi_rounded,
+                color: Colors.green[300], size: 30),
+            -50: Icon(Icons.network_wifi_3_bar_rounded,
+                color: Colors.green[300], size: 30),
+            -70: Icon(Icons.network_wifi_2_bar_rounded,
+                color: Colors.orange[300], size: 30),
+            -90: Icon(Icons.warning_rounded, color: Colors.red[300], size: 30),
+          };
 
-    final Map<int, Icon> otherIcons = {
-      10: Icon(Icons.network_wifi_rounded, color: Colors.green[300], size: 30),
-      0: Icon(Icons.network_wifi_rounded, color: Colors.green[300], size: 30),
-      -50: Icon(Icons.network_wifi_3_bar_rounded,
-          color: Colors.green[300], size: 30),
-      -70: Icon(Icons.network_wifi_2_bar_rounded,
-          color: Colors.orange[300], size: 30),
-      -90: Icon(Icons.warning_rounded, color: Colors.red[300], size: 30),
-    };
-
-    // Choose the correct map of icons based on the platform
-    final Map<int, Icon> icons = platform == 'linux' ? linuxIcons : otherIcons;
-
-    // Find the first icon where the signal strength is less than or equal to the threshold
     for (var threshold in icons.keys.toList().reversed) {
       if (signalStrength <= threshold) {
         return icons[threshold]!;
       }
     }
 
-    // If no icon was found, return a warning icon
     return const Icon(Icons.warning_rounded);
   }
-
-  late String platform;
 
   Future<List<Map<String, String>>> _getWifiNetworks(
       {bool alreadyConnected = false}) async {
     wifiNetworks.clear();
     try {
       ProcessResult? result;
-      switch (Theme.of(context).platform) {
-        case TargetPlatform.macOS:
-          platform = 'macos';
-          final List<Map<String, String>> networks = [];
-          // Generate fake output
-          for (int i = 0; i < 10; i++) {
-            int rand = Random().nextInt(100);
-            networks.add({
-              'SSID': 'Network $rand',
-              'SIGNAL':
-                  '${-30 - i * 5}', // Signal strength decreases with each network
-              'BSSID': '00:0a:95:9d:68:1$i',
-              'RSSI': '${-30 - i * 5}',
-              'CHANNEL': '${1 + i}',
-              'HT': 'Y',
-              'CC': 'US',
-              'SECURITY': '(WPA2)'
-            });
-          }
-          return networks;
-        case TargetPlatform.linux:
-          platform = 'linux';
-          // Get the current Wi-Fi network
-          await Process.run('sudo', ['nmcli', 'device', 'wifi', 'rescan']);
-          _logger.info('Rescanning Wi-Fi networks');
-          result = await Process.run('nmcli', ['device', 'wifi', 'list']);
-          try {
-            var result = await Process.run(
-                'nmcli', ['-t', '-f', 'active,ssid', 'dev', 'wifi']);
-            var lines = result.stdout.toString().split('\n');
-            var activeNetworkLine = lines.firstWhere(
-                (line) => line.startsWith('yes:'),
-                orElse: () => '');
-            var activeNetworkSSID = activeNetworkLine.split(':')[1];
-            if (!alreadyConnected) currentWifiSSID = activeNetworkSSID;
-            _logger.info(activeNetworkSSID);
-          } catch (e) {
-            _logger.severe('Failed to get current Wi-Fi network: $e');
-            setState(() {});
-          }
-          _logger.info('Getting Wi-Fi networks');
-          break;
-        default:
+      platform = Theme.of(context).platform == TargetPlatform.macOS
+          ? 'macos'
+          : 'linux';
+
+      if (platform == 'macos') {
+        final List<Map<String, String>> networks = List.generate(10, (i) {
+          int rand = Random().nextInt(100);
+          return {
+            'SSID': 'Network $rand',
+            'SIGNAL': '${-30 - i * 5}',
+            'BSSID': '00:0a:95:9d:68:1$i',
+            'RSSI': '${-30 - i * 5}',
+            'CHANNEL': '${1 + i}',
+            'HT': 'Y',
+            'CC': 'US',
+            'SECURITY': '(WPA2)'
+          };
+        });
+        return networks;
+      } else if (platform == 'linux') {
+        await Process.run('sudo', ['nmcli', 'device', 'wifi', 'rescan']);
+        _logger.info('Rescanning Wi-Fi networks');
+        result = await Process.run('nmcli', ['device', 'wifi', 'list']);
+        try {
+          var result = await Process.run(
+              'nmcli', ['-t', '-f', 'active,ssid', 'dev', 'wifi']);
+          var activeNetworkLine = result.stdout
+              .toString()
+              .split('\n')
+              .firstWhere((line) => line.startsWith('yes:'), orElse: () => '');
+          var activeNetworkSSID = activeNetworkLine.split(':')[1];
+          if (!alreadyConnected) currentWifiSSID = activeNetworkSSID;
+          _logger.info(activeNetworkSSID);
+        } catch (e) {
+          _logger.severe('Failed to get current Wi-Fi network: $e');
+          setState(() {});
+        }
+        _logger.info('Getting Wi-Fi networks');
       }
+
       if (result?.exitCode == 0) {
         final List<Map<String, String>> networks = [];
         final List<String> lines = result!.stdout.toString().split('\n');
+        RegExp pattern = platform == 'macos'
+            ? RegExp(
+                r'^\s*(.+?)\s{2,}(.+?)\s{2,}([^]+?)\s{2,}([^]+?)\s{2,}([^]+)$')
+            : RegExp(
+                r"(?:(\*)\s+)?([0-9A-Fa-f:]{17})\s+(.*?)\s+(Infra)\s+(\d+)\s+([\d\sMbit/s]+)\s+(\d+)\s+([\w▂▄▆█_]+)\s+(.*)",
+                multiLine: true);
 
-        RegExp pattern = RegExp('');
-
-        switch (Theme.of(context).platform) {
-          case TargetPlatform.macOS:
-            pattern = RegExp(
-                r'^\s*(.+?)\s{2,}(.+?)\s{2,}([^]+?)\s{2,}([^]+?)\s{2,}([^]+)$');
-            break;
-          case TargetPlatform.linux:
-            pattern = RegExp(
-              r"(?:(\*)\s+)?([0-9A-Fa-f:]{17})\s+(.*?)\s+(Infra)\s+(\d+)\s+([\d\sMbit/s]+)\s+(\d+)\s+([\w▂▄▆█_]+)\s+(.*)",
-              multiLine: true,
-            );
-            break;
-          default:
-        }
-
-        // Skip the first two lines (header and separator)
         for (int i = 2; i < lines.length; i++) {
           final RegExpMatch? match = pattern.firstMatch(lines[i]);
-
           if (match != null) {
-            if (platform == 'macos') {
-              networks.add({
-                'SSID': match.group(1) ?? '',
-                'SIGNAL': match.group(2) ?? '',
-                'SECURITY': match.group(8) ?? '',
-              });
-            } else if (platform == 'linux') {
-              networks.add({
-                'SSID': match.group(3) ?? '',
-                'SIGNAL': match.group(7) ?? '',
-                'SECURITY': match.group(9) ?? '',
-              });
-            }
+            networks.add({
+              'SSID': platform == 'macos'
+                  ? match.group(1) ?? ''
+                  : match.group(3) ?? '',
+              'SIGNAL': platform == 'macos'
+                  ? match.group(2) ?? ''
+                  : match.group(7) ?? '',
+              'SECURITY': platform == 'macos'
+                  ? match.group(8) ?? ''
+                  : match.group(9) ?? '',
+            });
           }
         }
 
-        // Sort by strongest signal
         networks.sort((a, b) {
-          if (a['SSID'] == currentWifiSSID) {
-            return -1;
-          } else if (b['SSID'] == currentWifiSSID) {
-            return 1;
-          } else {
-            int signalA = int.parse(a['SIGNAL'] ?? '0');
-            int signalB = int.parse(b['SIGNAL'] ?? '0');
-            return signalB.compareTo(signalA);
-          }
+          if (a['SSID'] == currentWifiSSID) return -1;
+          if (b['SSID'] == currentWifiSSID) return 1;
+          return int.parse(b['SIGNAL'] ?? '0')
+              .compareTo(int.parse(a['SIGNAL'] ?? '0'));
         });
         return mergeNetworks(networks);
       } else {
@@ -237,12 +247,12 @@ class _WifiScreenState extends State<WifiScreen> {
   }
 
   void connectToNetwork(String ssid, String password) async {
-    setState(() {
-      _isConnecting.value = true; // Start of connection attempt
-    });
+    _isConnecting.value = true; // Start of connection attempt
     try {
-      final result = await Process.run('sudo',
-          ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password]);
+      final result = await Process.run(
+        'sudo',
+        ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password],
+      );
       if (result.exitCode == 0) {
         setState(() {
           currentWifiSSID = ssid;
@@ -250,24 +260,15 @@ class _WifiScreenState extends State<WifiScreen> {
         });
         _logger.info('Connected to $ssid');
         Navigator.of(context).pop();
-        _isConnecting.value = false;
       } else {
         _logger.warning('Failed to connect to $ssid');
-        setState(() {
-          _isConnecting.value = false;
-          _connectionFailed = true;
-        });
+        _connectionFailed = true;
       }
     } catch (e) {
       _logger.warning('Failed to connect to Wi-Fi network: $e');
-      setState(() {
-        _isConnecting.value = false;
-        _connectionFailed = true;
-      });
+      _connectionFailed = true;
     } finally {
-      setState(() {
-        _isConnecting.value = false; // End of connection attempt
-      });
+      _isConnecting.value = false; // End of connection attempt
     }
   }
 
@@ -276,15 +277,17 @@ class _WifiScreenState extends State<WifiScreen> {
 
     for (var network in networks) {
       var ssid = network['SSID'];
+      if (ssid == null) continue;
+
       if (mergedNetworks.containsKey(ssid)) {
         var existingNetwork = mergedNetworks[ssid]!;
         var existingSignalStrength = int.parse(existingNetwork['SIGNAL']!);
         var newSignalStrength = int.parse(network['SIGNAL']!);
         if (newSignalStrength > existingSignalStrength) {
-          mergedNetworks[ssid ?? ''] = network;
+          mergedNetworks[ssid] = network;
         }
       } else {
-        mergedNetworks[ssid ?? ''] = network;
+        mergedNetworks[ssid] = network;
       }
     }
 
@@ -305,291 +308,290 @@ class _WifiScreenState extends State<WifiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    _standardColor = Theme.of(context).textTheme.bodyLarge!.color;
     return Scaffold(
       body: FutureBuilder<List<Map<String, String>>>(
         future: _networksFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!Platform.isLinux && !kDebugMode) {
+            return const Center(
+              child: Text(
+                'Sorry, this feature is only available on Linux',
+                style: TextStyle(
+                  fontSize: 24,
+                ),
+              ),
+            );
           } else {
-            if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
+            final List<Map<String, String>> networks = snapshot.data ?? [];
+            final String currentSSID = currentWifiSSID ?? '';
+            if (currentSSID.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  widget.isConnected.value = true;
+                }
+              });
+              return FutureBuilder<String>(
+                future: getIPAddress(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else {
+                    final String ipAddress = snapshot.data ?? '';
+                    bool isLandscape = MediaQuery.of(context).orientation ==
+                        Orientation.landscape;
+                    return Center(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: isLandscape
+                              ? buildLandscapeLayout(
+                                  context, currentSSID, ipAddress, networks)
+                              : buildPortraitLayout(
+                                  context, currentSSID, ipAddress, networks),
+                        ),
+                      ),
+                    );
+                  }
+                },
+              );
             } else {
-              final List<Map<String, String>> networks = snapshot.data ?? [];
-              final String currentSSID = currentWifiSSID ?? '';
-              if (currentSSID.isNotEmpty) {
-                return FutureBuilder<String>(
-                  future: _getIPAddress(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else {
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      } else {
-                        final String ipAddress = snapshot.data ?? '';
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 16, right: 16),
-                            child: Column(
-                              children: [
-                                const Spacer(),
-                                Card.outlined(
-                                  elevation: 5,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: <Widget>[
-                                      const SizedBox(height: 10),
-                                      RichText(
-                                        text: TextSpan(
-                                          style: DefaultTextStyle.of(context)
-                                              .style,
-                                          children: <TextSpan>[
-                                            TextSpan(
-                                              text: 'Connected: ',
-                                              style: TextStyle(
-                                                fontSize: 26,
-                                                fontWeight: FontWeight.bold,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary,
+              widget.isConnected.value = false;
+              return RefreshIndicator(
+                onRefresh: () async {
+                  setState(() {
+                    _networksFuture = _getWifiNetworks();
+                  });
+                },
+                child: ListView.builder(
+                  itemCount: networks.length,
+                  itemBuilder: (context, index) {
+                    final network = networks[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Card.outlined(
+                        elevation: 1,
+                        child: ListTile(
+                          key: ValueKey(network['SSID']),
+                          title: Text(network['SSID'] ?? '',
+                              style: const TextStyle(fontSize: 22)),
+                          subtitle: Text(
+                              'Signal Strength: ${network['SIGNAL']} dBm',
+                              style: const TextStyle(fontSize: 18)),
+                          trailing: getSignalStrengthIcon(
+                              network['SIGNAL'], Platform.operatingSystem),
+                          onTap: () {
+                            showDialog(
+                              barrierDismissible: false,
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Center(
+                                      child: Text(
+                                          'Connect to ${network['SSID']}')),
+                                  content: SizedBox(
+                                    width:
+                                        MediaQuery.of(context).size.width * 0.5,
+                                    child: ValueListenableBuilder<bool>(
+                                      valueListenable: _isConnecting,
+                                      builder: (context, isConnecting, child) {
+                                        return Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            Opacity(
+                                              opacity: isConnecting ? 0.0 : 1.0,
+                                              child: SingleChildScrollView(
+                                                child: Column(
+                                                  children: [
+                                                    SpawnOrionTextField(
+                                                      key: wifiPasswordKey,
+                                                      keyboardHint:
+                                                          'Enter Password',
+                                                      locale: Localizations
+                                                              .localeOf(context)
+                                                          .toString(),
+                                                    ),
+                                                    if (_connectionFailed)
+                                                      const SizedBox(
+                                                          height: 20),
+                                                    if (_connectionFailed)
+                                                      const Text(
+                                                        'Connection failed. Please try again.',
+                                                        style: TextStyle(
+                                                            color: Colors.red,
+                                                            fontSize: 20),
+                                                      ),
+                                                    OrionKbExpander(
+                                                        textFieldKey:
+                                                            wifiPasswordKey),
+                                                  ],
+                                                ),
                                               ),
                                             ),
-                                            TextSpan(
-                                              text: currentSSID,
-                                              style: TextStyle(
-                                                fontSize: 26,
-                                                fontWeight: FontWeight.normal,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary,
+                                            IgnorePointer(
+                                              child: Opacity(
+                                                opacity:
+                                                    isConnecting ? 1.0 : 0.0,
+                                                child: const SizedBox(
+                                                  height: 60,
+                                                  width: 60,
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                ),
                                               ),
                                             ),
                                           ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      const Divider(height: 1),
-                                      const SizedBox(height: 25),
-                                      Text(
-                                        'IP Address: $ipAddress',
-                                        style: const TextStyle(fontSize: 24),
-                                      ),
-                                      const SizedBox(height: 25),
-                                      Text(
-                                        'Signal Strength: ${signalStrengthToQuality(int.parse(networks.first['SIGNAL']!))} [${networks.first['SIGNAL']}]',
-                                        style: const TextStyle(fontSize: 24),
-                                      ),
-                                      const SizedBox(height: 25),
-                                      ElevatedButton(
-                                        onPressed: () async {
-                                          try {
-                                            _logger.info('Disconnecting Wi-Fi');
-                                            await Process.run('sudo', [
-                                              'nmcli',
-                                              'dev',
-                                              'disconnect',
-                                              'iface',
-                                              'wlan0'
-                                            ]);
-                                            setState(() {
-                                              currentWifiSSID = null;
-                                              _networksFuture =
-                                                  _getWifiNetworks(
-                                                      alreadyConnected: true);
-                                            });
-                                          } catch (e) {
-                                            _logger.warning(
-                                                'Failed to disconnect Wi-Fi: $e');
-                                          }
-                                        },
-                                        child: const Padding(
-                                          padding: EdgeInsets.all(15),
-                                          child: Text(
-                                            'Disconnect',
-                                            style: TextStyle(fontSize: 24),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 25),
-                                    ],
-                                  ),
-                                ),
-                                const Spacer(),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                );
-              } else {
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() {
-                      _networksFuture = _getWifiNetworks();
-                    });
-                  },
-                  child: ListView.builder(
-                    itemCount: networks.length,
-                    itemBuilder: (context, index) {
-                      final network = networks[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 16, right: 16),
-                        child: Card.outlined(
-                          elevation: 1,
-                          child: ListTile(
-                            key: ValueKey(network['SSID']),
-                            title: Text(
-                              '${network['SSID']}',
-                              style: TextStyle(
-                                fontSize: 22,
-                                color: network['SSID'] == currentSSID
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withAlpha(130)
-                                    : null,
-                              ),
-                            ),
-                            subtitle: Text(
-                              'Signal Strength: ${network['SIGNAL']} dBm',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: network['SSID'] == currentSSID
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withAlpha(130)
-                                    : null,
-                              ),
-                            ),
-                            trailing: getSignalStrengthIcon(
-                                network['SIGNAL']!, platform),
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: Center(
-                                        child: Text(
-                                            'Connect to ${network['SSID']}')),
-                                    content: SizedBox(
-                                      width: 450,
-                                      child: ValueListenableBuilder<bool>(
-                                        valueListenable:
-                                            _isConnecting, // Listen to _isConnecting ValueNotifier
-                                        builder:
-                                            (context, isConnecting, child) {
-                                          // Based on isConnecting value, show CircularProgressIndicator or form
-                                          return Stack(
-                                            alignment: Alignment.center,
-                                            children: [
-                                              Opacity(
-                                                opacity:
-                                                    isConnecting ? 0.0 : 1.0,
-                                                child: SingleChildScrollView(
-                                                  child: Column(
-                                                    children: [
-                                                      SpawnOrionTextField(
-                                                        key: wifiPasswordKey,
-                                                        keyboardHint:
-                                                            'Enter Password',
-                                                        locale: Localizations
-                                                                .localeOf(
-                                                                    context)
-                                                            .toString(),
-                                                      ),
-                                                      if (_connectionFailed)
-                                                        const SizedBox(
-                                                          height: 20,
-                                                        ),
-                                                      if (_connectionFailed)
-                                                        const Text(
-                                                          'Connection failed. Please try again.',
-                                                          style: TextStyle(
-                                                            color: Colors.red,
-                                                            fontSize: 20,
-                                                          ),
-                                                        ),
-                                                      OrionKbExpander(
-                                                          textFieldKey:
-                                                              wifiPasswordKey),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              IgnorePointer(
-                                                child: Opacity(
-                                                  opacity:
-                                                      isConnecting ? 1.0 : 0.0,
-                                                  child: const SizedBox(
-                                                    height: 60,
-                                                    width: 60,
-                                                    child:
-                                                        CircularProgressIndicator(),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
+                                        );
+                                      },
                                     ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                          setState(() {
-                                            _isConnecting.value = false;
-                                            _connectionFailed = false;
-                                          });
-                                        },
-                                        child: const Text('Close',
-                                            style: TextStyle(fontSize: 20)),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          if (!_isConnecting.value) {
-                                            _isConnecting.value =
-                                                true; // Indicate that a connection attempt is starting
-                                            if (Theme.of(context).platform ==
-                                                TargetPlatform.linux) {
-                                              connectToNetwork(
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                        setState(() {
+                                          _isConnecting.value = false;
+                                          _connectionFailed = false;
+                                        });
+                                      },
+                                      child: const Text('Close',
+                                          style: TextStyle(fontSize: 20)),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        if (!_isConnecting.value) {
+                                          _isConnecting.value = true;
+                                          if (Theme.of(context).platform ==
+                                              TargetPlatform.linux) {
+                                            connectToNetwork(
                                                 network['SSID']!,
                                                 wifiPasswordKey.currentState!
-                                                    .getCurrentText(),
-                                              );
-                                            } else {
-                                              Future.delayed(
-                                                  const Duration(seconds: 3),
-                                                  () {
-                                                Navigator.of(context).pop();
-                                                _isConnecting.value = false;
-                                              });
-                                            }
+                                                    .getCurrentText());
+                                          } else {
+                                            Future.delayed(
+                                                const Duration(seconds: 3), () {
+                                              Navigator.of(context).pop();
+                                              _isConnecting.value = false;
+                                            });
                                           }
-                                        },
-                                        child: const Text('Confirm',
-                                            style: TextStyle(fontSize: 20)),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                                        }
+                                      },
+                                      child: const Text('Confirm',
+                                          style: TextStyle(fontSize: 20)),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                );
-              }
+                      ),
+                    );
+                  },
+                ),
+              );
             }
           }
         },
+      ),
+    );
+  }
+
+  Widget buildPortraitLayout(BuildContext context, String currentSSID,
+      String ipAddress, List<Map<String, String>> networks) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        buildNameCard('Connected to WiFi'),
+        buildInfoCard('Network Name', currentSSID),
+        buildInfoCard('IP Address', ipAddress),
+        buildInfoCard(
+          'Signal Strength',
+          '${signalStrengthToQuality(int.parse(networks.first['SIGNAL']!))} [${networks.first['SIGNAL']}]',
+        ),
+        const SizedBox(height: 16),
+        buildQrView(context, ipAddress),
+      ],
+    );
+  }
+
+  Widget buildLandscapeLayout(BuildContext context, String currentSSID,
+      String ipAddress, List<Map<String, String>> networks) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              buildNameCard('Connected to WiFi'),
+              buildInfoCard('Network Name', currentSSID),
+              buildInfoCard('IP Address', ipAddress),
+              buildInfoCard(
+                'Signal Strength',
+                '${signalStrengthToQuality(int.parse(networks.first['SIGNAL']!))} [${networks.first['SIGNAL']}]',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        buildQrView(context, ipAddress),
+      ],
+    );
+  }
+
+  Widget buildNameCard(String title) {
+    return Card.outlined(
+      elevation: 1.0,
+      child: ListTile(
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildInfoCard(String title, String subtitle) {
+    return Card.outlined(
+      elevation: 1.0,
+      child: ListTile(
+        title: Text(title),
+        subtitle: Text(subtitle),
+      ),
+    );
+  }
+
+  Widget buildQrView(BuildContext context, String ipAddress) {
+    return Center(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Card.outlined(
+          elevation: 1.0,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: QrImageView(
+              data: 'http://$ipAddress',
+              version: QrVersions.auto,
+              size: 250,
+              eyeStyle: QrEyeStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              dataModuleStyle: QrDataModuleStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                dataModuleShape: QrDataModuleShape.circle,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
