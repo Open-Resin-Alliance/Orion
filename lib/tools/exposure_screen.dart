@@ -58,7 +58,7 @@ class ExposureScreenState extends State<ExposureScreen> {
     } catch (e) {
       setState(() {
         _apiErrorState = true;
-        showErrorDialog(context, 'PINK-CARROT');
+        showErrorDialog(context, 'BLUE-BANANA');
       });
       _logger.severe('Failed to test exposure: $e');
     }
@@ -195,7 +195,7 @@ class ExposureScreenState extends State<ExposureScreen> {
     } catch (e) {
       setState(() {
         _apiErrorState = true;
-        showErrorDialog(context, 'PINK-CARROT');
+        showErrorDialog(context, 'BLUE-BANANA');
       });
       _logger.severe('Failed to get config: $e');
     }

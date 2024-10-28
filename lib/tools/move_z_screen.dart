@@ -58,7 +58,7 @@ class MoveZScreenState extends State<MoveZScreen> {
       setState(() {
         _apiErrorState = true;
       });
-      if (mounted) showErrorDialog(context, 'PINK-CARROT');
+      if (mounted) showErrorDialog(context, 'BLUE-BANANA');
       _logger.severe('Failed to get max Z: $e');
     }
   }
