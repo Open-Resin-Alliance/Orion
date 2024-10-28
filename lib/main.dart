@@ -21,7 +21,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'package:orion/home/home_screen.dart';
-import 'package:orion/settings/wifi_screen.dart';
 import 'package:orion/status/status_screen.dart';
 import 'package:orion/files/files_screen.dart';
 import 'package:orion/files/grid_files_screen.dart';
