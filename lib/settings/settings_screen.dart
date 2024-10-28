@@ -353,7 +353,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
           ],
           currentIndex: _selectedIndex,
-          selectedItemColor: Theme.of(context).colorScheme.primaryFixedDim,
+          selectedItemColor: Theme.of(context).colorScheme.primary,
           onTap: _onItemTapped,
           unselectedItemColor: Theme.of(context).colorScheme.secondary,
         ),
