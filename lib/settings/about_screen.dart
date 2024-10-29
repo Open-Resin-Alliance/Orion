@@ -38,7 +38,7 @@ Future<String> executeCommand(String command, List<String> arguments) async {
   }
 }
 
-Future<String> getRaspberryPiModel() async {
+Future<String> getDeviceModel() async {
   if (!Platform.isLinux) {
     switch (Platform.operatingSystem) {
       case 'macos':
@@ -55,7 +55,6 @@ Future<String> getRaspberryPiModel() async {
   }
   try {
     final model = await executeCommand('cat', ['/proc/device-tree/model']);
-    _logger.info('Raspberry Pi model: $model');
     return model.trim();
   } catch (e) {
     _logger.warning('Error getting Raspberry Pi model: $e');
@@ -164,12 +163,12 @@ class AboutScreenState extends State<AboutScreen> {
       child: ListTile(
         title: const Text('Hardware (Local)'),
         subtitle: FutureBuilder<String>(
-          future: getRaspberryPiModel(),
+          future: getDeviceModel(),
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
             // Sanitize the model string to remove non-printable characters before logging and displaying
             final sanitizedModel =
                 snapshot.data?.replaceAll(RegExp(r'[^\x20-\x7E]'), '') ?? 'N/A';
-            _logger.info('Raspberry Pi model: $sanitizedModel');
+            _logger.info('Device Model: $sanitizedModel');
             return Text(sanitizedModel);
           },
         ),
