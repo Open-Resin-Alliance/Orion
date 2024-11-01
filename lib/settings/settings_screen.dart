@@ -19,7 +19,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
@@ -72,9 +71,26 @@ class SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<bool> _checkInitialConnectionStatus() async {
+    if (Theme.of(context).platform != TargetPlatform.linux) return false;
     try {
-      final result = await Process.run('ping', ['-c', '1', 'google.com']);
-      return result.exitCode == 0;
+      // Get the default gateway IP address
+      final result = await Process.run('ip', ['route', 'show', 'default']);
+      if (result.exitCode != 0) {
+        logger.severe('Failed to get default gateway: ${result.stderr}');
+        return false;
+      }
+
+      // Extract the gateway IP address from the command output
+      final gateway =
+          RegExp(r'default via (\S+)').firstMatch(result.stdout)?.group(1);
+      if (gateway == null) {
+        logger.severe('No default gateway found');
+        return false;
+      }
+
+      // Ping the gateway
+      final pingResult = await Process.run('ping', ['-c', '1', gateway]);
+      return pingResult.exitCode == 0;
     } catch (e) {
       logger.severe('Failed to check initial connection status: $e');
       return false;
@@ -332,22 +348,23 @@ class SettingsScreenState extends State<SettingsScreen> {
                         : DebugScreen(changeThemeMode: changeThemeMode),
         bottomNavigationBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
+          items: <BottomNavigationBarItem>[
+            const BottomNavigationBarItem(
               icon: Icon(Icons.settings),
               label: 'General',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Icon(Icons.network_wifi),
               label: 'WiFi',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Icon(Icons.info),
               label: 'About',
             ),
-            BottomNavigationBarItem(icon: Icon(Icons.update), label: 'Updates'),
-            if (kDebugMode)
-              BottomNavigationBarItem(
+            const BottomNavigationBarItem(
+                icon: Icon(Icons.update), label: 'Updates'),
+            if (config.getFlag('developerMode', category: 'advanced'))
+              const BottomNavigationBarItem(
                 icon: Icon(Icons.bug_report),
                 label: 'Debug',
               ),
