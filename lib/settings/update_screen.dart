@@ -22,6 +22,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -409,8 +410,16 @@ class UpdateScreenState extends State<UpdateScreen> {
                             ),
                             onPressed: _viewChangelog,
                             icon: const Icon(Icons.article),
-                            label: const Text('View Changelog',
-                                style: TextStyle(fontSize: 24)),
+                            label: const AutoSizeText(
+                              'View Changelog',
+                              style: TextStyle(fontSize: 22),
+                              minFontSize: 18,
+                              maxLines: 1,
+                              overflowReplacement: Text(
+                                'Changelog',
+                                style: TextStyle(fontSize: 22),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(
@@ -426,8 +435,16 @@ class UpdateScreenState extends State<UpdateScreen> {
                               _performUpdate(context);
                             },
                             icon: const Icon(Icons.download),
-                            label: const Text('Download Update',
-                                style: TextStyle(fontSize: 24)),
+                            label: const AutoSizeText(
+                              'Download Update',
+                              style: TextStyle(fontSize: 22),
+                              minFontSize: 18,
+                              maxLines: 1,
+                              overflowReplacement: Text(
+                                'Update',
+                                style: TextStyle(fontSize: 22),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -622,7 +639,7 @@ sudo systemctl restart orion.service
             child: Container(
               width: MediaQuery.of(context).size.width,
               height: MediaQuery.of(context).size.height,
-              color: Theme.of(context).colorScheme.background,
+              color: Theme.of(context).colorScheme.surface,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,

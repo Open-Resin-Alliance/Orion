@@ -50,6 +50,9 @@ class DetailScreenState extends State<DetailScreen> {
   final _logger = Logger('DetailScreen');
   final ApiService _api = ApiService();
 
+  bool isLandScape = false;
+  int maxNameLength = 0;
+
   FileStat? fileStat;
   String fileName = ''; // path.basename(widget.file.path)
   String layerHeight = ''; // layerHeight
@@ -130,8 +133,8 @@ class DetailScreenState extends State<DetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    bool isLandScape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    isLandScape = MediaQuery.of(context).orientation == Orientation.landscape;
+    maxNameLength = isLandScape ? 12 : 24;
     return Scaffold(
       appBar: AppBar(
         title: const Text('File Details'),
@@ -260,8 +263,8 @@ class DetailScreenState extends State<DetailScreen> {
           TextSpan(
             children: [
               TextSpan(
-                text: fileName.length >= 12
-                    ? '${fileName.substring(0, 12)}...'
+                text: fileName.length >= maxNameLength
+                    ? '${fileName.substring(0, maxNameLength)}...'
                     : fileName,
                 style: TextStyle(
                     fontSize: 24,

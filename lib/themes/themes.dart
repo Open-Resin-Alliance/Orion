@@ -49,7 +49,7 @@ final ThemeData themeLight = ThemeData(
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ButtonStyle(
-      minimumSize: MaterialStateProperty.all<Size>(
+      minimumSize: WidgetStateProperty.all<Size>(
           const Size(88, 50)), // Set the width and height
     ),
   ),
@@ -87,7 +87,7 @@ final ThemeData themeDark = ThemeData(
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ButtonStyle(
-      minimumSize: MaterialStateProperty.all<Size>(
+      minimumSize: WidgetStateProperty.all<Size>(
           const Size(88, 50)), // Set the width and height
     ),
   ),
