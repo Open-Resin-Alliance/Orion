@@ -296,7 +296,7 @@ class KeyboardButton extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       text,
-                      style: const TextStyle(fontSize: 20),
+                      style: const TextStyle(fontSize: 23),
                     ),
                   );
                 }
@@ -304,7 +304,7 @@ class KeyboardButton extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     isShiftEnabled ? text.toUpperCase() : text.toLowerCase(),
-                    style: const TextStyle(fontSize: 20),
+                    style: const TextStyle(fontSize: 23),
                   ),
                 );
               },
@@ -383,24 +383,45 @@ class KeyboardButton extends StatelessWidget {
   }
 
   // This method returns the background color for the keyboard button based on the text value.
-  // The brightness of the color is determined by a lookup table.
+  // The brightness of the color is determined by the theme mode.
   Color? _getButtonBackgroundColor(BuildContext context) {
-    final lookupTable = {
-      // 3.0 is the brightness factor for the shift button
-      // 1.3 is the brightness factor for modifier keys
-      '⇧': isShiftEnabled.value ? 3.0 : 1.3,
-      '⇪': isCapsEnabled.value ? 3.0 : 1.3,
-      '⌫': 1.3,
-      '123': 1.3,
-      'abc': 1.3,
-      'return': 1.3,
-      '↵': 1.3,
-      '#+=': 1.3,
-      '123\u200B': 1.3,
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    const lightBrightness = {
+      'stdKey': 0.100,
+      'altKey': 0.200,
+      'highlight': 0.300,
     };
 
-    // 1.8 is the brightness factor for all alphanumeric keys
-    final brightness = lookupTable[text] ?? 1.8;
-    return Theme.of(context).colorScheme.surface.withBrightness(brightness);
+    const darkBrightness = {
+      'stdKey': 0.080,
+      'altKey': 0.050,
+      'highlight': 0.200,
+    };
+
+    final brightnessMap = isDarkMode ? darkBrightness : lightBrightness;
+
+    final lookupTable = {
+      '⇧': isShiftEnabled.value
+          ? brightnessMap['highlight']
+          : brightnessMap['altKey'],
+      '⇪': isCapsEnabled.value
+          ? brightnessMap['highlight']
+          : brightnessMap['altKey'],
+      '⌫': brightnessMap['altKey'],
+      '123': brightnessMap['altKey'],
+      'abc': brightnessMap['altKey'],
+      'return': brightnessMap['altKey'],
+      '↵': brightnessMap['altKey'],
+      '#+=': brightnessMap['altKey'],
+      '123\u200B': brightnessMap['altKey'],
+    };
+
+    final brightness =
+        (lookupTable[text] ?? brightnessMap['stdKey']!).clamp(0.0, 1.0);
+    return Theme.of(context)
+        .colorScheme
+        .onPrimaryContainer
+        .withOpacity(brightness);
   }
 }
