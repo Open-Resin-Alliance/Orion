@@ -18,6 +18,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:orion/tools/exposure_screen.dart';
+import 'package:orion/tools/force_sensor_screen.dart';
 import 'package:orion/tools/move_z_screen.dart';
 
 class ToolsScreen extends StatefulWidget {
@@ -51,7 +52,9 @@ class ToolsScreenState extends State<ToolsScreen> {
           ? const MoveZScreen()
           : _selectedIndex == 1
               ? const ExposureScreen()
-              : const MoveZScreen(),
+              : _selectedIndex == 2
+                  ? const ForceSensorScreen()
+                  : const MoveZScreen(),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
@@ -63,6 +66,8 @@ class ToolsScreenState extends State<ToolsScreen> {
             icon: Icon(Icons.lightbulb),
             label: 'Exposure',
           ),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.show_chart), label: 'Force Sensing'),
           // TODO: Implement Self Test
           /*BottomNavigationBarItem(
             icon: Icon(Icons.check),
