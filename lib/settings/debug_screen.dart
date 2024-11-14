@@ -404,8 +404,8 @@ class DebugScreenState extends State<DebugScreen> {
                         child: ElevatedButton(
                           onPressed: currentPage > 0 ? previousPage : null,
                           style: theme.elevatedButtonTheme.style,
-                          child: Text('${currentPage + 1}',
-                              style: const TextStyle(fontSize: 20)),
+                          child: const Icon(Icons.arrow_back_ios_outlined,
+                              size: 40),
                         ),
                       ),
                       const SizedBox(height: 16.0),
@@ -414,8 +414,10 @@ class DebugScreenState extends State<DebugScreen> {
                           onPressed:
                               currentPage < totalPages - 1 ? nextPage : null,
                           style: theme.elevatedButtonTheme.style,
-                          child: Text('${currentPage + 2}',
-                              style: const TextStyle(fontSize: 20)),
+                          child: const Icon(
+                            Icons.arrow_forward_ios_outlined,
+                            size: 40,
+                          ),
                         ),
                       ),
                     ],
