@@ -19,6 +19,7 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+
 import 'package:orion/api_services/api_services.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 
@@ -35,16 +36,25 @@ class MoveZScreenState extends State<MoveZScreen> {
 
   double maxZ = 0.0;
   double step = 0.1;
+  double currentZ = 0.0;
+
   bool _apiErrorState = false;
+  Map<String, dynamic>? status;
 
   Future<void> moveZ(double distance) async {
     try {
       _logger.info('Moving Z by $distance');
-      _api.manualCommand('G91');
-      await Future.delayed(const Duration(milliseconds: 200));
-      _api.move(distance);
+      final status = await _api.getStatus();
+      final currentZ = status['physical_state']['z'];
+
+      final newZ = (currentZ + distance).clamp(0, maxZ);
+      await _api.move(newZ);
     } catch (e) {
       _logger.severe('Failed to move Z: $e');
+      setState(() {
+        _apiErrorState = true;
+      });
+      if (mounted) showErrorDialog(context, 'Failed to move Z');
     }
   }
 
@@ -238,9 +248,8 @@ class MoveZScreenState extends State<MoveZScreen> {
                 ? null
                 : () async {
                     _logger.info('Moving to ZMAX');
-                    _api.manualCommand('G90');
-                    await Future.delayed(const Duration(milliseconds: 200));
-                    _api.manualCommand('G1 Z$maxZ F3000');
+
+                    _api.move(maxZ);
                   },
             style: theme.elevatedButtonTheme.style,
             icon: const Align(
