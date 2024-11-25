@@ -62,6 +62,7 @@ dependencies:
   logging: ^1.2.0
   toastification: ^2.0.0
   async: ^2.11.0
+  fading_edge_scrollview: ^4.1.1
 
 dev_dependencies:
   flutter_test:

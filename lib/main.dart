@@ -17,6 +17,7 @@
 */
 
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
@@ -50,18 +51,75 @@ void main() {
   };
 
   Logger.root.level = Level.ALL; // Log all log levels
-  Logger.root.onRecord.listen((record) async {
-    Directory logDir = await getApplicationSupportDirectory();
-    File logFile = File('${logDir.path}/app.log');
 
-    stdout.writeln(
-        '${record.time}\t[${record.loggerName}]\t${record.level.name}\t${record.message}');
-    final sink = logFile.openWrite(mode: FileMode.append);
-    sink.writeln(
-        '${record.time}\t[${record.loggerName}]\t${record.level.name}\t${record.message}');
-    await sink.close();
+  // Create a StreamController to queue log messages
+  final StreamController<LogRecord> logStreamController =
+      StreamController<LogRecord>();
+
+  // Listen to log records and add them to the StreamController
+  Logger.root.onRecord.listen((record) {
+    logStreamController.add(record);
   });
+
+  // Mutex to ensure sequential writes
+  final Mutex writeMutex = Mutex();
+
+  // Maximum log file size in bytes (e.g., 5 MB)
+  const int maxLogFileSize = 5 * 1024 * 1024;
+
+  // Process log messages sequentially
+  logStreamController.stream.listen((record) async {
+    await writeMutex.acquire();
+    try {
+      Directory logDir = await getApplicationSupportDirectory();
+      File logFile = File('${logDir.path}/app.log');
+
+      // Check if log file needs rotation
+      if (await logFile.exists() && await logFile.length() > maxLogFileSize) {
+        // Rotate the log file
+        final rotatedLogFile = File('${logDir.path}/app.log.1');
+        if (await rotatedLogFile.exists()) {
+          await rotatedLogFile.delete();
+        }
+        await logFile.rename(rotatedLogFile.path);
+        logFile = File('${logDir.path}/app.log');
+      }
+
+      final logMessage =
+          '${record.time}\t[${record.loggerName}]\t${record.level.name}\t${record.message}\n';
+
+      stdout.writeln(
+          '${record.time}\t[${record.loggerName}]\t${record.level.name}\t${record.message}');
+
+      // Write the log message atomically
+      await logFile.writeAsString(logMessage,
+          mode: FileMode.append, flush: true);
+    } catch (e, stackTrace) {
+      // Log the error to the console or another logging mechanism
+      print('Error writing to log file: $e');
+      print('StackTrace: $stackTrace');
+    } finally {
+      writeMutex.release();
+    }
+  });
+
   runApp(const Orion());
+}
+
+class Mutex {
+  Completer<void>? _completer;
+
+  Future<void> acquire() async {
+    while (_completer != null) {
+      await _completer!.future;
+    }
+    _completer = Completer<void>();
+  }
+
+  void release() {
+    _completer?.complete();
+    _completer = null;
+  }
 }
 
 void macDebug() {
