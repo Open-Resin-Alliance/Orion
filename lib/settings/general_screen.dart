@@ -342,6 +342,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                             .toString(),
                                                     scrollController:
                                                         _scrollController,
+                                                    presetText: config
+                                                        .getString('customUrl',
+                                                            category:
+                                                                'advanced'),
                                                   ),
                                                   OrionKbExpander(
                                                       textFieldKey:
@@ -496,6 +500,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                           .toString(),
                                                       scrollController:
                                                           _scrollController,
+                                                      presetText:
+                                                          config.getString(
+                                                              'overrideRelease',
+                                                              category:
+                                                                  'developer'),
                                                     ),
                                                     OrionKbExpander(
                                                         textFieldKey:

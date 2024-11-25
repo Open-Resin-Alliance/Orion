@@ -53,6 +53,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       GlobalKey<WifiScreenState>();
   final ValueNotifier<bool> isConnected = ValueNotifier(false);
   late Future<void> _wifiScreenFuture;
+  bool _isLinuxPlatform = false;
 
   @override
   void initState() {
@@ -70,8 +71,17 @@ class SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _isLinuxPlatform = Theme.of(context).platform == TargetPlatform.linux;
+    if (_isLinuxPlatform) {
+      _checkInitialConnectionStatus();
+    }
+  }
+
   Future<bool> _checkInitialConnectionStatus() async {
-    if (Theme.of(context).platform != TargetPlatform.linux) return false;
+    if (!_isLinuxPlatform) return false;
     try {
       // Get the default gateway IP address
       final result = await Process.run('ip', ['route', 'show', 'default']);

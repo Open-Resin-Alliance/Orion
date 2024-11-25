@@ -28,6 +28,7 @@ class SpawnOrionTextField extends StatefulWidget {
   final bool noShove;
   final Function(String) onChanged;
   final ScrollController? scrollController;
+  final String presetText;
 
   const SpawnOrionTextField({
     super.key,
@@ -37,6 +38,7 @@ class SpawnOrionTextField extends StatefulWidget {
     this.noShove = false,
     this.onChanged = _defaultOnChanged,
     this.scrollController,
+    this.presetText = '',
   });
 
   // Do nothing
@@ -56,6 +58,9 @@ class SpawnOrionTextFieldState extends State<SpawnOrionTextField>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.presetText != '') {
+      _controller.text = '\u200B${widget.presetText}';
+    }
   }
 
   @override

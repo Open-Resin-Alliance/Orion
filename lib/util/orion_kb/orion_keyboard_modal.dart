@@ -38,7 +38,7 @@ class OrionKbModal extends ModalRoute<String> {
   bool get barrierDismissible => true;
 
   @override
-  Color get barrierColor => Colors.black.withOpacity(0.2);
+  Color get barrierColor => Colors.black.withOpacity(0);
 
   @override
   String? get barrierLabel => null;
@@ -62,6 +62,14 @@ class OrionKbModal extends ModalRoute<String> {
               topLeft: Radius.circular(radius),
               topRight: Radius.circular(radius),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.35),
+                spreadRadius: 2,
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 5.0),
