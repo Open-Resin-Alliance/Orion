@@ -55,7 +55,7 @@ dependencies:
   archive: ^3.4.2
   auto_size_text: ^3.0.0
   crypto: ^3.0.2
-  phosphor_flutter: ^2.0.1
+  phosphor_flutter: ^2.1.0
   about: ^2.1.3
   pubspec_extract: ^2.0.5
   flutter_markdown: ^0.6.23
