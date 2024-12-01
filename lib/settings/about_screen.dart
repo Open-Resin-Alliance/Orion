@@ -101,8 +101,7 @@ class AboutScreenState extends State<AboutScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         buildNameCard('Prometheus mSLA'),
-        buildInfoCard(
-            'Serial Number', kDebugMode ? 'DBG-0001-001' : 'BLEEDING-EDGE'),
+        buildInfoCard('Serial Number', kDebugMode ? 'DBG-0001-001' : 'N/A'),
         buildVersionCard(),
         buildHardwareCard(),
         const SizedBox(height: 16),
@@ -120,7 +119,7 @@ class AboutScreenState extends State<AboutScreen> {
             children: [
               buildNameCard('Prometheus mSLA'),
               buildInfoCard('Serial Number',
-                  kDebugMode ? 'DBG-0001-001' : 'BLEEDING-EDGE'),
+                  kDebugMode ? 'DBG-0001-001' : 'Currently Unavailable'),
               buildVersionCard(),
               buildHardwareCard(),
             ],

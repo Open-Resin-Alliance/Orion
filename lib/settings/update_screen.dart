@@ -358,10 +358,33 @@ class UpdateScreenState extends State<UpdateScreen> {
                       children: [
                         _betaUpdatesOverride
                             ? _preRelease
-                                ? PhosphorIcon(
-                                    PhosphorIcons.knife(),
-                                    color: Colors.red,
-                                    size: 30,
+                                ? Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      PhosphorIcon(
+                                        PhosphorIcons.knife(),
+                                        color: Colors.transparent,
+                                        size: 30,
+                                      ),
+                                      const Positioned(
+                                        top: 0,
+                                        right: 0,
+                                        child: PhosphorIcon(
+                                          PhosphorIconsDuotone.knife,
+                                          color: Colors.redAccent,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const Positioned(
+                                        bottom: 0,
+                                        left: 3,
+                                        child: PhosphorIcon(
+                                          PhosphorIconsFill.dropSimple,
+                                          color: Colors.redAccent,
+                                          size: 10,
+                                        ),
+                                      ),
+                                    ],
                                   )
                                 : PhosphorIcon(
                                     PhosphorIcons.arrowCounterClockwise(),
@@ -373,13 +396,16 @@ class UpdateScreenState extends State<UpdateScreen> {
                                 size: 30),
                         const SizedBox(width: 10),
                         Text(
-                            _betaUpdatesOverride
-                                ? _preRelease
-                                    ? 'Bleeding Edge Available!'
-                                    : 'Rollback Available!'
-                                : 'UI Update Available!',
-                            style: const TextStyle(
-                                fontSize: 26, fontWeight: FontWeight.bold)),
+                          _betaUpdatesOverride
+                              ? _preRelease
+                                  ? 'Bleeding Edge Available!'
+                                  : 'Rollback Available!'
+                              : 'UI Update Available!',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                     const Divider(),
@@ -475,17 +501,31 @@ class UpdateScreenState extends State<UpdateScreen> {
             ),
           ),
           // TODO: Placeholder for Odyssey updater - pending API changes
-          const Card.outlined(
+          Card.outlined(
             elevation: 1,
             child: Padding(
-              padding: EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Odyssey Updater', style: TextStyle(fontSize: 24)),
-                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      PhosphorIcon(PhosphorIconsFill.info,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 30),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Odyssey Updater',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
                   // Dummy content, replace with actual data when available
-                  Text('Coming soon...', style: TextStyle(fontSize: 20)),
+                  const Text('Coming Soon!', style: TextStyle(fontSize: 20)),
                 ],
               ),
             ),
