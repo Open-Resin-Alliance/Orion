@@ -79,7 +79,9 @@ We welcome and appreciate contributions to Orion! If you're interested in contri
 
 ## License
 
-Orion is licensed under the [GPLv3 License](LICENSE).
+> The previous GPLv3 licensing has been superseded. However, any version of Orion previously released under GPLv3 may continue to be distributed and used under the terms of GPLv3.
+
+Orion is now licensed under the [Apache License 2.0](LICENSE).
 
 ## Contact
 
