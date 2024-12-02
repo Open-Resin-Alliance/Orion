@@ -1,5 +1,39 @@
 # Changelog
 
+## Version 0.3.2 - Like a Feather
+
+### Licensing
+
+- Orion is now licensed under the Apache License 2.0, making it easier for third parties to develop their own versions.
+
+### New Features and Improvements
+
+#### Keyboard Enhancements
+
+- The Orion Keyboard now allows for presetText.
+- With presetText, text fields can now be edited, rather than being cleared every time they're opened.
+- Increased sizing of the text for Orion Keyboard components.
+- The contrast of buttons has been greatly improved in light mode.
+
+#### Debug Screen
+
+- A public Debug Screen has been implemented, which now displays Orion logs in real-time.
+- Logging is now asynchronous and with file rotation.
+- INFO, CONFIG and FINE are shown by default, with WARNING and SEVERE as optional filters.
+
+### Bug Fixes and Code Quality
+
+- Fixes have been made to MoveZScreen; It now correctly utilized the Odyssey API and calculates the correct heights.
+- UpdateScreen has been visually enhanced.
+- A loading state was added to DetailsScreen, ensuring that we fully render everything before revealing it to the user.
+
+### Known Issues
+
+- When enabling Developer Mode, the Debug bottomNavigationItem will not show until a state update.
+- WifiScreen sometimes shows a blank screen. When this happens, simply re-open the page by switching to the AboutScreen and back.
+
+---
+
 ## Version 0.3.1 - Portrait Mode
 
 ### New Features and Improvements
