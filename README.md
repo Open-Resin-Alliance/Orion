@@ -1,9 +1,9 @@
 # Orion: The Resin UI &nbsp;&nbsp;&nbsp; [![Discord Link](https://discordapp.com/api/guilds/881628699500359731/widget.png?style=shield)](https://discord.gg/GFUn9gwRsj)
 
-[![GitHub license](https://img.shields.io/github/license/TheContrappostoShop/Orion.svg?style=for-the-badge)](https://github.com/TheContrappostoShop/Orion/blob/main/LICENSE)
-[![GitHub release](https://img.shields.io/github/release/TheContrappostoShop/Orion.svg?style=for-the-badge)](https://github.com/TheContrappostoShop/Orion/releases)
+[![GitHub license](https://img.shields.io/github/license/Open-Resin-Alliance/Orion.svg?style=for-the-badge)](https://github.com/Open-Resin-Alliance/Orion/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/release/Open-Resin-Alliance/Orion.svg?style=for-the-badge)](https://github.com/Open-Resin-Alliance/Orion/releases)
 
-Orion is a user interface designed to control [Odyssey](https://github.com/TheContrappostoShop/Odyssey). It's tailored for the [Apollo](https://github.com/TheContrappostoShop/Apollo) series of control boards and the [Prometheus MSLA](https://github.com/TheContrappostoShop/Prometheus-MSLA) Open Source Resin 3D Printer.
+Orion is a user interface designed to control [Odyssey](https://github.com/TheContrappostoShop/Odyssey). It's tailored to run with a wide variety of devices, primarily Linux SBCs.
 
 > :warning: **Orion is currently under active development. We recommend exercising caution when using it for the first time and advise against unattended printing.**
 
@@ -18,15 +18,6 @@ Orion is a user interface designed to control [Odyssey](https://github.com/TheCo
 - [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
-
-## About Orion
-
-Orion is designed to make 3D printing with the Prometheus MSLA Open Source Resin 3D Printer and Apollo series of control boards a breeze. It provides:
-
-- A user-friendly interface for controlling mSLA printers
-- Real-time monitoring of print progress and status
-- File management for uploading and selecting print files
-- Customizable print settings for optimal results
 
 ## Features
 
