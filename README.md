@@ -1,4 +1,4 @@
-# Orion: The Resin UI &nbsp;&nbsp;&nbsp; [![Discord Link](https://discordapp.com/api/guilds/881628699500359731/widget.png?style=shield)](https://discord.gg/GFUn9gwRsj)
+# Orion: The Resin UI &nbsp;&nbsp;&nbsp; [![Discord Link](https://discordapp.com/api/guilds/1281738817417777204/widget.png?style=shield)](https://discord.gg/beFeTaPH6v)
 
 [![GitHub license](https://img.shields.io/github/license/Open-Resin-Alliance/Orion.svg?style=for-the-badge)](https://github.com/Open-Resin-Alliance/Orion/blob/main/LICENSE)
 [![GitHub release](https://img.shields.io/github/release/Open-Resin-Alliance/Orion.svg?style=for-the-badge)](https://github.com/Open-Resin-Alliance/Orion/releases)
@@ -76,4 +76,4 @@ Orion is now licensed under the [Apache License 2.0](LICENSE).
 
 ## Contact
 
-If you have any questions, feedback, or suggestions, please don't hesitate to contact us on [Discord!](https://discord.gg/GFUn9gwRsj)
+If you have any questions, feedback, or suggestions, please don't hesitate to contact us on [TheContrappostoShop Discord](https://discord.gg/GFUn9gwRsj) & [Open Resin Alliance Discord!](https://discord.gg/beFeTaPH6v)
