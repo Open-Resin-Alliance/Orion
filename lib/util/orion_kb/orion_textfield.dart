@@ -100,19 +100,17 @@ class OrionTextFieldState extends State<OrionTextField>
                     return TextField(
                       controller: widget.controller,
                       readOnly: true,
-
                       decoration: InputDecoration(
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(
                             color: isKeyboardOpen
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .inversePrimary
-                                    .withBrightness(1.2)
+                                ? Theme.of(context).colorScheme.primaryContainer
                                 : Theme.of(context).textTheme.bodyLarge!.color!,
                           ),
                         ),
                         labelText: widget.keyboardHint,
+                        labelStyle:
+                            const TextStyle(fontSize: 18), // Changed font size
                       ),
                       // Hide the original text, We overlay our own with an animated line (cursor)
                       style: style.copyWith(
@@ -142,12 +140,13 @@ class OrionTextFieldState extends State<OrionTextField>
                                 : Theme.of(context).textTheme.bodyLarge!.color!,
                           ),
                           children: [
+                            const WidgetSpan(child: SizedBox(width: 1)),
                             WidgetSpan(
                               child: Opacity(
                                 opacity: _animController.value,
                                 child: Container(
                                   width: 1.5,
-                                  height: 20,
+                                  height: 22,
                                   color: widget.isKeyboardOpen.value
                                       ? Theme.of(context)
                                           .textTheme

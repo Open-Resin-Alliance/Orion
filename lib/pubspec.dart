@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 mixin Pubspec {
-  static final buildDate = DateTime.utc(2024, 6, 25, 23, 41, 21);
+  static final buildDate = DateTime.utc(2024, 12, 2, 0, 24, 16);
 
   static const name = 'orion';
 
@@ -12,9 +12,9 @@ mixin Pubspec {
 
   static const publish_to = 'none';
 
-  static const versionFull = '0.3.0+SELFCOMPILED';
+  static const versionFull = '0.3.2+SELFCOMPILED';
 
-  static const version = '0.3.0';
+  static const version = '0.3.2';
 
   static const versionSmall = '0.3';
 
@@ -22,7 +22,7 @@ mixin Pubspec {
 
   static const versionMinor = 3;
 
-  static const versionPatch = 0;
+  static const versionPatch = 2;
 
   static const versionBuild = 0;
 
@@ -45,15 +45,13 @@ mixin Pubspec {
     'go_router': '^14.1.2',
     'http': '^1.2.1',
     'ini': '^2.1.0',
-    'intl': '^0.18.1',
+    'intl': '^0.19.0',
     'path': 'any',
     'path_provider': '^2.1.0',
     'permission_handler': '^11.0.1',
     'provider': '^6.1.2',
     'qr_flutter': '^4.0.0',
-    'side_navigation': '^1.0.4',
     'vk': '^0.2.1',
-    'wifi_info_flutter': '^2.0.2',
     'window_size': <dynamic, dynamic>{
       'git': <dynamic, dynamic>{
         'url': 'https://github.com/google/flutter-desktop-embedding.git',
@@ -63,7 +61,6 @@ mixin Pubspec {
     'archive': '^3.4.2',
     'auto_size_text': '^3.0.0',
     'crypto': '^3.0.2',
-    'package_info': '^2.0.2',
     'phosphor_flutter': '^2.0.1',
     'about': '^2.1.3',
     'pubspec_extract': '^2.0.5',
@@ -71,6 +68,7 @@ mixin Pubspec {
     'logging': '^1.2.0',
     'toastification': '^2.0.0',
     'async': '^2.11.0',
+    'fading_edge_scrollview': '^4.1.1',
   };
 
   static const dev_dependencies = <dynamic, dynamic>{
@@ -86,8 +84,32 @@ mixin Pubspec {
       'assets/images/opensource.svg',
       'assets/images/placeholder.png',
       'assets/images/bsod.png',
+      'assets/scripts/set_orion_config.sh',
       'README.md',
       'CHANGELOG.md',
+    ],
+    'fonts': <dynamic>[
+      <dynamic, dynamic>{
+        'family': 'AtkinsonHyperlegible',
+        'fonts': <dynamic>[
+          <dynamic, dynamic>{
+            'asset': 'assets/fonts/AtkinsonHyperlegible-Regular.ttf',
+          },
+          <dynamic, dynamic>{
+            'asset': 'assets/fonts/AtkinsonHyperlegible-Bold.ttf',
+            'weight': 700,
+          },
+          <dynamic, dynamic>{
+            'asset': 'assets/fonts/AtkinsonHyperlegible-Italic.ttf',
+            'style': 'italic',
+          },
+          <dynamic, dynamic>{
+            'asset': 'assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf',
+            'weight': 700,
+            'style': 'italic',
+          },
+        ],
+      },
     ],
   };
 }

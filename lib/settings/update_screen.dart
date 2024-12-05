@@ -22,6 +22,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -357,10 +358,33 @@ class UpdateScreenState extends State<UpdateScreen> {
                       children: [
                         _betaUpdatesOverride
                             ? _preRelease
-                                ? PhosphorIcon(
-                                    PhosphorIcons.knife(),
-                                    color: Colors.red,
-                                    size: 30,
+                                ? Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      PhosphorIcon(
+                                        PhosphorIcons.knife(),
+                                        color: Colors.transparent,
+                                        size: 30,
+                                      ),
+                                      const Positioned(
+                                        top: 0,
+                                        right: 0,
+                                        child: PhosphorIcon(
+                                          PhosphorIconsDuotone.knife,
+                                          color: Colors.redAccent,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      const Positioned(
+                                        bottom: 0,
+                                        left: 3,
+                                        child: PhosphorIcon(
+                                          PhosphorIconsFill.dropSimple,
+                                          color: Colors.redAccent,
+                                          size: 10,
+                                        ),
+                                      ),
+                                    ],
                                   )
                                 : PhosphorIcon(
                                     PhosphorIcons.arrowCounterClockwise(),
@@ -372,13 +396,16 @@ class UpdateScreenState extends State<UpdateScreen> {
                                 size: 30),
                         const SizedBox(width: 10),
                         Text(
-                            _betaUpdatesOverride
-                                ? _preRelease
-                                    ? 'Bleeding Edge Available!'
-                                    : 'Rollback Available!'
-                                : 'UI Update Available!',
-                            style: const TextStyle(
-                                fontSize: 26, fontWeight: FontWeight.bold)),
+                          _betaUpdatesOverride
+                              ? _preRelease
+                                  ? 'Bleeding Edge Available!'
+                                  : 'Rollback Available!'
+                              : 'UI Update Available!',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                     const Divider(),
@@ -409,8 +436,16 @@ class UpdateScreenState extends State<UpdateScreen> {
                             ),
                             onPressed: _viewChangelog,
                             icon: const Icon(Icons.article),
-                            label: const Text('View Changelog',
-                                style: TextStyle(fontSize: 24)),
+                            label: const AutoSizeText(
+                              'View Changelog',
+                              style: TextStyle(fontSize: 22),
+                              minFontSize: 18,
+                              maxLines: 1,
+                              overflowReplacement: Text(
+                                'Changelog',
+                                style: TextStyle(fontSize: 22),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(
@@ -426,8 +461,16 @@ class UpdateScreenState extends State<UpdateScreen> {
                               _performUpdate(context);
                             },
                             icon: const Icon(Icons.download),
-                            label: const Text('Download Update',
-                                style: TextStyle(fontSize: 24)),
+                            label: const AutoSizeText(
+                              'Download Update',
+                              style: TextStyle(fontSize: 22),
+                              minFontSize: 18,
+                              maxLines: 1,
+                              overflowReplacement: Text(
+                                'Update',
+                                style: TextStyle(fontSize: 22),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -458,17 +501,31 @@ class UpdateScreenState extends State<UpdateScreen> {
             ),
           ),
           // TODO: Placeholder for Odyssey updater - pending API changes
-          const Card.outlined(
+          Card.outlined(
             elevation: 1,
             child: Padding(
-              padding: EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Odyssey Updater', style: TextStyle(fontSize: 24)),
-                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      PhosphorIcon(PhosphorIconsFill.info,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 30),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Odyssey Updater',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
                   // Dummy content, replace with actual data when available
-                  Text('Coming soon...', style: TextStyle(fontSize: 20)),
+                  const Text('Coming Soon!', style: TextStyle(fontSize: 20)),
                 ],
               ),
             ),
@@ -622,7 +679,7 @@ sudo systemctl restart orion.service
             child: Container(
               width: MediaQuery.of(context).size.width,
               height: MediaQuery.of(context).size.height,
-              color: Theme.of(context).colorScheme.background,
+              color: Theme.of(context).colorScheme.surface,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 /*
 * Orion - Config
 * Copyright (C) 2024 TheContrappostoShop
@@ -122,7 +124,7 @@ class OrionConfig {
                   shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.zero),
                   insetPadding: EdgeInsets.zero,
-                  backgroundColor: Theme.of(context).colorScheme.background,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
                   child: const Center(
                     child: SizedBox(
                       height: 75,

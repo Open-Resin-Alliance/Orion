@@ -50,6 +50,10 @@ class DetailScreenState extends State<DetailScreen> {
   final _logger = Logger('DetailScreen');
   final ApiService _api = ApiService();
 
+  bool isLandScape = false;
+  int maxNameLength = 0;
+  bool loading = true; // Add loading state
+
   FileStat? fileStat;
   String fileName = ''; // path.basename(widget.file.path)
   String layerHeight = ''; // layerHeight
@@ -122,35 +126,41 @@ class DetailScreenState extends State<DetailScreen> {
         printTime = tempPrintTime;
         materialVolumeInMilliliters = tempMaterialVolumeInMilliliters;
         materialVolume = tempMaterialVolume;
+        loading = false; // Set loading to false when data is fetched
       });
     } catch (e) {
       _logger.severe('Failed to fetch file details', e);
+      setState(() {
+        loading = false; // Set loading to false even if there's an error
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isLandScape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    isLandScape = MediaQuery.of(context).orientation == Orientation.landscape;
+    maxNameLength = isLandScape ? 12 : 24;
     return Scaffold(
       appBar: AppBar(
         title: const Text('File Details'),
         centerTitle: true,
       ),
       body: Center(
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            return isLandScape
-                ? Padding(
-                    padding:
-                        const EdgeInsets.only(left: 16, right: 16, bottom: 20),
-                    child: buildLandscapeLayout(context))
-                : Padding(
-                    padding:
-                        const EdgeInsets.only(left: 16, right: 16, bottom: 20),
-                    child: buildPortraitLayout(context));
-          },
-        ),
+        child: loading // Show CircularProgressIndicator if loading
+            ? const CircularProgressIndicator()
+            : LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  return isLandScape
+                      ? Padding(
+                          padding: const EdgeInsets.only(
+                              left: 16, right: 16, bottom: 20),
+                          child: buildLandscapeLayout(context))
+                      : Padding(
+                          padding: const EdgeInsets.only(
+                              left: 16, right: 16, bottom: 20),
+                          child: buildPortraitLayout(context));
+                },
+              ),
       ),
     );
   }
@@ -260,8 +270,8 @@ class DetailScreenState extends State<DetailScreen> {
           TextSpan(
             children: [
               TextSpan(
-                text: fileName.length >= 12
-                    ? '${fileName.substring(0, 12)}...'
+                text: fileName.length >= maxNameLength
+                    ? '${fileName.substring(0, maxNameLength)}...'
                     : fileName,
                 style: TextStyle(
                     fontSize: 24,
