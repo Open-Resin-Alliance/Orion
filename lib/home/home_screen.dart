@@ -21,6 +21,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:orion/api_services/api_services.dart';
+import 'package:orion/settings/about_screen.dart';
 import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_config.dart';
 
@@ -61,8 +62,8 @@ class HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          '3D Printer',
+        title: Text(
+          config.getString('machineName', category: 'machine'),
           textAlign: TextAlign.center,
         ),
         centerTitle: true,
