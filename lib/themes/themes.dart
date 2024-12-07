@@ -16,12 +16,18 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flex_seed_scheme/flex_seed_scheme.dart';
+import '../util/orion_config.dart';
+
+final _config = OrionConfig();
+final _seedColor = _config.getVendorThemeSeed();
 
 final ThemeData themeLight = ThemeData(
   fontFamily: 'AtkinsonHyperlegible',
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: const Color(0xff6750a4),
+  colorScheme: SeedColorScheme.fromSeeds(
+    primaryKey: _seedColor,
     brightness: Brightness.light,
+    variant: FlexSchemeVariant.soft,
   ),
   appBarTheme: const AppBarTheme(
     titleTextStyle: TextStyle(
@@ -57,9 +63,10 @@ final ThemeData themeLight = ThemeData(
 
 final ThemeData themeDark = ThemeData(
   fontFamily: 'AtkinsonHyperlegible',
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: const Color(0xff6750a4),
+  colorScheme: SeedColorScheme.fromSeeds(
+    primaryKey: _seedColor,
     brightness: Brightness.dark,
+    variant: FlexSchemeVariant.soft,
   ),
   appBarTheme: const AppBarTheme(
     titleTextStyle: TextStyle(
