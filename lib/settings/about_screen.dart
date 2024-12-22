@@ -21,11 +21,15 @@ import 'package:logging/logging.dart';
 import 'package:orion/pubspec.dart';
 import 'package:orion/themes/themes.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
+import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:toastification/toastification.dart';
 import 'dart:io';
 
 Logger _logger = Logger('AboutScreen');
+OrionConfig config = OrionConfig();
 
 Future<String> executeCommand(String command, List<String> arguments) async {
   final result = await Process.run(command, arguments);
@@ -77,6 +81,12 @@ class AboutScreenState extends State<AboutScreen> {
   int qrTapCount = 0;
   Toastification toastification = Toastification();
 
+  late String customName;
+
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey<SpawnOrionTextFieldState> cNameTextFieldKey =
+      GlobalKey<SpawnOrionTextFieldState>();
+
   @override
   Widget build(BuildContext context) {
     bool isLandscape =
@@ -99,7 +109,7 @@ class AboutScreenState extends State<AboutScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        buildNameCard('3D Printer'),
+        buildNameCard(config.getString('machineName', category: 'machine')),
         buildInfoCard('Serial Number', kDebugMode ? 'DBG-0001-001' : 'N/A'),
         buildVersionCard(),
         buildHardwareCard(),
@@ -116,7 +126,8 @@ class AboutScreenState extends State<AboutScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              buildNameCard('3D Printer'),
+              buildNameCard(
+                  config.getString('machineName', category: 'machine')),
               buildInfoCard('Serial Number',
                   kDebugMode ? 'DBG-0001-001' : 'Currently Unavailable'),
               buildVersionCard(),
@@ -178,12 +189,87 @@ class AboutScreenState extends State<AboutScreen> {
     return Card.outlined(
       elevation: 1.0,
       child: ListTile(
-        title: Text(
-          title,
-          style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary),
+                overflow: TextOverflow.fade,
+                softWrap: false,
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Center(child: Text('Custom Machine Name')),
+                      content: SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.5,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              SpawnOrionTextField(
+                                key: cNameTextFieldKey,
+                                keyboardHint: 'Enter a custom name',
+                                locale:
+                                    Localizations.localeOf(context).toString(),
+                                scrollController: _scrollController,
+                                presetText: config.getString('machineName',
+                                    category: 'machine'),
+                              ),
+                              OrionKbExpander(textFieldKey: cNameTextFieldKey),
+                            ],
+                          ),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('Close',
+                              style: TextStyle(fontSize: 20)),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              customName = cNameTextFieldKey.currentState!
+                                  .getCurrentText();
+                              config.setString('machineName', customName,
+                                  category: 'machine');
+                            });
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('Confirm',
+                              style: TextStyle(fontSize: 20)),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: Row(
+                children: [
+                  const Text(
+                    'Edit',
+                    style: TextStyle(
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  PhosphorIcon(PhosphorIcons.notePencil()),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

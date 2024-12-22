@@ -48,7 +48,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool overrideUpdateCheck;
   late String overrideRelease;
   late bool verboseLogging;
-  late bool selfDestructMode;
+  late String machineName;
 
   late String originalRotation;
 
@@ -80,23 +80,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     overrideRelease =
         config.getString('overrideRelease', category: 'developer');
     verboseLogging = config.getFlag('verboseLogging', category: 'developer');
-    selfDestructMode =
-        config.getFlag('selfDestructMode', category: 'topsecret');
-
     screenRotation = screenRotation == '' ? '0' : screenRotation;
     config.setString('screenRotation', screenRotation, category: 'advanced');
     originalRotation = screenRotation;
-  }
-
-  bool shouldDestruct() {
-    final rand = Random();
-    if (selfDestructMode && rand.nextInt(1000) < 2) {
-      setState(() {
-        selfDestructMode = false;
-      });
-      return true;
-    }
-    return !selfDestructMode;
+    machineName = config.getString('machineName', category: 'machine');
   }
 
   bool isJune() {
@@ -132,49 +119,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           style: TextStyle(fontSize: 24),
                         ),
                         leading: Icon(Icons.favorite, color: Colors.pink),
-                      ),
-                    ),
-                  ),
-                ),
-              if (shouldDestruct())
-                Card(
-                  elevation: 1,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(
-                          10), // match this with your Card's border radius
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.red,
-                          Colors.orange,
-                          Colors.yellow,
-                          Colors.green,
-                          Colors.blue,
-                          Colors.indigo,
-                          Colors.purple
-                        ]
-                            .map((color) =>
-                                Color.lerp(color, Colors.black, 0.25))
-                            .where((color) => color != null)
-                            .cast<Color>()
-                            .toList(),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: OrionListTile(
-                        ignoreColor: true,
-                        title: 'Self-Destruct Mode',
-                        icon: PhosphorIcons.skull,
-                        value: selfDestructMode,
-                        onChanged: (bool value) {
-                          setState(() {
-                            selfDestructMode = value;
-                            config.setFlag('selfDestructMode', selfDestructMode,
-                                category: 'topsecret');
-                            config.blowUp(context, 'assets/images/bsod.png');
-                          });
-                        },
                       ),
                     ),
                   ),
