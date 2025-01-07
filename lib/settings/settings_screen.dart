@@ -277,7 +277,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                               'Version {{ version }} - {{ commit }}',
                           applicationName: 'Orion',
                           applicationLegalese:
-                              'Apache License 2.0 - Copyright © TheContrappostoShop {{ year }}',
+                              'Apache License 2.0 - Copyright © {{ year }} Open Resin Alliance',
                           children: <Widget>[
                             Padding(
                               padding:

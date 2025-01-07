@@ -83,29 +83,76 @@ class OrionConfig {
     setFlag(flagName, !currentValue, category: category);
   }
 
+  Color getVendorThemeSeed() {
+    var config = _getConfig();
+    var seedHex = config['vendor']?['vendorThemeSeed'] ?? '#ff6750a4';
+    // Remove the '#' and parse the hex color
+    _logger.config('Vendor theme seed: $seedHex');
+    return Color(int.parse('${seedHex.replaceAll('#', '')}', radix: 16));
+  }
+
+  Map<String, dynamic> _getVendorConfig() {
+    var fullPath = path.join(_configPath, 'vendor.cfg');
+    var vendorFile = File(fullPath);
+
+    if (!vendorFile.existsSync() || vendorFile.readAsStringSync().isEmpty) {
+      return {};
+    }
+
+    try {
+      return Map<String, dynamic>.from(
+          json.decode(vendorFile.readAsStringSync()));
+    } catch (e) {
+      _logger.warning('Failed to parse vendor.cfg: $e');
+      return {};
+    }
+  }
+
   Map<String, dynamic> _getConfig() {
     var fullPath = path.join(_configPath, 'orion.cfg');
     var configFile = File(fullPath);
+    var vendorConfig = _getVendorConfig();
+
+    // Get vendor machine name if available
+    var defaultMachineName =
+        vendorConfig['vendor']?['vendorMachineName'] ?? '3D Printer';
+
+    var defaultConfig = {
+      'general': {
+        'themeMode': 'dark',
+      },
+      'advanced': {},
+      'machine': {
+        'machineName': defaultMachineName,
+        'firstRun': true,
+      },
+    };
 
     if (!configFile.existsSync() || configFile.readAsStringSync().isEmpty) {
-      var defaultConfig = {
-        'general': {
-          'themeMode': 'dark',
-        },
-        'advanced': {},
-      };
-      _writeConfig(defaultConfig);
-      return defaultConfig;
+      // Remove vendor section before writing
+      var configToWrite = Map<String, dynamic>.from(defaultConfig);
+      _writeConfig(configToWrite);
+      // Return merged view for reading
+      return _mergeConfigs(defaultConfig, vendorConfig);
     }
 
-    return json.decode(configFile.readAsStringSync());
+    var userConfig =
+        Map<String, dynamic>.from(json.decode(configFile.readAsStringSync()));
+
+    // Return merged view for reading
+    return _mergeConfigs(
+        _mergeConfigs(defaultConfig, vendorConfig), userConfig);
   }
 
   void _writeConfig(Map<String, dynamic> config) {
+    // Remove any vendor section before writing to orion.cfg
+    var configToWrite = Map<String, dynamic>.from(config);
+    configToWrite.remove('vendor');
+
     var fullPath = path.join(_configPath, 'orion.cfg');
     var configFile = File(fullPath);
     var encoder = const JsonEncoder.withIndent('  ');
-    configFile.writeAsStringSync(encoder.convert(config));
+    configFile.writeAsStringSync(encoder.convert(configToWrite));
   }
 
   void blowUp(BuildContext context, String imagePath) {
@@ -156,5 +203,23 @@ class OrionConfig {
         );
       },
     );
+  }
+
+  Map<String, dynamic> _mergeConfigs(
+      Map<String, dynamic> base, Map<String, dynamic> overlay) {
+    var result = Map<String, dynamic>.from(base);
+
+    overlay.forEach((key, value) {
+      if (value is Map) {
+        result[key] = result.containsKey(key)
+            ? _mergeConfigs(Map<String, dynamic>.from(result[key] ?? {}),
+                Map<String, dynamic>.from(value))
+            : Map<String, dynamic>.from(value);
+      } else {
+        result[key] = value;
+      }
+    });
+
+    return result;
   }
 }

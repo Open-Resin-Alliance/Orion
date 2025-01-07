@@ -49,6 +49,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late String overrideRelease;
   late bool verboseLogging;
   late bool selfDestructMode;
+  late String machineName;
 
   late String originalRotation;
 
@@ -82,10 +83,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     verboseLogging = config.getFlag('verboseLogging', category: 'developer');
     selfDestructMode =
         config.getFlag('selfDestructMode', category: 'topsecret');
-
     screenRotation = screenRotation == '' ? '0' : screenRotation;
     config.setString('screenRotation', screenRotation, category: 'advanced');
     originalRotation = screenRotation;
+    machineName = config.getString('machineName', category: 'machine');
   }
 
   bool shouldDestruct() {
