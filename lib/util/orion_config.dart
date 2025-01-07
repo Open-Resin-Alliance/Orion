@@ -155,6 +155,56 @@ class OrionConfig {
     configFile.writeAsStringSync(encoder.convert(configToWrite));
   }
 
+  void blowUp(BuildContext context, String imagePath) {
+    _logger.severe('Blowing up the app');
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return FutureBuilder(
+          future: Future.delayed(const Duration(seconds: 4)),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return SafeArea(
+                child: Dialog(
+                  shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.zero),
+                  insetPadding: EdgeInsets.zero,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  child: const Center(
+                    child: SizedBox(
+                      height: 75,
+                      width: 75,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 6,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            } else {
+              Future.delayed(const Duration(seconds: 10), () {
+                Navigator.of(context).pop(true);
+              });
+              return SafeArea(
+                child: Dialog(
+                  insetPadding: EdgeInsets.zero,
+                  backgroundColor: Colors.transparent,
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.fill,
+                    width: MediaQuery.of(context).size.width,
+                    height: MediaQuery.of(context).size.height,
+                  ),
+                ),
+              );
+            }
+          },
+        );
+      },
+    );
+  }
+
   Map<String, dynamic> _mergeConfigs(
       Map<String, dynamic> base, Map<String, dynamic> overlay) {
     var result = Map<String, dynamic>.from(base);
