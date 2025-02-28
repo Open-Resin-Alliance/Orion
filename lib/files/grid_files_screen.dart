@@ -439,7 +439,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                                         color: item is OrionApiFile
                                             ? Theme.of(context)
                                                 .cardColor
-                                                .withOpacity(0.65)
+                                                .withValues(alpha: 0.65)
                                             : Colors.transparent,
                                         elevation: item is OrionApiFile ? 2 : 0,
                                         child: GridTileBar(

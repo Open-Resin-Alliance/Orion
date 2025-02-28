@@ -44,7 +44,7 @@ class WifiScreenState extends State<WifiScreen> {
   String? currentWifiSSID;
   Future<List<Map<String, String>>>? _networksFuture;
 
-  final Color _standardColor = Colors.white.withOpacity(0.0);
+  final Color _standardColor = Colors.white.withValues(alpha: 0.0);
   final Logger _logger = Logger('WifiScreen');
   final ValueNotifier<bool> _isConnecting = ValueNotifier(false);
 

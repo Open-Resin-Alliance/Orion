@@ -205,7 +205,7 @@ class DebugScreenState extends State<DebugScreen> {
               ? Chip(
                   label: Text(logLevel),
                   backgroundColor:
-                      _getLogLevelColor(logLevel).withOpacity(0.35),
+                      _getLogLevelColor(logLevel).withValues(alpha: 0.35),
                 )
               : null,
         ),

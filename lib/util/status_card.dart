@@ -108,7 +108,8 @@ class StatusCardState extends State<StatusCard> {
                         strokeWidth: 6,
                         valueColor:
                             AlwaysStoppedAnimation<Color>(widget.statusColor),
-                        backgroundColor: widget.statusColor.withOpacity(0.5),
+                        backgroundColor:
+                            widget.statusColor.withValues(alpha: 0.5),
                       ),
                     ),
                   ),

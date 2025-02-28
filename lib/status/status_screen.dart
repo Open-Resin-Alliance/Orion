@@ -462,7 +462,7 @@ class StatusScreenState extends State<StatusScreen>
                         ),
                         Positioned.fill(
                           child: Container(
-                            color: Colors.black.withOpacity(0.35),
+                            color: Colors.black.withValues(alpha: 0.35),
                           ),
                         ),
                         // Colored image revealed based on progress

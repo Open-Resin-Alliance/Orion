@@ -420,6 +420,6 @@ class KeyboardButton extends StatelessWidget {
     return Theme.of(context)
         .colorScheme
         .onPrimaryContainer
-        .withOpacity(brightness);
+        .withValues(alpha: brightness);
   }
 }
