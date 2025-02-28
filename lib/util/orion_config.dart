@@ -83,12 +83,18 @@ class OrionConfig {
     setFlag(flagName, !currentValue, category: category);
   }
 
-  Color getVendorThemeSeed() {
+  Color getThemeSeed(String type) {
     var config = _getConfig();
-    var seedHex = config['vendor']?['vendorThemeSeed'] ?? '#ff6750a4';
+
+    var seedHex = '#00000000';
+
+    if (type == 'vendor') {
+      seedHex = config['vendor']?['vendorThemeSeed'] ?? '#00000000';
+    } else if (type == 'primary') {
+      seedHex = config['general']?['themeSeed'] ?? '#00000000';
+    }
     // Remove the '#' and parse the hex color
-    _logger.config('Vendor theme seed: $seedHex');
-    return Color(int.parse('${seedHex.replaceAll('#', '')}', radix: 16));
+    return Color(int.parse(seedHex.replaceAll('#', ''), radix: 16));
   }
 
   Map<String, dynamic> _getVendorConfig() {
