@@ -47,7 +47,6 @@ dependencies:
   permission_handler: ^11.0.1
   provider: ^6.1.2
   qr_flutter: ^4.0.0
-  vk: ^0.2.1
   window_size:
     git:
       url: https://github.com/google/flutter-desktop-embedding.git
@@ -64,6 +63,10 @@ dependencies:
   async: ^2.11.0
   fading_edge_scrollview: ^4.1.1
   flex_seed_scheme: ^3.4.1
+  country_flags: ^2.2.0
+  animations: ^2.0.8
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -81,9 +84,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
+  generate: true
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
@@ -91,6 +92,7 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
+    - assets/
     - assets/images/opensource.svg
     - assets/images/placeholder.png
     - assets/images/bsod.png
@@ -135,3 +137,15 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+flutter_intl:
+  enabled: true
+  output-localization-file: app_localizations.dart
+  arb-dir: lib/l10n
+  l10n-dir: lib/l10n
+  output-dir: lib/generated
+  untranslated-messages-file: missingTranslations.txt
+
+flutter_localizations:
+  generate: true
+  use-deferred-loading: false

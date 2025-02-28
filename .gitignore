@@ -5,9 +5,11 @@
 *.swp
 .DS_Store
 .atom/
+.build/
 .buildlog/
 .history
 .svn/
+.swiftpm/
 migrate_working_dir/
 
 # IntelliJ related
@@ -31,6 +33,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/logs/
 
 # Symbolication related
 app.*.symbols
@@ -47,3 +50,4 @@ app.*.map.json
 .VSCodeCounter
 
 orion.cfg
+vendor.cfg
