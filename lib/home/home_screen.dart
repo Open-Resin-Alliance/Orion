@@ -20,6 +20,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import 'package:orion/api_services/api_services.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/util/hold_button.dart';
@@ -40,6 +42,7 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     Size homeBtnSize = const Size(double.infinity, double.infinity);
+    final l10n = AppLocalizations.of(context)!;
 
     final theme = Theme.of(context).copyWith(
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -93,7 +96,7 @@ class HomeScreenState extends State<HomeScreen> {
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Text(
-                                'Power Options ${isRemote ? '(Remote)' : '(Local)'}',
+                                '${l10n.homePowerOptions} ${isRemote ? l10n.homePowerRemote : l10n.homePowerLocal}',
                                 style: const TextStyle(
                                     fontSize: 24, fontWeight: FontWeight.bold),
                               ),
@@ -110,9 +113,9 @@ class HomeScreenState extends State<HomeScreen> {
                                     Navigator.pop(context);
                                     _api.manualCommand('FIRMWARE_RESTART');
                                   },
-                                  child: const Text(
-                                    'Firmware Restart',
-                                    style: TextStyle(fontSize: 24),
+                                  child: Text(
+                                    l10n.homeFirmwareRestart,
+                                    style: const TextStyle(fontSize: 24),
                                   ),
                                 ),
                               ),
@@ -131,9 +134,9 @@ class HomeScreenState extends State<HomeScreen> {
                                     onPressed: () {
                                       Process.run('sudo', ['reboot', 'now']);
                                     },
-                                    child: const Text(
-                                      'Reboot System',
-                                      style: TextStyle(fontSize: 24),
+                                    child: Text(
+                                      l10n.homeRebootSystem,
+                                      style: const TextStyle(fontSize: 24),
                                     ),
                                   ),
                                 ),
@@ -150,9 +153,9 @@ class HomeScreenState extends State<HomeScreen> {
                                     onPressed: () {
                                       Process.run('sudo', ['shutdown', 'now']);
                                     },
-                                    child: const Text(
-                                      'Shutdown System',
-                                      style: TextStyle(fontSize: 24),
+                                    child: Text(
+                                      l10n.homeShutdownSystem,
+                                      style: const TextStyle(fontSize: 24),
                                     ),
                                   ),
                                 ),
@@ -185,12 +188,15 @@ class HomeScreenState extends State<HomeScreen> {
                         child: ElevatedButton(
                           style: theme.elevatedButtonTheme.style,
                           onPressed: () => context.go('/gridfiles'),
-                          child: const Column(
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.print_outlined, size: 52),
-                              Text('Print', style: TextStyle(fontSize: 28)),
+                              const Icon(Icons.print_outlined, size: 52),
+                              Text(
+                                l10n.homeBtnPrint,
+                                style: const TextStyle(fontSize: 28),
+                              ),
                             ],
                           ),
                         ),
@@ -208,12 +214,15 @@ class HomeScreenState extends State<HomeScreen> {
                         child: ElevatedButton(
                           style: theme.elevatedButtonTheme.style,
                           onPressed: () => context.go('/tools'),
-                          child: const Column(
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.handyman_outlined, size: 52),
-                              Text('Tools', style: TextStyle(fontSize: 28)),
+                              const Icon(Icons.handyman_outlined, size: 52),
+                              Text(
+                                l10n.homeBtnTools,
+                                style: const TextStyle(fontSize: 28),
+                              ),
                             ],
                           ),
                         ),
@@ -223,12 +232,15 @@ class HomeScreenState extends State<HomeScreen> {
                         child: ElevatedButton(
                           style: theme.elevatedButtonTheme.style,
                           onPressed: () => context.go('/settings'),
-                          child: const Column(
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.settings_outlined, size: 52),
-                              Text('Settings', style: TextStyle(fontSize: 28)),
+                              const Icon(Icons.settings_outlined, size: 52),
+                              Text(
+                                l10n.homeBtnSettings,
+                                style: const TextStyle(fontSize: 28),
+                              ),
                             ],
                           ),
                         ),
