@@ -17,88 +17,88 @@
 
 import 'package:flutter/material.dart';
 import 'package:flex_seed_scheme/flex_seed_scheme.dart';
-import '../util/orion_config.dart';
 
-final _config = OrionConfig();
-final _seedColor = _config.getVendorThemeSeed();
+ThemeData createLightTheme(Color seedColor) {
+  return ThemeData(
+    fontFamily: 'AtkinsonHyperlegible',
+    colorScheme: SeedColorScheme.fromSeeds(
+      primaryKey: seedColor,
+      brightness: Brightness.light,
+      variant: FlexSchemeVariant.soft,
+    ),
+    appBarTheme: const AppBarTheme(
+      titleTextStyle: TextStyle(
+        fontFamily: 'AtkinsonHyperlegible',
+        fontSize: 30,
+        color: Colors.black,
+      ),
+      centerTitle: true,
+      toolbarHeight: 65,
+      iconTheme: IconThemeData(size: 30),
+    ),
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
+      titleLarge: TextStyle(
+          fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      selectedLabelStyle:
+          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
+      unselectedLabelStyle:
+          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
+      selectedIconTheme: IconThemeData(size: 30),
+      unselectedIconTheme: IconThemeData(size: 30),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: WidgetStateProperty.all<Size>(
+            const Size(88, 50)), // Set the width and height
+      ),
+    ),
+    useMaterial3: true,
+  );
+}
 
-final ThemeData themeLight = ThemeData(
-  fontFamily: 'AtkinsonHyperlegible',
-  colorScheme: SeedColorScheme.fromSeeds(
-    primaryKey: _seedColor,
-    brightness: Brightness.light,
-    variant: FlexSchemeVariant.soft,
-  ),
-  appBarTheme: const AppBarTheme(
-    titleTextStyle: TextStyle(
-      fontFamily: 'AtkinsonHyperlegible',
-      fontSize: 30,
-      color: Colors.black,
+ThemeData createDarkTheme(Color seedColor) {
+  return ThemeData(
+    fontFamily: 'AtkinsonHyperlegible',
+    colorScheme: SeedColorScheme.fromSeeds(
+      primaryKey: seedColor,
+      brightness: Brightness.dark,
+      variant: FlexSchemeVariant.soft,
     ),
-    centerTitle: true,
-    toolbarHeight: 65,
-    iconTheme: IconThemeData(size: 30),
-  ),
-  textTheme: const TextTheme(
-    bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
-    titleLarge: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
-  ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    selectedLabelStyle:
-        TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-    unselectedLabelStyle:
-        TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-    selectedIconTheme: IconThemeData(size: 30),
-    unselectedIconTheme: IconThemeData(size: 30),
-  ),
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ButtonStyle(
-      minimumSize: WidgetStateProperty.all<Size>(
-          const Size(88, 50)), // Set the width and height
+    appBarTheme: const AppBarTheme(
+      titleTextStyle: TextStyle(
+        fontFamily: 'AtkinsonHyperlegible',
+        fontSize: 30,
+        color: Colors.white,
+      ),
+      centerTitle: true,
+      toolbarHeight: 65,
+      iconTheme: IconThemeData(size: 30),
     ),
-  ),
-  useMaterial3: true,
-);
-
-final ThemeData themeDark = ThemeData(
-  fontFamily: 'AtkinsonHyperlegible',
-  colorScheme: SeedColorScheme.fromSeeds(
-    primaryKey: _seedColor,
-    brightness: Brightness.dark,
-    variant: FlexSchemeVariant.soft,
-  ),
-  appBarTheme: const AppBarTheme(
-    titleTextStyle: TextStyle(
-      fontFamily: 'AtkinsonHyperlegible',
-      fontSize: 30,
-      color: Colors.white,
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
+      titleLarge: TextStyle(
+          fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
     ),
-    centerTitle: true,
-    toolbarHeight: 65,
-    iconTheme: IconThemeData(size: 30),
-  ),
-  textTheme: const TextTheme(
-    bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
-    titleLarge: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
-  ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    selectedLabelStyle:
-        TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-    unselectedLabelStyle:
-        TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-    selectedIconTheme: IconThemeData(size: 30),
-    unselectedIconTheme: IconThemeData(size: 30),
-  ),
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ButtonStyle(
-      minimumSize: WidgetStateProperty.all<Size>(
-          const Size(88, 50)), // Set the width and height
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      selectedLabelStyle:
+          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
+      unselectedLabelStyle:
+          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
+      selectedIconTheme: IconThemeData(size: 30),
+      unselectedIconTheme: IconThemeData(size: 30),
     ),
-  ),
-  useMaterial3: true,
-);
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: WidgetStateProperty.all<Size>(
+            const Size(88, 50)), // Set the width and height
+      ),
+    ),
+    useMaterial3: true,
+  );
+}
 
 extension ColorBrightness on Color {
   Color withBrightness(double factor) {
