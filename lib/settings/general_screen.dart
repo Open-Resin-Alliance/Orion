@@ -28,6 +28,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/orion_list_tile.dart';
+import 'package:orion/util/theme_color_selector.dart';
 
 class GeneralCfgScreen extends StatefulWidget {
   const GeneralCfgScreen({super.key});
@@ -107,7 +108,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final changeThemeMode = Provider.of<Function>(context);
+    // Cast the provider function to the correct type
+    final void Function(ThemeMode) changeThemeMode =
+        Provider.of<Function>(context) as void Function(ThemeMode);
 
     return PopScope(
       child: Scaffold(
@@ -604,20 +607,29 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                             });
                           },
                         ),
-                        /*const SizedBox(height: 20.0),
-                      OrionListTile(
-                        title: 'Verbose Logging [WIP]',
-                        icon: PhosphorIcons.bug,
-                        value: verboseLogging,
-                        onChanged: (bool value) {
-                          null;
-                          setState(() {
-                            verboseLogging = value;
-                            config.setFlag('verboseLogging', developerMode,
-                                category: 'developer');
-                          });
-                        },
-                      ),*/
+                      ],
+                    ),
+                  ),
+                ),
+              if (!config.getFlag('mandateTheme', category: 'vendor'))
+                Card.outlined(
+                  elevation: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Theme Color',
+                          style: TextStyle(
+                            fontSize: 28.0,
+                          ),
+                        ),
+                        const SizedBox(height: 20.0),
+                        ThemeColorSelector(
+                          config: config,
+                          changeThemeMode: changeThemeMode,
+                        ),
                       ],
                     ),
                   ),
