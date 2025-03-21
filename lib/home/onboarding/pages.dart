@@ -166,8 +166,9 @@ class OnboardingPages {
                         padding: const EdgeInsets.only(bottom: 30),
                         child: CountryFlag.fromCountryCode(
                           language['flag']!,
-                          height: 100,
-                          width: 100,
+                          height: 95,
+                          width: 130,
+                          shape: RoundedRectangle(8),
                         ),
                       ),
                     ),
@@ -248,7 +249,7 @@ class OnboardingPages {
             country['code']!,
             height: 45,
             width: 60,
-            borderRadius: 4,
+            shape: RoundedRectangle(4),
           ),
           title: Padding(
             padding: const EdgeInsets.only(left: 5.0),
