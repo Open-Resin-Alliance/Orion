@@ -17,10 +17,12 @@
 
 import 'dart:io';
 import 'dart:math';
+import 'dart:convert';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -63,6 +65,15 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
   final GlobalKey<SpawnOrionTextFieldState> branchTextFieldKey =
       GlobalKey<SpawnOrionTextFieldState>();
+
+  List<String> _availableReleases = [];
+  bool _isLoadingReleases = false;
+  Map<String, String> _releaseDates = {};
+  String? _loadError;
+
+  // Class-level variables for API request handling
+  bool _fetchCancelled = false;
+  DateTime? _lastFetchAttempt;
 
   @override
   void initState() {
@@ -441,7 +452,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     ],
                   ),
                 ),
-              ),
+              ), // Add comma here
               if (developerMode)
                 Card.outlined(
                   elevation: 1,
@@ -480,77 +491,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     style:
                                         ElevatedButton.styleFrom(elevation: 3),
                                     onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (BuildContext context) {
-                                          return AlertDialog(
-                                            title: const Center(
-                                                child: Text('Override Branch')),
-                                            content: SizedBox(
-                                              width: MediaQuery.of(context)
-                                                      .size
-                                                      .width *
-                                                  0.5,
-                                              child: SingleChildScrollView(
-                                                child: Column(
-                                                  children: [
-                                                    SpawnOrionTextField(
-                                                      key: branchTextFieldKey,
-                                                      keyboardHint:
-                                                          'Enter Branch',
-                                                      locale: Localizations
-                                                              .localeOf(context)
-                                                          .toString(),
-                                                      scrollController:
-                                                          _scrollController,
-                                                      presetText:
-                                                          config.getString(
-                                                              'overrideRelease',
-                                                              category:
-                                                                  'developer'),
-                                                    ),
-                                                    OrionKbExpander(
-                                                        textFieldKey:
-                                                            branchTextFieldKey),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                                child: const Text('Close',
-                                                    style: TextStyle(
-                                                        fontSize: 20)),
-                                              ),
-                                              TextButton(
-                                                onPressed: () {
-                                                  setState(() {
-                                                    overrideRelease =
-                                                        branchTextFieldKey
-                                                            .currentState!
-                                                            .getCurrentText();
-                                                    config.setString(
-                                                        'overrideRelease',
-                                                        overrideRelease,
-                                                        category: 'developer');
-                                                  });
-                                                  Navigator.of(context).pop();
-                                                },
-                                                child: const Text('Confirm',
-                                                    style: TextStyle(
-                                                        fontSize: 20)),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
+                                      _showReleaseDialog();
                                     },
                                     child: AutoSizeText(
                                       overrideRelease == ''
-                                          ? 'Set Release Tag'
+                                          ? 'Select Release Tag'
                                           : overrideRelease,
                                       style: const TextStyle(fontSize: 22),
                                       minFontSize: 18,
@@ -639,5 +584,344 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _isLoadingReleases = false;
+    _fetchCancelled = true;
+    super.dispose();
+  }
+
+  void _showReleaseDialog() {
+    // Reset state before showing dialog
+    setState(() {
+      _loadError = null;
+      if (_availableReleases.isEmpty) {
+        _isLoadingReleases = false;
+      }
+    });
+
+    showDialog(
+      barrierDismissible: true,
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            void fetchReleases() async {
+              if (_availableReleases.isNotEmpty && _loadError == null) return;
+
+              setState(() {
+                _isLoadingReleases = true;
+                _loadError = null;
+              });
+
+              try {
+                final response = await http.get(
+                  Uri.parse(
+                      'https://api.github.com/repos/Open-Resin-Alliance/Orion/releases'),
+                  headers: {'Accept': 'application/vnd.github.v3+json'},
+                ).timeout(const Duration(seconds: 10));
+
+                if (response.statusCode == 200) {
+                  final List<dynamic> releases = json.decode(response.body);
+                  List<String> regularReleases = [];
+                  List<String> branchReleases = [];
+                  Map<String, String> dates = {};
+
+                  for (var release in releases) {
+                    String tag = release['tag_name'] as String;
+                    if (tag.startsWith('v')) {
+                      tag = tag.substring(1);
+                    }
+
+                    String publishedAt = release['published_at'] as String;
+                    DateTime releaseDate = DateTime.parse(publishedAt);
+                    String formattedDate =
+                        "${releaseDate.year}-${releaseDate.month.toString().padLeft(2, '0')}-${releaseDate.day.toString().padLeft(2, '0')}";
+
+                    dates[tag] = formattedDate;
+
+                    if (tag.startsWith('BRANCH_')) {
+                      branchReleases.add(tag);
+                    } else {
+                      regularReleases.add(tag);
+                    }
+                  }
+
+                  // Sort by date (newest first)
+                  regularReleases
+                      .sort((a, b) => dates[b]!.compareTo(dates[a]!));
+                  branchReleases.sort((a, b) => dates[b]!.compareTo(dates[a]!));
+
+                  setState(() {
+                    _availableReleases = [
+                      ...regularReleases,
+                      ...branchReleases
+                    ];
+                    _releaseDates = dates;
+                    _isLoadingReleases = false;
+                  });
+                } else {
+                  setState(() {
+                    _isLoadingReleases = false;
+                    _loadError =
+                        'Failed to fetch releases: HTTP ${response.statusCode}';
+                  });
+                }
+              } catch (e) {
+                setState(() {
+                  _isLoadingReleases = false;
+                  _loadError = e.toString();
+                });
+              }
+            }
+
+            // Fetch releases when dialog is built
+            if (_availableReleases.isEmpty && !_isLoadingReleases) {
+              fetchReleases();
+            }
+
+            return Dialog(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.95,
+                height: MediaQuery.of(context).size.height * 0.85,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Center(
+                      child: Text(
+                        'Select Release Version',
+                        style: TextStyle(
+                          fontSize: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_isLoadingReleases)
+                      const Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text(
+                                'Loading available releases...',
+                                style: TextStyle(fontSize: 18),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else if (_loadError != null)
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  size: 48, color: Colors.red),
+                              const SizedBox(height: 16),
+                              Text(
+                                _loadError!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: fetchReleases,
+                                child: const Text('Retry',
+                                    style: TextStyle(fontSize: 18)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else if (_availableReleases.isEmpty)
+                      const Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.info_outline, size: 48),
+                              SizedBox(height: 16),
+                              Text(
+                                'No releases found',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 18),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _availableReleases.length + 1,
+                          itemBuilder: (context, index) {
+                            final regularReleasesCount = _availableReleases
+                                .where((r) => !r.startsWith('BRANCH_'))
+                                .length;
+
+                            if (index == regularReleasesCount) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.0),
+                                child: Column(
+                                  children: [
+                                    Divider(thickness: 2),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final adjustedIndex = index > regularReleasesCount
+                                ? index - 1
+                                : index;
+                            final release = _availableReleases[adjustedIndex];
+
+                            return Card(
+                              elevation: 1.0,
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              color: overrideRelease == release
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer
+                                  : null,
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.all(10),
+                                title: Text(
+                                  release,
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: overrideRelease == release
+                                        ? Theme.of(context).colorScheme.primary
+                                        : null,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "Released: ${_releaseDates[release] ?? 'Unknown date'}",
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                onTap: () {
+                                  this.setState(() {
+                                    overrideRelease = release;
+                                    config.setString(
+                                        'overrideRelease', overrideRelease,
+                                        category: 'developer');
+                                  });
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text(
+                            'Close',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Center(
+                                    child: Text('Manual Entry'),
+                                  ),
+                                  content: SizedBox(
+                                    width:
+                                        MediaQuery.of(context).size.width * 0.5,
+                                    child: SingleChildScrollView(
+                                      child: Column(
+                                        children: [
+                                          SpawnOrionTextField(
+                                            key: branchTextFieldKey,
+                                            keyboardHint: 'Enter Release Tag',
+                                            locale:
+                                                Localizations.localeOf(context)
+                                                    .toString(),
+                                            scrollController: _scrollController,
+                                            presetText: config.getString(
+                                                'overrideRelease',
+                                                category: 'developer'),
+                                          ),
+                                          OrionKbExpander(
+                                              textFieldKey: branchTextFieldKey),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: const Text('Close',
+                                          style: TextStyle(fontSize: 20)),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        this.setState(() {
+                                          overrideRelease = branchTextFieldKey
+                                              .currentState!
+                                              .getCurrentText();
+                                          config.setString('overrideRelease',
+                                              overrideRelease,
+                                              category: 'developer');
+                                        });
+                                        // Close both dialogs
+                                        Navigator.of(context)
+                                            .pop(); // Close manual entry dialog
+                                        Navigator.of(context)
+                                            .pop(); // Close release selection dialog
+                                      },
+                                      child: const Text('Confirm',
+                                          style: TextStyle(fontSize: 20)),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          child: const Text(
+                            'Manual Entry',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      // Cleanup when dialog is closed
+      if (mounted) {
+        setState(() {
+          _isLoadingReleases = false;
+          _fetchCancelled = true;
+        });
+      }
+    });
   }
 }
