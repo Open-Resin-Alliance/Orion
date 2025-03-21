@@ -22,6 +22,29 @@ jobs:
           flutter-version: 3.27.1
       - run: sudo apt-get update && sudo apt-get install -y gtk+-3.0
       - run: flutter pub global activate flutterpi_tool
+      
+      # Add these steps to verify and fix localization files
+      - name: Verify ARB Localization Files
+        run: |
+          echo "Checking ARB files for locale mismatches..."
+          for file in lib/l10n/app_*.arb; do
+            locale=$(basename $file | sed 's/app_\(.*\)\.arb/\1/')
+            if [ "$locale" == "" ]; then continue; fi
+            
+            # Extract the @@locale value from the ARB file
+            file_locale=$(grep -o '"@@locale": *"[^"]*"' $file | cut -d'"' -f4)
+            
+            # If the locale values don't match, update the file
+            if [ "$file_locale" != "$locale" ]; then
+              echo "Fixing locale mismatch in $file: changing $file_locale to $locale"
+              sed -i 's/"@@locale": *"[^"]*"/"@@locale": "'$locale'"/' $file
+            fi
+          done
+          
+      # Generate localization files
+      - name: Generate Localizations
+        run: flutter gen-l10n
+      
       - run: flutter build linux
 
       - name: Get Version
