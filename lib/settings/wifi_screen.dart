@@ -503,6 +503,14 @@ class WifiScreenState extends State<WifiScreen> {
 
   Widget buildPortraitLayout(BuildContext context, String currentSSID,
       String ipAddress, List<Map<String, String>> networks) {
+    // Find the network info for the current SSID
+    final currentNetwork = networks.isNotEmpty 
+        ? networks.firstWhere(
+            (network) => network['SSID'] == currentSSID,
+            orElse: () => networks.first,
+          )
+        : {'SIGNAL': '0'};
+        
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -511,7 +519,9 @@ class WifiScreenState extends State<WifiScreen> {
         buildInfoCard('IP Address', ipAddress),
         buildInfoCard(
           'Signal Strength',
-          '${signalStrengthToQuality(int.parse(networks.first['SIGNAL']!))} [${networks.first['SIGNAL']}]',
+          networks.isEmpty 
+              ? 'Unknown' 
+              : '${signalStrengthToQuality(int.parse(currentNetwork['SIGNAL']!))} [${currentNetwork['SIGNAL']}]',
         ),
         const SizedBox(height: 16),
         buildQrView(context, ipAddress),
@@ -521,6 +531,14 @@ class WifiScreenState extends State<WifiScreen> {
 
   Widget buildLandscapeLayout(BuildContext context, String currentSSID,
       String ipAddress, List<Map<String, String>> networks) {
+    // Find the network info for the current SSID
+    final currentNetwork = networks.isNotEmpty 
+        ? networks.firstWhere(
+            (network) => network['SSID'] == currentSSID,
+            orElse: () => networks.first,
+          )
+        : {'SIGNAL': '0'};
+        
     return Row(
       children: [
         Expanded(
@@ -532,7 +550,9 @@ class WifiScreenState extends State<WifiScreen> {
               buildInfoCard('IP Address', ipAddress),
               buildInfoCard(
                 'Signal Strength',
-                '${signalStrengthToQuality(int.parse(networks.first['SIGNAL']!))} [${networks.first['SIGNAL']}]',
+                networks.isEmpty 
+                    ? 'Unknown' 
+                    : '${signalStrengthToQuality(int.parse(currentNetwork['SIGNAL']!))} [${currentNetwork['SIGNAL']}]',
               ),
             ],
           ),
