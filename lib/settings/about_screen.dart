@@ -342,7 +342,7 @@ class AboutScreenState extends State<AboutScreen> {
           toastification.show(
             context: context,
             type: ToastificationType.info,
-            style: ToastificationStyle.flatColored,
+            style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 2),
             title: Text(
                 'You are ${5 - qrTapCount} ${5 - qrTapCount == 1 ? 'tap' : 'taps'} away from becoming a developer',
