@@ -1,6 +1,6 @@
 /*
 * Glasser - Glass Filter Chip Widget
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -109,8 +109,9 @@ class GlassFilterChip extends StatelessWidget {
               DefaultTextStyle(
                 style: TextStyle(
                   fontFamily: 'AtkinsonHyperlegible',
-                  color:
-                      selected ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                  color: selected
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.8),
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   fontSize: selected ? 16 : 15,
                 ),
