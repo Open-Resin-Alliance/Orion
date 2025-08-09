@@ -157,11 +157,10 @@ class _GlassmorphicButton extends StatelessWidget {
     // Apply size constraints if specified, or use default
     return ConstrainedBox(
       constraints: BoxConstraints(
-        minWidth: minimumSize?.width ?? 0,
-        minHeight: (minimumSize?.height ?? 60) -
-            5, // Default to 50px height, subtract 5px compensation
-        maxWidth: maximumSize?.width ?? double.infinity,
-        maxHeight: maximumSize?.height ?? double.infinity,
+        minWidth: ((minimumSize?.width ?? 20) - 5).clamp(0.0, double.infinity),
+        minHeight: ((minimumSize?.height ?? 5) - 5).clamp(0.0, double.infinity),
+        maxWidth: (maximumSize?.width ?? double.infinity) - 5,
+        maxHeight: (maximumSize?.height ?? double.infinity) - 5,
       ),
       child: buttonChild,
     );
