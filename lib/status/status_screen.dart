@@ -1,6 +1,6 @@
 /*
 * Orion - Status Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,14 +17,19 @@
 
 import 'dart:async';
 import 'dart:io';
+
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:provider/provider.dart';
+
 import 'package:orion/api_services/api_services.dart';
 import 'package:orion/files/grid_files_screen.dart';
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/themes/themes.dart';
 import 'package:orion/util/hold_button.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/sl1_thumbnail.dart';
 import 'package:orion/util/status_card.dart';
 
@@ -185,7 +190,7 @@ class StatusScreenState extends State<StatusScreen>
                 title: const Text('No Print Data Available'),
               ),
               body: Center(
-                child: ElevatedButton(
+                child: GlassButton(
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -251,50 +256,55 @@ class StatusScreenState extends State<StatusScreen>
             twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
             twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
 
-            return Scaffold(
-              appBar: AppBar(
-                automaticallyImplyLeading: false,
-                title: RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                          text: 'Print Status',
-                          style: Theme.of(context).appBarTheme.titleTextStyle),
-                      TextSpan(
-                          text: ' - ',
-                          style: Theme.of(context).appBarTheme.titleTextStyle),
-                      TextSpan(
-                        text: isCanceling && status!['layer'] != null
-                            ? 'Canceling'
-                            : status!['layer'] == null
-                                ? 'Canceled'
-                                : isPausing == true &&
-                                        status!['paused'] == false
-                                    ? 'Pausing'
-                                    : status!['paused'] == true
-                                        ? 'Paused'
-                                        : status!['status'] == 'Idle'
-                                            ? 'Finished'
-                                            : '${status!['status']}',
-                        style: Theme.of(context).appBarTheme.titleTextStyle,
-                      ),
-                    ],
+            return GlassApp(
+              child: Scaffold(
+                appBar: AppBar(
+                  automaticallyImplyLeading: false,
+                  title: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                            text: 'Print Status',
+                            style:
+                                Theme.of(context).appBarTheme.titleTextStyle),
+                        TextSpan(
+                            text: ' - ',
+                            style:
+                                Theme.of(context).appBarTheme.titleTextStyle),
+                        TextSpan(
+                          text: isCanceling && status!['layer'] != null
+                              ? 'Canceling'
+                              : status!['layer'] == null
+                                  ? 'Canceled'
+                                  : isPausing == true &&
+                                          status!['paused'] == false
+                                      ? 'Pausing'
+                                      : status!['paused'] == true
+                                          ? 'Paused'
+                                          : status!['status'] == 'Idle'
+                                              ? 'Finished'
+                                              : '${status!['status']}',
+                          style: Theme.of(context).appBarTheme.titleTextStyle,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              body: Center(
-                child: LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    return isLandScape
-                        ? Padding(
-                            padding: const EdgeInsets.only(
-                                left: 16, right: 16, bottom: 20),
-                            child: buildLandscapeLayout(context))
-                        : Padding(
-                            padding: const EdgeInsets.only(
-                                left: 16, right: 16, bottom: 20),
-                            child: buildPortraitLayout(context));
-                  },
+                body: Center(
+                  child: LayoutBuilder(
+                    builder:
+                        (BuildContext context, BoxConstraints constraints) {
+                      return isLandScape
+                          ? Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 16, right: 16, bottom: 20),
+                              child: buildLandscapeLayout(context))
+                          : Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 16, right: 16, bottom: 20),
+                              child: buildPortraitLayout(context));
+                    },
+                  ),
                 ),
               ),
             );
@@ -388,7 +398,9 @@ class StatusScreenState extends State<StatusScreen>
   }
 
   Widget buildInfoCard(String title, String subtitle) {
-    return Card.outlined(
+    Provider.of<ThemeProvider>(context);
+
+    return GlassCard(
       elevation: 1.0,
       child: ListTile(
         title: Text(title),
@@ -398,8 +410,11 @@ class StatusScreenState extends State<StatusScreen>
   }
 
   Widget buildNameCard(String title) {
-    return Card.outlined(
-      elevation: 1.0,
+    Provider.of<ThemeProvider>(context);
+
+    return GlassCard(
+      margin: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 3.0),
+      outlined: true,
       child: ListTile(
         title: AutoSizeText.rich(
           maxLines: 1,
@@ -427,6 +442,7 @@ class StatusScreenState extends State<StatusScreen>
     return ValueListenableBuilder<String?>(
       valueListenable: thumbnailNotifier,
       builder: (BuildContext context, String? thumbnail, Widget? child) {
+        final themeProvider = Provider.of<ThemeProvider>(context);
         double progress = 0.0;
         if (status!['layer'] != null &&
             status!['print_data']['layer_count'] != null) {
@@ -435,12 +451,15 @@ class StatusScreenState extends State<StatusScreen>
         return Center(
           child: Stack(
             children: [
-              Card.outlined(
+              GlassCard(
+                outlined: true,
                 elevation: 1.0,
                 child: Padding(
                   padding: const EdgeInsets.all(4.5),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(7.75),
+                    borderRadius: themeProvider.isGlassTheme
+                        ? BorderRadius.circular(10.5)
+                        : BorderRadius.circular(7.75),
                     child: Stack(
                       children: [
                         // Grayscale image
@@ -508,30 +527,48 @@ class StatusScreenState extends State<StatusScreen>
                 right: 0,
                 child: Padding(
                   padding: const EdgeInsets.all(2),
-                  child: Card(
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        topRight: Radius.circular(9.75),
-                        bottomRight: Radius.circular(9.75),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(2.5),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(7.75),
-                          bottomRight: Radius.circular(7.75),
-                        ),
-                        child: RotatedBox(
-                          quarterTurns: 3,
-                          child: LinearProgressIndicator(
-                            minHeight: 30,
-                            color: getStatusColor(),
-                            value: progress,
+                  child: Builder(
+                    builder: (context) {
+                      final themeProvider = Provider.of<ThemeProvider>(context);
+                      final isGlassTheme = themeProvider.isGlassTheme;
+
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.only(
+                            topRight: themeProvider.isGlassTheme
+                                ? const Radius.circular(14.0)
+                                : const Radius.circular(9.75),
+                            bottomRight: themeProvider.isGlassTheme
+                                ? const Radius.circular(14.0)
+                                : const Radius.circular(9.75),
                           ),
                         ),
-                      ),
-                    ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(2.5),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.only(
+                              topRight: themeProvider.isGlassTheme
+                                  ? const Radius.circular(11.5)
+                                  : const Radius.circular(7.75),
+                              bottomRight: themeProvider.isGlassTheme
+                                  ? const Radius.circular(11.5)
+                                  : const Radius.circular(7.75),
+                            ),
+                            child: RotatedBox(
+                              quarterTurns: 3,
+                              child: LinearProgressIndicator(
+                                minHeight: 30,
+                                color: getStatusColor(),
+                                value: progress,
+                                backgroundColor: isGlassTheme
+                                    ? Colors.white.withValues(alpha: 0.1)
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -546,17 +583,28 @@ class StatusScreenState extends State<StatusScreen>
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton(
-            onPressed: isCanceling == true && status!['layer'] != null
-                ? null
-                : status!['layer'] == null || status!['status'] == 'Idle'
-                    ? null
-                    : () {
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return Dialog(
-                              child: SizedBox(
+          child: Builder(
+            builder: (context) {
+              Provider.of<ThemeProvider>(context);
+
+              final buttonStyle = ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  minimumSize: const Size(120, 60),
+                  maximumSize: Size(120, 60));
+
+              final onPressed = isCanceling == true && status!['layer'] != null
+                  ? null
+                  : status!['layer'] == null || status!['status'] == 'Idle'
+                      ? null
+                      : () {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              Provider.of<ThemeProvider>(context);
+
+                              Widget dialogContent = SizedBox(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: <Widget>[
@@ -577,7 +625,8 @@ class StatusScreenState extends State<StatusScreen>
                                       child: SizedBox(
                                         height: 65,
                                         width: 450,
-                                        child: ElevatedButton(
+                                        child: GlassButton(
+                                          style: buttonStyle,
                                           onPressed: () {
                                             Navigator.pop(context);
                                             Navigator.push(
@@ -594,9 +643,7 @@ class StatusScreenState extends State<StatusScreen>
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(
-                                        height:
-                                            20), // Add some spacing between the buttons
+                                    const SizedBox(height: 20),
                                     Padding(
                                       padding: const EdgeInsets.only(
                                           left: 20, right: 20),
@@ -604,7 +651,7 @@ class StatusScreenState extends State<StatusScreen>
                                         height: 65,
                                         width: 450,
                                         child: HoldButton(
-                                          duration: const Duration(seconds: 5),
+                                          duration: const Duration(seconds: 2),
                                           onPressed: () {
                                             Navigator.pop(context);
                                             _api.cancelPrint();
@@ -622,74 +669,101 @@ class StatusScreenState extends State<StatusScreen>
                                     const SizedBox(height: 20),
                                   ],
                                 ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              minimumSize: Size(
-                0, // Subtract the padding on both sides
-                Theme.of(context).appBarTheme.toolbarHeight as double,
-              ),
-            ),
-            child: const Text(
-              'Options',
-              style: TextStyle(fontSize: 24),
-            ),
+                              );
+
+                              return GlassDialog(
+                                child: dialogContent,
+                              );
+                            },
+                          );
+                        };
+
+              const child = Text(
+                'Options',
+                style: TextStyle(fontSize: 24),
+              );
+
+              if (onPressed == null) {
+                return GlassButton(
+                  onPressed: onPressed,
+                  style: buttonStyle,
+                  child: child,
+                );
+              }
+
+              return GlassButton(
+                onPressed: onPressed,
+                style: buttonStyle,
+                child: child,
+              );
+            },
           ),
         ),
         const SizedBox(width: 20),
         Expanded(
-          child: ElevatedButton(
-            onPressed: isCanceling == true && status!['layer'] != null
-                ? null
-                : isPausing == true && status!['paused'] == false
-                    ? null
-                    : status!['layer'] == null
-                        ? () {
-                            Navigator.popUntil(
-                                context, ModalRoute.withName('/'));
-                          }
-                        : status!['status'] == 'Idle'
-                            ? () {
-                                Navigator.pop(context);
-                              }
-                            : () {
-                                if (status!['paused'] == true) {
-                                  _api.resumePrint();
-                                  setState(() {
-                                    isPausing = false;
-                                  });
-                                } else {
-                                  _api.pausePrint();
-                                  setState(() {
-                                    isPausing = true;
-                                  });
+          child: Builder(
+            builder: (context) {
+              Provider.of<ThemeProvider>(context);
+
+              final buttonStyle = ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  minimumSize: const Size(120, 60),
+                  maximumSize: Size(120, 60));
+
+              final onPressed = isCanceling == true && status!['layer'] != null
+                  ? null
+                  : isPausing == true && status!['paused'] == false
+                      ? null
+                      : status!['layer'] == null
+                          ? () {
+                              Navigator.popUntil(
+                                  context, ModalRoute.withName('/'));
+                            }
+                          : status!['status'] == 'Idle'
+                              ? () {
+                                  Navigator.pop(context);
                                 }
-                              },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              minimumSize: Size(
-                0, // Subtract the padding on both sides
-                Theme.of(context).appBarTheme.toolbarHeight as double,
-              ),
-            ),
-            child: AutoSizeText(
-              minFontSize: 16,
-              maxLines: 1,
-              status!['layer'] == null || status!['status'] == 'Idle'
-                  ? 'Return to Home'
-                  : status!['paused'] == true
-                      ? 'Resume'
-                      : 'Pause',
-              style: const TextStyle(fontSize: 24),
-            ),
+                              : () {
+                                  if (status!['paused'] == true) {
+                                    _api.resumePrint();
+                                    setState(() {
+                                      isPausing = false;
+                                    });
+                                  } else {
+                                    _api.pausePrint();
+                                    setState(() {
+                                      isPausing = true;
+                                    });
+                                  }
+                                };
+
+              final child = AutoSizeText(
+                minFontSize: 16,
+                maxLines: 1,
+                status!['layer'] == null || status!['status'] == 'Idle'
+                    ? 'Return to Home'
+                    : status!['paused'] == true
+                        ? 'Resume'
+                        : 'Pause',
+                style: const TextStyle(fontSize: 24),
+              );
+
+              if (onPressed == null) {
+                return GlassButton(
+                  onPressed: onPressed,
+                  style: buttonStyle,
+                  child: child,
+                );
+              }
+
+              return GlassButton(
+                onPressed: onPressed,
+                style: buttonStyle,
+                child: child,
+              );
+            },
           ),
         ),
       ],
