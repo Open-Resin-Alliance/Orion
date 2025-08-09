@@ -20,10 +20,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:orion/api_services/api_services.dart';
-import 'package:orion/settings/about_screen.dart';
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_config.dart';
 
@@ -63,196 +63,201 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          config.getString('machineName', category: 'machine'),
-          textAlign: TextAlign.center,
-        ),
-        centerTitle: true,
-        leadingWidth: 120,
-        leading: const Center(
-          child: Padding(
-            padding: EdgeInsets.only(left: 15),
-            child: LiveClock(),
+    return GlassApp(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _config.getString('machineName', category: 'machine'),
+            textAlign: TextAlign.center,
           ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 25),
-            child: InkWell(
-              onTap: () {
-                isRemote =
-                    _config.getFlag('useCustomUrl', category: 'advanced');
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return Dialog(
-                      child: SizedBox(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            const SizedBox(height: 10),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                '${l10n.homePowerOptions} ${isRemote ? l10n.homePowerRemote : l10n.homePowerLocal}',
-                                style: const TextStyle(
-                                    fontSize: 24, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(left: 20, right: 20),
-                              child: SizedBox(
-                                height: 65,
-                                width: 450,
-                                child: HoldButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    _api.manualCommand('FIRMWARE_RESTART');
-                                  },
-                                  child: Text(
-                                    l10n.homeFirmwareRestart,
-                                    style: const TextStyle(fontSize: 24),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(
-                                height:
-                                    20), // Add some spacing between the buttons
-                            if (!isRemote)
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 20, right: 20),
-                                child: SizedBox(
-                                  height: 65,
-                                  width: 450,
-                                  child: HoldButton(
-                                    onPressed: () {
-                                      Process.run('sudo', ['reboot', 'now']);
-                                    },
-                                    child: Text(
-                                      l10n.homeRebootSystem,
-                                      style: const TextStyle(fontSize: 24),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (!isRemote) const SizedBox(height: 20),
-                            if (!isRemote)
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 20, right: 20),
-                                child: SizedBox(
-                                  height: 65,
-                                  width: 450,
-                                  child: HoldButton(
-                                    onPressed: () {
-                                      Process.run('sudo', ['shutdown', 'now']);
-                                    },
-                                    child: Text(
-                                      l10n.homeShutdownSystem,
-                                      style: const TextStyle(fontSize: 24),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (!isRemote) const SizedBox(height: 20),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              child: const Icon(Icons.power_settings_new_outlined, size: 38),
+          centerTitle: true,
+          leadingWidth: 120,
+          leading: const Center(
+            child: Padding(
+              padding: EdgeInsets.only(left: 15),
+              child: LiveClock(),
             ),
           ),
-        ],
-      ),
-      body: Center(
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                const SizedBox(height: 5),
-                Expanded(
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: theme.elevatedButtonTheme.style,
-                          onPressed: () => context.go('/gridfiles'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 25),
+              child: InkWell(
+                onTap: () {
+                  isRemote =
+                      _config.getFlag('useCustomUrl', category: 'advanced');
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return GlassDialog(
+                        padding: const EdgeInsets.all(8), // Reduced padding
+                        child: SizedBox(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.print_outlined, size: 52),
-                              Text(
-                                l10n.homeBtnPrint,
-                                style: const TextStyle(fontSize: 28),
+                            children: <Widget>[
+                              const SizedBox(height: 10),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  '${l10n.homePowerOptions} ${isRemote ? l10n.homePowerRemote : l10n.homePowerLocal}',
+                                  style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold),
+                                ),
                               ),
+                              const SizedBox(height: 10),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(left: 20, right: 20),
+                                child: SizedBox(
+                                  height: 65,
+                                  width: 450,
+                                  child: HoldButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _api.manualCommand('FIRMWARE_RESTART');
+                                    },
+                                    child: Text(
+                                      l10n.homeFirmwareRestart,
+                                      style: const TextStyle(fontSize: 24),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(
+                                  height:
+                                      20), // Add some spacing between the buttons
+                              if (!isRemote)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                      left: 20, right: 20),
+                                  child: SizedBox(
+                                    height: 65,
+                                    width: 450,
+                                    child: HoldButton(
+                                      onPressed: () {
+                                        Process.run('sudo', ['reboot', 'now']);
+                                      },
+                                      child: Text(
+                                        l10n.homeRebootSystem,
+                                        style: const TextStyle(fontSize: 24),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (!isRemote) const SizedBox(height: 20),
+                              if (!isRemote)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                      left: 20, right: 20),
+                                  child: SizedBox(
+                                    height: 65,
+                                    width: 450,
+                                    child: HoldButton(
+                                      onPressed: () {
+                                        Process.run(
+                                            'sudo', ['shutdown', 'now']);
+                                      },
+                                      child: Text(
+                                        l10n.homeShutdownSystem,
+                                        style: const TextStyle(fontSize: 24),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (!isRemote) const SizedBox(height: 20),
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 20),
-                    ],
+                      );
+                    },
+                  );
+                },
+                child: const Icon(Icons.power_settings_new_outlined, size: 38),
+              ),
+            ),
+          ],
+        ),
+        body: Center(
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const SizedBox(height: 5),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: GlassButton(
+                            style: theme.elevatedButtonTheme.style,
+                            onPressed: () => context.go('/gridfiles'),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.print_outlined, size: 52),
+                                Text(
+                                  l10n.homeBtnPrint,
+                                  style: const TextStyle(fontSize: 28),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: theme.elevatedButtonTheme.style,
-                          onPressed: () => context.go('/tools'),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.handyman_outlined, size: 52),
-                              Text(
-                                l10n.homeBtnTools,
-                                style: const TextStyle(fontSize: 28),
-                              ),
-                            ],
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: GlassButton(
+                            style: theme.elevatedButtonTheme.style,
+                            onPressed: () => context.go('/tools'),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.handyman_outlined, size: 52),
+                                Text(
+                                  l10n.homeBtnTools,
+                                  style: const TextStyle(fontSize: 28),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: theme.elevatedButtonTheme.style,
-                          onPressed: () => context.go('/settings'),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.settings_outlined, size: 52),
-                              Text(
-                                l10n.homeBtnSettings,
-                                style: const TextStyle(fontSize: 28),
-                              ),
-                            ],
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: GlassButton(
+                            style: theme.elevatedButtonTheme.style,
+                            onPressed: () => context.go('/settings'),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.settings_outlined, size: 52),
+                                Text(
+                                  l10n.homeBtnSettings,
+                                  style: const TextStyle(fontSize: 28),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 20),
-                    ],
+                        const SizedBox(width: 20),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            );
-          },
+                  const SizedBox(height: 20),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
