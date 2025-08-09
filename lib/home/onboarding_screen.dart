@@ -1,6 +1,6 @@
 /*
 * Orion - Onboarding Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -21,26 +21,25 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:animations/animations.dart';
 import 'package:logging/logging.dart';
-import 'package:orion/util/locales/all_countries.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:animations/animations.dart';
 
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/home/home_screen.dart';
+import 'package:orion/home/onboarding/animations.dart';
+import 'package:orion/home/onboarding/pages.dart';
+import 'package:orion/home/onboarding/welcome_bubbles.dart';
+import 'package:orion/l10n/generated/app_localizations.dart';
+import 'package:orion/settings/wifi_screen.dart';
+import 'package:orion/util/locales/all_countries.dart';
+import 'package:orion/util/locales/available_languages.dart';
+import 'package:orion/util/onboarding_utils.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
-import 'package:orion/settings/wifi_screen.dart';
-import 'package:orion/util/locales/available_languages.dart';
-
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
-
-import 'package:orion/home/onboarding/pages.dart';
-import 'package:orion/home/onboarding/animations.dart';
-import 'package:orion/util/onboarding_utils.dart';
-import 'package:orion/home/onboarding/welcome_bubbles.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -476,10 +475,9 @@ class OnboardingScreenState extends State<OnboardingScreen>
     config.setString('machineName', name, category: 'machine');
   }
 
-  void _handleThemeChange(ThemeMode mode) {
+  void _handleThemeChange(OrionThemeMode mode) {
     final themeProvider = context.read<ThemeProvider>();
     themeProvider.setThemeMode(mode);
-    config.setString('themeMode', mode.name, category: 'general');
   }
 
   @override
@@ -487,12 +485,14 @@ class OnboardingScreenState extends State<OnboardingScreen>
     final l10n = AppLocalizations.of(context)!;
     _printerName = config.getString('machineName', category: 'machine');
 
-    return Scaffold(
-      extendBodyBehindAppBar:
-          _currentPage <= 1, // Only for welcome and language pages
-      appBar: _buildAppBar(l10n),
-      body: _buildPageView(l10n),
-      floatingActionButton: _buildFloatingActionButton(l10n),
+    return GlassApp(
+      child: Scaffold(
+        extendBodyBehindAppBar:
+            _currentPage <= 1, // Only for welcome and language pages
+        appBar: _buildAppBar(l10n),
+        body: _buildPageView(l10n),
+        floatingActionButton: _buildFloatingActionButton(l10n),
+      ),
     );
   }
 
@@ -588,10 +588,10 @@ class OnboardingScreenState extends State<OnboardingScreen>
       opacity: hide ? 0 : 1,
       child: IgnorePointer(
         ignoring: hide || disable,
-        child: FloatingActionButton.extended(
+        child: GlassFloatingActionButton.extended(
           heroTag: label,
           onPressed: onPressed,
-          label: Text(label, style: const TextStyle(fontSize: 24)),
+          label: label,
           icon: Icon(icon),
         ),
       ),
@@ -615,7 +615,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
+        return GlassAlertDialog(
           title: Text(l10n!.wifiSkipTitle),
           content: Text(l10n.wifiSkipMessage),
           actions: [
@@ -623,8 +623,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text(l10n.wifiConnectNow,
-                  style: const TextStyle(fontSize: 20)),
+              child: Text(l10n.wifiConnectNow),
             ),
             TextButton(
               onPressed: () {
@@ -633,8 +632,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
                   _currentPage++;
                 });
               },
-              child: Text(l10n.wifiSkipAnyway,
-                  style: const TextStyle(fontSize: 20)),
+              child: Text(l10n.wifiSkipAnyway),
             ),
           ],
         );
@@ -660,7 +658,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
       barrierDismissible: false,
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return GlassAlertDialog(
           title: Text(l10n!.wifiDisconnectTitle),
           content: Text(l10n.wifiDisconnectMessage),
           actions: [
@@ -668,16 +666,14 @@ class OnboardingScreenState extends State<OnboardingScreen>
               onPressed: () {
                 Navigator.of(context).pop(false);
               },
-              child: Text(l10n.wifiStayConnected,
-                  style: const TextStyle(fontSize: 20)),
+              child: Text(l10n.wifiStayConnected),
             ),
             const SizedBox(width: 20),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(true);
               },
-              child: Text(l10n.wifiDisconnect,
-                  style: const TextStyle(fontSize: 20)),
+              child: Text(l10n.wifiDisconnect),
             ),
           ],
         );
