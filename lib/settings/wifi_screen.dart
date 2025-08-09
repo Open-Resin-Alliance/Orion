@@ -1,6 +1,6 @@
 /*
 * Orion - WiFi Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 
@@ -308,6 +309,7 @@ class WifiScreenState extends State<WifiScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: FutureBuilder<List<Map<String, String>>>(
         future: _networksFuture,
         builder: (context, snapshot) {
@@ -373,8 +375,9 @@ class WifiScreenState extends State<WifiScreen> {
                     final network = networks[index];
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Card.outlined(
+                      child: GlassCard(
                         elevation: 1,
+                        outlined: true,
                         child: ListTile(
                           key: ValueKey(network['SSID']),
                           title: Text(network['SSID'] ?? '',
@@ -389,7 +392,7 @@ class WifiScreenState extends State<WifiScreen> {
                               barrierDismissible: false,
                               context: context,
                               builder: (BuildContext context) {
-                                return AlertDialog(
+                                return GlassAlertDialog(
                                   title: Center(
                                       child: Text(
                                           'Connect to ${network['SSID']}')),
@@ -450,7 +453,7 @@ class WifiScreenState extends State<WifiScreen> {
                                     ),
                                   ),
                                   actions: [
-                                    TextButton(
+                                    GlassButton(
                                       onPressed: () {
                                         Navigator.of(context).pop();
                                         setState(() {
@@ -461,7 +464,7 @@ class WifiScreenState extends State<WifiScreen> {
                                       child: const Text('Close',
                                           style: TextStyle(fontSize: 20)),
                                     ),
-                                    TextButton(
+                                    GlassButton(
                                       onPressed: () {
                                         if (!_isConnecting.value) {
                                           _isConnecting.value = true;
@@ -504,13 +507,13 @@ class WifiScreenState extends State<WifiScreen> {
   Widget buildPortraitLayout(BuildContext context, String currentSSID,
       String ipAddress, List<Map<String, String>> networks) {
     // Find the network info for the current SSID
-    final currentNetwork = networks.isNotEmpty 
+    final currentNetwork = networks.isNotEmpty
         ? networks.firstWhere(
             (network) => network['SSID'] == currentSSID,
             orElse: () => networks.first,
           )
         : {'SIGNAL': '0'};
-        
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -519,8 +522,8 @@ class WifiScreenState extends State<WifiScreen> {
         buildInfoCard('IP Address', ipAddress),
         buildInfoCard(
           'Signal Strength',
-          networks.isEmpty 
-              ? 'Unknown' 
+          networks.isEmpty
+              ? 'Unknown'
               : '${signalStrengthToQuality(int.parse(currentNetwork['SIGNAL']!))} [${currentNetwork['SIGNAL']}]',
         ),
         const SizedBox(height: 16),
@@ -532,13 +535,13 @@ class WifiScreenState extends State<WifiScreen> {
   Widget buildLandscapeLayout(BuildContext context, String currentSSID,
       String ipAddress, List<Map<String, String>> networks) {
     // Find the network info for the current SSID
-    final currentNetwork = networks.isNotEmpty 
+    final currentNetwork = networks.isNotEmpty
         ? networks.firstWhere(
             (network) => network['SSID'] == currentSSID,
             orElse: () => networks.first,
           )
         : {'SIGNAL': '0'};
-        
+
     return Row(
       children: [
         Expanded(
@@ -550,8 +553,8 @@ class WifiScreenState extends State<WifiScreen> {
               buildInfoCard('IP Address', ipAddress),
               buildInfoCard(
                 'Signal Strength',
-                networks.isEmpty 
-                    ? 'Unknown' 
+                networks.isEmpty
+                    ? 'Unknown'
                     : '${signalStrengthToQuality(int.parse(currentNetwork['SIGNAL']!))} [${currentNetwork['SIGNAL']}]',
               ),
             ],
@@ -564,8 +567,9 @@ class WifiScreenState extends State<WifiScreen> {
   }
 
   Widget buildNameCard(String title) {
-    return Card.outlined(
+    return GlassCard(
       elevation: 1.0,
+      outlined: true,
       child: ListTile(
         title: Text(
           title,
@@ -580,8 +584,9 @@ class WifiScreenState extends State<WifiScreen> {
   }
 
   Widget buildInfoCard(String title, String subtitle) {
-    return Card.outlined(
+    return GlassCard(
       elevation: 1.0,
+      outlined: true,
       child: ListTile(
         title: Text(title),
         subtitle: Text(subtitle),
@@ -593,8 +598,9 @@ class WifiScreenState extends State<WifiScreen> {
     return Center(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Card.outlined(
+        child: GlassCard(
           elevation: 1.0,
+          outlined: true,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: QrImageView(
