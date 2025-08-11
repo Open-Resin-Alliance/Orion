@@ -18,7 +18,7 @@ jobs:
       - uses: seanmiddleditch/gha-setup-ninja@master
 
       - id: flutterpi_engine
-        run: echo "latest=gh release list -R ardera/flutter-ci --json name,isLatest --jq '.[] |=select(.isLatest) | .[0].name'" >> $GITHUB_OUTPUT
+        run: echo "latest=$(gh release list -R ardera/flutter-ci --json name,isLatest --jq '.[] |=select(.isLatest) | .[0].name')" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
