@@ -103,84 +103,82 @@ class ExposureScreenState extends State<ExposureScreen> {
     );
   }
 
-  Widget _buildExposureDialog(BuildContext context, AsyncSnapshot<int> snapshot,
-      int countdownTime, String? type) {
+  GlassDialog _buildExposureDialog(BuildContext context,
+      AsyncSnapshot<int> snapshot, int countdownTime, String? type) {
     return GlassDialog(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            type == 'White'
-                ? 'Cleaning'
-                : type != null
-                    ? 'Testing $type'
-                    : 'Exposing',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'AtkinsonHyperlegible',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 20.0), // Padding inside the dialog
+        child: Column(
+          mainAxisSize:
+              MainAxisSize.min, // To make the dialog as big as its children
+          children: [
+            Text(
+              type == 'White'
+                  ? 'Cleaning'
+                  : type != null
+                      ? 'Testing $type'
+                      : 'Exposing',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'AtkinsonHyperlegible',
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.only(
-                left: 20.0, right: 20.0, top: 15.0, bottom: 20.0),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  height: 140,
-                  width: 140,
-                  child: CircularProgressIndicator(
-                    value: snapshot.data! / (countdownTime * 1000),
-                    strokeWidth: 10,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).colorScheme.primary,
+            const SizedBox(
+                height:
+                    20), // Space between the title and the progress indicator
+            Padding(
+              padding: const EdgeInsets.only(
+                  left: 20.0, right: 20.0, top: 15.0, bottom: 20.0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    height: 180, // Make the progress indicator larger
+                    width: 180, // Make the progress indicator larger
+                    child: CircularProgressIndicator(
+                      value: snapshot.data! / (countdownTime * 1000),
+                      strokeWidth: 12, // Make the progress indicator thicker
                     ),
-                    backgroundColor: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.2),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: (snapshot.data! / 1000) < 999
-                      ? Text(
-                          (snapshot.data! / 1000).toStringAsFixed(0),
-                          style: const TextStyle(
-                            fontSize: 42,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'AtkinsonHyperlegible',
+                  Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: (snapshot.data! / 1000) < 999
+                        ? Text(
+                            (snapshot.data! / 1000).toStringAsFixed(0),
+                            style: const TextStyle(fontSize: 50),
+                          )
+                        : const Text(
+                            'Testing',
+                            style: TextStyle(fontSize: 30),
                           ),
-                        )
-                      : const Text(
-                          'Testing',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'AtkinsonHyperlegible',
-                          ),
-                        ),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          GlassButton(
-            onPressed: () {
-              try {
-                _exposureOperation?.cancel();
-                _exposureCompleter?.complete();
-              } catch (e) {
-                _logger.severe('Failed to stop exposure: $e');
-              }
-              Navigator.of(context, rootNavigator: true).pop(true);
-            },
-            child: const Text('Stop Exposure'),
-          ),
-        ],
+            const SizedBox(height: 20),
+            GlassButton(
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(250, 70),
+                maximumSize: const Size(250, 70),
+              ),
+              onPressed: () {
+                try {
+                  _exposureOperation?.cancel();
+                  _exposureCompleter?.complete();
+                } catch (e) {
+                  _logger.severe('Failed to stop exposure: $e');
+                }
+                Navigator.of(context, rootNavigator: true).pop(true);
+              },
+              child: Text(
+                'Stop Exposure',
+                style: TextStyle(fontSize: 24),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
