@@ -78,44 +78,44 @@ class GlassCard extends StatelessWidget {
             );
     }
 
+    // Extract borderRadius from shape if possible
+    BorderRadius borderRadius = BorderRadius.circular(glassCornerRadius);
+    if (shape is RoundedRectangleBorder) {
+      final rrb = shape as RoundedRectangleBorder;
+      if (rrb.borderRadius is BorderRadius) {
+        borderRadius = rrb.borderRadius as BorderRadius;
+      }
+    }
+
     return Container(
       margin: margin ?? const EdgeInsets.all(4.0), // Default Card margin
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(glassCornerRadius),
+        borderRadius: borderRadius,
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Stack(
-            children: [
-              // Main glass content
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(glassCornerRadius),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 15,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: child,
-              ),
-              // Inset border overlay
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(glassCornerRadius),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 1,
-                      ),
-                    ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: borderRadius,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 15,
+                    offset: const Offset(0, 4),
                   ),
+                ],
+              ),
+              foregroundDecoration: BoxDecoration(
+                borderRadius: borderRadius,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  width: 1,
                 ),
               ),
-            ],
+              child: child,
+            ),
           ),
         ),
       ),
