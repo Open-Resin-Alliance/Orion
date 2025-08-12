@@ -383,6 +383,3 @@ class _ThemeCard extends StatelessWidget {
     }
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareThemeSelector = GlassThemeSelector;

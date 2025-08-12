@@ -122,6 +122,3 @@ class GlassChoiceChip extends StatelessWidget {
     );
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareChoiceChip = GlassChoiceChip;

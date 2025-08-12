@@ -122,6 +122,3 @@ class GlassCard extends StatelessWidget {
     );
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareCard = GlassCard;

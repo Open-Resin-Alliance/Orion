@@ -221,6 +221,3 @@ class GlassFloatingActionButton extends StatelessWidget {
     }
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareFloatingActionButton = GlassFloatingActionButton;

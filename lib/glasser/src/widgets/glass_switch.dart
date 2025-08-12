@@ -79,6 +79,3 @@ class GlassSwitch extends StatelessWidget {
     );
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareSwitch = GlassSwitch;

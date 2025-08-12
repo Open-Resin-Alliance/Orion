@@ -182,6 +182,3 @@ class GlassApp extends StatelessWidget {
     return (hue >= 0 && hue <= 120) || (hue >= 270 && hue <= 360);
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareApp = GlassApp;

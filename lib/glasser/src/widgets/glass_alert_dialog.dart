@@ -279,5 +279,3 @@ Widget _buildButtonContentWithIcon(Widget originalChild) {
 
   return originalChild;
 } // Backwards compatibility alias
-
-typedef GlassAwareAlertDialog = GlassAlertDialog;

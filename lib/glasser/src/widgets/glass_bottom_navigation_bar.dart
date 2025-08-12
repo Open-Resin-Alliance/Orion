@@ -91,6 +91,3 @@ class GlassBottomNavigationBar extends StatelessWidget {
     );
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareBottomNavigationBar = GlassBottomNavigationBar;

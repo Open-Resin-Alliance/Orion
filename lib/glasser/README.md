@@ -102,49 +102,6 @@ GlassButton(onPressed: () {}, child: Text('Auto-adapting'))
 
 - **GlassThemeSelector**: Theme selection widget with glass support
 
-## Migration from Old System
-
-The new Glasser library uses cleaner names without the "Aware" suffix:
-
-| Old Widget              | New Widget         |
-| ----------------------- | ------------------ |
-| `GlassAwareApp`         | `GlassApp`         |
-| `GlassAwareButton`      | `GlassButton`      |
-| `GlassAwareSwitch`      | `GlassSwitch`      |
-| `GlassAwareCard`        | `GlassCard`        |
-| `GlassAwareFilterChip`  | `GlassFilterChip`  |
-| `GlassAwareChoiceChip`  | `GlassChoiceChip`  |
-| `GlassAwareDialog`      | `GlassDialog`      |
-| `GlassAwareAlertDialog` | `GlassAlertDialog` |
-
-### Migration Steps
-
-1. Replace import:
-
-   ```dart
-   // Old
-   import '../themes/glassmorphic_widgets.dart';
-
-   // New
-   import '../glasser/glasser.dart';
-   ```
-
-2. Update widget names:
-
-   ```dart
-   // Old
-   GlassAwareButton(
-     onPressed: () {},
-     child: Text('Click'),
-   )
-
-   // New
-   GlassButton(
-     onPressed: () {},
-     child: Text('Click'),
-   )
-   ```
-
 ## Architecture
 
 ### File Structure

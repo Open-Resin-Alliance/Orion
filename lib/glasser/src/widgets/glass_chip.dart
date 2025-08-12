@@ -97,6 +97,3 @@ class GlassChip extends StatelessWidget {
     );
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareChip = GlassChip;

@@ -47,8 +47,5 @@ export 'src/widgets/glass_filter_chip.dart';
 export 'src/widgets/glass_choice_chip.dart';
 export 'src/widgets/glass_chip.dart';
 
-// List widgets
-export 'src/widgets/glass_list_tile.dart';
-
 // Theme widgets
 export 'src/widgets/glass_theme_selector.dart';

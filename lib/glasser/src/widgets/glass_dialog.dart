@@ -73,6 +73,3 @@ class GlassDialog extends StatelessWidget {
     );
   }
 }
-
-// Backwards compatibility alias
-typedef GlassAwareDialog = GlassDialog;
