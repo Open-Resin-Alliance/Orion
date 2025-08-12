@@ -390,6 +390,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                             final String fileName = path.basename(item.path);
                             final String displayName = fileName;
 
+                            final themeProvider =
+                                Provider.of<ThemeProvider>(context);
+
                             // Card that navigates to the file or directory
                             return GlassCard(
                               elevation: 2,
@@ -481,8 +484,11 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                                                           Icons.error);
                                                     } else {
                                                       return ClipRRect(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
+                                                        borderRadius: themeProvider
+                                                                .isGlassTheme
+                                                            ? BorderRadius
+                                                                .circular(10.5)
+                                                            : BorderRadius.circular(
                                                                 7.75), // Adjust the border radius as needed
                                                         child: Image.file(
                                                           File(snapshot.data!),
