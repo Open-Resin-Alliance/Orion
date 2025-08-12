@@ -509,158 +509,155 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     ],
                   ),
                 ),
-              ), // Add comma here
-              if (developerMode)
-                GlassCard(
-                  outlined: true,
-                  elevation: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Developer',
-                          style: TextStyle(
-                            fontSize: 28.0,
+              ),
+
+              /// Developer Section for build overrides.
+              if (developerMode) _buildDeveloperSection(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  GlassCard _buildDeveloperSection() {
+    return GlassCard(
+      outlined: true,
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Developer',
+              style: TextStyle(
+                fontSize: 28.0,
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            OrionListTile(
+              title: 'Release Tag Override',
+              icon: PhosphorIcons.download(),
+              value: releaseOverride,
+              onChanged: (bool value) {
+                setState(() {
+                  releaseOverride = value;
+                  config.setFlag('releaseOverride', releaseOverride,
+                      category: 'developer');
+                });
+              },
+            ),
+            if (releaseOverride) const SizedBox(height: 20.0),
+            if (releaseOverride)
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 60,
+                      child: GlassButton(
+                        style: ElevatedButton.styleFrom(
+                          elevation: 3,
+                          alignment: Alignment.center, // Center the content
+                        ),
+                        onPressed: () {
+                          _showReleaseDialog();
+                        },
+                        child: Center(
+                          // Wrap in Center widget
+                          child: AutoSizeText(
+                            overrideRelease == ''
+                                ? 'Select Release Tag'
+                                : overrideRelease,
+                            style: const TextStyle(fontSize: 22),
+                            minFontSize: 20,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign:
+                                TextAlign.center, // Center text alignment
                           ),
                         ),
-                        const SizedBox(height: 20.0),
-                        OrionListTile(
-                          title: 'Release Tag Override',
-                          icon: PhosphorIcons.download(),
-                          value: releaseOverride,
-                          onChanged: (bool value) {
-                            setState(() {
-                              releaseOverride = value;
-                              config.setFlag('releaseOverride', releaseOverride,
-                                  category: 'developer');
-                            });
-                          },
-                        ),
-                        if (releaseOverride) const SizedBox(height: 20.0),
-                        if (releaseOverride)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  height: 60,
-                                  child: GlassButton(
-                                    style: ElevatedButton.styleFrom(
-                                      elevation: 3,
-                                      alignment: Alignment
-                                          .center, // Center the content
-                                    ),
-                                    onPressed: () {
-                                      _showReleaseDialog();
-                                    },
-                                    child: Center(
-                                      // Wrap in Center widget
-                                      child: AutoSizeText(
-                                        overrideRelease == ''
-                                            ? 'Select Release Tag'
-                                            : overrideRelease,
-                                        style: const TextStyle(fontSize: 22),
-                                        minFontSize: 20,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign
-                                            .center, // Center text alignment
-                                      ),
-                                    ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: SizedBox(
+                      height: 60, // Increase height to prevent text cutoff
+                      child: overrideRelease == ''
+                          ? GlassButton(
+                              style: ElevatedButton.styleFrom(
+                                elevation: 3,
+                                alignment:
+                                    Alignment.center, // Center the content
+                              ),
+                              onPressed:
+                                  () {}, // Empty callback for disabled state
+                              child: Opacity(
+                                opacity: 0.5, // Make it look disabled
+                                child: const Center(
+                                  // Wrap in Center widget
+                                  child: Text(
+                                    'Clear Release',
+                                    style: TextStyle(fontSize: 18),
+                                    textAlign: TextAlign
+                                        .center, // Center text alignment
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 20),
-                              Expanded(
-                                child: SizedBox(
-                                  height:
-                                      60, // Increase height to prevent text cutoff
-                                  child: overrideRelease == ''
-                                      ? GlassButton(
-                                          style: ElevatedButton.styleFrom(
-                                            elevation: 3,
-                                            alignment: Alignment
-                                                .center, // Center the content
-                                          ),
-                                          onPressed:
-                                              () {}, // Empty callback for disabled state
-                                          child: Opacity(
-                                            opacity:
-                                                0.5, // Make it look disabled
-                                            child: const Center(
-                                              // Wrap in Center widget
-                                              child: Text(
-                                                'Clear Release',
-                                                style: TextStyle(fontSize: 18),
-                                                textAlign: TextAlign
-                                                    .center, // Center text alignment
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      : GlassButton(
-                                          style: ElevatedButton.styleFrom(
-                                            elevation: 3,
-                                            alignment: Alignment
-                                                .center, // Center the content
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              overrideRelease = '';
-                                              config.setString(
-                                                  'overrideRelease',
-                                                  overrideRelease,
-                                                  category: 'developer');
-                                            });
-                                          },
-                                          child: const Center(
-                                            // Wrap in Center widget
-                                            child: AutoSizeText(
-                                              'Clear Release Tag',
-                                              style: TextStyle(
-                                                  fontSize:
-                                                      18), // Reduce font size
-                                              minFontSize:
-                                                  16, // Reduce min font size
-                                              maxLines: 1,
-                                              textAlign: TextAlign
-                                                  .center, // Center text alignment
-                                              overflowReplacement: Text(
-                                                'Clear Tag',
-                                                style: TextStyle(
-                                                    fontSize:
-                                                        18), // Reduce font size
-                                                textAlign: TextAlign
-                                                    .center, // Center text alignment
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                            )
+                          : GlassButton(
+                              style: ElevatedButton.styleFrom(
+                                elevation: 3,
+                                alignment:
+                                    Alignment.center, // Center the content
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  overrideRelease = '';
+                                  config.setString(
+                                      'overrideRelease', overrideRelease,
+                                      category: 'developer');
+                                });
+                              },
+                              child: const Center(
+                                // Wrap in Center widget
+                                child: AutoSizeText(
+                                  'Clear Release Tag',
+                                  style: TextStyle(
+                                      fontSize: 18), // Reduce font size
+                                  minFontSize: 16, // Reduce min font size
+                                  maxLines: 1,
+                                  textAlign:
+                                      TextAlign.center, // Center text alignment
+                                  overflowReplacement: Text(
+                                    'Clear Tag',
+                                    style: TextStyle(
+                                        fontSize: 18), // Reduce font size
+                                    textAlign: TextAlign
+                                        .center, // Center text alignment
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                        const SizedBox(height: 20.0),
-                        OrionListTile(
-                          title: 'Force Update',
-                          icon: PhosphorIcons.warning(),
-                          value: overrideUpdateCheck,
-                          onChanged: (bool value) {
-                            setState(() {
-                              overrideUpdateCheck = value;
-                              config.setFlag(
-                                  'overrideUpdateCheck', overrideUpdateCheck,
-                                  category: 'developer');
-                            });
-                          },
-                        ),
-                      ],
+                            ),
                     ),
                   ),
-                ),
-            ],
-          ),
+                ],
+              ),
+            const SizedBox(height: 20.0),
+            OrionListTile(
+              title: 'Force Update',
+              icon: PhosphorIcons.warning(),
+              value: overrideUpdateCheck,
+              onChanged: (bool value) {
+                setState(() {
+                  overrideUpdateCheck = value;
+                  config.setFlag('overrideUpdateCheck', overrideUpdateCheck,
+                      category: 'developer');
+                });
+              },
+            ),
+          ],
         ),
       ),
     );
