@@ -16,10 +16,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
       - uses: seanmiddleditch/gha-setup-ninja@master
+
+      - id: flutterpi_engine
+        run: echo "latest=$(gh release list -R ardera/flutter-ci --json name,isLatest --jq '.[] |=select(.isLatest) | .[0].name')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable" # or: 'beta', 'dev', 'master' (or 'main')
-          flutter-version: 3.24.4
+          flutter-version: ${{ steps.flutterpi_engine.outputs.latest }}
+
       - run: sudo apt-get update && sudo apt-get install -y gtk+-3.0
       - run: flutter pub global activate flutterpi_tool
       - run: flutter build linux
