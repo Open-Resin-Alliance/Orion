@@ -19,10 +19,10 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable" # or: 'beta', 'dev', 'master' (or 'main')
-          flutter-version: 3.27.1
+          flutter-version: 3.32.8
       - run: sudo apt-get update && sudo apt-get install -y gtk+-3.0
       - run: flutter pub global activate flutterpi_tool
-      
+
       # Add these steps to verify and fix localization files
       - name: Verify ARB Localization Files
         run: |
@@ -40,11 +40,11 @@ jobs:
               sed -i 's/"@@locale": *"[^"]*"/"@@locale": "'$locale'"/' $file
             fi
           done
-          
+
       # Generate localization files
       - name: Generate Localizations
         run: flutter gen-l10n
-      
+
       - run: flutter build linux
 
       - name: Get Version
