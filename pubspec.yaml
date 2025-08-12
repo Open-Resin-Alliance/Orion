@@ -67,6 +67,7 @@ dependencies:
   animations: ^2.0.8
   flutter_localizations:
     sdk: flutter
+  marquee: ^2.3.0
 
 dev_dependencies:
   flutter_test:

@@ -21,11 +21,14 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:marquee/marquee.dart';
+import 'package:provider/provider.dart';
 
 import 'package:orion/api_services/api_services.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/status/status_screen.dart';
 import 'package:orion/util/sl1_thumbnail.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class DetailScreen extends StatefulWidget {
   final String fileName;
@@ -267,26 +270,52 @@ class DetailScreenState extends State<DetailScreen> {
   }
 
   Widget buildNameCard(String title) {
-    final displayName = fileName.length > maxNameLength
-        ? '${fileName.substring(0, maxNameLength)}...'
-        : fileName;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final marqueeHeight = 32.0; // or 36.0 if you want more vertical space
+        final nameText = AutoSizeText(
+          fileName,
+          maxLines: 1,
+          minFontSize: 18,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          overflowReplacement: SizedBox(
+            width: constraints.maxWidth > 0 ? constraints.maxWidth : 200,
+            height: marqueeHeight,
+            child: Marquee(
+              startAfter: const Duration(seconds: 2),
+              pauseAfterRound: const Duration(seconds: 3),
+              showFadingOnlyWhenScrolling: true,
+              fadingEdgeStartFraction: 0.1,
+              fadingEdgeEndFraction: 0.1,
+              blankSpace: 40.0,
+              startPadding: 4.0,
+              text: fileName,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+        );
 
-    final nameText = AutoSizeText(
-      displayName,
-      maxLines: 1,
-      minFontSize: 16,
-      style: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-    );
+        final cardChild = ListTile(
+          title: Row(
+            children: [
+              Expanded(child: nameText),
+            ],
+          ),
+        );
 
-    final cardChild = ListTile(title: nameText);
-
-    return GlassCard(
-      outlined: true,
-      child: cardChild,
+        return GlassCard(
+          outlined: true,
+          child: cardChild,
+        );
+      },
     );
   }
 
@@ -295,10 +324,14 @@ class DetailScreenState extends State<DetailScreen> {
         ? Image.file(File(thumbnailPath))
         : const Center(child: CircularProgressIndicator());
 
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     final Widget cardContent = Padding(
       padding: const EdgeInsets.all(4.5),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(7.75),
+        borderRadius: themeProvider.isGlassTheme
+            ? BorderRadius.circular(10.5)
+            : BorderRadius.circular(7.75),
         child: imageWidget,
       ),
     );
@@ -333,10 +366,10 @@ class DetailScreenState extends State<DetailScreen> {
                     widget.fileLocation,
                     path.join(widget.fileSubdirectory, widget.fileName),
                   );
-                  _logger.info('File deleted successfully');
+                  _logger.info('File ${widget.fileName} deleted successfully');
                   if (mounted) Navigator.of(context).pop(true);
                 } catch (e) {
-                  _logger.severe('Failed to delete file', e);
+                  _logger.severe('Failed to delete file ${widget.fileName}', e);
                   if (mounted) Navigator.of(context).pop(false);
                 }
               },
@@ -347,7 +380,8 @@ class DetailScreenState extends State<DetailScreen> {
       },
     );
     if (deleteConfirmed == true) {
-      Navigator.of(context).pop(); // Close the detail screen
+      // Pop this detail screen and signal to previous screen to refresh
+      Navigator.of(context).pop(true); // Pass true to indicate refresh needed
     }
   }
 
@@ -363,7 +397,7 @@ class DetailScreenState extends State<DetailScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
             ),
-            minimumSize: const Size(120, 60), // Same width as Edit button
+            minimumSize: const Size(120, 65), // Same width as Edit button
           ),
           child: const Text(
             'Delete',
@@ -394,7 +428,7 @@ class DetailScreenState extends State<DetailScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
-              minimumSize: const Size(0, 60), // Taller to work for both themes
+              minimumSize: const Size(0, 65), // Taller to work for both themes
             ),
             child: const Text(
               'Print',
@@ -410,7 +444,7 @@ class DetailScreenState extends State<DetailScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
             ),
-            minimumSize: const Size(120, 60), // Taller to work for both themes
+            minimumSize: const Size(120, 65), // Taller to work for both themes
           ),
           child: const Text(
             'Edit',
