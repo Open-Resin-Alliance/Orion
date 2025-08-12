@@ -401,6 +401,7 @@ class StatusScreenState extends State<StatusScreen>
     Provider.of<ThemeProvider>(context);
 
     return GlassCard(
+      outlined: true,
       elevation: 1.0,
       child: ListTile(
         title: Text(title),
@@ -411,9 +412,7 @@ class StatusScreenState extends State<StatusScreen>
 
   Widget buildNameCard(String title) {
     Provider.of<ThemeProvider>(context);
-
     return GlassCard(
-      margin: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 3.0),
       outlined: true,
       child: ListTile(
         title: AutoSizeText.rich(
@@ -588,11 +587,12 @@ class StatusScreenState extends State<StatusScreen>
               Provider.of<ThemeProvider>(context);
 
               final buttonStyle = ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  minimumSize: const Size(120, 60),
-                  maximumSize: Size(120, 60));
+                minimumSize: const Size(120, 65),
+                maximumSize: Size(120, 65),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              );
 
               final onPressed = isCanceling == true && status!['layer'] != null
                   ? null
@@ -604,74 +604,75 @@ class StatusScreenState extends State<StatusScreen>
                             builder: (BuildContext context) {
                               Provider.of<ThemeProvider>(context);
 
-                              Widget dialogContent = SizedBox(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    const SizedBox(height: 10),
-                                    const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text(
-                                        'Options',
-                                        style: TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold),
+                              Widget dialogContent = Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  const SizedBox(height: 10),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      'Options',
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 10),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 20, right: 20),
-                                      child: SizedBox(
-                                        height: 65,
-                                        width: 450,
-                                        child: GlassButton(
-                                          style: buttonStyle,
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const SettingsScreen()),
-                                            );
-                                          },
-                                          child: const Text(
-                                            'Settings',
-                                            style: TextStyle(fontSize: 24),
-                                          ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 20, right: 20),
+                                    child: SizedBox(
+                                      height: 65,
+                                      width: 450,
+                                      child: GlassButton(
+                                        style: buttonStyle,
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const SettingsScreen()),
+                                          );
+                                        },
+                                        child: const Text(
+                                          'Settings',
+                                          style: TextStyle(fontSize: 24),
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 20),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 20, right: 20),
-                                      child: SizedBox(
-                                        height: 65,
-                                        width: 450,
-                                        child: HoldButton(
-                                          duration: const Duration(seconds: 2),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            _api.cancelPrint();
-                                            setState(() {
-                                              isCanceling = true;
-                                            });
-                                          },
-                                          child: const Text(
-                                            'Cancel Print',
-                                            style: TextStyle(fontSize: 24),
-                                          ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 20, right: 20),
+                                    child: SizedBox(
+                                      height: 65,
+                                      width: 450,
+                                      child: HoldButton(
+                                        style: buttonStyle,
+                                        duration: const Duration(seconds: 2),
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          _api.cancelPrint();
+                                          setState(() {
+                                            isCanceling = true;
+                                          });
+                                        },
+                                        child: const Text(
+                                          'Cancel Print',
+                                          style: TextStyle(fontSize: 24),
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 20),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
                               );
 
                               return GlassDialog(
+                                padding: const EdgeInsets.all(8),
                                 child: dialogContent,
                               );
                             },
@@ -709,8 +710,8 @@ class StatusScreenState extends State<StatusScreen>
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  minimumSize: const Size(120, 60),
-                  maximumSize: Size(120, 60));
+                  minimumSize: const Size(120, 65),
+                  maximumSize: Size(120, 65));
 
               final onPressed = isCanceling == true && status!['layer'] != null
                   ? null
