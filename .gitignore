@@ -49,6 +49,9 @@ app.*.map.json
 
 .VSCodeCounter
 
+# Project specific files
 orion.cfg
 vendor.cfg
 .github/copilot-instructions.md
+lib/l10n/generated/
+lib/l10n/generated/*
