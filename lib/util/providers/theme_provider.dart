@@ -1,6 +1,6 @@
 /*
 * Orion - Theme Provider
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,42 +16,98 @@
 */
 
 import 'package:flutter/material.dart';
+
 import 'package:orion/themes/themes.dart';
 import 'package:orion/util/orion_config.dart';
 
+enum OrionThemeMode {
+  light,
+  dark,
+  glass, // New glassmorphic theme
+}
+
 class ThemeProvider with ChangeNotifier {
   final OrionConfig _config = OrionConfig();
-  late ThemeMode _themeMode;
+  late OrionThemeMode _orionThemeMode;
   late Color _colorSeed;
+  late List<Color> _themeGradient;
 
   ThemeProvider() {
     // Initialize theme mode from config
     final savedThemeMode = _config.getString('themeMode', category: 'general');
-    _themeMode = ThemeMode.values.firstWhere(
+    _orionThemeMode = OrionThemeMode.values.firstWhere(
       (mode) => mode.name == savedThemeMode,
-      orElse: () => ThemeMode.system,
+      orElse: () => OrionThemeMode.dark,
     );
 
     // Initialize color seed from config
     _colorSeed = _determineThemeColor();
+
+    // Initialize gradient from config
+    _themeGradient = _determineThemeGradient();
   }
 
-  ThemeMode get themeMode => _themeMode;
+  OrionThemeMode get orionThemeMode => _orionThemeMode;
   Color get currentColorSeed => _colorSeed;
+  List<Color> get currentThemeGradient => _themeGradient;
+
+  // For backwards compatibility with Material ThemeMode
+  ThemeMode get themeMode {
+    switch (_orionThemeMode) {
+      case OrionThemeMode.light:
+        return ThemeMode.light;
+      case OrionThemeMode.dark:
+      case OrionThemeMode.glass:
+        return ThemeMode.dark; // Glass theme uses dark as base
+    }
+  }
 
   ThemeData get lightTheme => createLightTheme(_colorSeed);
-  ThemeData get darkTheme => createDarkTheme(_colorSeed);
+  ThemeData get darkTheme => _orionThemeMode == OrionThemeMode.glass
+      ? createGlassTheme(_colorSeed)
+      : createDarkTheme(_colorSeed);
 
-  void setThemeMode(ThemeMode mode) {
-    _themeMode = mode;
+  bool get isGlassTheme => _orionThemeMode == OrionThemeMode.glass;
+
+  void setThemeMode(OrionThemeMode mode) {
+    _orionThemeMode = mode;
     _config.setString('themeMode', mode.name, category: 'general');
     notifyListeners();
+  }
+
+  // Backwards compatibility method
+  void setMaterialThemeMode(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        setThemeMode(OrionThemeMode.light);
+        break;
+      case ThemeMode.dark:
+        setThemeMode(OrionThemeMode.dark);
+        break;
+      case ThemeMode.system:
+        // For now, map system to dark - could be enhanced later
+        setThemeMode(OrionThemeMode.dark);
+        break;
+    }
   }
 
   void setColorSeed(Color color) {
     // Only allow changing color if vendor theme is not mandated
     if (!_config.getFlag('mandateTheme', category: 'vendor')) {
       _colorSeed = color;
+      // Clear saved gradient when color changes to auto-generate new one
+      _config.setThemeGradient([]);
+      // Re-evaluate the gradient after clearing
+      _themeGradient = _determineThemeGradient();
+      notifyListeners();
+    } else {}
+  }
+
+  void setThemeGradient(List<Color> gradient) {
+    // Only allow changing gradient if vendor theme is not mandated
+    if (!_config.getFlag('mandateTheme', category: 'vendor')) {
+      _themeGradient = gradient;
+      _config.setThemeGradient(gradient);
       notifyListeners();
     }
   }
@@ -86,6 +142,32 @@ class ThemeProvider with ChangeNotifier {
 
     // Default to blue if no other theme is set
     return Colors.purple;
+  }
+
+  List<Color> _determineThemeGradient() {
+    // Check for vendor gradient first
+    final vendorGradient = _config.getThemeGradient('vendor');
+    final isVendorMandated =
+        _config.getFlag('mandateTheme', category: 'vendor');
+
+    if (vendorGradient.isNotEmpty && isVendorMandated) {
+      return vendorGradient;
+    }
+
+    // Check for user-selected gradient
+    final savedGradient = _config.getThemeGradient('primary');
+    if (savedGradient.isNotEmpty) {
+      return savedGradient;
+    }
+
+    // Check if user has explicitly selected vendor theme color
+    final savedColorSeed = _config.getString('colorSeed', category: 'general');
+    if (savedColorSeed == 'vendor' && vendorGradient.isNotEmpty) {
+      return vendorGradient;
+    }
+
+    // Return empty list to auto-generate gradient from current color
+    return [];
   }
 
   Color _getColorFromKey(String? key) {

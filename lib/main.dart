@@ -1,6 +1,6 @@
 /*
 * Orion - An open-source user interface for the Odyssey 3d-printing engine.
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,31 +17,31 @@
 
 // ignore_for_file: avoid_print
 
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:window_size/window_size.dart';
 
-import 'package:orion/home/home_screen.dart';
-import 'package:orion/home/onboarding_screen.dart';
-import 'package:orion/status/status_screen.dart';
 import 'package:orion/files/files_screen.dart';
 import 'package:orion/files/grid_files_screen.dart';
-import 'package:orion/settings/settings_screen.dart';
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/home/home_screen.dart';
+import 'package:orion/home/onboarding_screen.dart';
+import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/settings/about_screen.dart';
-import 'package:orion/util/error_handling/error_handler.dart';
+import 'package:orion/settings/settings_screen.dart';
+import 'package:orion/status/status_screen.dart';
 import 'package:orion/tools/tools_screen.dart';
+import 'package:orion/util/error_handling/error_handler.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
-
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:window_size/window_size.dart';
-import 'package:provider/provider.dart';
-import 'package:logging/logging.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -225,21 +225,23 @@ class OrionMainAppState extends State<OrionMainApp> {
         return Provider<Function>.value(
           value:
               themeProvider.setThemeMode, // Use ThemeProvider's method directly
-          child: MaterialApp.router(
-            title: 'Orion',
-            debugShowCheckedModeBanner: false,
-            routerConfig: _router,
-            theme: themeProvider.lightTheme,
-            darkTheme: themeProvider.darkTheme,
-            themeMode: themeProvider.themeMode,
-            locale: localeProvider.locale,
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
+          child: GlassApp(
+            child: MaterialApp.router(
+              title: 'Orion',
+              debugShowCheckedModeBanner: false,
+              routerConfig: _router,
+              theme: themeProvider.lightTheme,
+              darkTheme: themeProvider.darkTheme,
+              themeMode: themeProvider.themeMode,
+              locale: localeProvider.locale,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
+            ),
           ),
         );
       },

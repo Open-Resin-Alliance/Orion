@@ -1,6 +1,6 @@
 /*
 * Orion - Onboarding Screen - Pages
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,22 +17,23 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:orion/settings/about_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:country_flags/country_flags.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
-import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/l10n/generated/app_localizations.dart';
+import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/wifi_screen.dart';
-import 'package:orion/util/orion_list_tile.dart';
-import 'package:orion/util/theme_color_selector.dart';
-import 'package:orion/util/providers/theme_provider.dart';
-import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/locales/all_countries.dart';
 import 'package:orion/util/locales/available_languages.dart';
+import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
+import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/providers/locale_provider.dart';
+import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/theme_color_selector.dart';
+
 import 'welcome_bubbles.dart';
 
 class OnboardingPages {
@@ -41,68 +42,45 @@ class OnboardingPages {
     AnimationController bubbleController,
     List<WelcomeBubble> welcomeBubbles,
   ) {
-    return Center(
-      child: Stack(
-        children: [
-          CustomPaint(
-            size: Size.infinite,
-            painter: WelcomePatternPainter(context),
-          ),
-          AnimatedBuilder(
-            animation: bubbleController,
-            builder: (context, child) {
-              final size = MediaQuery.of(context).size;
+    return GlassApp(
+      child: Center(
+        child: Stack(
+          children: [
+            CustomPaint(
+              size: Size.infinite,
+              painter: WelcomePatternPainter(context),
+            ),
+            AnimatedBuilder(
+              animation: bubbleController,
+              builder: (context, child) {
+                final size = MediaQuery.of(context).size;
 
-              // Add back the scheduler callback
-              SchedulerBinding.instance.scheduleFrameCallback((_) {
-                for (var bubble in welcomeBubbles) {
-                  bubble.update(size, 1 / 60, welcomeBubbles);
-                }
-              });
+                // Add back the scheduler callback
+                SchedulerBinding.instance.scheduleFrameCallback((_) {
+                  for (var bubble in welcomeBubbles) {
+                    bubble.update(size, 1 / 60, welcomeBubbles);
+                  }
+                });
 
-              return Stack(
-                children: welcomeBubbles.map((bubble) {
-                  return Positioned(
-                    left: bubble.position.dx,
-                    top: bubble.position.dy,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 200),
-                      opacity: bubble.opacity,
-                      child: Container(
-                        padding: EdgeInsets.all(bubble.padding),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primaryContainer
-                              .withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(bubble.size),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Theme.of(context)
-                                  .shadowColor
-                                  .withValues(alpha: 0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          bubble.message,
-                          style: TextStyle(
-                            fontSize: bubble.size * 0.8,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
-                          ),
+                return Stack(
+                  children: welcomeBubbles.map((bubble) {
+                    return Positioned(
+                      left: bubble.position.dx,
+                      top: bubble.position.dy,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: bubble.opacity,
+                        child: _GlassBubble(
+                          bubble: bubble,
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ],
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -111,74 +89,72 @@ class OnboardingPages {
     BuildContext context,
     Function(String) onLanguageSelected,
   ) {
-    return Consumer<LocaleProvider>(
-      builder: (context, localeProvider, _) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0),
-          child: GridView.builder(
-            physics: const BouncingScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              childAspectRatio: 1.03,
-              mainAxisSpacing: 5,
-              crossAxisSpacing: 5,
-              crossAxisCount:
-                  MediaQuery.of(context).orientation == Orientation.landscape
-                      ? 4
-                      : 2,
-            ),
-            itemCount: availableLanguages.length,
-            itemBuilder: (context, index) {
-              final language = availableLanguages[index];
+    return GlassApp(
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, _) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+            child: GridView.builder(
+              physics: const BouncingScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                childAspectRatio: 1.03,
+                mainAxisSpacing: 5,
+                crossAxisSpacing: 5,
+                crossAxisCount:
+                    MediaQuery.of(context).orientation == Orientation.landscape
+                        ? 4
+                        : 2,
+              ),
+              itemCount: availableLanguages.length,
+              itemBuilder: (context, index) {
+                final language = availableLanguages[index];
 
-              return Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () => onLanguageSelected(language['code']!),
-                  child: GridTile(
-                    footer: Card(
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(10),
-                          bottomRight: Radius.circular(10),
+                return GlassCard(
+                  elevation: 2,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => onLanguageSelected(language['code']!),
+                    child: GridTile(
+                      footer: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(10),
+                            bottomRight: Radius.circular(10),
+                          ),
+                        ),
+                        child: GridTileBar(
+                          backgroundColor: Colors.transparent,
+                          title: Text(
+                            language['nativeName'] ?? language['name']!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontSize: 24,
+                              fontFamily: 'AtkinsonHyperlegible',
+                            ),
+                          ),
                         ),
                       ),
-                      color: Colors.transparent,
-                      elevation: 0,
-                      child: GridTileBar(
-                        backgroundColor: Colors.transparent,
-                        title: Text(
-                          language['nativeName'] ?? language['name']!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 24,
-                            fontFamily: 'AtkinsonHyperlegible',
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 30),
+                          child: CountryFlag.fromCountryCode(
+                            language['flag']!,
+                            height: 95,
+                            width: 130,
+                            shape: RoundedRectangle(8),
                           ),
                         ),
                       ),
                     ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 30),
-                        child: CountryFlag.fromCountryCode(
-                          language['flag']!,
-                          height: 95,
-                          width: 130,
-                          shape: RoundedRectangle(8),
-                        ),
-                      ),
-                    ),
                   ),
-                ),
-              );
-            },
-          ),
-        );
-      },
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -200,35 +176,39 @@ class OnboardingPages {
         .toList()
       ..sort((a, b) => a['name']!.compareTo(b['name']!));
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: ListView(
-        children: [
-          if (suggestedCountries.isNotEmpty) ...[
-            Text(
-              l10n.regionSuggestedCountries,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    return GlassApp(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: ListView(
+          children: [
+            if (suggestedCountries.isNotEmpty) ...[
+              Text(
+                l10n.regionSuggestedCountries,
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ...suggestedCountries.map(
+                (country) =>
+                    _buildCountryCard(context, country, onCountrySelected),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.regionAllCountries,
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+            ],
+            ...allCountries.map(
+              (country) => _buildCountryCard(
+                context,
+                country.map((key, value) => MapEntry(key, value.toString())),
+                onCountrySelected,
+              ),
             ),
-            const SizedBox(height: 8),
-            ...suggestedCountries.map(
-              (country) =>
-                  _buildCountryCard(context, country, onCountrySelected),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.regionAllCountries,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
           ],
-          ...allCountries.map(
-            (country) => _buildCountryCard(
-              context,
-              country.map((key, value) => MapEntry(key, value.toString())),
-              onCountrySelected,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -241,7 +221,7 @@ class OnboardingPages {
     final nativeName = country['nativeName'];
     final name = country['name']!;
 
-    return Card(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5.0),
         child: ListTile(
@@ -283,13 +263,15 @@ class OnboardingPages {
     final countryTimezones = countryData[selectedCountry]?['timezones'];
 
     if (countryTimezones == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            l10n.timezoneNoneAvailable,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 20),
+      return GlassApp(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              l10n.timezoneNoneAvailable,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20),
+            ),
           ),
         ),
       );
@@ -298,32 +280,34 @@ class OnboardingPages {
     final suggestedTimezones = countryTimezones['suggested'] as List<String>;
     final otherTimezones = countryTimezones['other'] as List<String>;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: ListView(
-        children: [
-          Text(
-            l10n.timezoneSuggested,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          ...suggestedTimezones.map((timezone) => _buildTimezoneCard(
-                context,
-                timezone,
-                onTimezoneSelected,
-              )),
-          const SizedBox(height: 16),
-          Text(
-            l10n.timezoneOther,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          ...otherTimezones.map((timezone) => _buildTimezoneCard(
-                context,
-                timezone,
-                onTimezoneSelected,
-              )),
-        ],
+    return GlassApp(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: ListView(
+          children: [
+            Text(
+              l10n.timezoneSuggested,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ...suggestedTimezones.map((timezone) => _buildTimezoneCard(
+                  context,
+                  timezone,
+                  onTimezoneSelected,
+                )),
+            const SizedBox(height: 16),
+            Text(
+              l10n.timezoneOther,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ...otherTimezones.map((timezone) => _buildTimezoneCard(
+                  context,
+                  timezone,
+                  onTimezoneSelected,
+                )),
+          ],
+        ),
       ),
     );
   }
@@ -336,30 +320,32 @@ class OnboardingPages {
   ) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Builder(builder: (context) {
-              return Padding(
-                padding: const EdgeInsets.all(5.0),
-                child: SpawnOrionTextField(
-                  presetText:
-                      config.getString('machineName', category: 'machine'),
-                  key: nameTextFieldKey,
-                  keyboardHint: l10n.printerName,
-                  locale: Localizations.localeOf(context).toString(),
-                  scrollController: scrollController,
-                  onChanged: onNameChanged,
-                ),
-              );
-            }),
-            OrionKbExpander(textFieldKey: nameTextFieldKey),
-            const SizedBox(height: kToolbarHeight),
-          ],
+    return GlassApp(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Builder(builder: (context) {
+                return Padding(
+                  padding: const EdgeInsets.all(5.0),
+                  child: SpawnOrionTextField(
+                    presetText:
+                        config.getString('machineName', category: 'machine'),
+                    key: nameTextFieldKey,
+                    keyboardHint: l10n.printerName,
+                    locale: Localizations.localeOf(context).toString(),
+                    scrollController: scrollController,
+                    onChanged: onNameChanged,
+                  ),
+                );
+              }),
+              OrionKbExpander(textFieldKey: nameTextFieldKey),
+              const SizedBox(height: kToolbarHeight),
+            ],
+          ),
         ),
       ),
     );
@@ -367,72 +353,89 @@ class OnboardingPages {
 
   static Widget buildThemePage(
     BuildContext context,
-    Function(ThemeMode) onThemeChanged,
+    Function(OrionThemeMode) onThemeChanged,
   ) {
     final l10n = AppLocalizations.of(context)!;
     final themeProvider = context.watch<ThemeProvider>();
-    final isDark = themeProvider.themeMode == ThemeMode.dark;
     final config = OrionConfig();
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Card.outlined(
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: OrionListTile(
-                  title: l10n.themeDarkMode,
-                  icon: PhosphorIcons.moonStars,
-                  value: isDark,
-                  onChanged: (bool value) {
-                    onThemeChanged(value ? ThemeMode.dark : ThemeMode.light);
-                  },
-                ),
-              ),
-            ),
-            Card.outlined(
-              elevation: 1,
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10.0),
-                    ThemeColorSelector(
-                      config: config,
-                      changeThemeMode: onThemeChanged,
+    return GlassApp(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Center(
+          child: Padding(
+            padding:
+                const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                GlassCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Column(
+                      children: [
+                        GlassThemeSelector(
+                          selectedTheme: themeProvider.orionThemeMode,
+                          onThemeChanged: onThemeChanged,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 10.0),
-                  ],
+                  ),
                 ),
-              ),
+                if (config.getFlag('mandateTheme', category: 'vendor'))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: GlassCard(
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                l10n.themeVendorLocked,
+                                style: TextStyle(
+                                  color: themeProvider.isGlassTheme
+                                      ? Colors.white.withValues(alpha: 0.9)
+                                      : Theme.of(context).colorScheme.onSurface,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                GlassCard(
+                  elevation: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10.0),
+                        ThemeColorSelector(
+                          config: config,
+                        ),
+                        const SizedBox(height: 10.0),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: kToolbarHeight),
+              ],
             ),
-            if (config.getFlag('mandateTheme', category: 'vendor'))
-              Card.outlined(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(color: Theme.of(context).colorScheme.error),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    top: 2.5,
-                    bottom: 2.5,
-                    left: 10.0,
-                    right: 10.0,
-                  ),
-                  child: Text(
-                    l10n.themeVendorLocked,
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
-                ),
-              ),
-            const SizedBox(height: kToolbarHeight),
-          ],
+          ),
         ),
       ),
     );
@@ -445,22 +448,26 @@ class OnboardingPages {
     bool initialized,
   ) {
     if (!initialized) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return GlassApp(
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Flexible(
-          child: WifiScreen(
-            key: wifiScreenKey,
-            isConnected: isConnected,
+    return GlassApp(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Flexible(
+            child: WifiScreen(
+              key: wifiScreenKey,
+              isConnected: isConnected,
+            ),
           ),
-        ),
-        const SizedBox(height: kToolbarHeight * 1.5),
-      ],
+          const SizedBox(height: kToolbarHeight * 1.5),
+        ],
+      ),
     );
   }
 
@@ -471,20 +478,22 @@ class OnboardingPages {
   ) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SlideTransition(
-            position: completeAnimation,
-            child: Text(
-              '$printerName ${l10n.setupCompletionMessage}',
-              style:
-                  const TextStyle(fontSize: 30, fontWeight: FontWeight.normal),
+    return GlassApp(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SlideTransition(
+              position: completeAnimation,
+              child: Text(
+                '$printerName ${l10n.setupCompletionMessage}',
+                style: const TextStyle(
+                    fontSize: 30, fontWeight: FontWeight.normal),
+              ),
             ),
-          ),
-          const SizedBox(height: kToolbarHeight),
-        ],
+            const SizedBox(height: kToolbarHeight),
+          ],
+        ),
       ),
     );
   }
@@ -494,7 +503,7 @@ class OnboardingPages {
     String timezone,
     Function(String) onTimezoneSelected,
   ) {
-    return Card(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5.0),
         child: ListTile(
@@ -507,6 +516,43 @@ class OnboardingPages {
             ),
           ),
           onTap: () => onTimezoneSelected(timezone),
+        ),
+      ),
+    );
+  }
+}
+
+/// A glassmorphic-aware welcome bubble for the onboarding screen
+class _GlassBubble extends StatelessWidget {
+  final WelcomeBubble bubble;
+
+  const _GlassBubble({
+    required this.bubble,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(bubble.padding),
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .primaryContainer
+            .withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(bubble.size),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        bubble.message,
+        style: TextStyle(
+          fontSize: bubble.size * 0.8,
+          color: Theme.of(context).colorScheme.onPrimaryContainer,
         ),
       ),
     );

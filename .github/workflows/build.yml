@@ -29,7 +29,7 @@ jobs:
 
       - run: sudo apt-get update && sudo apt-get install -y gtk+-3.0
       - run: flutter pub global activate flutterpi_tool
-      
+
       # Add these steps to verify and fix localization files
       - name: Verify ARB Localization Files
         run: |
@@ -47,11 +47,11 @@ jobs:
               sed -i 's/"@@locale": *"[^"]*"/"@@locale": "'$locale'"/' $file
             fi
           done
-          
+
       # Generate localization files
       - name: Generate Localizations
         run: flutter gen-l10n
-      
+
       - run: flutter build linux
 
       - name: Get Version

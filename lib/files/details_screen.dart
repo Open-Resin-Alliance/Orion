@@ -1,6 +1,6 @@
 /*
 * Orion - Detail Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,14 +16,19 @@
 */
 
 import 'dart:io';
+
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:logging/logging.dart';
-import 'package:orion/api_services/api_services.dart';
-import 'package:orion/status/status_screen.dart';
-import 'package:orion/util/hold_button.dart';
-import 'package:orion/util/sl1_thumbnail.dart';
-import 'package:path/path.dart' as path;
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path;
+import 'package:marquee/marquee.dart';
+import 'package:provider/provider.dart';
+
+import 'package:orion/api_services/api_services.dart';
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/status/status_screen.dart';
+import 'package:orion/util/sl1_thumbnail.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class DetailScreen extends StatefulWidget {
   final String fileName;
@@ -139,27 +144,29 @@ class DetailScreenState extends State<DetailScreen> {
   Widget build(BuildContext context) {
     isLandScape = MediaQuery.of(context).orientation == Orientation.landscape;
     maxNameLength = isLandScape ? 12 : 24;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('File Details'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: loading // Show CircularProgressIndicator if loading
-            ? const CircularProgressIndicator()
-            : LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  return isLandScape
-                      ? Padding(
-                          padding: const EdgeInsets.only(
-                              left: 16, right: 16, bottom: 20),
-                          child: buildLandscapeLayout(context))
-                      : Padding(
-                          padding: const EdgeInsets.only(
-                              left: 16, right: 16, bottom: 20),
-                          child: buildPortraitLayout(context));
-                },
-              ),
+    return GlassApp(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('File Details'),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: loading // Show CircularProgressIndicator if loading
+              ? const CircularProgressIndicator()
+              : LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    return isLandScape
+                        ? Padding(
+                            padding: const EdgeInsets.only(
+                                left: 16, right: 16, bottom: 20),
+                            child: buildLandscapeLayout(context))
+                        : Padding(
+                            padding: const EdgeInsets.only(
+                                left: 16, right: 16, bottom: 20),
+                            child: buildPortraitLayout(context));
+                  },
+                ),
+        ),
       ),
     );
   }
@@ -250,92 +257,157 @@ class DetailScreenState extends State<DetailScreen> {
   }
 
   Widget buildInfoCard(String title, String subtitle) {
-    return Card.outlined(
+    final cardContent = ListTile(
+      title: Text(title),
+      subtitle: Text(subtitle),
+    );
+
+    return GlassCard(
+      outlined: true,
       elevation: 1.0,
-      child: ListTile(
-        title: Text(title),
-        subtitle: Text(subtitle),
-      ),
+      child: cardContent,
     );
   }
 
   Widget buildNameCard(String title) {
-    return Card.outlined(
-      elevation: 1.0,
-      child: ListTile(
-        title: AutoSizeText.rich(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final marqueeHeight = 32.0; // or 36.0 if you want more vertical space
+        final nameText = AutoSizeText(
+          fileName,
           maxLines: 1,
-          minFontSize: 16,
-          TextSpan(
-            children: [
-              TextSpan(
-                text: fileName.length >= maxNameLength
-                    ? '${fileName.substring(0, maxNameLength)}...'
-                    : fileName,
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary),
+          minFontSize: 18,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          overflowReplacement: SizedBox(
+            width: constraints.maxWidth > 0 ? constraints.maxWidth : 200,
+            height: marqueeHeight,
+            child: Marquee(
+              startAfter: const Duration(seconds: 2),
+              pauseAfterRound: const Duration(seconds: 3),
+              showFadingOnlyWhenScrolling: true,
+              fadingEdgeStartFraction: 0.1,
+              fadingEdgeEndFraction: 0.1,
+              blankSpace: 40.0,
+              startPadding: 4.0,
+              text: fileName,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
               ),
+            ),
+          ),
+        );
+
+        final cardChild = ListTile(
+          title: Row(
+            children: [
+              Expanded(child: nameText),
             ],
           ),
-        ),
-      ),
+        );
+
+        return GlassCard(
+          outlined: true,
+          child: cardChild,
+        );
+      },
     );
   }
 
   Widget buildThumbnailView(BuildContext context) {
-    return Center(
-      child: Card.outlined(
-        elevation: 1.0,
-        child: Padding(
-          padding: const EdgeInsets.all(4.5),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(7.75),
-            child: thumbnailPath.isNotEmpty
-                ? Image.file(File(thumbnailPath))
-                : const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-          ),
-        ),
+    final Widget imageWidget = thumbnailPath.isNotEmpty
+        ? Image.file(File(thumbnailPath))
+        : const Center(child: CircularProgressIndicator());
+
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    final Widget cardContent = Padding(
+      padding: const EdgeInsets.all(4.5),
+      child: ClipRRect(
+        borderRadius: themeProvider.isGlassTheme
+            ? BorderRadius.circular(10.5)
+            : BorderRadius.circular(7.75),
+        child: imageWidget,
       ),
     );
+
+    return Center(
+      child: GlassCard(
+        outlined: true,
+        child: cardContent,
+      ),
+    );
+  }
+
+  Future<void> launchDeleteDialog() async {
+    final bool? deleteConfirmed = await showDialog<bool>(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return GlassAlertDialog(
+          title: const Text('Delete File'),
+          content: const Text(
+            'Are you sure you want to delete this file?\nThis action cannot be undone.',
+          ),
+          actions: [
+            GlassButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel', style: TextStyle(fontSize: 20)),
+            ),
+            GlassButton(
+              onPressed: () async {
+                try {
+                  await _api.deleteFile(
+                    widget.fileLocation,
+                    path.join(widget.fileSubdirectory, widget.fileName),
+                  );
+                  _logger.info('File ${widget.fileName} deleted successfully');
+                  if (mounted) Navigator.of(context).pop(true);
+                } catch (e) {
+                  _logger.severe('Failed to delete file ${widget.fileName}', e);
+                  if (mounted) Navigator.of(context).pop(false);
+                }
+              },
+              child: const Text('Delete', style: TextStyle(fontSize: 20)),
+            ),
+          ],
+        );
+      },
+    );
+    if (deleteConfirmed == true) {
+      // Pop this detail screen and signal to previous screen to refresh
+      Navigator.of(context).pop(true); // Pass true to indicate refresh needed
+    }
   }
 
   Widget buildPrintButtons() {
     return Row(
       children: [
-        HoldButton(
+        GlassButton(
+          wantIcon: false,
           onPressed: () {
-            String subdirectory = widget.fileSubdirectory;
-            try {
-              _api.deleteFile(widget.fileLocation,
-                  path.join(subdirectory, widget.fileName));
-              _logger.info('File deleted successfully');
-              Navigator.pop(context, true);
-            } catch (e) {
-              _logger.severe('Failed to delete file', e);
-              Navigator.pop(context, false);
-            }
+            launchDeleteDialog();
           },
           style: ElevatedButton.styleFrom(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
             ),
-            minimumSize: Size(
-              0,
-              Theme.of(context).appBarTheme.toolbarHeight as double,
-            ),
+            minimumSize: const Size(120, 65), // Same width as Edit button
           ),
           child: const Text(
             'Delete',
             style: TextStyle(fontSize: 20),
+            textAlign: TextAlign.center,
           ),
         ),
         const SizedBox(width: 20),
         Expanded(
-          child: ElevatedButton(
+          child: GlassButton(
             onPressed: () {
               try {
                 String subdirectory = widget.fileSubdirectory;
@@ -356,32 +428,28 @@ class DetailScreenState extends State<DetailScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
-              minimumSize: Size(
-                0, // Subtract the padding on both sides
-                Theme.of(context).appBarTheme.toolbarHeight as double,
-              ),
+              minimumSize: const Size(0, 65), // Taller to work for both themes
             ),
             child: const Text(
               'Print',
-              style: TextStyle(fontSize: 24),
+              style: TextStyle(fontSize: 22),
+              textAlign: TextAlign.center,
             ),
           ),
         ),
         const SizedBox(width: 20),
-        ElevatedButton(
-          onPressed: null,
+        GlassButton(
+          onPressed: null, // Disabled button
           style: ElevatedButton.styleFrom(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
             ),
-            minimumSize: Size(
-              120, // Subtract the padding on both sides
-              Theme.of(context).appBarTheme.toolbarHeight as double,
-            ),
+            minimumSize: const Size(120, 65), // Taller to work for both themes
           ),
           child: const Text(
             'Edit',
             style: TextStyle(fontSize: 20),
+            textAlign: TextAlign.center,
           ),
         ),
       ],

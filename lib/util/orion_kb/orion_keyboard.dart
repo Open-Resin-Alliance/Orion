@@ -1,6 +1,6 @@
 /*
 * Orion - Orion Keyboard
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,9 +15,13 @@
 * limitations under the License.
 */
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
+import 'package:provider/provider.dart';
+
 import 'package:orion/util/localization.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class OrionKeyboard extends StatefulWidget {
   final TextEditingController controller;
@@ -265,50 +269,110 @@ class KeyboardButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isGlassTheme = themeProvider.isGlassTheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: SizedBox(
         height: double.infinity,
-        child: TextButton(
-          style: TextButton.styleFrom(
-            backgroundColor: _getButtonBackgroundColor(context),
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(25)),
-            ),
-          ),
-          onPressed: () {
-            _handleKey(text, context);
-          },
-          child: Container(
-            alignment: Alignment.center,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: isShiftEnabled,
-              builder: (context, isShiftEnabled, child) {
-                if (text == "123" ||
-                    text == "abc" ||
-                    text == "return" ||
-                    text == '↵' ||
-                    text == "#+=" ||
-                    text == "123\u200B") {
-                  return FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      text,
-                      style: const TextStyle(fontSize: 23),
+        child: isGlassTheme
+            ? Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _handleKey(text, context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white.withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
                     ),
-                  );
-                }
-                return FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    isShiftEnabled ? text.toUpperCase() : text.toLowerCase(),
-                    style: const TextStyle(fontSize: 23),
+                    alignment: Alignment.center,
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: isShiftEnabled,
+                      builder: (context, isShiftEnabled, child) {
+                        if (text == "123" ||
+                            text == "abc" ||
+                            text == "return" ||
+                            text == '↵' ||
+                            text == "#+=" ||
+                            text == "123\u200B") {
+                          return FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              text,
+                              style: const TextStyle(
+                                fontSize: 23,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }
+                        return FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isShiftEnabled
+                                ? text.toUpperCase()
+                                : text.toLowerCase(),
+                            style: const TextStyle(
+                              fontSize: 23,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                );
-              },
-            ),
-          ),
-        ),
+                ),
+              )
+            : TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: _getButtonBackgroundColor(context),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(25)),
+                  ),
+                ),
+                onPressed: () {
+                  _handleKey(text, context);
+                },
+                child: Container(
+                  alignment: Alignment.center,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: isShiftEnabled,
+                    builder: (context, isShiftEnabled, child) {
+                      if (text == "123" ||
+                          text == "abc" ||
+                          text == "return" ||
+                          text == '↵' ||
+                          text == "#+=" ||
+                          text == "123\u200B") {
+                        return FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            text,
+                            style: const TextStyle(fontSize: 23),
+                          ),
+                        );
+                      }
+                      return FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          isShiftEnabled
+                              ? text.toUpperCase()
+                              : text.toLowerCase(),
+                          style: const TextStyle(fontSize: 23),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
       ),
     );
   }
