@@ -31,6 +31,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/pubspec.dart';
 import 'package:orion/util/markdown_screen.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/safe_set_state_mixin.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -39,7 +40,7 @@ class UpdateScreen extends StatefulWidget {
   UpdateScreenState createState() => UpdateScreenState();
 }
 
-class UpdateScreenState extends State<UpdateScreen> {
+class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   bool _isLoading = true;
   bool _isUpdateAvailable = false;
   bool _isFirmwareSpoofingEnabled = false;
@@ -79,16 +80,12 @@ class UpdateScreenState extends State<UpdateScreen> {
 
   Future<void> _getCurrentAppVersion() async {
     try {
-      if (!mounted) return;
-      setState(() {
+      safeSetState(() {
         _currentVersion = Pubspec.versionFull;
         _logger.info('Current version: $_currentVersion');
       });
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _logger.warning('Failed to get current app version');
-      });
+      _logger.warning('Failed to get current app version');
     }
   }
 
@@ -118,8 +115,7 @@ class UpdateScreenState extends State<UpdateScreen> {
                   orElse: () => null);
               final String assetUrl =
                   asset != null ? asset['browser_download_url'] : '';
-              if (!mounted) return;
-              setState(() {
+              safeSetState(() {
                 _latestVersion = latestVersion;
                 _releaseNotes = releaseNotes;
                 _releaseDate = releaseDate;
@@ -128,8 +124,7 @@ class UpdateScreenState extends State<UpdateScreen> {
                 _assetUrl = assetUrl; // Set the asset URL
               });
             } else {
-              if (!mounted) return;
-              setState(() {
+              safeSetState(() {
                 _isLoading = false;
                 _isUpdateAvailable = false;
               });
@@ -138,16 +133,14 @@ class UpdateScreenState extends State<UpdateScreen> {
           } else if (response.statusCode == 403 &&
               response.headers['x-ratelimit-remaining'] == '0') {
             _logger.warning('Rate limit exceeded, retrying...');
-            if (!mounted) return;
-            setState(() {
+            safeSetState(() {
               _rateLimitExceeded = true;
             });
             await Future.delayed(Duration(
                 milliseconds: initialDelay * pow(2, retryCount).toInt()));
             retryCount++;
           } else {
-            if (!mounted) return;
-            setState(() {
+            safeSetState(() {
               _logger.warning('Failed to fetch updates');
               _isLoading = false;
             });
@@ -155,8 +148,7 @@ class UpdateScreenState extends State<UpdateScreen> {
           }
         } catch (e) {
           _logger.warning(e.toString());
-          if (!mounted) return;
-          setState(() {
+          safeSetState(() {
             _isLoading = false;
           });
           return; // Exit the function after failure
@@ -208,8 +200,7 @@ class UpdateScreenState extends State<UpdateScreen> {
               if (isCurrentCommitUpToDate(shortCommitSha)) {
                 _logger.info(
                     'Current version is up-to-date with the latest pre-release.');
-                if (!mounted) return;
-                setState(() {
+                safeSetState(() {
                   _isLoading = false;
                   _isUpdateAvailable = false;
                   _rateLimitExceeded = false;
@@ -226,8 +217,7 @@ class UpdateScreenState extends State<UpdateScreen> {
               _logger.info('Latest pre-release version: $latestVersion');
               final bool preRelease = releaseItem['prerelease'];
               _logger.info('Pre-release: $preRelease');
-              if (!mounted) return;
-              setState(() {
+              safeSetState(() {
                 _latestVersion =
                     '$shortCommitSha ($release)'; // Append release name
                 _releaseNotes =
@@ -243,8 +233,7 @@ class UpdateScreenState extends State<UpdateScreen> {
             } else {
               _logger.warning(
                   'Failed to fetch commit details, status code: ${commitResponse.statusCode}');
-              if (!mounted) return;
-              setState(() {
+              safeSetState(() {
                 _isLoading = false;
                 _rateLimitExceeded = false;
               });
@@ -252,8 +241,7 @@ class UpdateScreenState extends State<UpdateScreen> {
             }
           } else {
             _logger.warning('No release found named $release');
-            if (!mounted) return;
-            setState(() {
+            safeSetState(() {
               _isLoading = false;
               _rateLimitExceeded = false;
             });
@@ -262,8 +250,7 @@ class UpdateScreenState extends State<UpdateScreen> {
         } else if (response.statusCode == 403 &&
             response.headers['x-ratelimit-remaining'] == '0') {
           _logger.warning('Rate limit exceeded, retrying...');
-          if (!mounted) return;
-          setState(() {
+          safeSetState(() {
             _rateLimitExceeded = true;
           });
           await Future.delayed(Duration(
@@ -272,8 +259,7 @@ class UpdateScreenState extends State<UpdateScreen> {
         } else {
           _logger.warning(
               'Failed to fetch updates, status code: ${response.statusCode}');
-          if (!mounted) return;
-          setState(() {
+          safeSetState(() {
             _isLoading = false;
             _rateLimitExceeded = false;
           });
@@ -281,8 +267,7 @@ class UpdateScreenState extends State<UpdateScreen> {
         }
       } catch (e) {
         _logger.warning(e.toString());
-        if (!mounted) return;
-        setState(() {
+        safeSetState(() {
           _isLoading = false;
           _rateLimitExceeded = false;
         });
