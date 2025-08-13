@@ -24,22 +24,20 @@ import 'package:orion/glasser/src/widgets/glass_dialog.dart';
 /// An about dialog for Orion.
 class AboutDialog extends StatelessWidget {
   Widget _buildCloseButton(BuildContext context) {
-    return Positioned(
-      top: 8,
-      right: 8,
-      child: GlassButton(
-        onPressed: () => Navigator.of(context).pop(),
-        style: ButtonStyle(
-          shape: WidgetStateProperty.all(const CircleBorder()),
-          elevation: WidgetStateProperty.all(0),
-          minimumSize: WidgetStateProperty.all(const Size(60, 60)),
-          maximumSize: WidgetStateProperty.all(const Size(60, 60)),
-          padding: WidgetStateProperty.all(
-              EdgeInsets.zero), // Remove default padding
-        ),
-        child: const Center(
-          // Explicitly center the icon
-          child: Icon(
+    return Align(
+      alignment: Alignment.topRight,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 12, right: 12),
+        child: GlassButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: ButtonStyle(
+            shape: WidgetStateProperty.all(const CircleBorder()),
+            elevation: WidgetStateProperty.all(0),
+            minimumSize: WidgetStateProperty.all(const Size(60, 60)),
+            maximumSize: WidgetStateProperty.all(const Size(60, 60)),
+            padding: WidgetStateProperty.all(EdgeInsets.zero),
+          ),
+          child: const Icon(
             Icons.close,
             size: 32,
             color: Colors.white,

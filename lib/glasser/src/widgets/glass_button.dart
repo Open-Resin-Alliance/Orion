@@ -101,8 +101,10 @@ class _GlassmorphicButton extends StatelessWidget {
 
     final isEnabled = onPressed != null;
 
+    // Detect if the button is a circle (CircleBorder)
+    final isCircle = style?.shape?.resolve({}) is CircleBorder;
     Widget buttonChild = ClipRRect(
-      borderRadius: BorderRadius.circular(glassCornerRadius),
+      borderRadius: BorderRadius.circular(isCircle ? 30 : glassCornerRadius),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
@@ -110,7 +112,8 @@ class _GlassmorphicButton extends StatelessWidget {
             color: isEnabled
                 ? Colors.white.withValues(alpha: 0.1)
                 : Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(glassCornerRadius),
+            borderRadius:
+                BorderRadius.circular(isCircle ? 30 : glassCornerRadius),
             border: Border.all(
               color: isEnabled
                   ? Colors.white.withValues(alpha: 0.2)
@@ -122,7 +125,7 @@ class _GlassmorphicButton extends StatelessWidget {
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 20,
-                      offset: const Offset(0, 2), // Reduced from 8 to 2
+                      offset: const Offset(0, 2),
                     ),
                   ]
                 : null,
@@ -130,7 +133,8 @@ class _GlassmorphicButton extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(glassCornerRadius),
+              borderRadius:
+                  BorderRadius.circular(isCircle ? 30 : glassCornerRadius),
               onTap: onPressed,
               splashColor:
                   isEnabled ? Colors.white.withValues(alpha: 0.2) : null,
@@ -139,9 +143,10 @@ class _GlassmorphicButton extends StatelessWidget {
               child: Opacity(
                 opacity: isEnabled ? 1.0 : 0.5,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0,
-                      vertical: 8.0), // Match ElevatedButton default padding
+                  padding: isCircle
+                      ? const EdgeInsets.all(0)
+                      : const EdgeInsets.symmetric(
+                          horizontal: 24.0, vertical: 8.0),
                   child: Center(
                     child:
                         _buildButtonContentWithIcon(child, wantIcon: wantIcon),
