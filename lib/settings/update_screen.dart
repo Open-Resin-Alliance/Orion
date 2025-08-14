@@ -1,6 +1,6 @@
 /*
 * Orion - Update Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -21,15 +21,17 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:orion/pubspec.dart';
-import 'package:orion/util/markdown_screen.dart';
-import 'package:orion/util/orion_config.dart';
-
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/pubspec.dart';
+import 'package:orion/util/markdown_screen.dart';
+import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/safe_set_state_mixin.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -38,7 +40,7 @@ class UpdateScreen extends StatefulWidget {
   UpdateScreenState createState() => UpdateScreenState();
 }
 
-class UpdateScreenState extends State<UpdateScreen> {
+class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   bool _isLoading = true;
   bool _isUpdateAvailable = false;
   bool _isFirmwareSpoofingEnabled = false;
@@ -78,14 +80,12 @@ class UpdateScreenState extends State<UpdateScreen> {
 
   Future<void> _getCurrentAppVersion() async {
     try {
-      setState(() {
+      safeSetState(() {
         _currentVersion = Pubspec.versionFull;
         _logger.info('Current version: $_currentVersion');
       });
     } catch (e) {
-      setState(() {
-        _logger.warning('Failed to get current app version');
-      });
+      _logger.warning('Failed to get current app version');
     }
   }
 
@@ -115,7 +115,7 @@ class UpdateScreenState extends State<UpdateScreen> {
                   orElse: () => null);
               final String assetUrl =
                   asset != null ? asset['browser_download_url'] : '';
-              setState(() {
+              safeSetState(() {
                 _latestVersion = latestVersion;
                 _releaseNotes = releaseNotes;
                 _releaseDate = releaseDate;
@@ -124,7 +124,7 @@ class UpdateScreenState extends State<UpdateScreen> {
                 _assetUrl = assetUrl; // Set the asset URL
               });
             } else {
-              setState(() {
+              safeSetState(() {
                 _isLoading = false;
                 _isUpdateAvailable = false;
               });
@@ -133,14 +133,14 @@ class UpdateScreenState extends State<UpdateScreen> {
           } else if (response.statusCode == 403 &&
               response.headers['x-ratelimit-remaining'] == '0') {
             _logger.warning('Rate limit exceeded, retrying...');
-            setState(() {
+            safeSetState(() {
               _rateLimitExceeded = true;
             });
             await Future.delayed(Duration(
                 milliseconds: initialDelay * pow(2, retryCount).toInt()));
             retryCount++;
           } else {
-            setState(() {
+            safeSetState(() {
               _logger.warning('Failed to fetch updates');
               _isLoading = false;
             });
@@ -148,7 +148,7 @@ class UpdateScreenState extends State<UpdateScreen> {
           }
         } catch (e) {
           _logger.warning(e.toString());
-          setState(() {
+          safeSetState(() {
             _isLoading = false;
           });
           return; // Exit the function after failure
@@ -200,7 +200,7 @@ class UpdateScreenState extends State<UpdateScreen> {
               if (isCurrentCommitUpToDate(shortCommitSha)) {
                 _logger.info(
                     'Current version is up-to-date with the latest pre-release.');
-                setState(() {
+                safeSetState(() {
                   _isLoading = false;
                   _isUpdateAvailable = false;
                   _rateLimitExceeded = false;
@@ -217,7 +217,7 @@ class UpdateScreenState extends State<UpdateScreen> {
               _logger.info('Latest pre-release version: $latestVersion');
               final bool preRelease = releaseItem['prerelease'];
               _logger.info('Pre-release: $preRelease');
-              setState(() {
+              safeSetState(() {
                 _latestVersion =
                     '$shortCommitSha ($release)'; // Append release name
                 _releaseNotes =
@@ -233,7 +233,7 @@ class UpdateScreenState extends State<UpdateScreen> {
             } else {
               _logger.warning(
                   'Failed to fetch commit details, status code: ${commitResponse.statusCode}');
-              setState(() {
+              safeSetState(() {
                 _isLoading = false;
                 _rateLimitExceeded = false;
               });
@@ -241,7 +241,7 @@ class UpdateScreenState extends State<UpdateScreen> {
             }
           } else {
             _logger.warning('No release found named $release');
-            setState(() {
+            safeSetState(() {
               _isLoading = false;
               _rateLimitExceeded = false;
             });
@@ -250,7 +250,7 @@ class UpdateScreenState extends State<UpdateScreen> {
         } else if (response.statusCode == 403 &&
             response.headers['x-ratelimit-remaining'] == '0') {
           _logger.warning('Rate limit exceeded, retrying...');
-          setState(() {
+          safeSetState(() {
             _rateLimitExceeded = true;
           });
           await Future.delayed(Duration(
@@ -259,7 +259,7 @@ class UpdateScreenState extends State<UpdateScreen> {
         } else {
           _logger.warning(
               'Failed to fetch updates, status code: ${response.statusCode}');
-          setState(() {
+          safeSetState(() {
             _isLoading = false;
             _rateLimitExceeded = false;
           });
@@ -267,10 +267,11 @@ class UpdateScreenState extends State<UpdateScreen> {
         }
       } catch (e) {
         _logger.warning(e.toString());
-        setState(() {
+        safeSetState(() {
           _isLoading = false;
           _rateLimitExceeded = false;
         });
+
         return; // Exit the function after failure
       }
     }
@@ -331,8 +332,8 @@ class UpdateScreenState extends State<UpdateScreen> {
         padding: const EdgeInsets.only(
             left: 16.0, right: 16.0, bottom: 16.0, top: 5.0),
         children: [
-          Card.outlined(
-            elevation: 1,
+          GlassCard(
+            outlined: true,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -428,48 +429,71 @@ class UpdateScreenState extends State<UpdateScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              elevation: 3,
-                              minimumSize:
-                                  const Size.fromHeight(65), // Set height to 65
-                            ),
+                          child: GlassButton(
                             onPressed: _viewChangelog,
-                            icon: const Icon(Icons.article),
-                            label: const AutoSizeText(
-                              'View Changelog',
-                              style: TextStyle(fontSize: 22),
-                              minFontSize: 18,
-                              maxLines: 1,
-                              overflowReplacement: Text(
-                                'Changelog',
-                                style: TextStyle(fontSize: 22),
-                              ),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(65),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.article, size: 30),
+                                const Expanded(
+                                  child: AutoSizeText(
+                                    'View Changelog',
+                                    style: TextStyle(fontSize: 22),
+                                    minFontSize: 22,
+                                    maxLines: 1,
+                                    overflowReplacement: Padding(
+                                      padding: EdgeInsets.only(right: 20.0),
+                                      child: Center(
+                                        child: AutoSizeText(
+                                          'Changes',
+                                          style: TextStyle(fontSize: 22),
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                         const SizedBox(
-                            width: 10), // Add some space between the buttons
+                            width: 12), // Add some space between the buttons
                         Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              elevation: 3,
-                              minimumSize:
-                                  const Size.fromHeight(65), // Set height to 65
-                            ),
+                          child: GlassButton(
                             onPressed: () async {
                               _performUpdate(context);
                             },
-                            icon: const Icon(Icons.download),
-                            label: const AutoSizeText(
-                              'Download Update',
-                              style: TextStyle(fontSize: 22),
-                              minFontSize: 18,
-                              maxLines: 1,
-                              overflowReplacement: Text(
-                                'Update',
-                                style: TextStyle(fontSize: 22),
-                              ),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(65),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.download, size: 30),
+                                const Expanded(
+                                  child: AutoSizeText(
+                                    'Download Update',
+                                    style: TextStyle(fontSize: 24),
+                                    minFontSize: 22,
+                                    maxLines: 1,
+                                    overflowReplacement: Padding(
+                                      padding: EdgeInsets.only(right: 20.0),
+                                      child: Center(
+                                        child: Text(
+                                          'Update',
+                                          style: TextStyle(fontSize: 22),
+                                        ),
+                                      ),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -501,8 +525,8 @@ class UpdateScreenState extends State<UpdateScreen> {
             ),
           ),
           // TODO: Placeholder for Odyssey updater - pending API changes
-          Card.outlined(
-            elevation: 1,
+          GlassCard(
+            outlined: true,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
