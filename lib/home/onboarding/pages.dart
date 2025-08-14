@@ -360,81 +360,105 @@ class OnboardingPages {
     final config = OrionConfig();
 
     return GlassApp(
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Center(
-          child: Padding(
-            padding:
-                const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                GlassCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: Column(
-                      children: [
-                        GlassThemeSelector(
-                          selectedTheme: themeProvider.orionThemeMode,
-                          onThemeChanged: onThemeChanged,
-                          padding: EdgeInsets.zero,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (config.getFlag('mandateTheme', category: 'vendor'))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: GlassCard(
-                      elevation: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                l10n.themeVendorLocked,
-                                style: TextStyle(
-                                  color: themeProvider.isGlassTheme
-                                      ? Colors.white.withValues(alpha: 0.9)
-                                      : Theme.of(context).colorScheme.onSurface,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // If a vendor theme is present, onboarding can have 6 theme
+              // tiles which may overflow smaller displays. When that is the
+              // case make the inner content scrollable and constrained so
+              // the page doesn't overflow the screen.
+              final vendorTheme = config.getThemeSeed('vendor');
+              final bool hasVendorTheme = vendorTheme.r != 0 ||
+                  vendorTheme.g != 0 ||
+                  vendorTheme.b != 0;
+
+              Widget contentColumn = Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  GlassCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Column(
+                        children: [
+                          GlassThemeSelector(
+                            selectedTheme: themeProvider.orionThemeMode,
+                            onThemeChanged: onThemeChanged,
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                GlassCard(
-                  elevation: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 10.0),
-                        ThemeColorSelector(
-                          config: config,
+                  if (config.getFlag('mandateTheme', category: 'vendor'))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: GlassCard(
+                        elevation: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  l10n.themeVendorLocked,
+                                  style: TextStyle(
+                                    color: themeProvider.isGlassTheme
+                                        ? Colors.white.withValues(alpha: 0.9)
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 10.0),
-                      ],
+                      ),
+                    ),
+                  GlassCard(
+                    elevation: 1,
+                    child: Padding(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ThemeColorSelector(
+                            config: config,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: kToolbarHeight),
-              ],
-            ),
+                  const SizedBox(height: kToolbarHeight),
+                ],
+              );
+
+              if (hasVendorTheme) {
+                // Constrain the scrollable area to avoid pushing controls off
+                // the screen (approximate safe height).
+                final double maxScrollableHeight = constraints.maxHeight;
+                return ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxScrollableHeight),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: contentColumn,
+                  ),
+                );
+              }
+
+              return contentColumn;
+            },
           ),
         ),
       ),
