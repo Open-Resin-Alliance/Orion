@@ -46,12 +46,18 @@ class GlassFloatingActionButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String? heroTag;
   final bool extended;
+  // Size variant scaling: 1.0 default, >1 for larger buttons.
+  final double scale;
+  // If true and extended, places the icon after the text (e.g. "Next ->").
+  final bool iconAfterLabel;
 
   const GlassFloatingActionButton({
     super.key,
     this.child,
     this.onPressed,
     this.heroTag,
+    this.scale = 1.0,
+    this.iconAfterLabel = false,
   })  : label = null,
         icon = null,
         extended = false;
@@ -62,6 +68,8 @@ class GlassFloatingActionButton extends StatelessWidget {
     this.icon,
     this.onPressed,
     this.heroTag,
+    this.scale = 1.0,
+    this.iconAfterLabel = false,
   })  : child = null,
         extended = true;
 
@@ -69,19 +77,83 @@ class GlassFloatingActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
+    // (theme lookup removed; currently not needed in this branch)
+
     if (!themeProvider.isGlassTheme) {
+      final cs = Theme.of(context).colorScheme;
+      final bg = cs.secondaryContainer;
+      final fg = cs.onSecondaryContainer;
       if (extended) {
-        return FloatingActionButton.extended(
-          heroTag: heroTag,
-          onPressed: onPressed,
-          label: Text(label ?? ''),
-          icon: icon,
+        final iconWidget = icon == null
+            ? null
+            : IconTheme(
+                data: IconThemeData(size: 20 * scale, color: fg),
+                child: icon!,
+              );
+        final textWidget = Flexible(
+          child: Text(
+            label ?? '',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'AtkinsonHyperlegible',
+              color: fg,
+              fontSize: 16 * scale,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        );
+        final children = iconAfterLabel
+            ? [
+                textWidget,
+                if (iconWidget != null) SizedBox(width: 8 * scale),
+                if (iconWidget != null) iconWidget
+              ]
+            : [
+                if (iconWidget != null) iconWidget,
+                if (iconWidget != null) SizedBox(width: 8 * scale),
+                textWidget
+              ];
+        return Container(
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(glassCornerRadius),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(glassCornerRadius),
+              splashColor: fg.withValues(alpha: 0.1),
+              highlightColor: fg.withValues(alpha: 0.05),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16 * scale,
+                  vertical: 12 * scale,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: children,
+                ),
+              ),
+            ),
+          ),
         );
       } else {
         return FloatingActionButton(
           heroTag: heroTag,
           onPressed: onPressed,
-          child: child,
+          backgroundColor: bg,
+          child: IconTheme(
+            data: IconThemeData(size: 24 * scale, color: fg),
+            child: child ?? const SizedBox(),
+          ),
         );
       }
     }
@@ -116,45 +188,58 @@ class GlassFloatingActionButton extends StatelessWidget {
                 splashColor: Colors.white.withValues(alpha: 0.2),
                 highlightColor: Colors.white.withValues(alpha: 0.1),
                 child: Container(
-                  constraints: const BoxConstraints(
-                    minHeight: 48,
-                    minWidth: 48,
+                  constraints: BoxConstraints(
+                    minHeight: 48 * scale,
+                    minWidth: 48 * scale,
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (icon != null) ...[
-                        DefaultTextStyle(
-                          style: const TextStyle(
-                              fontFamily: 'AtkinsonHyperlegible',
-                              color: Colors.white),
-                          child: IconTheme(
-                            data: const IconThemeData(
-                                color: Colors.white, size: 20),
-                            child: icon!,
-                          ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16 * scale,
+                    vertical: 12 * scale,
+                  ),
+                  child: Builder(builder: (context) {
+                    final iconWidget = icon == null
+                        ? null
+                        : DefaultTextStyle(
+                            style: const TextStyle(
+                                fontFamily: 'AtkinsonHyperlegible',
+                                color: Colors.white),
+                            child: IconTheme(
+                              data: IconThemeData(
+                                  color: Colors.white, size: 20 * scale),
+                              child: icon!,
+                            ),
+                          );
+                    final textWidget = Flexible(
+                      child: DefaultTextStyle(
+                        style: TextStyle(
+                          fontFamily: 'AtkinsonHyperlegible',
+                          color: Colors.white,
+                          fontSize: 16 * scale,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(width: 8),
-                      ],
-                      Flexible(
-                        child: DefaultTextStyle(
-                          style: const TextStyle(
-                            fontFamily: 'AtkinsonHyperlegible',
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          child: Text(
-                            label ?? '',
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        child: Text(
+                          label ?? '',
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ],
-                  ),
+                    );
+                    final children = iconAfterLabel
+                        ? [
+                            textWidget,
+                            if (iconWidget != null) SizedBox(width: 8 * scale),
+                            if (iconWidget != null) iconWidget
+                          ]
+                        : [
+                            if (iconWidget != null) iconWidget,
+                            if (iconWidget != null) SizedBox(width: 8 * scale),
+                            textWidget
+                          ];
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: children,
+                    );
+                  }),
                 ),
               ),
             ),
@@ -195,9 +280,9 @@ class GlassFloatingActionButton extends StatelessWidget {
                   splashColor: Colors.white.withValues(alpha: 0.2),
                   highlightColor: Colors.white.withValues(alpha: 0.1),
                   child: Container(
-                    constraints: const BoxConstraints(
-                      minHeight: 56,
-                      minWidth: 56,
+                    constraints: BoxConstraints(
+                      minHeight: 56 * scale,
+                      minWidth: 56 * scale,
                     ),
                     child: Center(
                       child: DefaultTextStyle(
@@ -205,8 +290,8 @@ class GlassFloatingActionButton extends StatelessWidget {
                             fontFamily: 'AtkinsonHyperlegible',
                             color: Colors.white),
                         child: IconTheme(
-                          data: const IconThemeData(
-                              color: Colors.white, size: 24),
+                          data: IconThemeData(
+                              color: Colors.white, size: 24 * scale),
                           child: child ?? const SizedBox(),
                         ),
                       ),

@@ -550,6 +550,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
             onPressed: () {
               _handlePageChange(_currentPage - 1);
             },
+            iconAfter: false,
           ),
         const Spacer(),
         // Next button
@@ -570,6 +571,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
                 }
               },
               disable: _currentPage == 6 && !_wifiInitialized,
+              iconAfter: true,
             );
           },
         ),
@@ -583,6 +585,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
     required IconData icon,
     required VoidCallback onPressed,
     bool disable = false,
+    bool iconAfter = false,
   }) {
     return Opacity(
       opacity: hide ? 0 : 1,
@@ -593,6 +596,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
           onPressed: onPressed,
           label: label,
           icon: Icon(icon),
+          scale: 1.2,
+          iconAfterLabel: iconAfter,
         ),
       ),
     );
