@@ -1,6 +1,6 @@
 /*
 * Orion - Orion Textfield
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,8 +16,12 @@
 */
 
 import 'package:flutter/material.dart';
+
 import 'package:orion/themes/themes.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_modal.dart';
+import 'package:orion/util/providers/theme_provider.dart';
+
+import 'package:provider/provider.dart';
 
 class OrionTextField extends StatefulWidget {
   final ValueNotifier<bool> isKeyboardOpen;
@@ -96,20 +100,54 @@ class OrionTextFieldState extends State<OrionTextField>
                 ValueListenableBuilder<bool>(
                   valueListenable: widget.isKeyboardOpen,
                   builder: (context, isKeyboardOpen, child) {
+                    final themeProvider = Provider.of<ThemeProvider>(context);
+                    final isGlassTheme = themeProvider.isGlassTheme;
+
                     return TextField(
                       controller: widget.controller,
                       readOnly: true,
                       decoration: InputDecoration(
                         enabledBorder: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(isGlassTheme ? 16.0 : 4.0),
                           borderSide: BorderSide(
-                            color: isKeyboardOpen
-                                ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(context).textTheme.bodyLarge!.color!,
+                            color: isGlassTheme
+                                ? isKeyboardOpen
+                                    ? Colors.white.withValues(alpha: 0.8)
+                                    : Colors.white.withValues(alpha: 0.3)
+                                : isKeyboardOpen
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                    : Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge!
+                                        .color!,
+                            width: isGlassTheme
+                                ? (isKeyboardOpen ? 2.0 : 1.0)
+                                : 1.0,
                           ),
                         ),
+                        focusedBorder: isGlassTheme
+                            ? OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16.0),
+                                borderSide: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  width: 2.0,
+                                ),
+                              )
+                            : null,
+                        filled: isGlassTheme,
+                        fillColor: isGlassTheme
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : null,
                         labelText: widget.keyboardHint,
-                        labelStyle:
-                            const TextStyle(fontSize: 18), // Changed font size
+                        labelStyle: TextStyle(
+                          fontSize: 18,
+                          color: isGlassTheme
+                              ? Colors.white.withValues(alpha: 0.8)
+                              : null,
+                        ),
                       ),
                       // Hide the original text, We overlay our own with an animated line (cursor)
                       style: style.copyWith(

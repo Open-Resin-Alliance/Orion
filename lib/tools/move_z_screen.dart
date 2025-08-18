@@ -1,6 +1,6 @@
 /*
 * Orion - Move Z Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,11 +15,13 @@
 * limitations under the License.
 */
 
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:logging/logging.dart';
 
 import 'package:orion/api_services/api_services.dart';
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 
 class MoveZScreen extends StatefulWidget {
@@ -150,7 +152,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                 bottom: index < values.length - 1
                     ? 25.0
                     : 0.0), // Add padding only if it's not the last item
-            child: ChoiceChip.elevated(
+            child: GlassChoiceChip(
               label: SizedBox(
                 width: double.infinity,
                 child: Text(
@@ -177,40 +179,29 @@ class MoveZScreenState extends State<MoveZScreen> {
   }
 
   Widget buildMoveButtons(BuildContext context) {
-    final theme = Theme.of(context).copyWith(
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ButtonStyle(
-          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
-            (Set<WidgetState> states) {
-              return RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              );
-            },
-          ),
-          minimumSize: WidgetStateProperty.resolveWith<Size?>(
-            (Set<WidgetState> states) {
-              return const Size(double.infinity, double.infinity);
-            },
-          ),
-        ),
-      ),
-    );
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Expanded(
-          child: ElevatedButton(
+          child: GlassButton(
             onPressed: _apiErrorState ? null : () => moveZ(step),
-            style: theme.elevatedButtonTheme.style,
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15)),
+              minimumSize: const Size(double.infinity, double.infinity),
+            ),
             child: const Icon(Icons.arrow_upward, size: 50),
           ),
         ),
         const SizedBox(height: 30),
         Expanded(
-          child: ElevatedButton(
+          child: GlassButton(
             onPressed: _apiErrorState ? null : () => moveZ(-step),
-            style: theme.elevatedButtonTheme.style,
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15)),
+              minimumSize: const Size(double.infinity, double.infinity),
+            ),
             child: const Icon(Icons.arrow_downward, size: 50),
           ),
         ),
@@ -219,139 +210,142 @@ class MoveZScreenState extends State<MoveZScreen> {
   }
 
   Widget buildControlButtons(BuildContext context) {
-    final theme = Theme.of(context).copyWith(
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ButtonStyle(
-          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
-            (Set<WidgetState> states) {
-              return RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              );
-            },
-          ),
-          minimumSize: WidgetStateProperty.resolveWith<Size?>(
-            (Set<WidgetState> states) {
-              return const Size(double.infinity, double.infinity);
-            },
-          ),
-        ),
-      ),
-    );
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
         Expanded(
-          child: ElevatedButton.icon(
+          child: GlassButton(
             onPressed: _apiErrorState
                 ? null
                 : () async {
                     _logger.info('Moving to ZMAX');
-
                     _api.move(maxZ);
                   },
-            style: theme.elevatedButtonTheme.style,
-            icon: const Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: 20),
-                child: Icon(Icons.arrow_upward, size: 30),
-              ),
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15)),
+              minimumSize: const Size(double.infinity, double.infinity),
             ),
-            label: const Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: 20),
-                child: AutoSizeText(
-                  'Move to Top Limit',
-                  style: TextStyle(fontSize: 24),
-                  minFontSize: 24,
-                  maxLines: 1,
-                  overflowReplacement: Text(
-                    'Top',
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: 16),
+                const Icon(Icons.arrow_upward, size: 30),
+                const Expanded(
+                  child: AutoSizeText(
+                    'Move to Top Limit',
                     style: TextStyle(fontSize: 24),
+                    minFontSize: 20,
+                    maxLines: 1,
+                    overflowReplacement: Padding(
+                      padding: EdgeInsets.only(right: 20.0),
+                      child: Center(
+                        child: Text(
+                          'Top',
+                          style: TextStyle(fontSize: 24),
+                        ),
+                      ),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
         const SizedBox(height: 25),
         Expanded(
-          child: ElevatedButton.icon(
+          child: GlassButton(
             onPressed: _apiErrorState
                 ? null
                 : () {
                     _logger.info('Moving to ZMIN');
                     _api.manualHome();
                   },
-            style: theme.elevatedButtonTheme.style,
-            icon: const Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: 20),
-                child: Icon(Icons.home, size: 30),
-              ),
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15)),
+              minimumSize: const Size(double.infinity, double.infinity),
             ),
-            label: const Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: 20),
-                child: AutoSizeText(
-                  'Return to Home',
-                  style: TextStyle(fontSize: 24),
-                  minFontSize: 24,
-                  maxLines: 1,
-                  overflowReplacement: Text(
-                    'Home',
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                const Icon(Icons.home, size: 30),
+                const Expanded(
+                  child: AutoSizeText(
+                    'Return to Home',
                     style: TextStyle(fontSize: 24),
+                    minFontSize: 20,
+                    maxLines: 1,
+                    overflowReplacement: Padding(
+                      padding: EdgeInsets.only(right: 20.0),
+                      child: Center(
+                        child: Text(
+                          'Home',
+                          style: TextStyle(fontSize: 24),
+                        ),
+                      ),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
         const SizedBox(height: 25),
         Expanded(
-          child: ElevatedButton.icon(
+          child: GlassButton(
             onPressed: _apiErrorState
                 ? null
                 : () {
                     _logger.severe('EMERGENCY STOP');
                     _api.manualCommand('M112');
                   },
-            style: theme.elevatedButtonTheme.style,
-            icon: Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 20),
-                child: Icon(Icons.stop,
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15)),
+              minimumSize: const Size(double.infinity, double.infinity),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                Icon(Icons.stop,
                     size: 30,
                     color: _apiErrorState
                         ? null
                         : Theme.of(context).colorScheme.onErrorContainer),
-              ),
-            ),
-            label: Center(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: AutoSizeText(
-                  'Emergency Stop',
-                  style: TextStyle(
-                    fontSize: 24,
-                    color: _apiErrorState
-                        ? null
-                        : Theme.of(context).colorScheme.onErrorContainer,
+                Expanded(
+                  child: AutoSizeText(
+                    'Emergency Stop',
+                    style: TextStyle(
+                      fontSize: 24,
+                      color: _apiErrorState
+                          ? null
+                          : Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                    maxLines: 1,
+                    minFontSize: 20,
+                    overflowReplacement: Padding(
+                      padding: EdgeInsets.only(right: 20.0),
+                      child: Center(
+                        child: Text(
+                          'Stop',
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: _apiErrorState
+                                ? null
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onErrorContainer,
+                          ),
+                        ),
+                      ),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  maxLines: 1,
-                  minFontSize: 24,
-                  overflowReplacement: Text('Stop',
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: _apiErrorState
-                            ? null
-                            : Theme.of(context).colorScheme.onErrorContainer,
-                      )),
                 ),
-              ),
+              ],
             ),
           ),
         ),
