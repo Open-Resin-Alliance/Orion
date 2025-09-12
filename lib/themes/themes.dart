@@ -54,6 +54,11 @@ ThemeData createLightTheme(Color seedColor) {
       style: ButtonStyle(
         minimumSize: WidgetStateProperty.all<Size>(
             const Size(88, 50)), // Set the width and height
+        shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
       ),
     ),
     useMaterial3: true,
@@ -95,6 +100,11 @@ ThemeData createDarkTheme(Color seedColor) {
       style: ButtonStyle(
         minimumSize: WidgetStateProperty.all<Size>(
             const Size(88, 50)), // Set the width and height
+        shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
       ),
     ),
     useMaterial3: true,
@@ -168,7 +178,7 @@ ThemeData createGlassTheme(Color seedColor) {
         elevation: WidgetStateProperty.all(0),
         shape: WidgetStateProperty.all(
           RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(15),
           ),
         ),
         minimumSize: WidgetStateProperty.all(const Size(88, 50)),
