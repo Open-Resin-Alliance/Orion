@@ -335,7 +335,7 @@ class KeyboardButton extends StatelessWidget {
                 style: TextButton.styleFrom(
                   backgroundColor: _getButtonBackgroundColor(context),
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(25)),
+                    borderRadius: BorderRadius.all(Radius.circular(15)),
                   ),
                 ),
                 onPressed: () {
