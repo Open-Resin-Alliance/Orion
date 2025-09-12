@@ -167,13 +167,20 @@ class SettingsScreenState extends State<SettingsScreen> {
               onPressed: () {
                 Navigator.of(context).pop(false);
               },
-              child: const Text('Stay Connected'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
+              child:
+                  const Text('Stay Connected', style: TextStyle(fontSize: 18)),
             ),
             GlassButton(
               onPressed: () {
                 Navigator.of(context).pop(true);
               },
-              child: const Text('Disconnect'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
+              child: const Text('Disconnect', style: TextStyle(fontSize: 18)),
             ),
           ],
         );
