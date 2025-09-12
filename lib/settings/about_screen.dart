@@ -114,7 +114,12 @@ class AboutScreenState extends State<AboutScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         buildNameCard(config.getString('machineName', category: 'machine')),
-        buildInfoCard('Serial Number', kDebugMode ? 'DBG-0001-001' : 'N/A'),
+        buildInfoCard(
+          'Serial Number',
+          kDebugMode
+              ? 'DBG-0001-001'
+              : config.getString('machineSerial', category: 'machine'),
+        ),
         buildVersionCard(),
         buildHardwareCard(),
         const SizedBox(height: 16),
@@ -132,8 +137,12 @@ class AboutScreenState extends State<AboutScreen> {
             children: [
               buildNameCard(
                   config.getString('machineName', category: 'machine')),
-              buildInfoCard('Serial Number',
-                  kDebugMode ? 'DBG-0001-001' : 'Currently Unavailable'),
+              buildInfoCard(
+                'Serial Number',
+                kDebugMode
+                    ? 'DBG-0001-001'
+                    : config.getString('machineSerial', category: 'machine'),
+              ),
               buildVersionCard(),
               buildHardwareCard(),
             ],
