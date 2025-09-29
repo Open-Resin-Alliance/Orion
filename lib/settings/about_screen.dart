@@ -1,6 +1,6 @@
 /*
 * Orion - About Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,18 +15,21 @@
 * limitations under the License.
 */
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:toastification/toastification.dart';
+
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/pubspec.dart';
 import 'package:orion/themes/themes.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import 'package:toastification/toastification.dart';
-import 'dart:io';
 
 Logger _logger = Logger('AboutScreen');
 OrionConfig config = OrionConfig();
@@ -92,6 +95,7 @@ class AboutScreenState extends State<AboutScreen> {
     bool isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -110,7 +114,12 @@ class AboutScreenState extends State<AboutScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         buildNameCard(config.getString('machineName', category: 'machine')),
-        buildInfoCard('Serial Number', kDebugMode ? 'DBG-0001-001' : 'N/A'),
+        buildInfoCard(
+          'Serial Number',
+          kDebugMode
+              ? 'DBG-0001-001'
+              : config.getString('machineSerial', category: 'machine'),
+        ),
         buildVersionCard(),
         buildHardwareCard(),
         const SizedBox(height: 16),
@@ -128,8 +137,12 @@ class AboutScreenState extends State<AboutScreen> {
             children: [
               buildNameCard(
                   config.getString('machineName', category: 'machine')),
-              buildInfoCard('Serial Number',
-                  kDebugMode ? 'DBG-0001-001' : 'Currently Unavailable'),
+              buildInfoCard(
+                'Serial Number',
+                kDebugMode
+                    ? 'DBG-0001-001'
+                    : config.getString('machineSerial', category: 'machine'),
+              ),
               buildVersionCard(),
               buildHardwareCard(),
             ],
@@ -142,8 +155,9 @@ class AboutScreenState extends State<AboutScreen> {
   }
 
   Widget buildInfoCard(String title, String subtitle) {
-    return Card.outlined(
+    return GlassCard(
       elevation: 1.0,
+      outlined: true,
       child: ListTile(
         title: Text(title),
         subtitle: Text(subtitle),
@@ -152,8 +166,9 @@ class AboutScreenState extends State<AboutScreen> {
   }
 
   Widget buildVersionCard() {
-    return Card.outlined(
+    return GlassCard(
       elevation: 1.0,
+      outlined: true,
       child: ListTile(
         title: const Text('UI & API Version'),
         subtitle: FutureBuilder<String>(
@@ -167,8 +182,9 @@ class AboutScreenState extends State<AboutScreen> {
   }
 
   Widget buildHardwareCard() {
-    return Card.outlined(
+    return GlassCard(
       elevation: 1.0,
+      outlined: true,
       child: ListTile(
         title: const Text('Hardware (Local)'),
         subtitle: FutureBuilder<String>(
@@ -186,8 +202,9 @@ class AboutScreenState extends State<AboutScreen> {
   }
 
   Widget buildNameCard(String title) {
-    return Card.outlined(
+    return GlassCard(
       elevation: 1.0,
+      outlined: true,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
         title: Row(
@@ -204,12 +221,18 @@ class AboutScreenState extends State<AboutScreen> {
                 softWrap: false,
               ),
             ),
-            ElevatedButton(
+            GlassButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                minimumSize: const Size(90, 50), // Same width as Edit button
+              ),
               onPressed: () {
                 showDialog(
                   context: context,
                   builder: (BuildContext context) {
-                    return AlertDialog(
+                    return GlassAlertDialog(
                       title: const Center(child: Text('Custom Machine Name')),
                       content: SizedBox(
                         width: MediaQuery.of(context).size.width * 0.5,
@@ -231,14 +254,14 @@ class AboutScreenState extends State<AboutScreen> {
                         ),
                       ),
                       actions: [
-                        TextButton(
+                        GlassButton(
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
                           child: const Text('Close',
                               style: TextStyle(fontSize: 20)),
                         ),
-                        TextButton(
+                        GlassButton(
                           onPressed: () {
                             setState(() {
                               customName = cNameTextFieldKey.currentState!
@@ -281,8 +304,9 @@ class AboutScreenState extends State<AboutScreen> {
         onTap: handleQrTap,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Card.outlined(
+          child: GlassCard(
             elevation: 1.0,
+            outlined: true,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: QrImageView(
@@ -342,7 +366,7 @@ class AboutScreenState extends State<AboutScreen> {
           toastification.show(
             context: context,
             type: ToastificationType.info,
-            style: ToastificationStyle.flatColored,
+            style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 2),
             title: Text(
                 'You are ${5 - qrTapCount} ${5 - qrTapCount == 1 ? 'tap' : 'taps'} away from becoming a developer',

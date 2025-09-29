@@ -1,6 +1,6 @@
 /*
 * Orion - An open-source user interface for the Odyssey 3d-printing engine.
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,31 +15,45 @@
 * limitations under the License.
 */
 
-import 'dart:io';
+// ignore_for_file: avoid_print
+
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:window_size/window_size.dart';
 
-import 'package:orion/home/home_screen.dart';
-import 'package:orion/status/status_screen.dart';
 import 'package:orion/files/files_screen.dart';
 import 'package:orion/files/grid_files_screen.dart';
-import 'package:orion/settings/settings_screen.dart';
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/home/home_screen.dart';
+import 'package:orion/home/onboarding_screen.dart';
+import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/settings/about_screen.dart';
-import 'package:orion/themes/themes.dart';
-import 'package:orion/util/error_handling/error_handler.dart';
-
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:orion/settings/settings_screen.dart';
+import 'package:orion/status/status_screen.dart';
 import 'package:orion/tools/tools_screen.dart';
-import 'package:orion/util/orion_config.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:window_size/window_size.dart';
-import 'package:provider/provider.dart';
-import 'package:logging/logging.dart';
+import 'package:orion/util/error_handling/error_handler.dart';
+import 'package:orion/util/providers/locale_provider.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+    setWindowTitle('Orion - Open Resin Alliance');
+    setWindowMinSize(const Size(480, 480));
+    if (kDebugMode) {
+      setWindowMaxSize(const Size(800, 800));
+    }
+  }
+
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     ErrorHandler.onErrorDetails(details);
@@ -102,7 +116,137 @@ void main() {
     }
   });
 
-  runApp(const Orion());
+  runApp(const OrionRoot());
+}
+
+class OrionRoot extends StatelessWidget {
+  const OrionRoot({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => LocaleProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
+          lazy: false,
+        ),
+      ],
+      child: const OrionMainApp(),
+    );
+  }
+}
+
+class OrionMainApp extends StatefulWidget {
+  const OrionMainApp({super.key});
+
+  @override
+  OrionMainAppState createState() => OrionMainAppState();
+}
+
+class OrionMainAppState extends State<OrionMainApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _initRouter();
+  }
+
+  void _initRouter() {
+    _router = GoRouter(
+      routes: <RouteBase>[
+        GoRoute(
+          path: '/',
+          builder: (BuildContext context, GoRouterState state) {
+            return initialSetupTrigger()
+                ? const OnboardingScreen()
+                : const HomeScreen();
+          },
+          routes: <RouteBase>[
+            GoRoute(
+              path: 'home',
+              builder: (BuildContext context, GoRouterState state) {
+                return const HomeScreen();
+              },
+            ),
+            GoRoute(
+              path: 'files',
+              builder: (BuildContext context, GoRouterState state) {
+                return const FilesScreen();
+              },
+            ),
+            GoRoute(
+              path: 'gridfiles',
+              builder: (BuildContext context, GoRouterState state) {
+                return const GridFilesScreen();
+              },
+            ),
+            GoRoute(
+              path: 'settings',
+              builder: (BuildContext context, GoRouterState state) {
+                return const SettingsScreen();
+              },
+              routes: <RouteBase>[
+                GoRoute(
+                  path: 'about',
+                  builder: (BuildContext context, GoRouterState state) {
+                    return const AboutScreen();
+                  },
+                ),
+              ],
+            ),
+            GoRoute(
+              path: 'status',
+              builder: (BuildContext context, GoRouterState state) {
+                return const StatusScreen(
+                  newPrint: false,
+                );
+              },
+            ),
+            GoRoute(
+                path: 'tools',
+                builder: (BuildContext context, GoRouterState state) {
+                  return const ToolsScreen();
+                }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<LocaleProvider, ThemeProvider>(
+      builder: (context, localeProvider, themeProvider, child) {
+        return Provider<Function>.value(
+          value:
+              themeProvider.setThemeMode, // Use ThemeProvider's method directly
+          child: GlassApp(
+            child: MaterialApp.router(
+              title: 'Orion',
+              debugShowCheckedModeBanner: false,
+              routerConfig: _router,
+              theme: themeProvider.lightTheme,
+              darkTheme: themeProvider.darkTheme,
+              themeMode: themeProvider.themeMode,
+              locale: localeProvider.locale,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class Mutex {
@@ -121,110 +265,9 @@ class Mutex {
   }
 }
 
-void macDebug() {
-  if (kDebugMode) {
-    setWindowTitle('Orion Debug - Open Resin Alliance');
-    setWindowMinSize(const Size(480, 480));
-    setWindowMaxSize(const Size(800, 800));
+bool initialSetupTrigger() {
+  if (config.getFlag('firstRun', category: 'machine')) {
+    return true;
   }
-}
-
-/// The route configuration.
-final GoRouter _router = GoRouter(
-  routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (BuildContext context, GoRouterState state) {
-        return const HomeScreen();
-      },
-      routes: <RouteBase>[
-        GoRoute(
-          path: 'files',
-          builder: (BuildContext context, GoRouterState state) {
-            return const FilesScreen();
-          },
-        ),
-        GoRoute(
-          path: 'gridfiles',
-          builder: (BuildContext context, GoRouterState state) {
-            return const GridFilesScreen();
-          },
-        ),
-        GoRoute(
-          path: 'settings',
-          builder: (BuildContext context, GoRouterState state) {
-            return const SettingsScreen();
-          },
-          routes: <RouteBase>[
-            GoRoute(
-              path: 'about',
-              builder: (BuildContext context, GoRouterState state) {
-                return const AboutScreen();
-              },
-            ),
-          ],
-        ),
-        GoRoute(
-          path: 'status',
-          builder: (BuildContext context, GoRouterState state) {
-            return const StatusScreen(
-              newPrint: false,
-            );
-          },
-        ),
-        GoRoute(
-            path: 'tools',
-            builder: (BuildContext context, GoRouterState state) {
-              return const ToolsScreen();
-            }),
-      ],
-    ),
-  ],
-);
-
-/// The main app.
-
-class Orion extends StatefulWidget {
-  const Orion({super.key});
-
-  @override
-  OrionState createState() => OrionState();
-}
-
-class OrionState extends State<Orion> {
-  late ThemeMode _themeMode;
-  late OrionConfig _config;
-
-  @override
-  void initState() {
-    super.initState();
-    _config = OrionConfig();
-    _themeMode = _config.getThemeMode();
-  }
-
-  void changeThemeMode(ThemeMode themeMode) {
-    setState(() {
-      _themeMode = themeMode;
-    });
-    _config.setThemeMode(themeMode);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (Theme.of(context).platform == TargetPlatform.macOS) {
-      macDebug();
-    }
-    return Provider<Function>.value(
-      value: changeThemeMode,
-      child: SizedBox(
-        child: MaterialApp.router(
-          debugShowCheckedModeBanner: true,
-          routerConfig: _router,
-          theme: themeLight,
-          darkTheme: themeDark,
-          themeMode: _themeMode,
-        ),
-      ),
-    );
-  }
+  return false;
 }

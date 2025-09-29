@@ -1,6 +1,6 @@
 /*
 * Orion - Config
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,11 +17,12 @@
 
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
-import 'dart:convert';
 
 class OrionConfig {
   final _logger = Logger('OrionConfig');
@@ -83,12 +84,73 @@ class OrionConfig {
     setFlag(flagName, !currentValue, category: category);
   }
 
-  Color getVendorThemeSeed() {
+  Color getThemeSeed(String type) {
     var config = _getConfig();
-    var seedHex = config['vendor']?['vendorThemeSeed'] ?? '#ff6750a4';
+
+    var seedHex = '#00000000';
+
+    if (type == 'vendor') {
+      seedHex = config['vendor']?['vendorThemeSeed'] ?? '#00000000';
+    } else if (type == 'primary') {
+      seedHex = config['general']?['themeSeed'] ?? '#00000000';
+    }
     // Remove the '#' and parse the hex color
-    _logger.config('Vendor theme seed: $seedHex');
-    return Color(int.parse('${seedHex.replaceAll('#', '')}', radix: 16));
+    return Color(int.parse(seedHex.replaceAll('#', ''), radix: 16));
+  }
+
+  /// Get gradient colors for glass theme mode
+  List<Color> getThemeGradient(String type) {
+    var config = _getConfig();
+
+    List<String>? gradientHex;
+
+    if (type == 'vendor') {
+      gradientHex = config['vendor']?['vendorThemeGradient']?.cast<String>();
+    } else if (type == 'primary') {
+      gradientHex = config['general']?['themeGradient']?.cast<String>();
+    }
+
+    // If no gradient is defined, return empty list (will auto-generate)
+    if (gradientHex == null || gradientHex.isEmpty) {
+      return [];
+    }
+
+    // Convert hex strings to Color objects
+    return gradientHex.map((hex) {
+      return Color(int.parse(hex.replaceAll('#', ''), radix: 16));
+    }).toList();
+  }
+
+  /// Set gradient colors for glass theme mode
+  void setThemeGradient(List<Color> gradient, {String category = 'general'}) {
+    var config = _getConfig();
+    config[category] ??= {};
+
+    if (gradient.isEmpty) {
+      // Remove the gradient key completely when clearing
+      config[category].remove('themeGradient');
+    } else {
+      // Convert colors to hex strings using toArgb()
+      final gradientHex = gradient.map((color) {
+        final alpha = ((color.a * 255.0).round() & 0xff)
+            .toRadixString(16)
+            .padLeft(2, '0');
+        final red = ((color.r * 255.0).round() & 0xff)
+            .toRadixString(16)
+            .padLeft(2, '0');
+        final green = ((color.g * 255.0).round() & 0xff)
+            .toRadixString(16)
+            .padLeft(2, '0');
+        final blue = ((color.b * 255.0).round() & 0xff)
+            .toRadixString(16)
+            .padLeft(2, '0');
+        return '#$alpha$red$green$blue';
+      }).toList();
+
+      config[category]['themeGradient'] = gradientHex;
+    }
+
+    _writeConfig(config);
   }
 
   Map<String, dynamic> _getVendorConfig() {

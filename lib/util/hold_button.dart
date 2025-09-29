@@ -1,6 +1,6 @@
 /*
 * Orion - Orion HoldButton
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,6 +16,10 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class HoldButton extends StatefulWidget {
   final VoidCallback onPressed;
@@ -35,8 +39,7 @@ class HoldButton extends StatefulWidget {
   HoldButtonState createState() => HoldButtonState();
 }
 
-class HoldButtonState extends State<HoldButton>
-    with SingleTickerProviderStateMixin {
+class HoldButtonState extends State<HoldButton> with TickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -46,7 +49,6 @@ class HoldButtonState extends State<HoldButton>
       vsync: this,
       duration: widget.duration,
     );
-
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         widget.onPressed();
@@ -74,13 +76,29 @@ class HoldButtonState extends State<HoldButton>
 
   @override
   Widget build(BuildContext context) {
-    BorderRadiusGeometry borderRadius = BorderRadius.circular(100);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    BorderRadius borderRadius =
+        BorderRadius.circular(15); // Match our standard radius
 
     if (widget.style?.shape?.resolve({}) is RoundedRectangleBorder) {
-      borderRadius =
-          (widget.style?.shape?.resolve({}) as RoundedRectangleBorder)
-              .borderRadius;
+      final shape = widget.style?.shape?.resolve({}) as RoundedRectangleBorder;
+      if (shape.borderRadius is BorderRadius) {
+        borderRadius = shape.borderRadius as BorderRadius;
+      }
     }
+
+    Widget buttonChild = SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: GlassButton(
+        // Intentionally left empty: HoldButton manages tap events via GestureDetector.
+        onPressed: () {},
+        style: widget.style,
+        child: Center(
+          child: widget.child,
+        ),
+      ),
+    );
 
     return GestureDetector(
       onTapDown: _onTapDown,
@@ -94,15 +112,17 @@ class HoldButtonState extends State<HoldButton>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: widget.style,
-                      child: widget.child,
+                  buttonChild,
+                  // Show the animated hold icon only when the button is idle (not being pressed or held).
+                  // The condition ensures the icon appears only when the animation is not running and the progress is at the start.
+                  if (!_controller.isAnimating && _controller.value == 0)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16.0),
+                        child: _AnimatedHoldIcon(),
+                      ),
                     ),
-                  ),
                   Positioned.fill(
                     child: IgnorePointer(
                       child: ClipRRect(
@@ -111,10 +131,12 @@ class HoldButtonState extends State<HoldButton>
                           value: _controller.value,
                           backgroundColor: Colors.transparent,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withOpacity(0.5),
+                            themeProvider.isGlassTheme
+                                ? Colors.white.withValues(alpha: 0.5)
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -126,6 +148,59 @@ class HoldButtonState extends State<HoldButton>
           );
         },
       ),
+    );
+  }
+}
+
+/// Animated hold icon overlay for HoldButton
+class _AnimatedHoldIcon extends StatefulWidget {
+  @override
+  State<_AnimatedHoldIcon> createState() => _AnimatedHoldIconState();
+}
+
+class _AnimatedHoldIconState extends State<_AnimatedHoldIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.18).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scale,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scale.value,
+          child: Icon(
+            Icons.touch_app,
+            size: 28,
+            color: Colors.white.withValues(alpha: 0.38),
+            shadows: [
+              Shadow(
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
