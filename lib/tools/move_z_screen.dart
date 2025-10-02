@@ -20,7 +20,10 @@ import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:logging/logging.dart';
 
-import 'package:orion/api_services/api_services.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/backend_service/providers/config_provider.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 
@@ -33,7 +36,7 @@ class MoveZScreen extends StatefulWidget {
 
 class MoveZScreenState extends State<MoveZScreen> {
   final _logger = Logger('MoveZScreen');
-  final ApiService _api = ApiService();
+  // Use ConfigProvider for config data; ManualProvider for actions
 
   double maxZ = 0.0;
   double step = 0.1;
@@ -45,11 +48,19 @@ class MoveZScreenState extends State<MoveZScreen> {
   Future<void> moveZ(double distance) async {
     try {
       _logger.info('Moving Z by $distance');
-      final status = await _api.getStatus();
-      final currentZ = status['physical_state']['z'];
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      final curZ = statusProvider.status?.physicalState.z ?? this.currentZ;
 
-      final newZ = (currentZ + distance).clamp(0, maxZ);
-      await _api.move(newZ);
+      final newZ = (curZ + distance).clamp(0.0, maxZ).toDouble();
+      final manual = Provider.of<ManualProvider>(context, listen: false);
+      final ok = await manual.move(newZ);
+      if (!ok) {
+        setState(() {
+          _apiErrorState = true;
+        });
+        if (mounted) showErrorDialog(context, 'Failed to move Z');
+      }
     } catch (e) {
       _logger.severe('Failed to move Z: $e');
       setState(() {
@@ -61,10 +72,19 @@ class MoveZScreenState extends State<MoveZScreen> {
 
   void getMaxZ() async {
     try {
-      Map<String, dynamic> config = await _api.getConfig();
-      setState(() {
-        maxZ = config['printer']['max_z'];
-      });
+      final provider = Provider.of<ConfigProvider>(context, listen: false);
+      if (provider.config != null) {
+        setState(() {
+          maxZ = provider.config?.machine?['printer']?['max_z'] ?? maxZ;
+        });
+      } else {
+        await provider.refresh();
+        if (provider.config != null) {
+          setState(() {
+            maxZ = provider.config?.machine?['printer']?['max_z'] ?? maxZ;
+          });
+        }
+      }
     } catch (e) {
       setState(() {
         _apiErrorState = true;
@@ -214,139 +234,157 @@ class MoveZScreenState extends State<MoveZScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
         Expanded(
-          child: GlassButton(
-            onPressed: _apiErrorState
-                ? null
-                : () async {
-                    _logger.info('Moving to ZMAX');
-                    _api.move(maxZ);
-                  },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15)),
-              minimumSize: const Size(double.infinity, double.infinity),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(width: 16),
-                const Icon(Icons.arrow_upward, size: 30),
-                const Expanded(
-                  child: AutoSizeText(
-                    'Move to Top Limit',
-                    style: TextStyle(fontSize: 24),
-                    minFontSize: 20,
-                    maxLines: 1,
-                    overflowReplacement: Padding(
-                      padding: EdgeInsets.only(right: 20.0),
-                      child: Center(
-                        child: Text(
-                          'Top',
-                          style: TextStyle(fontSize: 24),
-                        ),
-                      ),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () async {
+                        _logger.info('Moving to ZMAX');
+                        final ok = await manual.move(maxZ);
+                        if (!ok && mounted)
+                          showErrorDialog(context, 'Failed to move to top');
+                      },
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                  minimumSize: const Size(double.infinity, double.infinity),
                 ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 25),
-        Expanded(
-          child: GlassButton(
-            onPressed: _apiErrorState
-                ? null
-                : () {
-                    _logger.info('Moving to ZMIN');
-                    _api.manualHome();
-                  },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15)),
-              minimumSize: const Size(double.infinity, double.infinity),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 16),
-                const Icon(Icons.home, size: 30),
-                const Expanded(
-                  child: AutoSizeText(
-                    'Return to Home',
-                    style: TextStyle(fontSize: 24),
-                    minFontSize: 20,
-                    maxLines: 1,
-                    overflowReplacement: Padding(
-                      padding: EdgeInsets.only(right: 20.0),
-                      child: Center(
-                        child: Text(
-                          'Home',
-                          style: TextStyle(fontSize: 24),
-                        ),
-                      ),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 25),
-        Expanded(
-          child: GlassButton(
-            onPressed: _apiErrorState
-                ? null
-                : () {
-                    _logger.severe('EMERGENCY STOP');
-                    _api.manualCommand('M112');
-                  },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15)),
-              minimumSize: const Size(double.infinity, double.infinity),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 16),
-                Icon(Icons.stop,
-                    size: 30,
-                    color: _apiErrorState
-                        ? null
-                        : Theme.of(context).colorScheme.onErrorContainer),
-                Expanded(
-                  child: AutoSizeText(
-                    'Emergency Stop',
-                    style: TextStyle(
-                      fontSize: 24,
-                      color: _apiErrorState
-                          ? null
-                          : Theme.of(context).colorScheme.onErrorContainer,
-                    ),
-                    maxLines: 1,
-                    minFontSize: 20,
-                    overflowReplacement: Padding(
-                      padding: EdgeInsets.only(right: 20.0),
-                      child: Center(
-                        child: Text(
-                          'Stop',
-                          style: TextStyle(
-                            fontSize: 24,
-                            color: _apiErrorState
-                                ? null
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onErrorContainer,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(width: 16),
+                    const Icon(Icons.arrow_upward, size: 30),
+                    const Expanded(
+                      child: AutoSizeText(
+                        'Move to Top Limit',
+                        style: TextStyle(fontSize: 24),
+                        minFontSize: 20,
+                        maxLines: 1,
+                        overflowReplacement: Padding(
+                          padding: EdgeInsets.only(right: 20.0),
+                          child: Center(
+                            child: Text(
+                              'Top',
+                              style: TextStyle(fontSize: 24),
+                            ),
                           ),
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 25),
+        Expanded(
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () async {
+                        _logger.info('Moving to ZMIN');
+                        final ok = await manual.manualHome();
+                        if (!ok && mounted)
+                          showErrorDialog(context, 'Failed to home');
+                      },
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                  minimumSize: const Size(double.infinity, double.infinity),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    const Icon(Icons.home, size: 30),
+                    const Expanded(
+                      child: AutoSizeText(
+                        'Return to Home',
+                        style: TextStyle(fontSize: 24),
+                        minFontSize: 20,
+                        maxLines: 1,
+                        overflowReplacement: Padding(
+                          padding: EdgeInsets.only(right: 20.0),
+                          child: Center(
+                            child: Text(
+                              'Home',
+                              style: TextStyle(fontSize: 24),
+                            ),
+                          ),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 25),
+        Expanded(
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () async {
+                        _logger.severe('EMERGENCY STOP');
+                        final ok = await manual.manualCommand('M112');
+                        if (!ok && mounted)
+                          showErrorDialog(context, 'Failed emergency stop');
+                      },
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                  minimumSize: const Size(double.infinity, double.infinity),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Icon(Icons.stop,
+                        size: 30,
+                        color: _apiErrorState
+                            ? null
+                            : Theme.of(context).colorScheme.onErrorContainer),
+                    Expanded(
+                      child: AutoSizeText(
+                        'Emergency Stop',
+                        style: TextStyle(
+                          fontSize: 24,
+                          color: _apiErrorState
+                              ? null
+                              : Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                        maxLines: 1,
+                        minFontSize: 20,
+                        overflowReplacement: Padding(
+                          padding: EdgeInsets.only(right: 20.0),
+                          child: Center(
+                            child: Text(
+                              'Stop',
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: _apiErrorState
+                                    ? null
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onErrorContainer,
+                              ),
+                            ),
+                          ),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
