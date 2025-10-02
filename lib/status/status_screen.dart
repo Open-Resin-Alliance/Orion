@@ -15,23 +15,20 @@
 * limitations under the License.
 */
 
-import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
-import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 
-import 'package:orion/api_services/api_services.dart';
 import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/settings_screen.dart';
-import 'package:orion/themes/themes.dart';
 import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/providers/theme_provider.dart';
-import 'package:orion/util/sl1_thumbnail.dart';
 import 'package:orion/util/status_card.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
+import 'package:orion/backend_service/odyssey/models/status_models.dart';
 
 class StatusScreen extends StatefulWidget {
   final bool newPrint;
@@ -41,365 +38,298 @@ class StatusScreen extends StatefulWidget {
   StatusScreenState createState() => StatusScreenState();
 }
 
-class StatusScreenState extends State<StatusScreen>
-    with SingleTickerProviderStateMixin {
-  final _logger = Logger('StatusScreen');
-  final ApiService _api = ApiService();
+class StatusScreenState extends State<StatusScreen> {
+  // While starting a new print we suppress rendering of any stale provider
+  // status until after we've issued a reset in a post-frame callback. This
+  // avoids calling notifyListeners during the same build frame that mounted
+  // this widget (which previously caused a FlutterError) while still ensuring
+  // a clean spinner instead of flashing the prior job.
+  bool _suppressOldStatus = false;
+  // Presentation-local state (derived values computed per build instead of storing)
+  bool get _isLandscape =>
+      MediaQuery.of(context).orientation == Orientation.landscape;
+  int get _maxNameLength => _isLandscape ? 12 : 24;
 
-  String fileName = '';
-  bool isLandScape = false;
-  int maxNameLength = 0;
+  String _truncateFileName(String name) => name.length >= _maxNameLength
+      ? '${name.substring(0, _maxNameLength)}...'
+      : name;
 
-  int totalSeconds = 0;
-  Duration duration = const Duration();
-  String twoDigits = '';
-  String twoDigitHours = '';
-  String twoDigitMinutes = '';
-  String twoDigitSeconds = '';
-
-  final ValueNotifier<String?> thumbnailNotifier = ValueNotifier<String?>(null);
-  late ValueNotifier<bool> newPrintNotifier = ValueNotifier<bool>(false);
-  Future<void>? _initStatusDetailsFuture;
-  Map<String, dynamic>? status;
-  double opacity = 0.0;
-  bool isPausing = false; // Flag to check if pausing is in progress
-  bool isCanceling = false; // Flag to check if canceling is in progress
-  bool isThumbnailFetched = false; // Flag to check if thumbnail is fetched
-  Timer? timer; // Timer for fetching status
+  // Duration formatting moved to StatusModel.formattedElapsedPrintTime
 
   @override
   void initState() {
     super.initState();
-    _initStatusDetailsFuture = getStatus();
-    newPrintNotifier = ValueNotifier<bool>(widget.newPrint);
-    if (widget.newPrint == true) {
-      isThumbnailFetched = false;
-    }
-    timer = Timer.periodic(const Duration(seconds: 1),
-        (Timer t) => getStatus()); // Fetch status every second
-  }
-
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> getStatus() async {
-    try {
-      status = await _api.getStatus();
-      if (status != null) {
-        if (status!['status'] == 'Printing' || status!['status'] == 'Idle') {
-          if (status!['print_data'] != null &&
-              status!['print_data']['file_data'] != null) {
-            String? thumbnailFullPath =
-                status!['print_data']['file_data']['path'];
-            fileName = status!['print_data']['file_data']['name'];
-            String location = status!['print_data']['file_data']
-                    ['location_category'] ??
-                'Local';
-            if (thumbnailFullPath != null &&
-                !isThumbnailFetched &&
-                status!['status'] == 'Printing') {
-              String thumbnailSubdir = '/';
-              if (thumbnailFullPath.contains('/')) {
-                thumbnailSubdir = thumbnailFullPath.substring(
-                    0, thumbnailFullPath.lastIndexOf('/'));
-              }
-              thumbnailNotifier.value = await ThumbnailUtil.extractThumbnail(
-                location,
-                thumbnailSubdir,
-                fileName,
-                size: 'Large',
-              );
-              isThumbnailFetched = true;
-            }
-          } else {
-            thumbnailNotifier.value = null;
-          }
-        }
-      } else {
-        thumbnailNotifier.value = null;
-      }
-      if (mounted) setState(() {});
-    } catch (e) {
-      _logger.severe('Failed to get status: $e');
-    }
-  }
-
-  // Method to get the status color based on the status
-  Color getStatusColor() {
-    final Map<String, Color> statusColor = {
-      'Printing': Theme.of(context).brightness == Brightness.dark
-          ? Theme.of(context).colorScheme.primary
-          : Colors.black54,
-      'Idle': Colors.greenAccent,
-      'Shutdown': Colors.red,
-      'Canceled': Colors.red,
-      'Pause': Colors.orange,
-      'Curing': Theme.of(context).brightness == Brightness.dark
-          ? Theme.of(context).colorScheme.primaryContainer.withBrightness(1.7)
-          : Theme.of(context).colorScheme.primary,
-    };
-
-    String printStatus = status!['status'];
-    bool curing = status!['physical_state']['curing'] ??
-        false; // Default to false if 'curing' is null
-
-    bool paused = status!['paused'] ?? false;
-    bool canceled = status!['layer'] == null;
-
-    if (curing) {
-      return statusColor['Curing'] ??
-          Colors.black; // Default to black if 'Curing' is not in the map
-    } else if (paused) {
-      return statusColor['Pause'] ??
-          Colors.black; // Default to black if 'Pause' is not in the map
-    } else if (canceled) {
-      return statusColor['Canceled'] ??
-          Colors.black; // Default to black if 'Canceled' is not in the map
-    } else {
-      return statusColor[printStatus] ??
-          Colors.black; // Default to black if the status is not in the map
+    if (widget.newPrint) {
+      _suppressOldStatus = true; // force spinner for fresh print session
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<StatusProvider>().resetStatus();
+        setState(() => _suppressOldStatus = false);
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _initStatusDetailsFuture,
-      builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        } else if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(
-              child: Text('Error: ${snapshot.error}'),
-            ),
-          );
-        } else {
-          if (status != null &&
-              status!['print_data'] == null &&
-              newPrintNotifier.value == false) {
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('No Print Data Available'),
-              ),
+    return Consumer<StatusProvider>(
+      builder: (context, provider, _) {
+        final StatusModel? status = provider.status;
+        final awaiting = provider.awaitingNewPrintData;
+        final newPrintReady = provider.newPrintReady;
+        // We do not expose elapsed awaiting time (private); could add later via provider getter.
+        const int waitMillis = 0;
+        // Provider handles polling, transitional flags (pause/cancel), thumbnail caching, and
+        // exposes a typed StatusModel. The screen now focuses solely on presentation.
+
+        // Show global loading while provider indicates loading, we have no status yet,
+        // or we are in the transitional window awaiting initial print data to avoid
+        // an empty flicker state.
+        if (_suppressOldStatus ||
+            provider.isLoading ||
+            status == null ||
+            (awaiting && !newPrintReady)) {
+          return GlassApp(
+            child: Scaffold(
               body: Center(
-                child: GlassButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const GridFilesScreen()),
-                      );
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text(
-                        'Go to Files',
-                        style: TextStyle(fontSize: 26),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    if (awaiting && waitMillis > 5000)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16.0),
+                        child: Text(
+                          'Waiting for printer to start…',
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ),
-                    )),
+                  ],
+                ),
               ),
-            );
-          } else if (status != null &&
-              (status!['layer'] == null ||
-                  status!['layer'] == status!['print_data']['layer_count']) &&
-              newPrintNotifier.value == true) {
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('Loading...'),
-              ),
-              body: const Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          } else if (status == null) {
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('Error'),
-              ),
+            ),
+          );
+        }
+
+        if (provider.error != null) {
+          return GlassApp(
+            child: Scaffold(
+              appBar: AppBar(title: const Text('Error')),
               body: const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'An Error has occurred while fetching files!\n'
+                      'An Error has occurred while fetching status!\n'
                       'Please ensure that Odyssey is running and accessible.\n\n'
                       'If the issue persists, please contact support.\n'
                       'Error Code: PINK-CARROT',
+                      textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: kToolbarHeight / 2)
                   ],
                 ),
               ),
-            );
-          } else {
-            if (status != null && status!['status'] == 'Printing') {
-              newPrintNotifier.value = false;
-            }
+            ),
+          );
+        }
 
-            isLandScape =
-                MediaQuery.of(context).orientation == Orientation.landscape;
-            maxNameLength = isLandScape ? 12 : 24;
-
-            totalSeconds = status!['print_data']['print_time'].toInt();
-            duration = Duration(seconds: totalSeconds);
-            twoDigits(int n) => n.toString().padLeft(2, "0");
-
-            twoDigitHours = twoDigits(duration.inHours.remainder(24));
-            twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-            twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-
-            return GlassApp(
-              child: Scaffold(
-                appBar: AppBar(
-                  automaticallyImplyLeading: false,
-                  title: RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                            text: 'Print Status',
-                            style:
-                                Theme.of(context).appBarTheme.titleTextStyle),
-                        TextSpan(
-                            text: ' - ',
-                            style:
-                                Theme.of(context).appBarTheme.titleTextStyle),
-                        TextSpan(
-                          text: isCanceling && status!['layer'] != null
-                              ? 'Canceling'
-                              : status!['layer'] == null
-                                  ? 'Canceled'
-                                  : isPausing == true &&
-                                          status!['paused'] == false
-                                      ? 'Pausing'
-                                      : status!['paused'] == true
-                                          ? 'Paused'
-                                          : status!['status'] == 'Idle'
-                                              ? 'Finished'
-                                              : '${status!['status']}',
-                          style: Theme.of(context).appBarTheme.titleTextStyle,
-                        ),
-                      ],
+        // No active or last print data (only show when not in awaiting transitional phase)
+        if (!awaiting && status.printData == null) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('No Print Data Available'),
+            ),
+            body: Center(
+              child: GlassButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GridFilesScreen(),
                     ),
-                  ),
-                ),
-                body: Center(
-                  child: LayoutBuilder(
-                    builder:
-                        (BuildContext context, BoxConstraints constraints) {
-                      return isLandScape
-                          ? Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 16, right: 16, bottom: 20),
-                              child: buildLandscapeLayout(context))
-                          : Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 16, right: 16, bottom: 20),
-                              child: buildPortraitLayout(context));
-                    },
+                  );
+                },
+                child: const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text(
+                    'Go to Files',
+                    style: TextStyle(fontSize: 26),
                   ),
                 ),
               ),
-            );
-          }
+            ),
+          );
         }
+
+        final elapsedStr = status.formattedElapsedPrintTime;
+        final fileName = status.printData?.fileData?.name ?? '';
+
+        return GlassApp(
+          child: Scaffold(
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              title: RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Print Status',
+                      style: Theme.of(context).appBarTheme.titleTextStyle,
+                    ),
+                    TextSpan(
+                      text: ' - ',
+                      style: Theme.of(context).appBarTheme.titleTextStyle,
+                    ),
+                    TextSpan(
+                      text: provider.displayStatus,
+                      style: Theme.of(context).appBarTheme.titleTextStyle,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            body: Center(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return _isLandscape
+                      ? Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom: 20,
+                          ),
+                          child: _buildLandscapeLayout(
+                            context,
+                            provider,
+                            status,
+                            elapsedStr,
+                            fileName,
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom: 20,
+                          ),
+                          child: _buildPortraitLayout(
+                            context,
+                            provider,
+                            status,
+                            elapsedStr,
+                            fileName,
+                          ),
+                        );
+                },
+              ),
+            ),
+          ),
+        );
       },
     );
   }
 
-  Widget buildPortraitLayout(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              buildNameCard(fileName),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Column(
-                  children: [
-                    buildThumbnailView(context),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: buildInfoCard('Current Z Position',
-                              '${(status!['physical_state']['z'] as double).toStringAsFixed(3)} mm'),
-                        ),
-                        Expanded(
-                          child: buildInfoCard('Print Layers',
-                              '${status!['layer'] == null ? '-' : status!['layer'] + 1 ?? '-'} / ${status!['print_data']['layer_count'] + 1}'),
-                        ),
-                      ],
+  Widget _buildPortraitLayout(BuildContext context, StatusProvider provider,
+      StatusModel? status, String elapsedStr, String fileName) {
+    final statusModel = status;
+    final layerCurrent = statusModel?.layer;
+    final layerTotal = statusModel?.printData?.layerCount;
+    final usedMaterial = statusModel?.printData?.usedMaterial;
+    return Row(children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildNameCard(fileName, provider),
+            const SizedBox(height: 16),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildThumbnailView(context, provider, statusModel),
+                  const Spacer(),
+                  Row(children: [
+                    Expanded(
+                      child: _buildInfoCard(
+                        'Current Z Position',
+                        '${statusModel?.physicalState.z.toStringAsFixed(3) ?? '-'} mm',
+                      ),
                     ),
-                    const SizedBox(height: 5),
-                    buildInfoCard('Estimated Print Time',
-                        '$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds'),
-                    const SizedBox(height: 5),
-                    buildInfoCard('Estimated Volume',
-                        '${(status!['print_data']['used_material'] as double).toStringAsFixed(2)} mL'),
-                    const Spacer(),
-                    buildButtons(),
-                  ],
-                ),
+                    Expanded(
+                      child: _buildInfoCard(
+                        'Print Layers',
+                        layerCurrent == null || layerTotal == null
+                            ? '- / -'
+                            : '${layerCurrent + 1} / ${layerTotal + 1}',
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 5),
+                  _buildInfoCard('Estimated Print Time', elapsedStr),
+                  const SizedBox(height: 5),
+                  _buildInfoCard(
+                    'Estimated Volume',
+                    usedMaterial == null
+                        ? '-'
+                        : '${usedMaterial.toStringAsFixed(2)} mL',
+                  ),
+                  const Spacer(),
+                  _buildButtons(provider, statusModel),
+                ],
               ),
-            ],
-          ),
-        )
-      ],
-    );
+            ),
+          ],
+        ),
+      )
+    ]);
   }
 
-  Widget buildLandscapeLayout(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: ListView(
-                  children: [
-                    buildNameCard(fileName),
-                    buildInfoCard('Current Z Position',
-                        '${(status!['physical_state']['z'] as double).toStringAsFixed(3)} mm'),
-                    buildInfoCard('Print Layers',
-                        '${status!['layer'] == null ? '-' : status!['layer'] + 1 ?? '-'} / ${status!['print_data']['layer_count'] + 1}'),
-                    buildInfoCard('Estimated Print Time',
-                        '$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds'),
-                    buildInfoCard('Estimated Volume',
-                        '${(status!['print_data']['used_material'] as double).toStringAsFixed(2)} mL')
-                  ],
-                ),
+  Widget _buildLandscapeLayout(BuildContext context, StatusProvider provider,
+      StatusModel? status, String elapsedStr, String fileName) {
+    final statusModel = status;
+    final layerCurrent = statusModel?.layer;
+    final layerTotal = statusModel?.printData?.layerCount;
+    final usedMaterial = statusModel?.printData?.usedMaterial;
+    return Column(children: [
+      Expanded(
+        child: Row(children: [
+          Expanded(
+            flex: 1,
+            child: ListView(children: [
+              _buildNameCard(fileName, provider),
+              _buildInfoCard(
+                'Current Z Position',
+                '${statusModel?.physicalState.z.toStringAsFixed(3) ?? '-'} mm',
               ),
-              const SizedBox(width: 16.0),
-              Flexible(
-                flex: 0,
-                child: buildThumbnailView(context),
+              _buildInfoCard(
+                'Print Layers',
+                layerCurrent == null || layerTotal == null
+                    ? '- / -'
+                    : '${layerCurrent + 1} / ${layerTotal + 1}',
               ),
-            ],
+              _buildInfoCard('Estimated Print Time', elapsedStr),
+              _buildInfoCard(
+                'Estimated Volume',
+                usedMaterial == null
+                    ? '-'
+                    : '${usedMaterial.toStringAsFixed(2)} mL',
+              ),
+            ]),
           ),
-        ),
-        const SizedBox(height: 20),
-        Padding(
-          padding: const EdgeInsets.only(left: 5, right: 5),
-          child: buildButtons(),
-        ),
-      ],
-    );
+          const SizedBox(width: 16.0),
+          Flexible(
+            flex: 0,
+            child: _buildThumbnailView(context, provider, statusModel),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 20),
+      Padding(
+        padding: const EdgeInsets.only(left: 5, right: 5),
+        child: _buildButtons(provider, statusModel),
+      ),
+    ]);
   }
 
-  Widget buildInfoCard(String title, String subtitle) {
-    Provider.of<ThemeProvider>(context);
-
+  Widget _buildInfoCard(String title, String subtitle) {
+    Provider.of<ThemeProvider>(context); // theming
     return GlassCard(
       outlined: true,
       elevation: 1.0,
@@ -410,65 +340,75 @@ class StatusScreenState extends State<StatusScreen>
     );
   }
 
-  Widget buildNameCard(String title) {
-    Provider.of<ThemeProvider>(context);
+  Widget _buildNameCard(String fileName, StatusProvider provider) {
+    final truncated = _truncateFileName(fileName);
+    final color = provider.statusColor(context);
     return GlassCard(
       outlined: true,
       child: ListTile(
         title: AutoSizeText.rich(
           maxLines: 1,
           minFontSize: 16,
-          TextSpan(
-            children: [
-              TextSpan(
-                text: fileName.length >= maxNameLength
-                    ? '${fileName.substring(0, maxNameLength)}...'
-                    : fileName,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: getStatusColor(),
-                ),
+          TextSpan(children: [
+            TextSpan(
+              text: truncated,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
-            ],
-          ),
+            ),
+          ]),
         ),
       ),
     );
   }
 
-  Widget buildThumbnailView(BuildContext context) {
-    return ValueListenableBuilder<String?>(
-      valueListenable: thumbnailNotifier,
-      builder: (BuildContext context, String? thumbnail, Widget? child) {
-        final themeProvider = Provider.of<ThemeProvider>(context);
-        double progress = 0.0;
-        if (status!['layer'] != null &&
-            status!['print_data']['layer_count'] != null) {
-          progress = status!['layer'] / status!['print_data']['layer_count'];
-        }
-        return Center(
-          child: Stack(
-            children: [
-              GlassCard(
-                outlined: true,
-                elevation: 1.0,
-                child: Padding(
-                  padding: const EdgeInsets.all(4.5),
-                  child: ClipRRect(
-                    borderRadius: themeProvider.isGlassTheme
-                        ? BorderRadius.circular(10.5)
-                        : BorderRadius.circular(7.75),
-                    child: Stack(
-                      children: [
-                        // Grayscale image
-                        ColorFiltered(
-                          colorFilter: const ColorFilter.matrix(<double>[
-                            0.2126, 0.7152, 0.0722, 0, 0, //
-                            0.2126, 0.7152, 0.0722, 0, 0,
-                            0.2126, 0.7152, 0.0722, 0, 0,
-                            0, 0, 0, 1, 0,
-                          ]),
+  Widget _buildThumbnailView(
+      BuildContext context, StatusProvider provider, StatusModel? status) {
+    final thumbnail = provider.thumbnailPath;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final progress = provider.progress;
+    final statusColor = provider.statusColor(context);
+    return Center(
+      child: Stack(
+        children: [
+          GlassCard(
+            outlined: true,
+            elevation: 1.0,
+            child: Padding(
+              padding: const EdgeInsets.all(4.5),
+              child: ClipRRect(
+                borderRadius: themeProvider.isGlassTheme
+                    ? BorderRadius.circular(10.5)
+                    : BorderRadius.circular(7.75),
+                child: Stack(children: [
+                  ColorFiltered(
+                    colorFilter: const ColorFilter.matrix(<double>[
+                      0.2126, 0.7152, 0.0722, 0, 0, // grayscale matrix
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0, 0, 0, 1, 0,
+                    ]),
+                    child: thumbnail != null && thumbnail.isNotEmpty
+                        ? Image.file(
+                            File(thumbnail),
+                            fit: BoxFit.cover,
+                          )
+                        : const Center(child: CircularProgressIndicator()),
+                  ),
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: ClipRect(
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          heightFactor: progress,
                           child: thumbnail != null && thumbnail.isNotEmpty
                               ? Image.file(
                                   File(thumbnail),
@@ -478,296 +418,236 @@ class StatusScreenState extends State<StatusScreen>
                                   child: CircularProgressIndicator(),
                                 ),
                         ),
-                        Positioned.fill(
-                          child: Container(
-                            color: Colors.black.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        // Colored image revealed based on progress
-                        Positioned.fill(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: ClipRect(
-                              child: Align(
-                                alignment: Alignment.bottomCenter,
-                                heightFactor: progress,
-                                child: thumbnail != null && thumbnail.isNotEmpty
-                                    ? Image.file(
-                                        File(thumbnail),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : const Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ]),
               ),
-              Positioned.fill(
-                right: 15,
-                child: Center(
-                  child: StatusCard(
-                    isCanceling: isCanceling,
-                    isPausing: isPausing,
-                    progress: progress,
-                    statusColor: getStatusColor(),
-                    status: status!,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 0,
-                bottom: 0,
-                right: 0,
-                child: Padding(
-                  padding: const EdgeInsets.all(2),
-                  child: Builder(
-                    builder: (context) {
-                      final themeProvider = Provider.of<ThemeProvider>(context);
-                      final isGlassTheme = themeProvider.isGlassTheme;
-
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.only(
-                            topRight: themeProvider.isGlassTheme
-                                ? const Radius.circular(14.0)
-                                : const Radius.circular(9.75),
-                            bottomRight: themeProvider.isGlassTheme
-                                ? const Radius.circular(14.0)
-                                : const Radius.circular(9.75),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(2.5),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.only(
-                              topRight: themeProvider.isGlassTheme
-                                  ? const Radius.circular(11.5)
-                                  : const Radius.circular(7.75),
-                              bottomRight: themeProvider.isGlassTheme
-                                  ? const Radius.circular(11.5)
-                                  : const Radius.circular(7.75),
-                            ),
-                            child: RotatedBox(
-                              quarterTurns: 3,
-                              child: LinearProgressIndicator(
-                                minHeight: 30,
-                                color: getStatusColor(),
-                                value: progress,
-                                backgroundColor: isGlassTheme
-                                    ? Colors.white.withValues(alpha: 0.1)
-                                    : null,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          Positioned.fill(
+            right: 15,
+            child: Center(
+              child: StatusCard(
+                isCanceling: provider.isCanceling,
+                isPausing: provider.isPausing,
+                progress: progress,
+                statusColor: statusColor,
+                status: status,
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            bottom: 0,
+            right: 0,
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: Builder(builder: (context) {
+                final isGlassTheme = themeProvider.isGlassTheme;
+                return Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      topRight: isGlassTheme
+                          ? const Radius.circular(14.0)
+                          : const Radius.circular(9.75),
+                      bottomRight: isGlassTheme
+                          ? const Radius.circular(14.0)
+                          : const Radius.circular(9.75),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2.5),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.only(
+                        topRight: isGlassTheme
+                            ? const Radius.circular(11.5)
+                            : const Radius.circular(7.75),
+                        bottomRight: isGlassTheme
+                            ? const Radius.circular(11.5)
+                            : const Radius.circular(7.75),
+                      ),
+                      child: RotatedBox(
+                        quarterTurns: 3,
+                        child: LinearProgressIndicator(
+                          minHeight: 30,
+                          color: statusColor,
+                          value: progress,
+                          backgroundColor: isGlassTheme
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget buildButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: Builder(
-            builder: (context) {
-              Provider.of<ThemeProvider>(context);
+  Widget _buildButtons(StatusProvider provider, StatusModel? status) {
+    final s = status;
+    final isFinished = s != null && s.isIdle && s.layer != null;
+    final isCanceled = s?.isCanceled ?? false;
+    final canShowOptions =
+        s != null && !isFinished && !isCanceled && s.layer != null;
+    // Primary action button should be enabled in these cases:
+    // * Active print (to allow pause/resume)
+    // * Finished print (return home)
+    // * Canceled print (return home)
+    // Disabled only when status not yet loaded or during cancel transition.
+    final pauseResumeEnabled = s != null && (!provider.isCanceling);
+    final isPaused = s?.isPaused ?? false;
 
-              final buttonStyle = ElevatedButton.styleFrom(
-                minimumSize: const Size(120, 65),
-                maximumSize: Size(120, 65),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-              );
-
-              final onPressed = isCanceling == true && status!['layer'] != null
-                  ? null
-                  : status!['layer'] == null || status!['status'] == 'Idle'
-                      ? null
-                      : () {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              Provider.of<ThemeProvider>(context);
-
-                              Widget dialogContent = Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  const SizedBox(height: 10),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Text(
-                                      'Options',
-                                      style: const TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
+    return Row(children: [
+      Expanded(
+        child: GlassButton(
+          onPressed: (!canShowOptions || provider.isCanceling)
+              ? null
+              : () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) {
+                      Provider.of<ThemeProvider>(ctx);
+                      final buttonStyle = ElevatedButton.styleFrom(
+                        minimumSize: const Size(120, 65),
+                        maximumSize: const Size(120, 65),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      );
+                      return GlassDialog(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 10),
+                            const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Text(
+                                'Options',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: SizedBox(
+                                height: 65,
+                                width: 450,
+                                child: GlassButton(
+                                  style: buttonStyle,
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SettingsScreen(),
                                       ),
-                                    ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    'Settings',
+                                    style: TextStyle(fontSize: 24),
                                   ),
-                                  const SizedBox(height: 10),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 20, right: 20),
-                                    child: SizedBox(
-                                      height: 65,
-                                      width: 450,
-                                      child: GlassButton(
-                                        style: buttonStyle,
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const SettingsScreen()),
-                                          );
-                                        },
-                                        child: const Text(
-                                          'Settings',
-                                          style: TextStyle(fontSize: 24),
-                                        ),
-                                      ),
-                                    ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: SizedBox(
+                                height: 65,
+                                width: 450,
+                                child: HoldButton(
+                                  style: buttonStyle,
+                                  duration: const Duration(seconds: 2),
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    provider.cancel();
+                                  },
+                                  child: const Text(
+                                    'Cancel Print',
+                                    style: TextStyle(fontSize: 24),
                                   ),
-                                  const SizedBox(height: 20),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 20, right: 20),
-                                    child: SizedBox(
-                                      height: 65,
-                                      width: 450,
-                                      child: HoldButton(
-                                        style: buttonStyle,
-                                        duration: const Duration(seconds: 2),
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          _api.cancelPrint();
-                                          setState(() {
-                                            isCanceling = true;
-                                          });
-                                        },
-                                        child: const Text(
-                                          'Cancel Print',
-                                          style: TextStyle(fontSize: 24),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                ],
-                              );
-
-                              return GlassDialog(
-                                padding: const EdgeInsets.all(8),
-                                child: dialogContent,
-                              );
-                            },
-                          );
-                        };
-
-              const child = Text(
-                'Options',
-                style: TextStyle(fontSize: 24),
-              );
-
-              if (onPressed == null) {
-                return GlassButton(
-                  onPressed: onPressed,
-                  style: buttonStyle,
-                  child: child,
-                );
-              }
-
-              return GlassButton(
-                onPressed: onPressed,
-                style: buttonStyle,
-                child: child,
-              );
-            },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(120, 65),
+            maximumSize: const Size(120, 65),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+          child: const Text('Options', style: TextStyle(fontSize: 24)),
+        ),
+      ),
+      const SizedBox(width: 20),
+      Expanded(
+        child: GlassButton(
+          onPressed: !pauseResumeEnabled
+              ? null
+              : () {
+                  if (isCanceled || isFinished) {
+                    // Navigate home first so the status reset does not briefly
+                    // render a spinner on the StatusScreen just before popping.
+                    Navigator.popUntil(context, ModalRoute.withName('/'));
+                    // Defer reset until after navigation settles; we only care
+                    // about showing a clean spinner on the NEXT status visit.
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final mountedContext = context;
+                      // Provider still available via root; safe to reset.
+                      try {
+                        mountedContext.read<StatusProvider>().resetStatus();
+                      } catch (_) {
+                        // If provider no longer in tree (unlikely), ignore.
+                      }
+                    });
+                    return;
+                  }
+                  if (s.isIdle && s.layer == null) {
+                    Navigator.pop(context);
+                    return;
+                  }
+                  provider.pauseOrResume();
+                },
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(120, 65),
+            maximumSize: const Size(120, 65),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+          child: AutoSizeText(
+            minFontSize: 16,
+            maxLines: 1,
+            (isCanceled || isFinished)
+                ? 'Return to Home'
+                : isPaused
+                    ? 'Resume'
+                    : 'Pause',
+            style: const TextStyle(fontSize: 24),
           ),
         ),
-        const SizedBox(width: 20),
-        Expanded(
-          child: Builder(
-            builder: (context) {
-              Provider.of<ThemeProvider>(context);
-
-              final buttonStyle = ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  minimumSize: const Size(120, 65),
-                  maximumSize: Size(120, 65));
-
-              final onPressed = isCanceling == true && status!['layer'] != null
-                  ? null
-                  : isPausing == true && status!['paused'] == false
-                      ? null
-                      : status!['layer'] == null
-                          ? () {
-                              Navigator.popUntil(
-                                  context, ModalRoute.withName('/'));
-                            }
-                          : status!['status'] == 'Idle'
-                              ? () {
-                                  Navigator.pop(context);
-                                }
-                              : () {
-                                  if (status!['paused'] == true) {
-                                    _api.resumePrint();
-                                    setState(() {
-                                      isPausing = false;
-                                    });
-                                  } else {
-                                    _api.pausePrint();
-                                    setState(() {
-                                      isPausing = true;
-                                    });
-                                  }
-                                };
-
-              final child = AutoSizeText(
-                minFontSize: 16,
-                maxLines: 1,
-                status!['layer'] == null || status!['status'] == 'Idle'
-                    ? 'Return to Home'
-                    : status!['paused'] == true
-                        ? 'Resume'
-                        : 'Pause',
-                style: const TextStyle(fontSize: 24),
-              );
-
-              if (onPressed == null) {
-                return GlassButton(
-                  onPressed: onPressed,
-                  style: buttonStyle,
-                  child: child,
-                );
-              }
-
-              return GlassButton(
-                onPressed: onPressed,
-                style: buttonStyle,
-                child: child,
-              );
-            },
-          ),
-        ),
-      ],
-    );
+      ),
+    ]);
   }
 }
