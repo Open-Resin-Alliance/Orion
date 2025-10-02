@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 mixin Pubspec {
-  static final buildDate = DateTime.utc(2025, 8, 2, 14, 55, 54);
+  static final buildDate = DateTime.utc(2025, 10, 1, 19, 10, 15);
 
   static const name = 'orion';
 
@@ -12,17 +12,17 @@ mixin Pubspec {
 
   static const publish_to = 'none';
 
-  static const versionFull = '0.4.0+SELFCOMPILED';
+  static const versionFull = '0.3.2+SELFCOMPILED';
 
-  static const version = '0.4.0';
+  static const version = '0.3.2';
 
-  static const versionSmall = '0.4';
+  static const versionSmall = '0.3';
 
   static const versionMajor = 0;
 
-  static const versionMinor = 4;
+  static const versionMinor = 3;
 
-  static const versionPatch = 0;
+  static const versionPatch = 2;
 
   static const versionBuild = 0;
 
@@ -44,6 +44,7 @@ mixin Pubspec {
     'glob': '^2.1.2',
     'go_router': '^16.0.0',
     'http': '^1.2.1',
+    'image': '^4.1.3',
     'ini': '^2.1.0',
     'intl': 'any',
     'path': 'any',
@@ -74,6 +75,8 @@ mixin Pubspec {
     'flutter_localizations': <dynamic, dynamic>{
       'sdk': 'flutter',
     },
+    'marquee': '^2.3.0',
+    'json_annotation': '^4.9.0',
   };
 
   static const dev_dependencies = <dynamic, dynamic>{
@@ -81,6 +84,8 @@ mixin Pubspec {
       'sdk': 'flutter',
     },
     'flutter_lints': '^6.0.0',
+    'build_runner': '^2.4.10',
+    'json_serializable': '^6.8.0',
   };
 
   static const flutter = <dynamic, dynamic>{
