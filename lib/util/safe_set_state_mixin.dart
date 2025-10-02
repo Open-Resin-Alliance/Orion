@@ -14,6 +14,8 @@
 /// ```
 ///
 /// This keeps widget state updates safe after await boundaries.
+library;
+
 import 'package:flutter/widgets.dart';
 
 mixin SafeSetStateMixin<T extends StatefulWidget> on State<T> {
