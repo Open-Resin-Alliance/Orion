@@ -38,6 +38,11 @@ import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/status/status_screen.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
+import 'package:orion/backend_service/providers/files_provider.dart';
+import 'package:orion/backend_service/providers/config_provider.dart';
+import 'package:orion/backend_service/providers/print_provider.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/tools/tools_screen.dart';
 import 'package:orion/util/error_handling/error_handler.dart';
 import 'package:orion/util/providers/locale_provider.dart';
@@ -133,6 +138,26 @@ class OrionRoot extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => ThemeProvider(),
           lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StatusProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ConfigProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => FilesProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PrintProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ManualProvider(),
+          lazy: true,
         ),
       ],
       child: const OrionMainApp(),
