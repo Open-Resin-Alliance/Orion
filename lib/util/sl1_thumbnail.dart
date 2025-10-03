@@ -21,14 +21,9 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:typed_data';
-// Temporarily remove NanoDLP dependency so this file can be included
-// in an Odyssey-only refactor PR. Replacement fallbacks are provided
-// below (small embedded placeholder and simple pass-through resize)
-// to avoid importing NanoDLP-specific helpers here.
-// import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'dart:convert';
 
 class ThumbnailUtil {
   static final _logger = Logger('ThumbnailUtil');
@@ -156,33 +151,27 @@ class ThumbnailUtil {
       final bytes =
           await odysseyClient.getFileThumbnail(location, finalLocation, size);
 
-      // Use conservative defaults for sizes. NanoDLP-specific canonical
-      // sizes were removed from this file to keep NanoDLP out of the
-      // Odyssey-only refactor; we use reasonable defaults here.
       int width = 400, height = 400;
       if (size == 'Large') {
-        width = _largeWidth;
-        height = _largeHeight;
+        width = NanoDlpThumbnailGenerator.largeWidth;
+        height = NanoDlpThumbnailGenerator.largeHeight;
       }
 
-      // Use compute to run the resize on a background isolate. The
-      // isolate implementation below is intentionally minimal: if the
-      // backend-provided bytes exist we pass them through unchanged;
-      // otherwise we return a tiny embedded placeholder PNG. This keeps
-      // this file free of NanoDLP helpers while preserving safe behavior.
+      // Use compute to run the resize on a background isolate.
       final resized = await compute(_resizeBytesEntry, {
         'bytes': bytes,
         'width': width,
         'height': height,
       });
 
+      // Return resized bytes; callers may optionally write to disk.
       return resized as Uint8List;
     } catch (e) {
       _logger.warning('Failed to fetch/resize thumbnail bytes', e);
     }
 
-    // Fallback: return a tiny embedded placeholder PNG.
-    return _placeholderBytes();
+    // Fallback: return a generated placeholder using the canonical small size.
+    return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
   }
 }
 
@@ -200,32 +189,8 @@ dynamic _resizeBytesEntry(Map<String, dynamic> msg) {
     final bytes = msg['bytes'] as Uint8List;
     width = msg['width'] as int? ?? width;
     height = msg['height'] as int? ?? height;
-    // For the Odyssey-only refactor we avoid calling into NanoDLP
-    // helpers. If bytes are present, return them unchanged (no-op
-    // resize). If bytes are missing or invalid, return the embedded
-    // placeholder.
-    return _resizeOrPlaceholder(bytes, width, height);
+    return NanoDlpThumbnailGenerator.resizeOrPlaceholder(bytes, width, height);
   } catch (_) {
-    return _placeholderBytes();
+    return NanoDlpThumbnailGenerator.generatePlaceholder(width, height);
   }
-}
-
-// Local canonical large size used while NanoDLP helpers are excluded.
-const int _largeWidth = 800;
-const int _largeHeight = 480;
-
-// A minimal 1x1 PNG (base64) used as a safe fallback placeholder.
-Uint8List _placeholderBytes() {
-  // 1x1 transparent PNG
-  const String b64 =
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
-  return base64.decode(b64);
-}
-
-// Minimal resize-or-placeholder: we do not perform actual image
-// manipulation here to avoid importing the image package. If bytes
-// are present, return them as-is; otherwise return the placeholder.
-Uint8List _resizeOrPlaceholder(Uint8List? bytes, int width, int height) {
-  if (bytes == null || bytes.isEmpty) return _placeholderBytes();
-  return bytes;
 }
