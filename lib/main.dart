@@ -47,6 +47,7 @@ import 'package:orion/tools/tools_screen.dart';
 import 'package:orion/util/error_handling/error_handler.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/error_handling/connection_error_watcher.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -174,6 +175,9 @@ class OrionMainApp extends StatefulWidget {
 
 class OrionMainAppState extends State<OrionMainApp> {
   late final GoRouter _router;
+  ConnectionErrorWatcher? _connWatcher;
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
+  // navigatorKey removed; using MaterialApp.router builder context instead
 
   @override
   void initState() {
@@ -181,8 +185,15 @@ class OrionMainAppState extends State<OrionMainApp> {
     _initRouter();
   }
 
+  @override
+  void dispose() {
+    _connWatcher?.dispose();
+    super.dispose();
+  }
+
   void _initRouter() {
     _router = GoRouter(
+      navigatorKey: _navKey,
       routes: <RouteBase>[
         GoRoute(
           path: '/',
@@ -251,22 +262,38 @@ class OrionMainAppState extends State<OrionMainApp> {
           value:
               themeProvider.setThemeMode, // Use ThemeProvider's method directly
           child: GlassApp(
-            child: MaterialApp.router(
-              title: 'Orion',
-              debugShowCheckedModeBanner: false,
-              routerConfig: _router,
-              theme: themeProvider.lightTheme,
-              darkTheme: themeProvider.darkTheme,
-              themeMode: themeProvider.themeMode,
-              locale: localeProvider.locale,
-              localizationsDelegates: const [
-                AppLocalizations.delegate,
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
-              supportedLocales: AppLocalizations.supportedLocales,
-            ),
+            child: Builder(builder: (innerCtx) {
+              // Use MaterialApp.router's builder to get a context that has
+              // MaterialLocalizations and a Navigator. Install the watcher
+              // after the first frame using that context.
+              return MaterialApp.router(
+                title: 'Orion',
+                debugShowCheckedModeBanner: false,
+                routerConfig: _router,
+                theme: themeProvider.lightTheme,
+                builder: (ctx, child) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    try {
+                      final navCtx = _navKey.currentContext;
+                      if (_connWatcher == null && navCtx != null) {
+                        _connWatcher = ConnectionErrorWatcher.install(navCtx);
+                      }
+                    } catch (_) {}
+                  });
+                  return child ?? const SizedBox.shrink();
+                },
+                darkTheme: themeProvider.darkTheme,
+                themeMode: themeProvider.themeMode,
+                locale: localeProvider.locale,
+                localizationsDelegates: const [
+                  AppLocalizations.delegate,
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                supportedLocales: AppLocalizations.supportedLocales,
+              );
+            }),
           ),
         );
       },
