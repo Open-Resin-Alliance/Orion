@@ -40,6 +40,26 @@ class ManualProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> moveDelta(double deltaMm) async {
+    _log.info('moveDelta: $deltaMm');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.moveDelta(deltaMm);
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('moveDelta failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> manualHome() async {
     _log.info('manualHome');
     if (_busy) return false;
@@ -93,6 +113,35 @@ class ManualProvider extends ChangeNotifier {
       return true;
     } catch (e, st) {
       _log.severe('manualCommand failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Whether the backend supports a direct move-to-top operation.
+  Future<bool> canMoveToTop() async {
+    try {
+      return await _client.canMoveToTop();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> moveToTop() async {
+    _log.info('moveToTop');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.moveToTop();
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('moveToTop failed', e, st);
       _error = e;
       _busy = false;
       notifyListeners();
