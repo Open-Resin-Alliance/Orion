@@ -95,5 +95,20 @@ class FakeOdysseyClientForThumbnailTest implements OdysseyClient {
     throw UnimplementedError();
   }
 
+  @override
+  Future<Map<String, dynamic>> moveDelta(double deltaMm) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> canMoveToTop() {
+    return Future.value(false);
+  }
+
+  @override
+  Future<Map<String, dynamic>> moveToTop() {
+    throw UnimplementedError();
+  }
+
   void main() {}
 }

@@ -88,4 +88,24 @@ class FakeOdysseyClient implements OdysseyClient {
   Future<void> displayTest(String test) async {
     displayTestCalled = true;
   }
+
+  @override
+  Future<Map<String, dynamic>> moveDelta(double deltaMm) async {
+    // Minimal fake implementation: record as a move and return empty map.
+    moveCalled = true;
+    lastMoveHeight = deltaMm;
+    return {};
+  }
+
+  @override
+  Future<bool> canMoveToTop() async {
+    // Default fake: not supported
+    return false;
+  }
+
+  @override
+  Future<Map<String, dynamic>> moveToTop() async {
+    // No-op fake implementation
+    return {};
+  }
 }
