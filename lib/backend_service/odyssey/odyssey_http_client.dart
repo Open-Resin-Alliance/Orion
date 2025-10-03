@@ -120,6 +120,20 @@ class OdysseyHttpClient implements OdysseyClient {
   }
 
   @override
+  Future<Map<String, dynamic>> moveDelta(double deltaMm) async {
+    final resp = await _odysseyPost('/manual', {'dz': deltaMm.toString()});
+    return json.decode(resp.body == '' ? '{}' : resp.body)
+        as Map<String, dynamic>;
+  }
+
+  @override
+  Future<bool> canMoveToTop() async => false;
+
+  @override
+  Future<Map<String, dynamic>> moveToTop() async =>
+      throw UnimplementedError('moveToTop not supported by Odyssey backend');
+
+  @override
   Future<Map<String, dynamic>> manualCure(bool cure) async {
     final resp = await _odysseyPost('/manual', {'cure': cure.toString()});
     return json.decode(resp.body == '' ? '{}' : resp.body)
