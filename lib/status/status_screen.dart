@@ -167,24 +167,17 @@ class StatusScreenState extends State<StatusScreen> {
           child: Scaffold(
             appBar: AppBar(
               automaticallyImplyLeading: false,
-              title: RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'Print Status',
-                      style: Theme.of(context).appBarTheme.titleTextStyle,
-                    ),
-                    TextSpan(
-                      text: ' - ',
-                      style: Theme.of(context).appBarTheme.titleTextStyle,
-                    ),
-                    TextSpan(
-                      text: provider.displayStatus,
-                      style: Theme.of(context).appBarTheme.titleTextStyle,
-                    ),
-                  ],
-                ),
-              ),
+              title: Builder(builder: (context) {
+                final deviceMsg = provider.deviceStatusMessage;
+                final statusText =
+                    (deviceMsg != null && deviceMsg.trim().isNotEmpty)
+                        ? deviceMsg
+                        : provider.displayStatus;
+                return Text(
+                  statusText,
+                  style: Theme.of(context).appBarTheme.titleTextStyle,
+                );
+              }),
             ),
             body: Center(
               child: LayoutBuilder(
@@ -257,7 +250,7 @@ class StatusScreenState extends State<StatusScreen> {
                         'Print Layers',
                         layerCurrent == null || layerTotal == null
                             ? '- / -'
-                            : '${layerCurrent + 1} / ${layerTotal + 1}',
+                            : '$layerCurrent / $layerTotal',
                       ),
                     ),
                   ]),
@@ -302,7 +295,7 @@ class StatusScreenState extends State<StatusScreen> {
                 'Print Layers',
                 layerCurrent == null || layerTotal == null
                     ? '- / -'
-                    : '${layerCurrent + 1} / ${layerTotal + 1}',
+                    : '$layerCurrent / $layerTotal',
               ),
               _buildInfoCard('Estimated Print Time', elapsedStr),
               _buildInfoCard(
