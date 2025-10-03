@@ -69,6 +69,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   bool _apiErrorState = false;
   bool _isLoading = false;
   bool _isNavigating = false;
+  bool _isNanoDlp = false;
 
   @override
   void initState() {
@@ -77,6 +78,11 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     // decoded off the main isolate.
     final OrionConfig config = OrionConfig();
     _isUSB = config.getFlag('useUsbByDefault');
+    // Determine whether the configured backend is NanoDLP. Use this as the
+    // canonical source for UI decisions (hide USB/Internal toggles etc.).
+    _isNanoDlp =
+        config.getString('backend', category: 'advanced').toLowerCase() ==
+            'nanodlp';
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_defaultDirectory.isEmpty) {
         final provider = Provider.of<FilesProvider>(context, listen: false);
@@ -185,6 +191,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
   String _getDisplayNameForDirectory(String directory) {
     if (directory == _defaultDirectory && !_apiErrorState) {
+      if (_isNanoDlp) return 'Print Files';
       return _isUSB == false ? 'Print Files (Internal)' : 'Print Files (USB)';
     }
 
@@ -230,6 +237,14 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             if (loading) {
               return const Center(child: CircularProgressIndicator());
             }
+            // In NanoDLP mode there is no Internal/USB toggle, so hide the
+            // parent card. Use the screen-level `_isNanoDlp` flag derived
+            // from `orion.cfg` as the source-of-truth.
+            final hideParentCard = _isNanoDlp;
+            final crossCount =
+                MediaQuery.of(context).orientation == Orientation.landscape
+                    ? 4
+                    : 2;
             return Padding(
               padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
               child: GridView.builder(
@@ -238,18 +253,20 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                   childAspectRatio: 1.03,
                   mainAxisSpacing: 5,
                   crossAxisSpacing: 5,
-                  crossAxisCount: MediaQuery.of(context).orientation ==
-                          Orientation.landscape
-                      ? 4
-                      : 2,
+                  crossAxisCount: crossCount,
                 ),
-                itemCount: itemsList.length + 1,
+                itemCount: itemsList.length + (hideParentCard ? 0 : 1),
                 itemBuilder: (BuildContext context, int index) {
-                  if (index == 0) {
-                    return _buildParentCard(context);
+                  if (!hideParentCard) {
+                    if (index == 0) {
+                      return _buildParentCard(context);
+                    }
+                    final OrionApiItem item = itemsList[index - 1];
+                    return _buildItemCard(context, item);
+                  } else {
+                    final OrionApiItem item = itemsList[index];
+                    return _buildItemCard(context, item);
                   }
-                  final OrionApiItem item = itemsList[index - 1];
-                  return _buildItemCard(context, item);
                 },
               ),
             );
