@@ -78,11 +78,24 @@ class MoveZScreenState extends State<MoveZScreen> {
           maxZ = provider.config?.machine?['printer']?['max_z'] ?? maxZ;
         });
       } else {
-        await provider.refresh();
-        if (provider.config != null) {
+        try {
+          await provider.refresh();
+          if (provider.config != null) {
+            // Safe to update state here because we're already async and not
+            // in the middle of a build.
+            setState(() {
+              maxZ = provider.config?.machine?['printer']?['max_z'] ?? maxZ;
+            });
+          }
+        } catch (e) {
+          // Provider rethrows on error; surface a dialog from the screen
+          // instead of letting the provider call notifyListeners during
+          // widget build.
           setState(() {
-            maxZ = provider.config?.machine?['printer']?['max_z'] ?? maxZ;
+            _apiErrorState = true;
           });
+          if (mounted) showErrorDialog(context, 'BLUE-BANANA');
+          _logger.severe('Failed to refresh config: $e');
         }
       }
     } catch (e) {
@@ -97,7 +110,10 @@ class MoveZScreenState extends State<MoveZScreen> {
   @override
   void initState() {
     super.initState();
-    getMaxZ();
+    // Defer config refresh work until after the first frame so that any
+    // notifyListeners() from providers won't run during the widget build
+    // phase and cause 'setState() or markNeedsBuild() called during build'.
+    WidgetsBinding.instance.addPostFrameCallback((_) => getMaxZ());
   }
 
   @override
@@ -204,7 +220,13 @@ class MoveZScreenState extends State<MoveZScreen> {
       children: [
         Expanded(
           child: GlassButton(
-            onPressed: _apiErrorState ? null : () => moveZ(step),
+            onPressed: _apiErrorState
+                ? null
+                : () {
+                    final manual =
+                        Provider.of<ManualProvider>(context, listen: false);
+                    manual.moveDelta(step);
+                  },
             style: ElevatedButton.styleFrom(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15)),
@@ -216,7 +238,13 @@ class MoveZScreenState extends State<MoveZScreen> {
         const SizedBox(height: 30),
         Expanded(
           child: GlassButton(
-            onPressed: _apiErrorState ? null : () => moveZ(-step),
+            onPressed: _apiErrorState
+                ? null
+                : () {
+                    final manual =
+                        Provider.of<ManualProvider>(context, listen: false);
+                    manual.moveDelta(-step);
+                  },
             style: ElevatedButton.styleFrom(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15)),
@@ -236,45 +264,70 @@ class MoveZScreenState extends State<MoveZScreen> {
         Expanded(
           child: Consumer<ManualProvider>(
             builder: (context, manual, _) {
-              return GlassButton(
-                onPressed: _apiErrorState || manual.busy
-                    ? null
-                    : () async {
-                        _logger.info('Moving to ZMAX');
-                        final ok = await manual.move(maxZ);
-                        if (!ok && mounted)
-                          showErrorDialog(context, 'Failed to move to top');
-                      },
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15)),
-                  minimumSize: const Size(double.infinity, double.infinity),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(width: 16),
-                    const Icon(Icons.arrow_upward, size: 30),
-                    const Expanded(
-                      child: AutoSizeText(
-                        'Move to Top Limit',
-                        style: TextStyle(fontSize: 24),
-                        minFontSize: 20,
-                        maxLines: 1,
-                        overflowReplacement: Padding(
-                          padding: EdgeInsets.only(right: 20.0),
-                          child: Center(
-                            child: Text(
-                              'Top',
-                              style: TextStyle(fontSize: 24),
+              return FutureBuilder<bool>(
+                future: manual.canMoveToTop(),
+                builder: (ctx, snap) {
+                  final supportsTop = snap.data == true;
+                  final enabled = !_apiErrorState &&
+                      !manual.busy &&
+                      (maxZ > 0.0 || supportsTop);
+                  return GlassButton(
+                    onPressed: !enabled
+                        ? null
+                        : () async {
+                            try {
+                              if (supportsTop) {
+                                _logger.info(
+                                    'Moving to device Top via moveToTop()');
+                                final ok = await manual.moveToTop();
+                                if (!ok && mounted)
+                                  showErrorDialog(
+                                      context, 'Failed to move to top');
+                              } else {
+                                _logger.info('Moving to ZMAX (maxZ=$maxZ)');
+                                final ok = await manual.move(maxZ);
+                                if (!ok && mounted)
+                                  showErrorDialog(
+                                      context, 'Failed to move to top');
+                              }
+                            } catch (e) {
+                              if (mounted)
+                                showErrorDialog(
+                                    context, 'Failed to move to top');
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15)),
+                      minimumSize: const Size(double.infinity, double.infinity),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 16),
+                        const Icon(Icons.arrow_upward, size: 30),
+                        const Expanded(
+                          child: AutoSizeText(
+                            'Move to Top Limit',
+                            style: TextStyle(fontSize: 24),
+                            minFontSize: 20,
+                            maxLines: 1,
+                            overflowReplacement: Padding(
+                              padding: EdgeInsets.only(right: 20.0),
+                              child: Center(
+                                child: Text(
+                                  'Top',
+                                  style: TextStyle(fontSize: 24),
+                                ),
+                              ),
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           ),
