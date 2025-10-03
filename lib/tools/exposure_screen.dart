@@ -209,18 +209,29 @@ class ExposureScreenState extends State<ExposureScreen> {
   @override
   void initState() {
     super.initState();
-    getApiStatus();
+    // Defer to after first frame to avoid provider notifications during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) => getApiStatus());
   }
 
   Future<void> getApiStatus() async {
     try {
       final provider = Provider.of<ConfigProvider>(context, listen: false);
-      if (provider.config == null) await provider.refresh();
+      if (provider.config == null) {
+        try {
+          await provider.refresh();
+        } catch (e) {
+          setState(() {
+            _apiErrorState = true;
+          });
+          if (mounted) showErrorDialog(context, 'BLUE-BANANA');
+          _logger.severe('Failed to refresh config: $e');
+        }
+      }
     } catch (e) {
       setState(() {
         _apiErrorState = true;
-        showErrorDialog(context, 'BLUE-BANANA');
       });
+      if (mounted) showErrorDialog(context, 'BLUE-BANANA');
       _logger.severe('Failed to get config: $e');
     }
   }
