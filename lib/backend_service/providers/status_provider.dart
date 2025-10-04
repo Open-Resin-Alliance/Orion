@@ -1,8 +1,18 @@
 /*
 * Orion - Status Provider
-* Centralized state management & polling for printer status.
-* Converts raw API maps into strongly-typed models and exposes
-* derived UI-friendly properties & transition flags.
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
 */
 
 import 'dart:async';
@@ -15,7 +25,9 @@ import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
-import 'package:orion/util/sl1_thumbnail.dart';
+import 'dart:typed_data';
+import 'package:orion/util/thumbnail_cache.dart';
+import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 
 /// Polls the backend printer `/status` endpoint and exposes a typed [StatusModel].
 ///
@@ -63,8 +75,8 @@ class StatusProvider extends ChangeNotifier {
   // We deliberately removed expected file name gating; re-printing the same
   // file should still show a clean loading phase.
 
-  String? _thumbnailPath;
-  String? get thumbnailPath => _thumbnailPath;
+  Uint8List? _thumbnailBytes;
+  Uint8List? get thumbnailBytes => _thumbnailBytes;
   bool _thumbnailReady =
       false; // becomes true once we have a path OR decide none needed
   bool get thumbnailReady => _thumbnailReady;
@@ -232,7 +244,9 @@ class StatusProvider extends ChangeNotifier {
           // parsed payload directly.
 
           // Lazy thumbnail acquisition (same rules as refresh)
-          if (parsed.isPrinting && _thumbnailPath == null && !_thumbnailReady) {
+          if (parsed.isPrinting &&
+              _thumbnailBytes == null &&
+              !_thumbnailReady) {
             final fileData = parsed.printData?.fileData;
             if (fileData != null) {
               final path = fileData.path;
@@ -244,10 +258,18 @@ class StatusProvider extends ChangeNotifier {
                 subdir = path.substring(0, path.lastIndexOf('/'));
               }
               try {
-                _thumbnailPath = await ThumbnailUtil.extractThumbnail(
-                  fileData.locationCategory ?? 'Local',
-                  subdir,
-                  fileData.name,
+                final file = OrionApiFile(
+                  path: path,
+                  name: fileData.name,
+                  parentPath: subdir,
+                  lastModified: 0,
+                  locationCategory: fileData.locationCategory,
+                );
+                _thumbnailBytes = await ThumbnailCache.instance.getThumbnail(
+                  location: fileData.locationCategory ?? 'Local',
+                  subdirectory: subdir,
+                  fileName: fileData.name,
+                  file: file,
                   size: 'Large',
                 );
                 _thumbnailReady = true;
@@ -393,6 +415,7 @@ class StatusProvider extends ChangeNotifier {
   Future<void> refresh() async {
     if (_fetchInFlight) return; // simple re-entrancy guard
     _fetchInFlight = true;
+    final startedAt = DateTime.now();
     // Snapshot fields to avoid emitting notifications on every successful
     // polling refresh when nothing meaningful changed. This reduces churn
     // for listeners (e.g., ConnectionErrorWatcher) in polling-only backends
@@ -452,7 +475,7 @@ class StatusProvider extends ChangeNotifier {
       // Transitional clears will be based on the freshly parsed payload.
 
       // Attempt lazy thumbnail acquisition (only while printing and not yet fetched)
-      if (parsed.isPrinting && _thumbnailPath == null && !_thumbnailReady) {
+      if (parsed.isPrinting && _thumbnailBytes == null && !_thumbnailReady) {
         final fileData = parsed.printData?.fileData;
         if (fileData != null) {
           final path = fileData.path;
@@ -463,10 +486,18 @@ class StatusProvider extends ChangeNotifier {
             subdir = path.substring(0, path.lastIndexOf('/'));
           }
           try {
-            _thumbnailPath = await ThumbnailUtil.extractThumbnail(
-              fileData.locationCategory ?? 'Local',
-              subdir,
-              fileData.name,
+            final file = OrionApiFile(
+              path: path,
+              name: fileData.name,
+              parentPath: subdir,
+              lastModified: 0,
+              locationCategory: fileData.locationCategory,
+            );
+            _thumbnailBytes = await ThumbnailCache.instance.getThumbnail(
+              location: fileData.locationCategory ?? 'Local',
+              subdirectory: subdir,
+              fileName: fileData.name,
+              file: file,
               size: 'Large',
             );
             _thumbnailReady = true;
@@ -506,10 +537,20 @@ class StatusProvider extends ChangeNotifier {
         final timedOut = _awaitingSince != null &&
             DateTime.now().difference(_awaitingSince!) > _awaitingTimeout;
         // If backend reports active printing/paused we clear awaiting early
-        // (do not strictly require file metadata or thumbnail). This avoids
-        // leaving the UI stuck on a spinner when the backend delays
-        // populating print_data or thumbnails after a start request.
-        if (newPrintReady || parsed.isPrinting || parsed.isPaused || timedOut) {
+        // (do not strictly require file metadata or thumbnail). Additionally,
+        // if the backend reports a finished snapshot (idle with layer data)
+        // or a canceled snapshot we should also clear awaiting so the UI
+        // doesn't remain stuck on a spinner for backends (like NanoDLP)
+        // that may briefly lose the 'printing' flag during transition.
+        if (newPrintReady ||
+            parsed.isPrinting ||
+            parsed.isPaused ||
+            // Treat a finished snapshot (idle but with layers) as valid
+            // to clear awaiting so the UI can present the final state.
+            (parsed.isIdle && parsed.layer != null) ||
+            // Canceled snapshots should also clear awaiting.
+            parsed.isCanceled ||
+            timedOut) {
           _awaitingNewPrintData = false;
           _awaitingSince = null;
         }
@@ -544,8 +585,13 @@ class StatusProvider extends ChangeNotifier {
       Future.delayed(Duration(seconds: backoff), () {
         _nextPollRetryAt = null;
       });
+      final elapsed = DateTime.now().difference(startedAt);
+      final millis = elapsed.inMilliseconds;
+      final elapsedStr = millis >= 1000
+          ? '${(millis / 1000).toStringAsFixed(1)}s'
+          : '${millis}ms';
       _log.warning(
-          'Status refresh failed; backing off polling for ${_pollIntervalSeconds}s (attempt $_consecutiveErrors)');
+          'Status refresh failed after $elapsedStr; backing off polling for ${_pollIntervalSeconds}s (attempt $_consecutiveErrors)');
     } finally {
       _fetchInFlight = false;
       if (!_disposed) {
@@ -692,16 +738,29 @@ class StatusProvider extends ChangeNotifier {
 
   /// Clear current status so UI shows a neutral/loading state prior to the
   /// next print starting. Polling continues and will repopulate on refresh.
-  void resetStatus() {
+  /// Reset the provider to a neutral/loading state. Optionally provide an
+  /// initial thumbnail (bytes) and file path or plate id so the UI can
+  /// immediately render a cached preview while the backend populates
+  /// active job metadata. This is useful when starting a print from the
+  /// DetailsScreen where the thumbnail is already available.
+  void resetStatus({
+    Uint8List? initialThumbnailBytes,
+    String? initialFilePath,
+    int? initialPlateId,
+  }) {
     _status = null;
-    _thumbnailPath = null;
-    _thumbnailReady = false;
+    _thumbnailBytes = initialThumbnailBytes;
+    _thumbnailReady = initialThumbnailBytes != null;
     _error = null;
     _loading = true; // so consumer screens can show a spinner if they mount
     _isCanceling = false;
     _isPausing = false;
     _awaitingNewPrintData = true; // begin awaiting active print
     _awaitingSince = DateTime.now();
+    // If an initial file path or plate id is provided we may use it to
+    // resolve thumbnails faster in NanoDLP adapters; store on status
+    // model is not needed here but provider consumers can access
+    // _thumbnailBytes immediately.
     notifyListeners();
   }
 

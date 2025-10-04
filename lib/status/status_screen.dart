@@ -15,11 +15,12 @@
 * limitations under the License.
 */
 
-import 'dart:io';
+// dart:io not needed once thumbnails are rendered from memory
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:typed_data';
 
 import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -32,7 +33,17 @@ import 'package:orion/backend_service/odyssey/models/status_models.dart';
 
 class StatusScreen extends StatefulWidget {
   final bool newPrint;
-  const StatusScreen({super.key, required this.newPrint});
+  final Uint8List? initialThumbnailBytes;
+  final String? initialFilePath;
+  final int? initialPlateId;
+
+  const StatusScreen({
+    super.key,
+    required this.newPrint,
+    this.initialThumbnailBytes,
+    this.initialFilePath,
+    this.initialPlateId,
+  });
 
   @override
   StatusScreenState createState() => StatusScreenState();
@@ -45,6 +56,7 @@ class StatusScreenState extends State<StatusScreen> {
   // this widget (which previously caused a FlutterError) while still ensuring
   // a clean spinner instead of flashing the prior job.
   bool _suppressOldStatus = false;
+  String? _frozenFileName;
   // Presentation-local state (derived values computed per build instead of storing)
   bool get _isLandscape =>
       MediaQuery.of(context).orientation == Orientation.landscape;
@@ -63,7 +75,11 @@ class StatusScreenState extends State<StatusScreen> {
       _suppressOldStatus = true; // force spinner for fresh print session
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.read<StatusProvider>().resetStatus();
+        context.read<StatusProvider>().resetStatus(
+              initialThumbnailBytes: widget.initialThumbnailBytes,
+              initialFilePath: widget.initialFilePath,
+              initialPlateId: widget.initialPlateId,
+            );
         setState(() => _suppressOldStatus = false);
       });
     }
@@ -76,18 +92,49 @@ class StatusScreenState extends State<StatusScreen> {
         final StatusModel? status = provider.status;
         final awaiting = provider.awaitingNewPrintData;
         final newPrintReady = provider.newPrintReady;
+
+        // If we're awaiting a new print session, clear any previously
+        // frozen filename so the next job can set it when available.
+        if (awaiting) {
+          _frozenFileName = null;
+        }
+
+        // Freeze the file name once we observe it for the active print so
+        // it does not change mid-print if backend later updates metadata.
+        if (_frozenFileName == null &&
+            status?.printData?.fileData?.name != null) {
+          final name = status!.printData!.fileData!.name;
+          // Only freeze when a job is active (printing or paused) so we
+          // don't persist names for idle snapshots.
+          if (status.isPrinting || status.isPaused) {
+            _frozenFileName = name;
+          }
+        }
         // We do not expose elapsed awaiting time (private); could add later via provider getter.
         const int waitMillis = 0;
         // Provider handles polling, transitional flags (pause/cancel), thumbnail caching, and
         // exposes a typed StatusModel. The screen now focuses solely on presentation.
 
         // Show global loading while provider indicates loading, we have no status yet,
-        // or we are in the transitional window awaiting initial print data to avoid
-        // an empty flicker state.
+        // or (for new prints) until the provider signals the print is ready
+        // (we have active job+file metadata+thumbnail). However, if the
+        // backend reports the job has already finished (idle with layer data)
+        // or is canceled we should not remain in a spinner indefinitely —
+        // render the final status instead.
+        final bool finishedSnapshot =
+            status?.isIdle == true && status?.layer != null;
+        final bool canceledSnapshot = status?.isCanceled == true;
+
         if (_suppressOldStatus ||
             provider.isLoading ||
             status == null ||
-            (awaiting && !newPrintReady)) {
+            // If this screen was opened as a new print, wait until the
+            // provider reports the job is ready to display. But allow
+            // finished/canceled snapshots through so the UI doesn't lock up.
+            ((widget.newPrint || awaiting) &&
+                !newPrintReady &&
+                !finishedSnapshot &&
+                !canceledSnapshot)) {
           return GlassApp(
             child: Scaffold(
               body: Center(
@@ -161,7 +208,8 @@ class StatusScreenState extends State<StatusScreen> {
         }
 
         final elapsedStr = status.formattedElapsedPrintTime;
-        final fileName = status.printData?.fileData?.name ?? '';
+        final fileName =
+            _frozenFileName ?? status.printData?.fileData?.name ?? '';
 
         return GlassApp(
           child: Scaffold(
@@ -335,7 +383,13 @@ class StatusScreenState extends State<StatusScreen> {
 
   Widget _buildNameCard(String fileName, StatusProvider provider) {
     final truncated = _truncateFileName(fileName);
-    final color = provider.statusColor(context);
+    final statusModel = provider.status;
+    final finishedSnapshot =
+        statusModel?.isIdle == true && statusModel?.layer != null;
+    final effectivelyFinished = provider.progress >= 0.999;
+    final color = (finishedSnapshot && !effectivelyFinished)
+        ? Theme.of(context).colorScheme.error
+        : provider.statusColor(context);
     return GlassCard(
       outlined: true,
       child: ListTile(
@@ -359,10 +413,17 @@ class StatusScreenState extends State<StatusScreen> {
 
   Widget _buildThumbnailView(
       BuildContext context, StatusProvider provider, StatusModel? status) {
-    final thumbnail = provider.thumbnailPath;
+    final thumbnail = provider.thumbnailBytes;
     final themeProvider = Provider.of<ThemeProvider>(context);
     final progress = provider.progress;
     final statusColor = provider.statusColor(context);
+    final statusModel = provider.status;
+    final finishedSnapshot =
+        statusModel?.isIdle == true && statusModel?.layer != null;
+    final effectivelyFinished = progress >= 0.999;
+    final effectiveStatusColor = (finishedSnapshot && !effectivelyFinished)
+        ? Theme.of(context).colorScheme.error
+        : statusColor;
     return Center(
       child: Stack(
         children: [
@@ -384,11 +445,16 @@ class StatusScreenState extends State<StatusScreen> {
                       0, 0, 0, 1, 0,
                     ]),
                     child: thumbnail != null && thumbnail.isNotEmpty
-                        ? Image.file(
-                            File(thumbnail),
+                        ? Image.memory(
+                            thumbnail,
                             fit: BoxFit.cover,
                           )
-                        : const Center(child: CircularProgressIndicator()),
+                        : Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  effectiveStatusColor),
+                            ),
+                          ),
                   ),
                   Positioned.fill(
                     child: Container(
@@ -403,12 +469,15 @@ class StatusScreenState extends State<StatusScreen> {
                           alignment: Alignment.bottomCenter,
                           heightFactor: progress,
                           child: thumbnail != null && thumbnail.isNotEmpty
-                              ? Image.file(
-                                  File(thumbnail),
+                              ? Image.memory(
+                                  thumbnail,
                                   fit: BoxFit.cover,
                                 )
-                              : const Center(
-                                  child: CircularProgressIndicator(),
+                              : Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        effectiveStatusColor),
+                                  ),
                                 ),
                         ),
                       ),
@@ -425,7 +494,7 @@ class StatusScreenState extends State<StatusScreen> {
                 isCanceling: provider.isCanceling,
                 isPausing: provider.isPausing,
                 progress: progress,
-                statusColor: statusColor,
+                statusColor: effectiveStatusColor,
                 status: status,
               ),
             ),
@@ -464,10 +533,10 @@ class StatusScreenState extends State<StatusScreen> {
                         quarterTurns: 3,
                         child: LinearProgressIndicator(
                           minHeight: 30,
-                          color: statusColor,
+                          color: effectiveStatusColor,
                           value: progress,
                           backgroundColor: isGlassTheme
-                              ? Colors.white.withValues(alpha: 0.1)
+                              ? effectiveStatusColor.withValues(alpha: 0.1)
                               : null,
                         ),
                       ),
