@@ -1,3 +1,20 @@
+/*
+* Orion - NanoDLP HTTP Client
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:convert';
@@ -21,6 +38,7 @@ class NanoDlpHttpClient implements OdysseyClient {
   late final String apiUrl;
   final _log = Logger('NanoDlpHttpClient');
   final http.Client Function() _clientFactory;
+  final Duration _requestTimeout;
   // Increase plates cache TTL so we don't re-query the plates list on every
   // frequent status poll. Plates metadata is relatively static during a
   // print session so a 2-minute cache avoids needless network load.
@@ -38,8 +56,10 @@ class NanoDlpHttpClient implements OdysseyClient {
   final Map<String, _ThumbnailCacheEntry> _thumbnailCache = {};
   final Map<String, Future<_ThumbnailCacheEntry>> _thumbnailInFlight = {};
 
-  NanoDlpHttpClient({http.Client Function()? clientFactory})
-      : _clientFactory = clientFactory ?? http.Client.new {
+  NanoDlpHttpClient(
+      {http.Client Function()? clientFactory, Duration? requestTimeout})
+      : _clientFactory = clientFactory ?? http.Client.new,
+        _requestTimeout = requestTimeout ?? const Duration(seconds: 2) {
     _createdAt = DateTime.now();
     try {
       final cfg = OrionConfig();
@@ -60,6 +80,11 @@ class NanoDlpHttpClient implements OdysseyClient {
     _log.info('constructed NanoDlpHttpClient apiUrl=$apiUrl');
   }
 
+  http.Client _createClient() {
+    final inner = _clientFactory();
+    return _TimeoutHttpClient(inner, _requestTimeout, _log, 'NanoDLP');
+  }
+
   // Timestamp when this client instance was created. Used to avoid
   // performing potentially expensive plate-list resolution during the
   // very first status poll immediately at app startup.
@@ -70,13 +95,22 @@ class NanoDlpHttpClient implements OdysseyClient {
   Future<Map<String, dynamic>> getStatus() async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/status');
-    final client = _clientFactory();
+    final client = _createClient();
     try {
       final resp = await client.get(uri);
       if (resp.statusCode != 200) {
         throw Exception('NanoDLP status call failed: ${resp.statusCode}');
       }
       final decoded = json.decode(resp.body) as Map<String, dynamic>;
+      // Remove very large fields we don't need (e.g. FillAreas) to avoid
+      // costly parsing and memory churn when polling /status frequently.
+      if (decoded.containsKey('FillAreas')) {
+        try {
+          decoded.remove('FillAreas');
+        } catch (_) {
+          // ignore any removal errors; parsing will continue without it
+        }
+      }
       var nano = NanoStatus.fromJson(decoded);
 
       // If the status payload doesn't include file metadata but does include
@@ -277,7 +311,7 @@ class NanoDlpHttpClient implements OdysseyClient {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       final uri = Uri.parse('$baseNoSlash/printer/stop');
       _log.info('NanoDLP stopPrint request: $uri');
-      final client = _clientFactory();
+      final client = _createClient();
       try {
         final resp = await client.get(uri);
         if (resp.statusCode != 200) {
@@ -331,7 +365,7 @@ class NanoDlpHttpClient implements OdysseyClient {
       () async {
         final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
         final uri = Uri.parse('$baseNoSlash/status');
-        final client = _clientFactory();
+        final client = _createClient();
         try {
           final resp = await client.get(uri);
           if (resp.statusCode != 200) {
@@ -442,7 +476,7 @@ class NanoDlpHttpClient implements OdysseyClient {
     _log.info(
         'NanoDLP relative move request: $uri (deltaMm=$deltaMm currentZ=$currentZ)');
 
-    final client = _clientFactory();
+    final client = _createClient();
     try {
       final resp = await client.get(uri);
       if (resp.statusCode != 200) {
@@ -466,8 +500,9 @@ class NanoDlpHttpClient implements OdysseyClient {
     // Send a dumb relative move command in microns (NanoDLP expects an
     // integer micron distance). Positive = up, negative = down.
     final deltaMicrons = (deltaMm * 1000).round();
-    if (deltaMicrons == 0)
+    if (deltaMicrons == 0) {
       return NanoManualResult(ok: true, message: 'no-op').toMap();
+    }
 
     final direction = deltaMicrons > 0 ? 'up' : 'down';
     final distance = deltaMicrons.abs();
@@ -476,7 +511,7 @@ class NanoDlpHttpClient implements OdysseyClient {
         Uri.parse('$baseNoSlash/z-axis/move/$direction/micron/$distance');
     _log.info('NanoDLP relative moveDelta request: $uri (deltaMm=$deltaMm)');
 
-    final client = _clientFactory();
+    final client = _createClient();
     try {
       final resp = await client.get(uri);
       if (resp.statusCode != 200) {
@@ -502,7 +537,7 @@ class NanoDlpHttpClient implements OdysseyClient {
     try {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       final uri = Uri.parse('$baseNoSlash/status');
-      final client = _clientFactory();
+      final client = _createClient();
       try {
         final resp = await client.get(uri);
         if (resp.statusCode != 200) return false;
@@ -523,7 +558,7 @@ class NanoDlpHttpClient implements OdysseyClient {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/z-axis/top');
     _log.info('NanoDLP moveToTop request: $uri');
-    final client = _clientFactory();
+    final client = _createClient();
     try {
       final resp = await client.get(uri);
       if (resp.statusCode != 200) {
@@ -555,7 +590,7 @@ class NanoDlpHttpClient implements OdysseyClient {
   Future<Map<String, dynamic>> manualHome() async => () async {
         final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
         final uri = Uri.parse('$baseNoSlash/z-axis/calibrate');
-        final client = _clientFactory();
+        final client = _createClient();
         try {
           final resp = await client.get(uri);
           if (resp.statusCode != 200) {
@@ -582,7 +617,7 @@ class NanoDlpHttpClient implements OdysseyClient {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       final uri = Uri.parse('$baseNoSlash/printer/pause');
       _log.info('NanoDLP pausePrint request: $uri');
-      final client = _clientFactory();
+      final client = _createClient();
       try {
         final resp = await client.get(uri);
         if (resp.statusCode != 200) {
@@ -607,7 +642,7 @@ class NanoDlpHttpClient implements OdysseyClient {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       final uri = Uri.parse('$baseNoSlash/printer/unpause');
       _log.info('NanoDLP resumePrint request: $uri');
-      final client = _clientFactory();
+      final client = _createClient();
       try {
         final resp = await client.get(uri);
         if (resp.statusCode != 200) {
@@ -645,7 +680,7 @@ class NanoDlpHttpClient implements OdysseyClient {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       final uri = Uri.parse('$baseNoSlash/printer/start/$idToUse');
       _log.info('NanoDLP startPrint request: $uri');
-      final client = _clientFactory();
+      final client = _createClient();
       try {
         final resp = await client.get(uri);
         if (resp.statusCode != 200) {
@@ -717,11 +752,14 @@ class NanoDlpHttpClient implements OdysseyClient {
 
   String _thumbnailCacheKeyForPlate(
       NanoFile plate, String fallbackPath, int width, int height) {
-    final id = plate.plateId;
+    // PlateID can change when files are deleted/replaced on the device.
+    // Prefer stable identifiers based on path + lastModified (if available)
+    // so cache keys remain valid across plateId churn.
     final resolvedPath = plate.resolvedPath.isNotEmpty
         ? plate.resolvedPath.toLowerCase()
         : fallbackPath;
-    final identifier = id != null ? 'plate:$id' : 'path:$resolvedPath';
+    final lm = plate.lastModified ?? 0;
+    final identifier = 'path:$resolvedPath|lm:$lm';
     return _thumbnailCacheKey(identifier, width, height);
   }
 
@@ -749,7 +787,7 @@ class NanoDlpHttpClient implements OdysseyClient {
 
   Future<_ThumbnailCacheEntry> _downloadThumbnail(
       Uri uri, String debugLabel) async {
-    final client = _clientFactory();
+    final client = _createClient();
     try {
       final resp = await client.get(uri);
       if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
@@ -808,7 +846,7 @@ class NanoDlpHttpClient implements OdysseyClient {
     final uri = Uri.parse('$baseNoSlash/plates/list/json');
     _log.fine('Requesting NanoDLP plates list (no query params): $uri');
 
-    final client = _clientFactory();
+    final client = _createClient();
     try {
       http.Response resp;
       try {
@@ -900,6 +938,31 @@ class NanoDlpHttpClient implements OdysseyClient {
       default:
         return (400, 400);
     }
+  }
+}
+
+class _TimeoutHttpClient extends http.BaseClient {
+  _TimeoutHttpClient(this._inner, this._timeout, this._log, this._label);
+
+  final http.Client _inner;
+  final Duration _timeout;
+  final Logger _log;
+  final String _label;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    final future = _inner.send(request);
+    return future.timeout(_timeout, onTimeout: () {
+      final msg =
+          '$_label ${request.method} ${request.url} timed out after ${_timeout.inSeconds}s';
+      _log.warning(msg);
+      throw TimeoutException(msg);
+    });
+  }
+
+  @override
+  void close() {
+    _inner.close();
   }
 }
 
