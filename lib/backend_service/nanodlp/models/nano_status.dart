@@ -1,3 +1,20 @@
+/*
+* Orion - NanoDLP Status Model
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'nano_file.dart';
 
 // Minimal NanoDLP status DTO
@@ -131,24 +148,11 @@ class NanoStatus {
 
     double? z;
     if (currentHeight != null) {
-      // CurrentHeight units vary between NanoDLP installs. Common possibilities:
-      // - already in mm (small integers, e.g. 150)
-      // - in microns (e.g. 150000 -> 150 mm)
-      // - in nanometers (e.g. 1504000 -> 1.504 mm)
-      // Heuristic: pick the conversion that yields a plausible Z (<= 300 mm).
-      final asMmIfMicrons = currentHeight / 1000.0; // microns -> mm
-      final asMmIfNanometers = currentHeight / 1000000.0; // nm -> mm
-      if (currentHeight <= 1000) {
-        // Small values are likely already mm
-        z = currentHeight.toDouble();
-      } else if (asMmIfMicrons <= 300.0) {
-        z = asMmIfMicrons;
-      } else if (asMmIfNanometers <= 300.0) {
-        z = asMmIfNanometers;
-      } else {
-        // Fallback: assume microns
-        z = asMmIfMicrons;
-      }
+      // NanoDLP reports current height in device-specific units on the
+      // target installs we support. For these devices 1 mm == 6400 units.
+      // Convert device units to millimeters so downstream mappers/consumers
+      // receive a sensible `z` value. Example: 320 -> 320 / 6400 = 0.05 mm.
+      z = currentHeight / 6400.0;
     }
 
     return NanoStatus(
