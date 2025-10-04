@@ -1,3 +1,20 @@
+/*
+* Orion - NanoDLP File Model
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 // DTO for a NanoDLP "plate" or file as returned by status or plates endpoints.
 //
 // Centralises parsing/normalisation so higher layers (like the HTTP client)
@@ -136,6 +153,51 @@ class NanoFile {
         json['Updated'] ??
         json['UpdatedOn'] ??
         json['CreatedDate']);
+    // If lastModified is not present as an integer it may be provided as a
+    // human-readable date string (e.g. 'Date': '2025-10-04 22:11'). Attempt
+    // to parse common date string formats into epoch seconds so callers can
+    // key caches reliably by file+date rather than unstable plate IDs.
+    int? lastModifiedFromString() {
+      final candidates = [
+        json['Date'],
+        json['date'],
+        json['created_date'],
+        json['CreatedDate'],
+        json['UpdatedOn'],
+        json['Updated'],
+      ];
+      for (final c in candidates) {
+        if (c == null) continue;
+        if (c is int) return c;
+        if (c is num) return c.toInt();
+        if (c is String) {
+          final s = c.trim();
+          if (s.isEmpty) continue;
+          try {
+            // Try ISO8601 parsing first
+            DateTime dt = DateTime.parse(s);
+            return dt.toUtc().millisecondsSinceEpoch ~/ 1000;
+          } catch (_) {
+            // Try common variant 'YYYY-MM-DD HH:MM' by replacing space
+            // with 'T' and appending seconds if missing.
+            try {
+              var alt = s.replaceFirst(' ', 'T');
+              if (RegExp(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$").hasMatch(alt)) {
+                alt = '$alt:00';
+              }
+              DateTime dt = DateTime.parse(alt);
+              return dt.toUtc().millisecondsSinceEpoch ~/ 1000;
+            } catch (_) {
+              // ignore and continue
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    final lastModifiedFromStr = lastModifiedFromString();
+    final finalLastModified = lastModified ?? lastModifiedFromStr;
     String? parentPath =
         (json['parent_path'] ?? json['parentPath'])?.toString();
     final fileSize = parseInt(
@@ -212,7 +274,7 @@ class NanoFile {
       name: resolvedName,
       layerCount: layerCount,
       printTime: printTime,
-      lastModified: lastModified,
+      lastModified: finalLastModified,
       parentPath: parentPath ?? '',
       fileSize: fileSize,
       materialName: materialName,
