@@ -39,7 +39,7 @@ import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_item.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/providers/theme_provider.dart';
-import 'package:orion/util/sl1_thumbnail.dart';
+import 'package:orion/util/thumbnail_cache.dart';
 import 'dart:typed_data';
 
 ScrollController _scrollController = ScrollController();
@@ -200,6 +200,20 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     return "$directory ${_isUSB ? '(USB)' : '(Internal)'}";
   }
 
+  String _resolveSubdirectoryForFile(OrionApiFile file) {
+    if (_defaultDirectory.isEmpty) return _subdirectory;
+    try {
+      final parentDir = path.dirname(file.path);
+      final relative = path.relative(parentDir, from: _defaultDirectory);
+      if (relative == '.' || relative == _defaultDirectory) {
+        return '';
+      }
+      return relative;
+    } catch (_) {
+      return _subdirectory;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassApp(
@@ -262,10 +276,10 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                       return _buildParentCard(context);
                     }
                     final OrionApiItem item = itemsList[index - 1];
-                    return _buildItemCard(context, item);
+                    return _buildItemCard(context, item, provider);
                   } else {
                     final OrionApiItem item = itemsList[index];
-                    return _buildItemCard(context, item);
+                    return _buildItemCard(context, item, provider);
                   }
                 },
               ),
@@ -289,12 +303,15 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                     final provider =
                         Provider.of<FilesProvider>(context, listen: false);
                     final newLocation = _isUSB ? 'Usb' : 'Local';
-                    final subdir = _defaultDirectory.isEmpty
+                    final rawSubdir = _defaultDirectory.isEmpty
                         ? ''
                         : path.relative(_directory, from: _defaultDirectory);
+                    final subdir = rawSubdir == '.' ? '' : rawSubdir;
                     await provider.loadItems(newLocation, subdir);
                     await _syncAfterLoad(provider, newLocation);
-                    setState(() {});
+                    setState(() {
+                      _subdirectory = subdir;
+                    });
                   }
                 : () async {
                     try {
@@ -306,15 +323,17 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                       });
                       final provider =
                           Provider.of<FilesProvider>(context, listen: false);
-                      final subdir = parentDirectory == _defaultDirectory
+                      final rawSubdir = parentDirectory == _defaultDirectory
                           ? ''
                           : path.relative(parentDirectory,
                               from: _defaultDirectory);
+                      final subdir = rawSubdir == '.' ? '' : rawSubdir;
                       await provider.loadItems(
                           _isUSB ? 'Usb' : 'Local', subdir);
                       await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
                       setState(() {
                         _isNavigating = false;
+                        _subdirectory = subdir;
                       });
                     } catch (e) {
                       _logger.severe(
@@ -367,9 +386,15 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     );
   }
 
-  Widget _buildItemCard(BuildContext context, OrionApiItem item) {
+  Widget _buildItemCard(
+      BuildContext context, OrionApiItem item, FilesProvider provider) {
     final String fileName = path.basename(item.path);
     final String displayName = fileName;
+    final OrionApiFile? fileItem = item is OrionApiFile ? item : null;
+    final bool isFile = fileItem != null;
+    final String fileSubdirectory = fileItem != null
+        ? _resolveSubdirectoryForFile(fileItem)
+        : _subdirectory;
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return GlassCard(
@@ -383,7 +408,6 @@ class GridFilesScreenState extends State<GridFilesScreen> {
               _isNavigating = true;
               _directory = item.path;
             });
-            final provider = Provider.of<FilesProvider>(context, listen: false);
             final subdir = item.path == _defaultDirectory
                 ? ''
                 : path.relative(item.path, from: _defaultDirectory);
@@ -393,14 +417,27 @@ class GridFilesScreenState extends State<GridFilesScreen> {
               _isNavigating = false;
               _subdirectory = subdir;
             });
-          } else if (item is OrionApiFile) {
-            final provider = Provider.of<FilesProvider>(context, listen: false);
+          } else if (fileItem != null) {
+            // Prefetch large thumbnail for the details screen so it's ready
+            // (or already in-flight) by the time the DetailScreen mounts.
+            try {
+              ThumbnailCache.instance.getThumbnail(
+                location: provider.location,
+                subdirectory: fileSubdirectory,
+                fileName: fileName,
+                file: fileItem,
+                size: 'Large',
+              );
+            } catch (_) {
+              // best-effort; ignore prefetch failures
+            }
+
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => DetailScreen(
                   fileName: fileName,
-                  fileSubdirectory: _subdirectory,
+                  fileSubdirectory: fileSubdirectory,
                   fileLocation: provider.location,
                 ),
               ),
@@ -412,7 +449,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         child: _isNavigating
             ? const Center(child: CircularProgressIndicator())
             : GridTile(
-                footer: item is OrionApiFile
+                footer: isFile
                     ? _buildFileFooter(context, displayName)
                     : _buildDirectoryFooter(context, displayName),
                 child: item is OrionApiDirectory
@@ -425,33 +462,36 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                       )
                     : Padding(
                         padding: const EdgeInsets.all(4.5),
-                        child: FutureBuilder<Uint8List>(
-                          future: ThumbnailUtil.extractThumbnailBytes(
-                              Provider.of<FilesProvider>(context, listen: false)
-                                  .location,
-                              _subdirectory,
-                              fileName),
+                        child: FutureBuilder<Uint8List?>(
+                          future: ThumbnailCache.instance.getThumbnail(
+                            location: provider.location,
+                            subdirectory: fileSubdirectory,
+                            fileName: fileName,
+                            file: fileItem!,
+                          ),
                           builder: (BuildContext context,
-                              AsyncSnapshot<Uint8List> snapshot) {
+                              AsyncSnapshot<Uint8List?> snapshot) {
                             if (snapshot.connectionState ==
                                 ConnectionState.waiting) {
                               return const Padding(
                                   padding: EdgeInsets.all(20),
                                   child: Center(
                                       child: CircularProgressIndicator()));
-                            } else if (snapshot.hasError ||
-                                snapshot.data == null ||
-                                snapshot.data!.isEmpty) {
+                            } else if (snapshot.hasError) {
                               return const Icon(Icons.error);
-                            } else {
-                              return ClipRRect(
-                                borderRadius: themeProvider.isGlassTheme
-                                    ? BorderRadius.circular(10.5)
-                                    : BorderRadius.circular(7.75),
-                                child: Image.memory(snapshot.data!,
-                                    fit: BoxFit.cover),
-                              );
                             }
+
+                            final bytes = snapshot.data;
+                            if (bytes == null || bytes.isEmpty) {
+                              return const Icon(Icons.error);
+                            }
+
+                            return ClipRRect(
+                              borderRadius: themeProvider.isGlassTheme
+                                  ? BorderRadius.circular(10.5)
+                                  : BorderRadius.circular(7.75),
+                              child: Image.memory(bytes, fit: BoxFit.cover),
+                            );
                           },
                         ),
                       ),

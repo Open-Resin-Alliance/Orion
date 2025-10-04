@@ -15,8 +15,6 @@
 * limitations under the License.
 */
 
-import 'dart:io';
-
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -29,7 +27,9 @@ import 'package:orion/backend_service/odyssey/models/files_models.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/status/status_screen.dart';
-import 'package:orion/util/sl1_thumbnail.dart';
+import 'dart:typed_data';
+import 'package:orion/util/thumbnail_cache.dart';
+import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -59,7 +59,7 @@ class DetailScreenState extends State<DetailScreen> {
   int maxNameLength = 0;
   bool loading = true; // Add loading state
   FileMetadata? _meta;
-  Future<String>? _thumbnailFuture;
+  Future<Uint8List?>? _thumbnailFuture;
   bool _isThumbnailLoading = false;
 
   @override
@@ -93,10 +93,17 @@ class DetailScreenState extends State<DetailScreen> {
       // Kick off thumbnail extraction but render metadata directly from the
       // typed model in build(). This mirrors the approach used in StatusScreen
       // where presentation derives values directly from the provider model.
-      final thumbFuture = ThumbnailUtil.extractThumbnail(
-        widget.fileLocation,
-        widget.fileSubdirectory,
-        widget.fileName,
+      final thumbFuture = ThumbnailCache.instance.getThumbnail(
+        location: widget.fileLocation,
+        subdirectory: widget.fileSubdirectory,
+        fileName: widget.fileName,
+        file: OrionApiFile(
+          path: widget.fileSubdirectory == ''
+              ? widget.fileName
+              : '${widget.fileSubdirectory}/${widget.fileName}',
+          name: widget.fileName,
+          parentPath: widget.fileSubdirectory,
+        ),
         size: 'Large',
       );
 
@@ -136,7 +143,7 @@ class DetailScreenState extends State<DetailScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_meta?.fileData.name ?? widget.fileName),
+          title: Text('Print Details'),
           centerTitle: true,
         ),
         body: Center(
@@ -194,13 +201,10 @@ class DetailScreenState extends State<DetailScreen> {
                         ),
                         Expanded(
                           child: buildInfoCard(
-                            'Material & Volume',
-                            _meta?.usedMaterial != null
-                                ? _meta?.materialName != null
-                                    ? '${_meta?.materialName} - ${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
-                                    : 'N/A - ${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
-                                : 'N/A - -',
-                          ),
+                              'Estimated Print Volume',
+                              _meta?.usedMaterial != null
+                                  ? '${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
+                                  : 'N/A'),
                         ),
                       ],
                     ),
@@ -261,13 +265,10 @@ class DetailScreenState extends State<DetailScreen> {
                             ? '${_meta!.layerHeight!.toStringAsFixed(3)} mm'
                             : '-'),
                     buildInfoCard(
-                      'Material & Volume',
-                      _meta?.usedMaterial != null
-                          ? _meta?.materialName != null
-                              ? '${_meta?.materialName} - ${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
-                              : 'N/A - ${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
-                          : 'N/A - -',
-                    ),
+                        'Estimated Print Volume',
+                        _meta?.usedMaterial != null
+                            ? '${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
+                            : 'N/A'),
                     buildInfoCard(
                       'Print Time',
                       _meta?.printTime != null
@@ -373,7 +374,7 @@ class DetailScreenState extends State<DetailScreen> {
   Widget buildThumbnailView(BuildContext context) {
     final Widget imageWidget = _thumbnailFuture == null
         ? const Center(child: CircularProgressIndicator())
-        : FutureBuilder<String>(
+        : FutureBuilder<Uint8List?>(
             future: _thumbnailFuture,
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
@@ -382,7 +383,7 @@ class DetailScreenState extends State<DetailScreen> {
               if (snap.hasError || snap.data == null || snap.data!.isEmpty) {
                 return const Center(child: Icon(Icons.broken_image));
               }
-              return Image.file(File(snap.data!));
+              return Image.memory(snap.data!, fit: BoxFit.contain);
             },
           );
 
@@ -488,14 +489,32 @@ class DetailScreenState extends State<DetailScreen> {
                     DetailScreen._isDefaultDir(widget.fileSubdirectory)
                         ? widget.fileName
                         : path.join(widget.fileSubdirectory, widget.fileName);
+
+                // Attempt to obtain the already-fetched Large thumbnail bytes
+                // so StatusScreen can render immediately. This is best-effort
+                // and will not block the startPrint call for long.
+                Uint8List? thumbBytes;
+                try {
+                  if (_thumbnailFuture != null) {
+                    thumbBytes = await _thumbnailFuture!.timeout(
+                      const Duration(milliseconds: 500),
+                      onTimeout: () => null,
+                    );
+                  }
+                } catch (_) {
+                  thumbBytes = null;
+                }
+
                 final ok =
                     await provider.startPrint(widget.fileLocation, filePath);
                 if (ok) {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const StatusScreen(
+                        builder: (context) => StatusScreen(
                           newPrint: true,
+                          initialThumbnailBytes: thumbBytes,
+                          initialFilePath: filePath,
                         ),
                       ));
                 } else {
