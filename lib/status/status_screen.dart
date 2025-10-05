@@ -21,6 +21,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
+import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
 
 import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -85,6 +86,15 @@ class StatusScreenState extends State<StatusScreen> {
     }
   }
 
+  bool _bytesEqual(Uint8List a, Uint8List b) {
+    if (identical(a, b)) return true;
+    if (a.lengthInBytes != b.lengthInBytes) return false;
+    for (int i = 0; i < a.lengthInBytes; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<StatusProvider>(
@@ -116,22 +126,34 @@ class StatusScreenState extends State<StatusScreen> {
         // exposes a typed StatusModel. The screen now focuses solely on presentation.
 
         // Show global loading while provider indicates loading, we have no status yet,
-        // or (for new prints) until the provider signals the print is ready
-        // (we have active job+file metadata+thumbnail). However, if the
-        // backend reports the job has already finished (idle with layer data)
-        // or is canceled we should not remain in a spinner indefinitely —
-        // render the final status instead.
+        // or while the thumbnail is still being prepared. For new prints we
+        // continue to wait until the provider signals the print is ready
+        // (we have active job+file metadata+thumbnail). For auto-open (newPrint
+        // == false) we also show a spinner while the provider is still fetching
+        // the thumbnail so the UI doesn't immediately render a stale/placeholder
+        // preview. However, if the backend reports the job has already finished
+        // (idle with layer data) or is canceled we should not remain in a
+        // spinner indefinitely — render the final status instead.
         final bool finishedSnapshot =
             status?.isIdle == true && status?.layer != null;
         final bool canceledSnapshot = status?.isCanceled == true;
 
+        final bool thumbnailLoadingForAutoOpen =
+            !widget.newPrint && // only apply to auto-open path
+                status != null &&
+                (status.isPrinting || status.isPaused) &&
+                !provider.thumbnailReady &&
+                !finishedSnapshot &&
+                !canceledSnapshot;
+
         if (_suppressOldStatus ||
             provider.isLoading ||
             status == null ||
+            thumbnailLoadingForAutoOpen ||
             // If this screen was opened as a new print, wait until the
             // provider reports the job is ready to display. But allow
             // finished/canceled snapshots through so the UI doesn't lock up.
-            ((widget.newPrint || awaiting) &&
+            ((widget.newPrint && awaiting) &&
                 !newPrintReady &&
                 !finishedSnapshot &&
                 !canceledSnapshot)) {
@@ -413,7 +435,31 @@ class StatusScreenState extends State<StatusScreen> {
 
   Widget _buildThumbnailView(
       BuildContext context, StatusProvider provider, StatusModel? status) {
-    final thumbnail = provider.thumbnailBytes;
+    // Prefer provider's thumbnail bytes. If none yet, consider the
+    // initialThumbnailBytes passed from the Details screen — but do not
+    // show a generated placeholder as the initial preview while the
+    // provider is still probing for a real preview. In that case show the
+    // spinner until provider provides a non-placeholder or finishes.
+    Uint8List? thumbnail;
+    if (provider.thumbnailBytes != null) {
+      thumbnail = provider.thumbnailBytes;
+    } else if (widget.initialThumbnailBytes != null) {
+      // Detect whether the provided initial bytes are the NanoDLP generated
+      // placeholder. If so and provider isn't ready yet, prefer spinner.
+      final placeholder = NanoDlpThumbnailGenerator.generatePlaceholder(
+          NanoDlpThumbnailGenerator.largeWidth,
+          NanoDlpThumbnailGenerator.largeHeight);
+      bool isPlaceholder =
+          widget.initialThumbnailBytes!.length == placeholder.length &&
+              _bytesEqual(widget.initialThumbnailBytes!, placeholder);
+      if (isPlaceholder && !provider.thumbnailReady) {
+        thumbnail = null;
+      } else {
+        thumbnail = widget.initialThumbnailBytes;
+      }
+    } else {
+      thumbnail = null;
+    }
     final themeProvider = Provider.of<ThemeProvider>(context);
     final progress = provider.progress;
     final statusColor = provider.statusColor(context);

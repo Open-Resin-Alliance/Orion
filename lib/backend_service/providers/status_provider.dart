@@ -27,6 +27,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
+import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 
 /// Polls the backend printer `/status` endpoint and exposes a typed [StatusModel].
@@ -80,6 +81,9 @@ class StatusProvider extends ChangeNotifier {
   bool _thumbnailReady =
       false; // becomes true once we have a path OR decide none needed
   bool get thumbnailReady => _thumbnailReady;
+  // Retry tracking for placeholder thumbnails. Keyed by file path.
+  final Map<String, int> _thumbnailRetries = {};
+  static const int _maxThumbnailRetries = 3;
 
   /// Readiness for displaying a new print after a reset.
   /// Requirements:
@@ -265,16 +269,16 @@ class StatusProvider extends ChangeNotifier {
                   lastModified: 0,
                   locationCategory: fileData.locationCategory,
                 );
-                _thumbnailBytes = await ThumbnailCache.instance.getThumbnail(
+                await _fetchAndHandleThumbnail(
                   location: fileData.locationCategory ?? 'Local',
                   subdirectory: subdir,
                   fileName: fileData.name,
                   file: file,
                   size: 'Large',
                 );
-                _thumbnailReady = true;
               } catch (e, st) {
                 _log.warning('Thumbnail fetch failed (SSE)', e, st);
+                // Mark ready to avoid indefinite spinner when fetch errors
                 _thumbnailReady = true;
               }
             }
@@ -493,14 +497,13 @@ class StatusProvider extends ChangeNotifier {
               lastModified: 0,
               locationCategory: fileData.locationCategory,
             );
-            _thumbnailBytes = await ThumbnailCache.instance.getThumbnail(
+            await _fetchAndHandleThumbnail(
               location: fileData.locationCategory ?? 'Local',
               subdirectory: subdir,
               fileName: fileData.name,
               file: file,
               size: 'Large',
             );
-            _thumbnailReady = true;
           } catch (e, st) {
             _log.warning('Thumbnail fetch failed', e, st);
             // Even on failure we mark ready to avoid indefinite spinner.
@@ -757,11 +760,95 @@ class StatusProvider extends ChangeNotifier {
     _isPausing = false;
     _awaitingNewPrintData = true; // begin awaiting active print
     _awaitingSince = DateTime.now();
+    // Clear thumbnail retry counters for fresh session
+    _thumbnailRetries.clear();
     // If an initial file path or plate id is provided we may use it to
     // resolve thumbnails faster in NanoDLP adapters; store on status
     // model is not needed here but provider consumers can access
     // _thumbnailBytes immediately.
     notifyListeners();
+  }
+
+  Future<void> _fetchAndHandleThumbnail({
+    required String location,
+    required String subdirectory,
+    required String fileName,
+    required OrionApiFile file,
+    String size = 'Large',
+  }) async {
+    final pathKey = file.path;
+    try {
+      final bytes = await ThumbnailCache.instance.getThumbnail(
+        location: location,
+        subdirectory: subdirectory,
+        fileName: fileName,
+        file: file,
+        size: size,
+      );
+
+      if (bytes == null) {
+        _thumbnailBytes = null;
+        _thumbnailReady = true;
+        return;
+      }
+
+      final placeholder = NanoDlpThumbnailGenerator.generatePlaceholder(
+          NanoDlpThumbnailGenerator.largeWidth,
+          NanoDlpThumbnailGenerator.largeHeight);
+      final isPlaceholder =
+          bytes.length == placeholder.length && _bytesEqual(bytes, placeholder);
+
+      // If we already have a real thumbnail cached in provider, keep it.
+      if (isPlaceholder) {
+        if (_thumbnailBytes != null &&
+            !_bytesEqual(_thumbnailBytes!, placeholder)) {
+          _thumbnailReady = true;
+          return;
+        }
+
+        final tried = (_thumbnailRetries[pathKey] ?? 0);
+        if (tried < _maxThumbnailRetries) {
+          _thumbnailRetries[pathKey] = tried + 1;
+          final fresh = await ThumbnailCache.instance.getThumbnail(
+            location: location,
+            subdirectory: subdirectory,
+            fileName: fileName,
+            file: file,
+            size: size,
+            forceRefresh: true,
+          );
+          if (fresh != null) {
+            final freshIsPlaceholder = fresh.length == placeholder.length &&
+                _bytesEqual(fresh, placeholder);
+            if (!freshIsPlaceholder) {
+              _thumbnailBytes = fresh;
+              _thumbnailReady = true;
+              return;
+            }
+          }
+          // keep trying on subsequent polls; don't mark ready yet
+          return;
+        }
+
+        // Exhausted retries: accept placeholder if we don't have a real one
+        if (_thumbnailBytes == null ||
+            _bytesEqual(_thumbnailBytes!, placeholder)) {
+          _thumbnailBytes = bytes;
+        }
+        _thumbnailReady = true;
+        return;
+      }
+
+      // Normal: use the non-placeholder bytes
+      _thumbnailBytes = bytes;
+      _thumbnailReady = true;
+      return;
+    } catch (e, st) {
+      _log.warning('Thumbnail fetch failed', e, st);
+      _thumbnailBytes = null;
+      _thumbnailReady = true;
+      return;
+    }
   }
 
   @override
@@ -770,4 +857,13 @@ class StatusProvider extends ChangeNotifier {
     _timer?.cancel();
     super.dispose();
   }
+}
+
+bool _bytesEqual(Uint8List a, Uint8List b) {
+  if (identical(a, b)) return true;
+  if (a.lengthInBytes != b.lengthInBytes) return false;
+  for (int i = 0; i < a.lengthInBytes; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
