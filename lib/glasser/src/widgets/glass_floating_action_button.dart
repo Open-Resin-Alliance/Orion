@@ -15,11 +15,12 @@
 * limitations under the License.
 */
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../util/providers/theme_provider.dart';
 import '../constants.dart';
+import '../glass_effect.dart';
+import '../platform_config.dart';
 
 /// A floating action button that automatically becomes glassmorphic when the glass theme is active.
 ///
@@ -160,142 +161,135 @@ class GlassFloatingActionButton extends StatelessWidget {
 
     // Glass theme: create a glassmorphic floating action button
     if (extended) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(glassCornerRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(glassCornerRadius),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+      final borderRadius = BorderRadius.circular(glassCornerRadius);
+      final isEnabled = onPressed != null;
+      final shadow = GlassPlatformConfig.interactiveShadow(
+        enabled: isEnabled,
+        blurRadius: 24,
+        yOffset: 6,
+        alpha: 0.18,
+      );
+      final fillOpacity =
+          GlassPlatformConfig.surfaceOpacity(0.16, emphasize: true);
+
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          boxShadow: shadow,
+        ),
+        child: GlassEffect(
+          borderRadius: borderRadius,
+          sigma: glassBlurSigma,
+          opacity: fillOpacity,
+          borderWidth: 1.6,
+          emphasizeBorder: true,
+          child: Material(
+            color: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: borderRadius),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: borderRadius,
+              onTap: onPressed,
+              splashColor:
+                  isEnabled ? Colors.white.withValues(alpha: 0.2) : null,
+              highlightColor:
+                  isEnabled ? Colors.white.withValues(alpha: 0.1) : null,
+              child: Container(
+                constraints: BoxConstraints(
+                  minHeight: 48 * scale,
+                  minWidth: 48 * scale,
                 ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(glassCornerRadius),
-                onTap: onPressed,
-                splashColor: Colors.white.withValues(alpha: 0.2),
-                highlightColor: Colors.white.withValues(alpha: 0.1),
-                child: Container(
-                  constraints: BoxConstraints(
-                    minHeight: 48 * scale,
-                    minWidth: 48 * scale,
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16 * scale,
-                    vertical: 12 * scale,
-                  ),
-                  child: Builder(builder: (context) {
-                    final iconWidget = icon == null
-                        ? null
-                        : DefaultTextStyle(
-                            style: const TextStyle(
-                                fontFamily: 'AtkinsonHyperlegible',
-                                color: Colors.white),
-                            child: IconTheme(
-                              data: IconThemeData(
-                                  color: Colors.white, size: 20 * scale),
-                              child: icon!,
-                            ),
-                          );
-                    final textWidget = Flexible(
-                      child: DefaultTextStyle(
-                        style: TextStyle(
-                          fontFamily: 'AtkinsonHyperlegible',
-                          color: Colors.white,
-                          fontSize: 16 * scale,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        child: Text(
-                          label ?? '',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16 * scale,
+                  vertical: 12 * scale,
+                ),
+                child: Builder(builder: (context) {
+                  final iconWidget = icon == null
+                      ? null
+                      : DefaultTextStyle(
+                          style: const TextStyle(
+                              fontFamily: 'AtkinsonHyperlegible',
+                              color: Colors.white),
+                          child: IconTheme(
+                            data: IconThemeData(
+                                color: Colors.white, size: 20 * scale),
+                            child: icon!,
+                          ),
+                        );
+                  final textWidget = Flexible(
+                    child: DefaultTextStyle(
+                      style: TextStyle(
+                        fontFamily: 'AtkinsonHyperlegible',
+                        color: Colors.white,
+                        fontSize: 16 * scale,
+                        fontWeight: FontWeight.w500,
                       ),
-                    );
-                    final children = iconAfterLabel
-                        ? [
-                            textWidget,
-                            if (iconWidget != null) SizedBox(width: 8 * scale),
-                            if (iconWidget != null) iconWidget
-                          ]
-                        : [
-                            if (iconWidget != null) iconWidget,
-                            if (iconWidget != null) SizedBox(width: 8 * scale),
-                            textWidget
-                          ];
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: children,
-                    );
-                  }),
-                ),
+                      child: Text(
+                        label ?? '',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  );
+                  final children = iconAfterLabel
+                      ? [
+                          textWidget,
+                          if (iconWidget != null) SizedBox(width: 8 * scale),
+                          if (iconWidget != null) iconWidget
+                        ]
+                      : [
+                          if (iconWidget != null) iconWidget,
+                          if (iconWidget != null) SizedBox(width: 8 * scale),
+                          textWidget
+                        ];
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: children,
+                  );
+                }),
               ),
             ),
           ),
         ),
       );
     } else {
+      final borderRadius = BorderRadius.circular(28);
+      final shadow = GlassPlatformConfig.interactiveShadow(
+        enabled: onPressed != null,
+        blurRadius: 24,
+        yOffset: 8,
+        alpha: 0.18,
+      );
+      final fillOpacity =
+          GlassPlatformConfig.surfaceOpacity(0.18, emphasize: true);
+
       return FloatingActionButton(
         heroTag: heroTag,
         onPressed: onPressed,
         elevation: 0,
+        hoverElevation: 0,
+        focusElevation: 0,
+        highlightElevation: 0,
         backgroundColor: Colors.transparent,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(28),
-                  onTap: onPressed,
-                  splashColor: Colors.white.withValues(alpha: 0.2),
-                  highlightColor: Colors.white.withValues(alpha: 0.1),
-                  child: Container(
-                    constraints: BoxConstraints(
-                      minHeight: 56 * scale,
-                      minWidth: 56 * scale,
-                    ),
-                    child: Center(
-                      child: DefaultTextStyle(
-                        style: const TextStyle(
-                            fontFamily: 'AtkinsonHyperlegible',
-                            color: Colors.white),
-                        child: IconTheme(
-                          data: IconThemeData(
-                              color: Colors.white, size: 24 * scale),
-                          child: child ?? const SizedBox(),
-                        ),
-                      ),
-                    ),
+        child: SizedBox.expand(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              boxShadow: shadow,
+            ),
+            child: GlassEffect(
+              borderRadius: borderRadius,
+              sigma: glassBlurSigma,
+              opacity: fillOpacity,
+              borderWidth: 1.6,
+              emphasizeBorder: true,
+              child: Center(
+                child: DefaultTextStyle(
+                  style: const TextStyle(
+                      fontFamily: 'AtkinsonHyperlegible', color: Colors.white),
+                  child: IconTheme(
+                    data: IconThemeData(color: Colors.white, size: 24 * scale),
+                    child: child ?? const SizedBox(),
                   ),
                 ),
               ),
