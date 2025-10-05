@@ -15,11 +15,12 @@
 * limitations under the License.
 */
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import '../constants.dart';
+import '../glass_effect.dart';
+import '../platform_config.dart';
 
 /// A card that automatically becomes glassmorphic when the glass theme is active.
 ///
@@ -89,34 +90,24 @@ class GlassCard extends StatelessWidget {
 
     return Container(
       margin: margin ?? const EdgeInsets.all(4.0), // Default Card margin
-      child: ClipRRect(
+      decoration: BoxDecoration(
         borderRadius: borderRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Material(
-            type: MaterialType.transparency,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: borderRadius,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 15,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              foregroundDecoration: BoxDecoration(
-                borderRadius: borderRadius,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: child,
-            ),
-          ),
+        boxShadow: GlassPlatformConfig.surfaceShadow(
+          blurRadius: outlined ? 14 : 16,
+          yOffset: outlined ? 3 : 4,
+          alpha: outlined ? 0.14 : 0.12,
+        ),
+      ),
+      child: GlassEffect(
+        borderRadius: borderRadius,
+        opacity: GlassPlatformConfig.surfaceOpacity(0.12, emphasize: outlined),
+        sigma: glassBlurSigma,
+        borderWidth: outlined ? 1.4 : 1.0,
+        child: Material(
+          type: MaterialType.transparency,
+          shape: RoundedRectangleBorder(borderRadius: borderRadius),
+          clipBehavior: Clip.antiAlias,
+          child: child,
         ),
       ),
     );
