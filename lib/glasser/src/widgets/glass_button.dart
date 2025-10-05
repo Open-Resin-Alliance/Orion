@@ -15,11 +15,12 @@
 * limitations under the License.
 */
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import '../constants.dart';
+import '../glass_effect.dart';
+import '../platform_config.dart';
 
 /// A button that automatically becomes glassmorphic when the glass theme is active.
 ///
@@ -103,54 +104,50 @@ class _GlassmorphicButton extends StatelessWidget {
 
     // Detect if the button is a circle (CircleBorder)
     final isCircle = style?.shape?.resolve({}) is CircleBorder;
-    Widget buttonChild = ClipRRect(
-      borderRadius: BorderRadius.circular(isCircle ? 30 : glassCornerRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isEnabled
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.white.withValues(alpha: 0.05),
-            borderRadius:
-                BorderRadius.circular(isCircle ? 30 : glassCornerRadius),
-            border: Border.all(
-              color: isEnabled
-                  ? Colors.white.withValues(alpha: 0.2)
-                  : Colors.white.withValues(alpha: 0.1),
-              width: 1.5,
-            ),
-            boxShadow: isEnabled
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius:
-                  BorderRadius.circular(isCircle ? 30 : glassCornerRadius),
-              onTap: onPressed,
-              splashColor:
-                  isEnabled ? Colors.white.withValues(alpha: 0.2) : null,
-              highlightColor:
-                  isEnabled ? Colors.white.withValues(alpha: 0.1) : null,
-              child: Opacity(
-                opacity: isEnabled ? 1.0 : 0.5,
-                child: Padding(
-                  padding: isCircle
-                      ? const EdgeInsets.all(0)
-                      : const EdgeInsets.symmetric(
-                          horizontal: 24.0, vertical: 8.0),
-                  child: Center(
-                    child:
-                        _buildButtonContentWithIcon(child, wantIcon: wantIcon),
-                  ),
+    final borderRadius =
+        BorderRadius.circular(isCircle ? 30 : glassCornerRadius);
+    final fillOpacity = GlassPlatformConfig.surfaceOpacity(
+      isEnabled ? 0.14 : 0.1,
+      emphasize: isEnabled,
+    );
+    final shadow = GlassPlatformConfig.interactiveShadow(
+      enabled: isEnabled,
+      blurRadius: isCircle ? 18 : 16,
+      yOffset: isCircle ? 4 : 3,
+      alpha: 0.14,
+    );
+
+    Widget buttonChild = Container(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        boxShadow: shadow,
+      ),
+      child: GlassEffect(
+        borderRadius: borderRadius,
+        sigma: glassBlurSigma,
+        opacity: fillOpacity,
+        borderWidth: 1.5,
+        emphasizeBorder: isEnabled,
+        interactiveSurface: true,
+        child: Material(
+          color: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: borderRadius),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            borderRadius: borderRadius,
+            onTap: onPressed,
+            splashColor: isEnabled ? Colors.white.withValues(alpha: 0.2) : null,
+            highlightColor:
+                isEnabled ? Colors.white.withValues(alpha: 0.1) : null,
+            child: Opacity(
+              opacity: isEnabled ? 1.0 : 0.6,
+              child: Padding(
+                padding: isCircle
+                    ? const EdgeInsets.all(0)
+                    : const EdgeInsets.symmetric(
+                        horizontal: 24.0, vertical: 8.0),
+                child: Center(
+                  child: _buildButtonContentWithIcon(child, wantIcon: wantIcon),
                 ),
               ),
             ),

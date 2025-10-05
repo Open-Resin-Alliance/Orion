@@ -61,7 +61,7 @@ class GlassSwitch extends StatelessWidget {
       return Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: activeColor,
+        activeThumbColor: activeColor,
         inactiveTrackColor: inactiveTrackColor,
         inactiveThumbColor: inactiveThumbColor,
       );
@@ -71,7 +71,7 @@ class GlassSwitch extends StatelessWidget {
     return Switch(
       value: value,
       onChanged: onChanged,
-      activeColor: Colors.white,
+      activeThumbColor: Colors.white,
       activeTrackColor: Colors.white.withValues(alpha: 0.3),
       inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
       inactiveThumbColor: Colors.white.withValues(alpha: 0.7),
