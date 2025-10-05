@@ -51,8 +51,36 @@ class ThumbnailCache {
     required String fileName,
     required OrionApiFile file,
     String size = 'Small',
+    bool forceRefresh = false,
   }) async {
     _pruneExpired();
+
+    if (forceRefresh) {
+      // Bypass memory/disk caches and fetch fresh bytes. Still dedupe in-flight
+      // requests by key to avoid duplicate network work.
+      final key = _cacheKey(location, file, size);
+      final inFlight = _inFlight[key];
+      if (inFlight != null) return inFlight;
+
+      final future = ThumbnailUtil.extractThumbnailBytes(
+        location,
+        subdirectory,
+        fileName,
+        size: size,
+      ).then<Uint8List?>((bytes) {
+        _store(key, bytes);
+        _inFlight.remove(key);
+        return bytes;
+      }).catchError((Object error, StackTrace stack) {
+        _log.fine('Thumbnail fetch failed for ${file.path}', error, stack);
+        _store(key, null);
+        _inFlight.remove(key);
+        return null;
+      });
+
+      _inFlight[key] = future;
+      return future;
+    }
 
     // Try to find any cached entry for the same path+size regardless of
     // lastModified. This avoids cache misses when the provider recreates
@@ -428,17 +456,7 @@ class ThumbnailCache {
     }
   }
 
-  /// Extracts the lastModified component (epoch seconds) from a cache key
-  /// shaped as '`<location>|<path>|<lastModified>|<size`>' and returns a
-  /// human-readable UTC timestamp. If parsing fails, throws.
-  String _dateFromCacheKey(String keyOrDecoded) {
-    final parts = keyOrDecoded.split('|');
-    if (parts.length < 3) throw Exception('invalid cache key');
-    final lm = int.tryParse(parts[2]) ?? 0;
-    if (lm == 0) return 'epoch:0';
-    final dt = DateTime.fromMillisecondsSinceEpoch(lm * 1000, isUtc: true);
-    return dt.toIso8601String();
-  }
+  // _dateFromCacheKey removed (unused)
 }
 
 class _CacheEntry {
