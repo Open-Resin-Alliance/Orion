@@ -18,6 +18,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'constants.dart';
+import 'platform_config.dart';
 
 /// A widget that applies glassmorphic effects
 class GlassEffect extends StatelessWidget {
@@ -26,6 +27,15 @@ class GlassEffect extends StatelessWidget {
   final double cornerRadius;
   final double sigma;
   final Color? color;
+  final BorderRadiusGeometry? borderRadius;
+  final double borderWidth;
+  final bool emphasizeBorder;
+  final double borderAlpha;
+  final bool useRawOpacity;
+  final bool useRawBorderAlpha;
+  final bool interactiveSurface;
+  final bool disableBlur;
+  final bool forceBlur;
 
   const GlassEffect({
     super.key,
@@ -34,22 +44,58 @@ class GlassEffect extends StatelessWidget {
     this.cornerRadius = glassCornerRadius,
     this.sigma = glassBlurSigma,
     this.color,
+    this.borderRadius,
+    this.borderWidth = 1.0,
+    this.emphasizeBorder = false,
+    this.borderAlpha = 0.2,
+    this.useRawOpacity = false,
+    this.useRawBorderAlpha = false,
+    this.interactiveSurface = false,
+    this.disableBlur = false,
+    this.forceBlur = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(cornerRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-        child: Container(
-          decoration: createGlassDecoration(
-            opacity: opacity,
-            cornerRadius: cornerRadius,
-            color: color,
-          ),
-          child: child,
-        ),
+    final resolvedBorderRadius =
+        borderRadius ?? BorderRadius.circular(cornerRadius);
+    final clipRadius = _resolveClipRadius(resolvedBorderRadius, cornerRadius);
+    final effectiveSigma = GlassPlatformConfig.blurSigma(sigma);
+    final effectiveOpacity =
+        useRawOpacity ? opacity : GlassPlatformConfig.surfaceOpacity(opacity);
+    final enableBlur = !disableBlur &&
+        GlassPlatformConfig.shouldBlur(
+          interactiveSurface: interactiveSurface,
+          force: forceBlur,
+        );
+
+    Widget decoratedChild = DecoratedBox(
+      decoration: createGlassDecoration(
+        opacity: effectiveOpacity,
+        borderRadius: resolvedBorderRadius,
+        color: color,
+        borderWidth: borderWidth,
+        emphasizeBorder: emphasizeBorder,
+        borderAlpha: borderAlpha,
+        useRawBorderAlpha: useRawBorderAlpha,
+      ),
+      child: child,
+    );
+
+    return RepaintBoundary(
+      child: ClipRRect(
+        borderRadius: clipRadius,
+        clipBehavior: GlassPlatformConfig.clipBehavior,
+        child: enableBlur
+            ? BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: effectiveSigma,
+                  sigmaY: effectiveSigma,
+                  tileMode: GlassPlatformConfig.blurTileMode,
+                ),
+                child: decoratedChild,
+              )
+            : decoratedChild,
       ),
     );
   }
@@ -58,15 +104,29 @@ class GlassEffect extends StatelessWidget {
 /// Creates a standard glassmorphic decoration
 BoxDecoration createGlassDecoration({
   double opacity = glassOpacity,
-  double cornerRadius = glassCornerRadius,
+  BorderRadiusGeometry borderRadius =
+      const BorderRadius.all(Radius.circular(glassCornerRadius)),
   Color? color,
+  double borderWidth = 1.0,
+  bool emphasizeBorder = false,
+  double borderAlpha = 0.2,
+  bool useRawBorderAlpha = false,
 }) {
+  final double effectiveBorderAlpha = useRawBorderAlpha
+      ? borderAlpha
+      : GlassPlatformConfig.borderOpacity(
+          borderAlpha,
+          emphasize: emphasizeBorder,
+        );
+
   return BoxDecoration(
     color: (color ?? Colors.white).withValues(alpha: opacity),
-    borderRadius: BorderRadius.circular(cornerRadius),
+    borderRadius: borderRadius,
     border: Border.all(
-      color: Colors.white.withValues(alpha: 0.2),
-      width: 1.0,
+      color: Colors.white.withValues(
+        alpha: effectiveBorderAlpha,
+      ),
+      width: borderWidth,
     ),
   );
 }
@@ -77,7 +137,26 @@ Widget createGlassBackdrop({
   double sigma = glassBlurSigma,
 }) {
   return BackdropFilter(
-    filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+    filter: ImageFilter.blur(
+      sigmaX: GlassPlatformConfig.blurSigma(sigma),
+      sigmaY: GlassPlatformConfig.blurSigma(sigma),
+      tileMode: GlassPlatformConfig.blurTileMode,
+    ),
     child: child,
   );
+}
+
+BorderRadius _resolveClipRadius(
+  BorderRadiusGeometry geometry,
+  double fallbackCornerRadius,
+) {
+  if (geometry is BorderRadius) {
+    return geometry;
+  }
+
+  try {
+    return geometry.resolve(TextDirection.ltr);
+  } catch (_) {
+    return BorderRadius.circular(fallbackCornerRadius);
+  }
 }

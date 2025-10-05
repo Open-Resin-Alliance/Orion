@@ -20,6 +20,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:provider/provider.dart';
 
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/localization.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 
@@ -256,6 +257,18 @@ class KeyboardButton extends StatelessWidget {
   final ValueNotifier<bool> isSymbolKeyboardShown;
   final ValueNotifier<bool> isSecondarySymbolKeyboardShown;
 
+  static const Set<String> _functionKeyLabels = {
+    '⇧',
+    '⇪',
+    '⌫',
+    '123',
+    'abc',
+    'return',
+    '↵',
+    '#+=',
+    '123\u200B',
+  };
+
   const KeyboardButton({
     super.key,
     required this.text,
@@ -271,62 +284,56 @@ class KeyboardButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isGlassTheme = themeProvider.isGlassTheme;
+    final borderRadius = BorderRadius.circular(16);
+
+    // Match GlassButton visual parameters but disable blur to avoid many
+    // expensive backdrop filter passes on small interactive keys.
+    final double fillOpacity = GlassPlatformConfig.surfaceOpacity(
+      0.14,
+      emphasize: true,
+    );
+    final double borderWidth = 1.5;
+    final bool borderEmphasis = true;
+    final shadow = GlassPlatformConfig.interactiveShadow(
+      enabled: true,
+      blurRadius: 12.0,
+      yOffset: 3.0,
+      alpha: 0.12,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: SizedBox(
         height: double.infinity,
         child: isGlassTheme
-            ? Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _handleKey(text, context),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: Colors.white.withValues(alpha: 0.15),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 1,
+            ? Container(
+                decoration: BoxDecoration(
+                  borderRadius: borderRadius,
+                  boxShadow: shadow,
+                ),
+                child: GlassEffect(
+                  borderRadius: borderRadius,
+                  sigma: glassBlurSigma,
+                  opacity: fillOpacity,
+                  borderWidth: borderWidth,
+                  emphasizeBorder: borderEmphasis,
+                  interactiveSurface: true,
+                  disableBlur: true,
+                  child: Material(
+                    color: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: borderRadius),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => _handleKey(text, context),
+                      borderRadius: borderRadius,
+                      splashColor: Colors.white.withValues(alpha: 0.18),
+                      highlightColor: Colors.white.withValues(alpha: 0.1),
+                      child: Center(
+                        child: _buildLabel(
+                          context,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    alignment: Alignment.center,
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: isShiftEnabled,
-                      builder: (context, isShiftEnabled, child) {
-                        if (text == "123" ||
-                            text == "abc" ||
-                            text == "return" ||
-                            text == '↵' ||
-                            text == "#+=" ||
-                            text == "123\u200B") {
-                          return FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              text,
-                              style: const TextStyle(
-                                fontSize: 23,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          );
-                        }
-                        return FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            isShiftEnabled
-                                ? text.toUpperCase()
-                                : text.toLowerCase(),
-                            style: const TextStyle(
-                              fontSize: 23,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        );
-                      },
                     ),
                   ),
                 ),
@@ -343,33 +350,11 @@ class KeyboardButton extends StatelessWidget {
                 },
                 child: Container(
                   alignment: Alignment.center,
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: isShiftEnabled,
-                    builder: (context, isShiftEnabled, child) {
-                      if (text == "123" ||
-                          text == "abc" ||
-                          text == "return" ||
-                          text == '↵' ||
-                          text == "#+=" ||
-                          text == "123\u200B") {
-                        return FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            text,
-                            style: const TextStyle(fontSize: 23),
-                          ),
-                        );
-                      }
-                      return FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          isShiftEnabled
-                              ? text.toUpperCase()
-                              : text.toLowerCase(),
-                          style: const TextStyle(fontSize: 23),
-                        ),
-                      );
-                    },
+                  child: _buildLabel(
+                    context,
+                    color: Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.black,
+                    fontWeight: FontWeight.normal,
                   ),
                 ),
               ),
@@ -486,4 +471,33 @@ class KeyboardButton extends StatelessWidget {
         .onPrimaryContainer
         .withValues(alpha: brightness);
   }
+
+  Widget _buildLabel(
+    BuildContext context, {
+    required Color color,
+    FontWeight fontWeight = FontWeight.w500,
+  }) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: isShiftEnabled,
+      builder: (context, isShiftActive, child) {
+        final bool lockCase = _isFunctionKey(text);
+        final String displayText = lockCase
+            ? text
+            : (isShiftActive ? text.toUpperCase() : text.toLowerCase());
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            displayText,
+            style: TextStyle(
+              fontSize: 23,
+              color: color,
+              fontWeight: fontWeight,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  bool _isFunctionKey(String keyLabel) => _functionKeyLabels.contains(keyLabel);
 }

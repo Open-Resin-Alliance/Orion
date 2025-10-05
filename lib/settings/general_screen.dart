@@ -468,6 +468,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               onPressed: () {
                                                 Navigator.of(context).pop();
                                               },
+                                              style: ElevatedButton.styleFrom(
+                                                  minimumSize:
+                                                      const Size(0, 60)),
                                               child: const Text('Close',
                                                   style:
                                                       TextStyle(fontSize: 16)),
@@ -484,6 +487,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 });
                                                 Navigator.of(context).pop();
                                               },
+                                              style: ElevatedButton.styleFrom(
+                                                  minimumSize:
+                                                      const Size(0, 60)),
                                               child: const Text('Confirm',
                                                   style:
                                                       TextStyle(fontSize: 16)),
