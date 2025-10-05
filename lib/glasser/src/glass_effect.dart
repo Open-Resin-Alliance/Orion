@@ -34,6 +34,7 @@ class GlassEffect extends StatelessWidget {
   final bool useRawOpacity;
   final bool useRawBorderAlpha;
   final bool interactiveSurface;
+  final bool disableBlur;
   final bool forceBlur;
 
   const GlassEffect({
@@ -50,6 +51,7 @@ class GlassEffect extends StatelessWidget {
     this.useRawOpacity = false,
     this.useRawBorderAlpha = false,
     this.interactiveSurface = false,
+    this.disableBlur = false,
     this.forceBlur = false,
   });
 
@@ -61,10 +63,11 @@ class GlassEffect extends StatelessWidget {
     final effectiveSigma = GlassPlatformConfig.blurSigma(sigma);
     final effectiveOpacity =
         useRawOpacity ? opacity : GlassPlatformConfig.surfaceOpacity(opacity);
-    final enableBlur = GlassPlatformConfig.shouldBlur(
-      interactiveSurface: interactiveSurface,
-      force: forceBlur,
-    );
+    final enableBlur = !disableBlur &&
+        GlassPlatformConfig.shouldBlur(
+          interactiveSurface: interactiveSurface,
+          force: forceBlur,
+        );
 
     Widget decoratedChild = DecoratedBox(
       decoration: createGlassDecoration(
