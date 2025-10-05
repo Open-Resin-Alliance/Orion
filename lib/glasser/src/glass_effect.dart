@@ -59,9 +59,8 @@ class GlassEffect extends StatelessWidget {
         borderRadius ?? BorderRadius.circular(cornerRadius);
     final clipRadius = _resolveClipRadius(resolvedBorderRadius, cornerRadius);
     final effectiveSigma = GlassPlatformConfig.blurSigma(sigma);
-    final effectiveOpacity = useRawOpacity
-        ? opacity
-        : GlassPlatformConfig.surfaceOpacity(opacity);
+    final effectiveOpacity =
+        useRawOpacity ? opacity : GlassPlatformConfig.surfaceOpacity(opacity);
     final enableBlur = GlassPlatformConfig.shouldBlur(
       interactiveSurface: interactiveSurface,
       force: forceBlur,
