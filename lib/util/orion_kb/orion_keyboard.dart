@@ -285,63 +285,54 @@ class KeyboardButton extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isGlassTheme = themeProvider.isGlassTheme;
     final borderRadius = BorderRadius.circular(16);
-    final bool isFunctionKey = _isFunctionKey(text);
-    final bool isShiftActive = isShiftEnabled.value;
-    final bool isCapsActive = isCapsEnabled.value;
-    final bool highlight =
-        (text == '⇧' && isShiftActive) || (text == '⇪' && isCapsActive);
-    final double baseOpacity = highlight
-        ? 0.12
-        : isFunctionKey
-            ? 0.095
-            : 0.075;
-    final Color baseTint = highlight
-        ? const Color(0xFF18202E)
-        : isFunctionKey
-            ? const Color(0xFF131926)
-            : const Color(0xFF0F1624);
-    final double fillOpacity = baseOpacity;
-    final double borderWidth = highlight
-        ? 1.9
-        : isFunctionKey
-            ? 1.5
-            : 1.3;
-    final double borderAlpha = highlight
-        ? 0.36
-        : isFunctionKey
-            ? 0.3
-            : 0.26;
-    final bool borderEmphasis = highlight || isFunctionKey;
+
+    // Match GlassButton visual parameters but disable blur to avoid many
+    // expensive backdrop filter passes on small interactive keys.
+    final double fillOpacity = GlassPlatformConfig.surfaceOpacity(
+      0.14,
+      emphasize: true,
+    );
+    final double borderWidth = 1.5;
+    final bool borderEmphasis = true;
+    final shadow = GlassPlatformConfig.interactiveShadow(
+      enabled: true,
+      blurRadius: 12.0,
+      yOffset: 3.0,
+      alpha: 0.12,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: SizedBox(
         height: double.infinity,
         child: isGlassTheme
-            ? GlassEffect(
-                borderRadius: borderRadius,
-                sigma: glassBlurSigma,
-                opacity: fillOpacity,
-                borderWidth: borderWidth,
-                emphasizeBorder: borderEmphasis,
-                borderAlpha: borderAlpha,
-                useRawOpacity: true,
-                useRawBorderAlpha: true,
-                interactiveSurface: true,
-                color: baseTint,
-                child: Material(
-                  color: Colors.transparent,
-                  shape: RoundedRectangleBorder(borderRadius: borderRadius),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => _handleKey(text, context),
-                    borderRadius: borderRadius,
-                    splashColor: Colors.white.withValues(alpha: 0.18),
-                    highlightColor: Colors.white.withValues(alpha: 0.1),
-                    child: Center(
-                      child: _buildLabel(
-                        context,
-                        color: Colors.white,
+            ? Container(
+                decoration: BoxDecoration(
+                  borderRadius: borderRadius,
+                  boxShadow: shadow,
+                ),
+                child: GlassEffect(
+                  borderRadius: borderRadius,
+                  sigma: glassBlurSigma,
+                  opacity: fillOpacity,
+                  borderWidth: borderWidth,
+                  emphasizeBorder: borderEmphasis,
+                  interactiveSurface: true,
+                  disableBlur: true,
+                  child: Material(
+                    color: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: borderRadius),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => _handleKey(text, context),
+                      borderRadius: borderRadius,
+                      splashColor: Colors.white.withValues(alpha: 0.18),
+                      highlightColor: Colors.white.withValues(alpha: 0.1),
+                      child: Center(
+                        child: _buildLabel(
+                          context,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),

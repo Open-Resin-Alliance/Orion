@@ -57,6 +57,13 @@ class OrionKbModal extends ModalRoute<String> {
     final radius = (width > height) ? width / 30 : height / 30;
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isGlassTheme = themeProvider.isGlassTheme;
+    final gradient = GlassGradientUtils.resolveGradient(
+      themeProvider: themeProvider,
+    );
+    final modalGradient = GlassGradientUtils.darkenGradient(
+      gradient,
+      amount: 0.2,
+    );
     final borderRadius = BorderRadius.only(
       topLeft: Radius.circular(radius),
       topRight: Radius.circular(radius),
@@ -73,24 +80,37 @@ class OrionKbModal extends ModalRoute<String> {
                   decoration: BoxDecoration(
                     borderRadius: borderRadius,
                     boxShadow: GlassPlatformConfig.surfaceShadow(
-                      blurRadius: 22,
-                      yOffset: 10,
-                      alpha: 0.22,
+                      blurRadius: 26,
+                      yOffset: 12,
+                      alpha: 0.24,
                     ),
                   ),
-                  child: GlassEffect(
+                  child: ClipRRect(
                     borderRadius: borderRadius,
-                    sigma: glassBlurSigma,
-                    opacity: GlassPlatformConfig.surfaceOpacity(0.14,
-                        emphasize: true),
-                    borderWidth: 1.4,
-                    emphasizeBorder: true,
-                    interactiveSurface: true,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5.0),
-                      child: OrionKeyboard(
-                        controller: textController,
-                        locale: locale,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: borderRadius,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: modalGradient,
+                        ),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5.0),
+                          child: OrionKeyboard(
+                            controller: textController,
+                            locale: locale,
+                          ),
+                        ),
                       ),
                     ),
                   ),
