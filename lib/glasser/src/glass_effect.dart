@@ -30,6 +30,11 @@ class GlassEffect extends StatelessWidget {
   final BorderRadiusGeometry? borderRadius;
   final double borderWidth;
   final bool emphasizeBorder;
+  final double borderAlpha;
+  final bool useRawOpacity;
+  final bool useRawBorderAlpha;
+  final bool interactiveSurface;
+  final bool forceBlur;
 
   const GlassEffect({
     super.key,
@@ -41,6 +46,11 @@ class GlassEffect extends StatelessWidget {
     this.borderRadius,
     this.borderWidth = 1.0,
     this.emphasizeBorder = false,
+    this.borderAlpha = 0.2,
+    this.useRawOpacity = false,
+    this.useRawBorderAlpha = false,
+    this.interactiveSurface = false,
+    this.forceBlur = false,
   });
 
   @override
@@ -49,29 +59,41 @@ class GlassEffect extends StatelessWidget {
         borderRadius ?? BorderRadius.circular(cornerRadius);
     final clipRadius = _resolveClipRadius(resolvedBorderRadius, cornerRadius);
     final effectiveSigma = GlassPlatformConfig.blurSigma(sigma);
-    final effectiveOpacity = GlassPlatformConfig.surfaceOpacity(opacity);
+    final effectiveOpacity = useRawOpacity
+        ? opacity
+        : GlassPlatformConfig.surfaceOpacity(opacity);
+    final enableBlur = GlassPlatformConfig.shouldBlur(
+      interactiveSurface: interactiveSurface,
+      force: forceBlur,
+    );
+
+    Widget decoratedChild = DecoratedBox(
+      decoration: createGlassDecoration(
+        opacity: effectiveOpacity,
+        borderRadius: resolvedBorderRadius,
+        color: color,
+        borderWidth: borderWidth,
+        emphasizeBorder: emphasizeBorder,
+        borderAlpha: borderAlpha,
+        useRawBorderAlpha: useRawBorderAlpha,
+      ),
+      child: child,
+    );
 
     return RepaintBoundary(
       child: ClipRRect(
         borderRadius: clipRadius,
         clipBehavior: GlassPlatformConfig.clipBehavior,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: effectiveSigma,
-            sigmaY: effectiveSigma,
-            tileMode: GlassPlatformConfig.blurTileMode,
-          ),
-          child: DecoratedBox(
-            decoration: createGlassDecoration(
-              opacity: effectiveOpacity,
-              borderRadius: resolvedBorderRadius,
-              color: color,
-              borderWidth: borderWidth,
-              emphasizeBorder: emphasizeBorder,
-            ),
-            child: child,
-          ),
-        ),
+        child: enableBlur
+            ? BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: effectiveSigma,
+                  sigmaY: effectiveSigma,
+                  tileMode: GlassPlatformConfig.blurTileMode,
+                ),
+                child: decoratedChild,
+              )
+            : decoratedChild,
       ),
     );
   }
@@ -85,14 +107,22 @@ BoxDecoration createGlassDecoration({
   Color? color,
   double borderWidth = 1.0,
   bool emphasizeBorder = false,
+  double borderAlpha = 0.2,
+  bool useRawBorderAlpha = false,
 }) {
+  final double effectiveBorderAlpha = useRawBorderAlpha
+      ? borderAlpha
+      : GlassPlatformConfig.borderOpacity(
+          borderAlpha,
+          emphasize: emphasizeBorder,
+        );
+
   return BoxDecoration(
     color: (color ?? Colors.white).withValues(alpha: opacity),
     borderRadius: borderRadius,
     border: Border.all(
       color: Colors.white.withValues(
-        alpha:
-            GlassPlatformConfig.borderOpacity(0.2, emphasize: emphasizeBorder),
+        alpha: effectiveBorderAlpha,
       ),
       width: borderWidth,
     ),
