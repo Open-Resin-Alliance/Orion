@@ -15,11 +15,13 @@
 * limitations under the License.
 */
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../util/providers/theme_provider.dart';
+import '../constants.dart';
+import '../glass_effect.dart';
+import '../platform_config.dart';
 
 /// A theme selector that automatically becomes glassmorphic when the glass theme is active.
 ///
@@ -226,89 +228,82 @@ class _ThemeCard extends StatelessWidget {
 
     // Add glassmorphic effect for glass theme preview
     if (isGlass) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            height: 110,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? Colors.white.withValues(alpha: 0.8)
-                    : Colors.white.withValues(alpha: 0.3),
-                width: isSelected ? 2.5 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: onTap,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Mini preview of the glass theme
-                      Container(
-                        width: 32,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3)),
+      final borderRadius = BorderRadius.circular(12);
+      final fillOpacity = GlassPlatformConfig.surfaceOpacity(
+        isSelected ? 0.2 : 0.12,
+        emphasize: isSelected,
+      );
+      final boxShadow = isSelected
+          ? GlassPlatformConfig.selectionGlow(blurRadius: 12, alpha: 0.28)
+          : GlassPlatformConfig.surfaceShadow(
+              blurRadius: 10,
+              yOffset: 3,
+              alpha: 0.12,
+            );
+
+      return Container(
+        height: 110,
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          boxShadow: boxShadow,
+        ),
+        child: GlassEffect(
+          borderRadius: borderRadius,
+          sigma: glassBlurSigma,
+          opacity: fillOpacity,
+          borderWidth: isSelected ? 2.2 : 1.2,
+          emphasizeBorder: isSelected,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: borderRadius,
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
                         ),
-                        child: Center(
-                          child: Container(
-                            width: 20,
-                            height: 2,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(1),
-                            ),
+                      ),
+                      child: Center(
+                        child: Container(
+                          width: 20,
+                          height: 2,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            borderRadius: BorderRadius.circular(1),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Icon(
-                        icon,
-                        size: 20,
-                        color: _getIconColor(themeProvider, isSelected),
+                    ),
+                    const SizedBox(height: 8),
+                    Icon(
+                      icon,
+                      size: 20,
+                      color: _getIconColor(themeProvider, isSelected),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'AtkinsonHyperlegible',
+                        fontSize: 14,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: _getTextColor(themeProvider, isSelected),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'AtkinsonHyperlegible',
-                          fontSize: 14,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: _getTextColor(themeProvider, isSelected),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
