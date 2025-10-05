@@ -30,6 +30,30 @@ class GlassPlatformConfig {
   static bool get isLinuxDesktop =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
 
+  /// Determines whether applying a live blur is acceptable for the current
+  /// surface. Small interactive elements on Linux tend to look fine without a
+  /// full backdrop blur and skipping it saves a costly render pass.
+  static bool shouldBlur({
+    bool interactiveSurface = false,
+    bool force = false,
+  }) {
+    if (force) {
+      return true;
+    }
+
+    if (!isLinuxDesktop) {
+      return true;
+    }
+
+    // Prioritise blur for larger structural surfaces like dialogs/cards, but
+    // skip it for small interactive controls by default.
+    if (interactiveSurface) {
+      return false;
+    }
+
+    return true;
+  }
+
   /// Returns a platform-tuned blur sigma.
   static double blurSigma(double base) {
     if (!isLinuxDesktop) {
@@ -43,16 +67,18 @@ class GlassPlatformConfig {
   }
 
   /// Normalises surface opacity for translucent fills. On Linux we boost the
-  /// opacity a bit to compensate for the reduced blur strength.
+  /// opacity slightly to compensate for the reduced blur strength while trying
+  /// to maintain the darker glass aesthetic.
   static double surfaceOpacity(double base, {bool emphasize = false}) {
     if (!isLinuxDesktop) {
       return base;
     }
 
-    final boost = emphasize ? 0.08 : 0.06;
-    final maxOpacity = emphasize ? 0.36 : 0.32;
+    final boost = emphasize ? 0.06 : 0.04;
+    final maxOpacity = emphasize ? 0.28 : 0.22;
+    final targetCap = (base + (emphasize ? 0.06 : 0.04)).clamp(0.0, maxOpacity);
     final adjusted = base + boost;
-    return adjusted > maxOpacity ? maxOpacity : adjusted;
+    return adjusted > targetCap ? targetCap : adjusted;
   }
 
   /// Adjusts border opacity so that edge highlights remain visible when we
