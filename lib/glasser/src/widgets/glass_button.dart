@@ -107,7 +107,7 @@ class _GlassmorphicButton extends StatelessWidget {
     final borderRadius =
         BorderRadius.circular(isCircle ? 30 : glassCornerRadius);
     final fillOpacity = GlassPlatformConfig.surfaceOpacity(
-      isEnabled ? 0.18 : 0.12,
+      isEnabled ? 0.14 : 0.1,
       emphasize: isEnabled,
     );
     final shadow = GlassPlatformConfig.interactiveShadow(
@@ -128,6 +128,7 @@ class _GlassmorphicButton extends StatelessWidget {
         opacity: fillOpacity,
         borderWidth: 1.5,
         emphasizeBorder: isEnabled,
+        interactiveSurface: true,
         child: Material(
           color: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: borderRadius),

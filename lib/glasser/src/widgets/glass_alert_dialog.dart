@@ -76,7 +76,7 @@ class GlassAlertDialog extends StatelessWidget {
 
     final borderRadius = BorderRadius.circular(glassCornerRadius);
     final fillOpacity =
-        GlassPlatformConfig.surfaceOpacity(0.14, emphasize: true);
+        GlassPlatformConfig.surfaceOpacity(0.12, emphasize: true);
     final shadow = GlassPlatformConfig.surfaceShadow(
       blurRadius: 26,
       yOffset: 12,
@@ -108,6 +108,7 @@ class GlassAlertDialog extends StatelessWidget {
                 opacity: fillOpacity,
                 borderWidth: 1.6,
                 emphasizeBorder: true,
+                interactiveSurface: false,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -189,7 +190,7 @@ class _GlassTextButton extends StatelessWidget {
       final borderRadius = BorderRadius.circular(8.0);
       final isEnabled = textButton.onPressed != null;
       final fillOpacity = GlassPlatformConfig.surfaceOpacity(
-        isEnabled ? 0.18 : 0.12,
+        isEnabled ? 0.14 : 0.1,
         emphasize: isEnabled,
       );
       final shadow = GlassPlatformConfig.interactiveShadow(
@@ -210,6 +211,7 @@ class _GlassTextButton extends StatelessWidget {
           opacity: fillOpacity,
           borderWidth: 1.2,
           emphasizeBorder: isEnabled,
+          interactiveSurface: true,
           child: Material(
             color: Colors.transparent,
             shape: RoundedRectangleBorder(borderRadius: borderRadius),

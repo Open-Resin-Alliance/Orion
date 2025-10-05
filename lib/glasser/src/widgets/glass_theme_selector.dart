@@ -230,7 +230,7 @@ class _ThemeCard extends StatelessWidget {
     if (isGlass) {
       final borderRadius = BorderRadius.circular(12);
       final fillOpacity = GlassPlatformConfig.surfaceOpacity(
-        isSelected ? 0.2 : 0.12,
+        isSelected ? 0.18 : 0.1,
         emphasize: isSelected,
       );
       final boxShadow = isSelected
@@ -253,6 +253,7 @@ class _ThemeCard extends StatelessWidget {
           opacity: fillOpacity,
           borderWidth: isSelected ? 2.2 : 1.2,
           emphasizeBorder: isSelected,
+          interactiveSurface: true,
           child: Material(
             color: Colors.transparent,
             child: InkWell(

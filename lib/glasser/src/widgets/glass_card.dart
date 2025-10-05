@@ -100,7 +100,10 @@ class GlassCard extends StatelessWidget {
       ),
       child: GlassEffect(
         borderRadius: borderRadius,
-        opacity: GlassPlatformConfig.surfaceOpacity(0.12, emphasize: outlined),
+        opacity: GlassPlatformConfig.surfaceOpacity(
+          outlined ? 0.12 : 0.1,
+          emphasize: outlined,
+        ),
         sigma: glassBlurSigma,
         borderWidth: outlined ? 1.4 : 1.0,
         child: Material(

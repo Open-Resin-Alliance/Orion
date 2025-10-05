@@ -71,7 +71,7 @@ class GlassChoiceChip extends StatelessWidget {
     // Glass theme - create glassmorphic choice chip
     final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
     final fillOpacity = GlassPlatformConfig.surfaceOpacity(
-      selected ? 0.28 : 0.12,
+      selected ? 0.22 : 0.1,
       emphasize: selected,
     );
     final borderWidth = selected ? 2.2 : 1.2;
@@ -93,6 +93,7 @@ class GlassChoiceChip extends StatelessWidget {
         opacity: fillOpacity,
         borderWidth: borderWidth,
         emphasizeBorder: selected,
+        interactiveSurface: true,
         child: Material(
           color: Colors.transparent,
           child: InkWell(

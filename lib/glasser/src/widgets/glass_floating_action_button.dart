@@ -170,7 +170,7 @@ class GlassFloatingActionButton extends StatelessWidget {
         alpha: 0.18,
       );
       final fillOpacity =
-          GlassPlatformConfig.surfaceOpacity(0.16, emphasize: true);
+          GlassPlatformConfig.surfaceOpacity(0.14, emphasize: true);
 
       return Container(
         decoration: BoxDecoration(
@@ -261,7 +261,7 @@ class GlassFloatingActionButton extends StatelessWidget {
         alpha: 0.18,
       );
       final fillOpacity =
-          GlassPlatformConfig.surfaceOpacity(0.18, emphasize: true);
+          GlassPlatformConfig.surfaceOpacity(0.15, emphasize: true);
 
       return FloatingActionButton(
         heroTag: heroTag,
