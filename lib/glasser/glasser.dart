@@ -25,6 +25,7 @@ library;
 // Core constants and utilities
 export 'src/constants.dart';
 export 'src/glass_effect.dart';
+export 'src/platform_config.dart';
 
 // Layout widgets
 export 'src/widgets/glass_app.dart';
