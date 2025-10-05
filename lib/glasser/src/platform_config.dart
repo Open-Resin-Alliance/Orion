@@ -70,14 +70,14 @@ class GlassPlatformConfig {
   /// opacity slightly to compensate for the reduced blur strength while trying
   /// to maintain the darker glass aesthetic.
   static double surfaceOpacity(double base, {bool emphasize = false}) {
-    if (!isLinuxDesktop) {
-      return base;
-    }
+    final reducedBase = (base - 0.02).clamp(0.0, 1.0);
+
+    if (!isLinuxDesktop) return reducedBase;
 
     final boost = emphasize ? 0.06 : 0.04;
     final maxOpacity = emphasize ? 0.28 : 0.22;
-    final targetCap = (base + (emphasize ? 0.06 : 0.04)).clamp(0.0, maxOpacity);
-    final adjusted = base + boost;
+    final targetCap = (reducedBase + boost).clamp(0.0, maxOpacity);
+    final adjusted = reducedBase + boost;
     return adjusted > targetCap ? targetCap : adjusted;
   }
 
