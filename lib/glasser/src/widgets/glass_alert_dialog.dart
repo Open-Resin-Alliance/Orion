@@ -15,11 +15,12 @@
 * limitations under the License.
 */
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../util/providers/theme_provider.dart';
 import '../constants.dart';
+import '../glass_effect.dart';
+import '../platform_config.dart';
 
 /// An alert dialog that automatically becomes glassmorphic when the glass theme is active.
 ///
@@ -73,6 +74,15 @@ class GlassAlertDialog extends StatelessWidget {
       );
     }
 
+    final borderRadius = BorderRadius.circular(glassCornerRadius);
+    final fillOpacity =
+        GlassPlatformConfig.surfaceOpacity(0.14, emphasize: true);
+    final shadow = GlassPlatformConfig.surfaceShadow(
+      blurRadius: 26,
+      yOffset: 12,
+      alpha: 0.24,
+    );
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -87,78 +97,68 @@ class GlassAlertDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(glassCornerRadius),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(glassCornerRadius),
-                    color: Colors.white.withValues(alpha: 0.1),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 30,
-                        offset: const Offset(0, 15),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                boxShadow: shadow,
+              ),
+              child: GlassEffect(
+                borderRadius: borderRadius,
+                sigma: glassBlurSigma,
+                opacity: fillOpacity,
+                borderWidth: 1.6,
+                emphasizeBorder: true,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (title != null)
+                      Padding(
+                        padding: titlePadding,
+                        child: DefaultTextStyle(
+                          style: const TextStyle(
+                            fontFamily: 'AtkinsonHyperlegible',
+                            fontSize: 24,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                          child: title!,
+                        ),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (title != null)
-                        Padding(
-                          padding: titlePadding,
+                    if (content != null)
+                      Flexible(
+                        child: Padding(
+                          padding: contentPadding,
                           child: DefaultTextStyle(
                             style: const TextStyle(
                               fontFamily: 'AtkinsonHyperlegible',
-                              fontSize: 24,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
+                              fontSize: 20,
+                              color: Colors.white70,
                             ),
-                            child: title!,
+                            child: content!,
                           ),
                         ),
-                      if (content != null)
-                        Flexible(
-                          child: Padding(
-                            padding: contentPadding,
-                            child: DefaultTextStyle(
-                              style: const TextStyle(
-                                fontFamily: 'AtkinsonHyperlegible',
-                                fontSize: 20,
-                                color: Colors.white70,
-                              ),
-                              child: content!,
-                            ),
-                          ),
-                        ),
-                      if (actions != null && actions!.isNotEmpty)
-                        Padding(
-                          padding: actionsPadding,
-                          child: Row(
-                            children: actions!.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final action = entry.value;
-                              return Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    left: index == 0 ? 0 : 4,
-                                    right: index == actions!.length - 1 ? 0 : 4,
-                                  ),
-                                  child: _GlassTextButton(child: action),
+                      ),
+                    if (actions != null && actions!.isNotEmpty)
+                      Padding(
+                        padding: actionsPadding,
+                        child: Row(
+                          children: actions!.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final action = entry.value;
+                            return Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  left: index == 0 ? 0 : 4,
+                                  right: index == actions!.length - 1 ? 0 : 4,
                                 ),
-                              );
-                            }).toList(),
-                          ),
+                                child: _GlassTextButton(child: action),
+                              ),
+                            );
+                          }).toList(),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -186,38 +186,48 @@ class _GlassTextButton extends StatelessWidget {
     // Extract the onPressed and child from the TextButton
     if (child is TextButton) {
       final textButton = child as TextButton;
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8.0), // glassSmallCornerRadius
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius:
-                  BorderRadius.circular(8.0), // glassSmallCornerRadius
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius:
-                    BorderRadius.circular(8.0), // glassSmallCornerRadius
-                onTap: textButton.onPressed,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: DefaultTextStyle(
-                    style: const TextStyle(
-                      fontFamily: 'AtkinsonHyperlegible',
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    child: _buildButtonContentWithIcon(textButton.child!),
+      final borderRadius = BorderRadius.circular(8.0);
+      final isEnabled = textButton.onPressed != null;
+      final fillOpacity = GlassPlatformConfig.surfaceOpacity(
+        isEnabled ? 0.18 : 0.12,
+        emphasize: isEnabled,
+      );
+      final shadow = GlassPlatformConfig.interactiveShadow(
+        enabled: isEnabled,
+        blurRadius: 14,
+        yOffset: 3,
+        alpha: 0.16,
+      );
+
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          boxShadow: shadow,
+        ),
+        child: GlassEffect(
+          borderRadius: borderRadius,
+          sigma: glassBlurSigma,
+          opacity: fillOpacity,
+          borderWidth: 1.2,
+          emphasizeBorder: isEnabled,
+          child: Material(
+            color: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: borderRadius),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: borderRadius,
+              onTap: textButton.onPressed,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: DefaultTextStyle(
+                  style: const TextStyle(
+                    fontFamily: 'AtkinsonHyperlegible',
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
+                  child: _buildButtonContentWithIcon(textButton.child!),
                 ),
               ),
             ),
