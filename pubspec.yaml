@@ -102,6 +102,7 @@ flutter:
     - assets/images/opensource.svg
     - assets/images/placeholder.png
     - assets/images/bsod.png
+    - assets/images/open_resin_alliance_logo_darkmode.png
     - assets/scripts/set_orion_config.sh
     - README.md
     - CHANGELOG.md
