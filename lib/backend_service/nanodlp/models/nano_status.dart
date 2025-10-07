@@ -33,6 +33,7 @@ class NanoStatus {
 
   // Existing convenience fields
   final String state; // 'printing' | 'paused' | 'idle'
+  final int? stateCode; // raw numeric 'State' field from NanoDLP when present
   final double? progress; // 0.0 - 1.0
   final NanoFile? file; // not always present in NanoDLP status
   final double? z; // z position (converted if needed)
@@ -50,6 +51,7 @@ class NanoStatus {
     this.mcuTemp,
     this.rawJsonStatus,
     required this.state,
+    this.stateCode,
     this.progress,
     this.file,
     this.z,
@@ -141,6 +143,17 @@ class NanoStatus {
       state = 'idle';
     }
 
+    // Try to parse a numeric State field when present. NanoDLP may include
+    // a 'State' integer that provides more granular machine state values.
+    int? stateCode;
+    try {
+      final sc = json['State'] ?? json['state'] ?? json['STATE'];
+      if (sc is int) stateCode = sc;
+      if (sc is String) stateCode = int.tryParse(sc);
+    } catch (_) {
+      stateCode = null;
+    }
+
     double? progress;
     if (layerId != null && layersCount != null && layersCount > 0) {
       progress = (layerId / layersCount).clamp(0.0, 1.0).toDouble();
@@ -167,6 +180,7 @@ class NanoStatus {
       mcuTemp: mcuTemp,
       rawJsonStatus: json['Status']?.toString() ?? json.toString(),
       state: state,
+      stateCode: stateCode,
       progress: progress,
       file: nf,
       z: z,
@@ -185,6 +199,7 @@ class NanoStatus {
         'temp': temp,
         'mcuTemp': mcuTemp,
         'state': state,
+        'stateCode': stateCode,
         'progress': progress,
         'file': file?.toJson(),
         'z': z,
