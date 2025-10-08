@@ -10,6 +10,8 @@ StatusModel _$StatusModelFromJson(Map<String, dynamic> json) => StatusModel(
       status: json['status'] as String,
       paused: json['paused'] as bool?,
       layer: (json['layer'] as num?)?.toInt(),
+      cancelLatched: json['cancel_latched'] as bool?,
+      finished: json['finished'] as bool?,
       printData: json['print_data'] == null
           ? null
           : PrintData.fromJson(json['print_data'] as Map<String, dynamic>),
@@ -22,6 +24,8 @@ Map<String, dynamic> _$StatusModelToJson(StatusModel instance) =>
       'status': instance.status,
       'paused': instance.paused,
       'layer': instance.layer,
+      'cancel_latched': instance.cancelLatched,
+      'finished': instance.finished,
       'print_data': instance.printData?.toJson(),
       'physical_state': instance.physicalState.toJson(),
     };
