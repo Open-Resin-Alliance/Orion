@@ -30,14 +30,13 @@ import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 
-/// Polls the backend printer `/status` endpoint and exposes a typed [StatusModel].
+/// Polls the backend `/status` endpoint and exposes a typed [StatusModel].
 ///
-/// Handles:
-/// * 1 Hz polling with simple re-entrancy guard
-/// * Transitional UI flags (pause / cancel) to avoid flicker between user action
-///   and backend state acknowledgment
-/// * Lazy thumbnail extraction for current print file
-/// * Derived convenience accessors used by UI widgets
+/// Responsibilities:
+/// * Periodic polling (and optional SSE) with backoff
+/// * Transitional UI flags for pause/cancel
+/// * Lazy thumbnail fetching and caching
+/// * Convenience accessors for the UI
 class StatusProvider extends ChangeNotifier {
   final OdysseyClient _client;
   final _log = Logger('StatusProvider');
@@ -183,10 +182,8 @@ class StatusProvider extends ChangeNotifier {
     });
   }
 
-  /// Attempt to connect to the SSE status stream at `/status/stream`.
-  /// If successful we listen for events and update state from incoming
-  /// JSON payloads. On failure we fall back to polling and schedule a
-  /// reconnection attempt after [_maxPollIntervalSeconds].
+  /// Try to subscribe to SSE (status stream). On failure we fall back to
+  /// polling and schedule reconnect attempts with backoff.
   Future<void> _tryStartSse() async {
     if (_sseConnected || _disposed) return;
     // If we've determined SSE is unsupported, don't retry it.
@@ -300,17 +297,21 @@ class StatusProvider extends ChangeNotifier {
             _awaitingSince = null;
           }
 
-          // Clear transitional flags when backend reflects the requested
-          // change. We clear regardless of previous snapshot so cases where
-          // the pre-action status was null/stale still resolve the UI.
+          // Use model-level hints when available. The mapper/state-handler
+          // may populate `cancel_latched` for NanoDLP and `finished` to
+          // indicate an Idle snapshot that represents a completed job.
+          // Prefer these hints over string-matching to avoid duplicating
+          // backend-specific logic here.
+          final cancelLatched = parsed.cancelLatched == true;
+          final finishedHint = parsed.finished == true;
+          if (cancelLatched || parsed.status == 'Canceling') {
+            _isCanceling = true;
+          } else if (_isCanceling && (parsed.isCanceled || finishedHint)) {
+            _isCanceling = false;
+          }
+
           if (_isPausing && parsed.isPaused) {
             _isPausing = false;
-          }
-          if (_isCanceling &&
-              (parsed.isCanceled ||
-                  !parsed.isPrinting ||
-                  (parsed.isIdle && parsed.layer != null))) {
-            _isCanceling = false;
           }
         } catch (e, st) {
           _log.warning('Failed to handle SSE payload', e, st);
@@ -415,7 +416,12 @@ class StatusProvider extends ChangeNotifier {
     // Event buffer removed; nothing to clear here.
   }
 
-  /// Fetch latest status from backend. Re-entrancy guarded with [_fetchInFlight]
+  /// Fetch the latest status snapshot from the backend. This method is
+  /// re-entrancy guarded and performs the following at a high level:
+  /// - parses the payload into `StatusModel`
+  /// - updates thumbnails lazily
+  /// - adjusts polling interval and backoff on success/failure
+  /// - updates transitional flags (pause/cancel)
   Future<void> refresh() async {
     if (_fetchInFlight) return; // simple re-entrancy guard
     _fetchInFlight = true;
@@ -560,19 +566,19 @@ class StatusProvider extends ChangeNotifier {
       }
 
       // Clear transitional flags when the backend's paused/canceled state
-      // changes compared to our previous snapshot. This handles both
-      // pause->resume and resume->pause transitions and avoids leaving the
-      // UI stuck in a spinner.
-      // Clear transitional flags when backend reflects the requested change
-      // (e.g., resume -> paused=false or cancel -> layer==null).
+      // changes compared to our previous snapshot. Prefer model-level hints
+      // `cancelLatched` and `finished` provided by the mapper/state-handler
+      // so adapter-specific semantics stay in the adapter layer.
+      final cancelLatched = parsed.cancelLatched == true;
+      final finishedHint = parsed.finished == true;
+      if (cancelLatched || parsed.status == 'Canceling') {
+        _isCanceling = true;
+      } else if (_isCanceling && (parsed.isCanceled || finishedHint)) {
+        _isCanceling = false;
+      }
+
       if (_isPausing && parsed.isPaused) {
         _isPausing = false;
-      }
-      if (_isCanceling &&
-          (parsed.isCanceled ||
-              !parsed.isPrinting ||
-              (parsed.isIdle && parsed.layer != null))) {
-        _isCanceling = false;
       }
     } catch (e, st) {
       _log.severe('Status refresh failed', e, st);
