@@ -408,7 +408,8 @@ class StatusScreenState extends State<StatusScreen> {
     final statusModel = provider.status;
     final finishedSnapshot =
         statusModel?.isIdle == true && statusModel?.layer != null;
-    final effectivelyFinished = provider.progress >= 0.999;
+    // Prefer canonical 'finished' hint from the mapper.
+    final effectivelyFinished = statusModel?.finished == true;
     final color = (finishedSnapshot && !effectivelyFinished)
         ? Theme.of(context).colorScheme.error
         : provider.statusColor(context);
@@ -466,7 +467,8 @@ class StatusScreenState extends State<StatusScreen> {
     final statusModel = provider.status;
     final finishedSnapshot =
         statusModel?.isIdle == true && statusModel?.layer != null;
-    final effectivelyFinished = progress >= 0.999;
+    // Prefer canonical 'finished' hint from the parsed model.
+    final effectivelyFinished = statusModel?.finished == true;
     final effectiveStatusColor = (finishedSnapshot && !effectivelyFinished)
         ? Theme.of(context).colorScheme.error
         : statusColor;
