@@ -1,7 +1,19 @@
 /*
- * Orion - Generated Status Models (json_serializable)
- * Strong typing for /status endpoint with convenience getters.
- */
+* Orion - Odyssey Status Models
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 import 'package:flutter/material.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -19,6 +31,9 @@ class StatusModel {
   final String status;
   final bool? paused;
   final int? layer;
+  @JsonKey(name: 'cancel_latched')
+  final bool? cancelLatched;
+  final bool? finished;
   @JsonKey(name: 'print_data')
   final PrintData? printData;
   @JsonKey(name: 'physical_state')
@@ -28,6 +43,8 @@ class StatusModel {
     required this.status,
     required this.paused,
     required this.layer,
+    this.cancelLatched,
+    this.finished,
     required this.printData,
     required this.physicalState,
   });

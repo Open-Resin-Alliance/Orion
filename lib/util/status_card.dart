@@ -46,21 +46,9 @@ class StatusCardState extends State<StatusCard> {
   @override
   Widget build(BuildContext context) {
     final s = widget.status;
-    // Determine whether a finished snapshot actually indicates a successful
-    // completion or a cancellation. Some backends (NanoDLP) do not provide
-    // an explicit 'finished' flag; when a snapshot shows idle with a layer
-    // but the progress is not 100% we should treat this as a cancel.
-    final bool finishedSnapshot = s != null && s.isIdle && s.layer != null;
-    final bool effectivelyFinished =
-        finishedSnapshot && (widget.progress >= 0.999);
-
-    if (effectivelyFinished) {
+    if (s != null && s.isIdle && s.layer != null) {
       cardIcon = const Icon(Icons.check);
-    } else if (widget.isCanceling ||
-        (s?.layer == null) ||
-        (finishedSnapshot && !effectivelyFinished)) {
-      // show stop when actively canceling, when there's no layer (canceled),
-      // or when a finished-looking snapshot has progress < 100% (treat as canceled)
+    } else if (widget.isCanceling || (s?.layer == null)) {
       cardIcon = const Icon(Icons.stop);
     } else if (widget.isPausing || s?.isPaused == true) {
       cardIcon = const Icon(Icons.pause);
@@ -85,22 +73,13 @@ class StatusCardState extends State<StatusCard> {
       showSpinner = true; // Actively canceling from printing (not from paused)
     }
 
-    // Show full circle when canceled or canceling from paused. Also treat
-    // a finished-looking snapshot with progress < 100% as canceled (full).
-    if (s?.layer == null) {
+    // Show full circle when canceled or canceling from paused
+    if (s?.layer == null || s?.finished == true) {
       showFullCircle = true; // Already canceled
     } else if (widget.isCanceling && widget.isPausing) {
-      showFullCircle = true; // Canceling from paused state
-    } else if (finishedSnapshot && !effectivelyFinished) {
-      showFullCircle = true; // Treated as canceled because progress < 100%
+      showFullCircle =
+          true; // Canceling from paused state (isPausing is still true)
     }
-
-    // If we determined a finished-looking snapshot is actually a cancel
-    // (progress < 100%), render using the error/canceled color so the
-    // progress ring and icon match the stop semantics.
-    final effectiveStatusColor = (finishedSnapshot && !effectivelyFinished)
-        ? Theme.of(context).colorScheme.error
-        : widget.statusColor;
 
     final circleProgress = showSpinner
         ? null
@@ -159,9 +138,9 @@ class StatusCardState extends State<StatusCard> {
                             value: circleProgress,
                             strokeWidth: 6,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                                effectiveStatusColor),
+                                widget.statusColor),
                             backgroundColor:
-                                effectiveStatusColor.withValues(alpha: 0.5),
+                                widget.statusColor.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -169,7 +148,7 @@ class StatusCardState extends State<StatusCard> {
                         padding: const EdgeInsets.all(25),
                         child: Icon(
                           cardIcon.icon,
-                          color: effectiveStatusColor,
+                          color: widget.statusColor,
                           size: 70,
                         ),
                       )
