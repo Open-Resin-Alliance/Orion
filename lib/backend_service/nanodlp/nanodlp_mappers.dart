@@ -27,6 +27,7 @@ Map<String, dynamic> nanoStatusToOdysseyMap(NanoStatus ns) {
   final String status = canonical['status'] as String? ?? 'Idle';
   final bool paused = canonical['paused'] as bool? ?? (ns.paused == true);
   final bool cancelLatched = canonical['cancel_latched'] as bool? ?? false;
+  final bool pauseLatched = canonical['pause_latched'] as bool? ?? false;
   final bool finished = canonical['finished'] as bool? ?? false;
 
   final file = ns.file;
@@ -104,6 +105,7 @@ Map<String, dynamic> nanoStatusToOdysseyMap(NanoStatus ns) {
     // Expose whether the state handler has an active cancel latch so callers
     // (e.g., StatusProvider) can decide UI transitional behavior.
     'cancel_latched': cancelLatched,
+    'pause_latched': pauseLatched,
     'finished': finished,
   };
 

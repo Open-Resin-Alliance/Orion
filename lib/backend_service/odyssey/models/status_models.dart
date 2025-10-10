@@ -33,6 +33,8 @@ class StatusModel {
   final int? layer;
   @JsonKey(name: 'cancel_latched')
   final bool? cancelLatched;
+  @JsonKey(name: 'pause_latched')
+  final bool? pauseLatched;
   final bool? finished;
   @JsonKey(name: 'print_data')
   final PrintData? printData;
@@ -44,6 +46,7 @@ class StatusModel {
     required this.paused,
     required this.layer,
     this.cancelLatched,
+    this.pauseLatched,
     this.finished,
     required this.printData,
     required this.physicalState,
