@@ -209,7 +209,7 @@ main() {
   },
   "developer": {
     "releaseOverride": true,
-    "overrideRelease": "BRANCH_api_refactor",
+    "overrideRelease": "BRANCH_nanodlp_basic_support",
     "overrideUpdateCheck": false
   },
   "topsecret": {
