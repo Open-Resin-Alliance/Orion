@@ -66,6 +66,9 @@ class OrionConfig {
       _logger.config('setString: $key to ${value == '' ? 'NULL' : value}');
     }
 
+    // NOTE: we intentionally do not write other flags here. Use explicit
+    // configuration management to keep side-effects visible.
+
     _writeConfig(config);
   }
 
@@ -170,6 +173,110 @@ class OrionConfig {
     }
   }
 
+  /// Return the vendor-declared machine model name.
+  String getMachineModelName() {
+    var vendor = _getVendorConfig();
+    return vendor['machineModelName'] ??
+        vendor['vendor']?['machineModelName'] ??
+        vendor['vendor']?['vendorMachineName'] ??
+        '3D Printer';
+  }
+
+  /// Read the vendor `homePosition` setting. Expected values: 'up'|'down'.
+  /// Defaults to 'down' when absent or unrecognized.
+  String getHomePosition() {
+    final vendor = _getVendorConfig();
+    final hp = vendor['homePosition'] ?? vendor['vendor']?['homePosition'];
+    if (hp is String) {
+      final v = hp.toLowerCase();
+      if (v == 'up' || v == 'down') return v;
+    }
+    return 'down';
+  }
+
+  /// Convenience boolean: true when configured 'up'
+  bool isHomePositionUp() => getHomePosition() == 'up';
+
+  /// Query a boolean feature flag from the vendor `featureFlags` section.
+  /// Returns [defaultValue] when not present.
+  bool getFeatureFlag(String key, {bool defaultValue = false}) {
+    var vendor = _getVendorConfig();
+    final flags = vendor['featureFlags'];
+    if (flags is Map && flags.containsKey(key)) {
+      return flags[key] == true;
+    }
+    return defaultValue;
+  }
+
+  // --- Convenience accessors for known vendor feature flags ---
+  bool enableBetaFeatures() => getFeatureFlag('enableBetaFeatures');
+  bool enableDeveloperSettings() => getFeatureFlag('enableDeveloperSettings');
+  bool enableAdvancedSettings() => getFeatureFlag('enableAdvancedSettings');
+  bool enableExperimentalFeatures() =>
+      getFeatureFlag('enableExperimentalFeatures');
+  bool enableResinProfiles() => getFeatureFlag('enableResinProfiles');
+  bool enableCustomName() => getFeatureFlag('enableCustomName');
+
+  /// Return nested `hardwareFeatures` map (may be empty)
+  Map<String, dynamic> getHardwareFeatures() {
+    var vendor = _getVendorConfig();
+    final flags = vendor['featureFlags'];
+    if (flags is Map && flags['hardwareFeatures'] is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(flags['hardwareFeatures']);
+    }
+    return {};
+  }
+
+  /// Generic helper to read a hardware feature boolean from
+  /// `featureFlags.hardwareFeatures`.
+  bool getHardwareFeature(String key, {bool defaultValue = false}) {
+    final hw = getHardwareFeatures();
+    if (hw.containsKey(key)) return hw[key] == true;
+    return defaultValue;
+  }
+
+  // --- Convenience accessors for common hardware features ---
+  bool hasHeatedChamber() => getHardwareFeature('hasHeatedChamber');
+  bool hasHeatedVat() => getHardwareFeature('hasHeatedVat');
+  bool hasCamera() => getHardwareFeature('hasCamera');
+  bool hasAirFilter() => getHardwareFeature('hasAirFilter');
+  bool hasForceSensor() => getHardwareFeature('hasForceSensor');
+
+  /// Return the full featureFlags map (may be empty)
+  Map<String, dynamic> getFeatureFlags() {
+    var vendor = _getVendorConfig();
+    final flags = vendor['featureFlags'];
+    if (flags is Map<String, dynamic>) return Map<String, dynamic>.from(flags);
+    return {};
+  }
+
+  /// Read the internalConfig section (vendor-specified internal config)
+  Map<String, dynamic> getInternalConfig() {
+    var vendor = _getVendorConfig();
+    final internal = vendor['internalConfig'];
+    if (internal is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(internal);
+    }
+    return {};
+  }
+
+  /// Convenience for string-backed internalConfig values.
+  String getInternalConfigString(String key, {String defaultValue = ''}) {
+    final internal = getInternalConfig();
+    return internal[key]?.toString() ?? defaultValue;
+  }
+
+  /// Convenience check for whether the app should operate in NanoDLP mode.
+  /// Determined solely from the merged 'advanced.backend' setting.
+  bool isNanoDlpMode() {
+    try {
+      final backend = getString('backend', category: 'advanced');
+      return backend.toLowerCase() == 'nanodlp';
+    } catch (_) {
+      return false;
+    }
+  }
+
   Map<String, dynamic> _getConfig() {
     var fullPath = path.join(_configPath, 'orion.cfg');
     var configFile = File(fullPath);
@@ -209,6 +316,24 @@ class OrionConfig {
   void _writeConfig(Map<String, dynamic> config) {
     // Remove any vendor section before writing to orion.cfg
     var configToWrite = Map<String, dynamic>.from(config);
+    // If vendor provides internalConfig.backend or internalConfig.defaultLanguage,
+    // copy them into the 'advanced' section so they persist in orion.cfg.
+    final vendor = _getVendorConfig();
+    final internal = vendor['internalConfig'];
+    if (internal is Map<String, dynamic>) {
+      configToWrite['advanced'] ??= {};
+      if (internal.containsKey('backend') &&
+          (configToWrite['advanced']['backend'] == null ||
+              configToWrite['advanced']['backend'] == '')) {
+        configToWrite['advanced']['backend'] = internal['backend'];
+      }
+      if (internal.containsKey('defaultLanguage') &&
+          (configToWrite['advanced']['defaultLanguage'] == null ||
+              configToWrite['advanced']['defaultLanguage'] == '')) {
+        configToWrite['advanced']['defaultLanguage'] =
+            internal['defaultLanguage'];
+      }
+    }
     configToWrite.remove('vendor');
 
     var fullPath = path.join(_configPath, 'orion.cfg');
