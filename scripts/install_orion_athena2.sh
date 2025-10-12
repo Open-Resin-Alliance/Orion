@@ -209,7 +209,7 @@ main() {
   },
   "developer": {
     "releaseOverride": true,
-    "overrideRelease": "BRANCH_nanodlp_basic_support",
+    "overrideRelease": "BRANCH_api_refactor",
     "overrideUpdateCheck": false
   },
   "topsecret": {
@@ -287,21 +287,12 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
   fi
 fi
-# Ensure NanoDLP service is enabled and started first so the system has a
-# functioning UI/service to use once Orion is removed.
-systemctl enable nanodlp-dsi.service || true
-systemctl start nanodlp-dsi.service || true
 
-# Reload systemd configuration in case units changed.
-systemctl daemon-reload || true
-
-# Schedule disabling and stopping of the Orion service asynchronously.
-# We run this in a detached background process (via nohup) so that if
-# this script was invoked from the running Orion service, stopping Orion
-# won't kill this helper before it can finish and return output.
-nohup bash -c 'sleep 2; systemctl disable --now orion.service >/dev/null 2>&1 || true' >/dev/null 2>&1 &
-
-echo "NanoDLP enabled and started. Orion will be disabled/stopped shortly."
+systemctl stop orion.service 2>/dev/null || true
+systemctl disable orion.service 2>/dev/null || true
+systemctl daemon-reload
+systemctl enable nanodlp-dsi.service
+systemctl start nanodlp-dsi.service
 EOF
   chmod 0755 "$REVERT_PATH"
 
