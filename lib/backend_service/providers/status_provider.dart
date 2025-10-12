@@ -72,6 +72,11 @@ class StatusProvider extends ChangeNotifier {
   DateTime? _awaitingSince; // timestamp we began waiting for coherent data
   bool get awaitingNewPrintData => _awaitingNewPrintData;
   static const Duration _awaitingTimeout = Duration(seconds: 12);
+  // Minimum spinner gating: when starting a new print we may want to ensure
+  // the UI shows a small loading animation so the transition feels natural.
+  DateTime? _minSpinnerUntil;
+  bool get minSpinnerActive =>
+      _minSpinnerUntil != null && DateTime.now().isBefore(_minSpinnerUntil!);
   // We deliberately removed expected file name gating; re-printing the same
   // file should still show a clean loading phase.
 
@@ -317,13 +322,23 @@ class StatusProvider extends ChangeNotifier {
           // backend-specific logic here.
           final cancelLatched = parsed.cancelLatched == true;
           final finishedHint = parsed.finished == true;
-          if (cancelLatched || parsed.status == 'Canceling') {
+          final pauseLatched = parsed.pauseLatched == true;
+          // Only mark transitional cancel when the canonical status or
+          // the handler indicates an in-flight cancel (i.e. not an Idle
+          // snapshot). If we observe an Idle snapshot that appears
+          // canceled (cancel_latched + Idle), prefer the final canceled
+          // state and clear the transitional flag so UI buttons enable.
+          if (parsed.status == 'Canceling' ||
+              (cancelLatched && parsed.status != 'Idle')) {
             _isCanceling = true;
-          } else if (_isCanceling && (parsed.isCanceled || finishedHint)) {
+          } else if (_isCanceling &&
+              (parsed.isCanceled || finishedHint || parsed.status == 'Idle')) {
             _isCanceling = false;
           }
 
-          if (_isPausing && parsed.isPaused) {
+          if (pauseLatched || parsed.status == 'Pausing') {
+            _isPausing = true;
+          } else if (_isPausing && parsed.isPaused) {
             _isPausing = false;
           }
         } catch (e, st) {
@@ -585,13 +600,23 @@ class StatusProvider extends ChangeNotifier {
       // so adapter-specific semantics stay in the adapter layer.
       final cancelLatched = parsed.cancelLatched == true;
       final finishedHint = parsed.finished == true;
-      if (cancelLatched || parsed.status == 'Canceling') {
+      final pauseLatched = parsed.pauseLatched == true;
+      // Only mark transitional cancel when the canonical status or
+      // the handler indicates an in-flight cancel (i.e. not an Idle
+      // snapshot). If we observe an Idle snapshot that appears
+      // canceled (cancel_latched + Idle), prefer the final canceled
+      // state and clear the transitional flag so UI buttons enable.
+      if (parsed.status == 'Canceling' ||
+          (cancelLatched && parsed.status != 'Idle')) {
         _isCanceling = true;
-      } else if (_isCanceling && (parsed.isCanceled || finishedHint)) {
+      } else if (_isCanceling &&
+          (parsed.isCanceled || finishedHint || parsed.status == 'Idle')) {
         _isCanceling = false;
       }
 
-      if (_isPausing && parsed.isPaused) {
+      if (pauseLatched || parsed.status == 'Pausing') {
+        _isPausing = true;
+      } else if (_isPausing && parsed.isPaused) {
         _isPausing = false;
       }
     } catch (e, st) {
@@ -781,22 +806,46 @@ class StatusProvider extends ChangeNotifier {
     String? initialFilePath,
     int? initialPlateId,
   }) {
+    _log.fine('resetStatus called — purging stale status and thumbnails');
+    // Purge cached status and transient state immediately so UI shows a
+    // clean spinner instead of stale values while we fetch fresh status.
     _status = null;
     _thumbnailBytes = initialThumbnailBytes;
     _thumbnailReady = initialThumbnailBytes != null;
     _error = null;
     _loading = true; // so consumer screens can show a spinner if they mount
+    // Clear transitional flags so UI isn't stuck in a paused/canceling state
+    // when starting a fresh session.
     _isCanceling = false;
     _isPausing = false;
     _awaitingNewPrintData = true; // begin awaiting active print
     _awaitingSince = DateTime.now();
     // Clear thumbnail retry counters for fresh session
     _thumbnailRetries.clear();
-    // If an initial file path or plate id is provided we may use it to
-    // resolve thumbnails faster in NanoDLP adapters; store on status
-    // model is not needed here but provider consumers can access
-    // _thumbnailBytes immediately.
+    // Ensure the UI shows a minimum spinner duration so the user perceives
+    // a loading phase even if the backend responds very quickly.
+    _minSpinnerUntil = DateTime.now().add(const Duration(seconds: 2));
     notifyListeners();
+
+    // Schedule a notify when the minimum spinner window expires so UI can
+    // re-evaluate its conditions (refresh() may complete earlier and
+    // already clear loading). The delayed callback is guarded by the
+    // provider's disposed flag.
+    Future.delayed(const Duration(seconds: 2), () {
+      if (_disposed) return;
+      _minSpinnerUntil = null;
+      // Notify listeners so consumers can dismiss the forced spinner.
+      notifyListeners();
+    });
+
+    // Kick off an immediate refresh to populate fresh status. If a fetch
+    // is already in flight, refresh() will no-op via its guard.
+    try {
+      // Fire-and-forget; refresh handles its own errors and notifications.
+      Future.microtask(() => refresh());
+    } catch (_) {
+      // ignore — refresh has internal error handling
+    }
   }
 
   Future<void> _fetchAndHandleThumbnail({

@@ -92,6 +92,11 @@ class OdysseyHttpClient implements OdysseyClient {
   }
 
   @override
+  Future<String> getBackendVersion() async {
+    return 'Odyssey ?.?.?'; //(await _odysseyGet('/version', {})).body;
+  }
+
+  @override
   Future<Map<String, dynamic>> getStatus() async {
     final resp = await _odysseyGet('/status', {});
     return json.decode(resp.body) as Map<String, dynamic>;
@@ -156,11 +161,18 @@ class OdysseyHttpClient implements OdysseyClient {
   }
 
   @override
-  Future<bool> canMoveToTop() async => false;
+  Future<bool> canMoveToTop() async => true;
+
+  @override
+  Future<bool> canMoveToFloor() async => true;
 
   @override
   Future<Map<String, dynamic>> moveToTop() async =>
       throw UnimplementedError('moveToTop not supported by Odyssey backend');
+
+  @override
+  Future<Map<String, dynamic>> moveToFloor() async =>
+      throw UnimplementedError('moveToFloor not supported by Odyssey backend');
 
   @override
   Future<Map<String, dynamic>> manualCure(bool cure) async {
@@ -187,6 +199,11 @@ class OdysseyHttpClient implements OdysseyClient {
   @override
   Future<void> displayTest(String test) async {
     await _odysseyPost('/manual/display_test', {'test': test});
+  }
+
+  @override
+  Future<Map<String, dynamic>> emergencyStop() async {
+    return await manualCommand('M112');
   }
 
   @override

@@ -50,6 +50,9 @@ class BackendService implements OdysseyClient {
   Future<Map<String, dynamic>> getConfig() => _delegate.getConfig();
 
   @override
+  Future<String> getBackendVersion() => _delegate.getBackendVersion();
+
+  @override
   Future<Uint8List> getFileThumbnail(
           String location, String filePath, String size) =>
       _delegate.getFileThumbnail(location, filePath, size);
@@ -91,6 +94,12 @@ class BackendService implements OdysseyClient {
   Future<Map<String, dynamic>> moveToTop() => _delegate.moveToTop();
 
   @override
+  Future<bool> canMoveToFloor() => _delegate.canMoveToFloor();
+
+  @override
+  Future<Map<String, dynamic>> moveToFloor() => _delegate.moveToFloor();
+
+  @override
   Future<Map<String, dynamic>> manualCure(bool cure) =>
       _delegate.manualCure(cure);
 
@@ -100,6 +109,9 @@ class BackendService implements OdysseyClient {
   @override
   Future<Map<String, dynamic>> manualCommand(String command) =>
       _delegate.manualCommand(command);
+
+  @override
+  Future<Map<String, dynamic>> emergencyStop() => _delegate.emergencyStop();
 
   @override
   Future<void> displayTest(String test) => _delegate.displayTest(test);

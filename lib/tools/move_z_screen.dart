@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:logging/logging.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
@@ -26,6 +27,7 @@ import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/orion_config.dart';
 
 class MoveZScreen extends StatefulWidget {
   const MoveZScreen({super.key});
@@ -45,28 +47,46 @@ class MoveZScreenState extends State<MoveZScreen> {
   bool _apiErrorState = false;
   Map<String, dynamic>? status;
 
+  // Safe helper to show error dialogs without using a stale BuildContext.
+  // If a BuildContext is provided (usually from a builder), verify the
+  // Element is still mounted before showing the dialog. If omitted, use
+  // the State's context guarded by `mounted`.
+  void _safeShowError(String message, [BuildContext? maybeCtx]) {
+    if (maybeCtx != null) {
+      if (maybeCtx is Element) {
+        if (!maybeCtx.mounted) return;
+      }
+      showErrorDialog(maybeCtx, message);
+    } else {
+      if (!mounted) return;
+      showErrorDialog(context, message);
+    }
+  }
+
   Future<void> moveZ(double distance) async {
     try {
       _logger.info('Moving Z by $distance');
       final statusProvider =
           Provider.of<StatusProvider>(context, listen: false);
-      final curZ = statusProvider.status?.physicalState.z ?? this.currentZ;
+      final curZ = statusProvider.status?.physicalState.z ?? currentZ;
 
       final newZ = (curZ + distance).clamp(0.0, maxZ).toDouble();
       final manual = Provider.of<ManualProvider>(context, listen: false);
       final ok = await manual.move(newZ);
       if (!ok) {
+        if (!mounted) return;
         setState(() {
           _apiErrorState = true;
         });
-        if (mounted) showErrorDialog(context, 'Failed to move Z');
+        _safeShowError('Failed to move Z');
       }
     } catch (e) {
       _logger.severe('Failed to move Z: $e');
+      if (!mounted) return;
       setState(() {
         _apiErrorState = true;
       });
-      if (mounted) showErrorDialog(context, 'Failed to move Z');
+      _safeShowError('Failed to move Z');
     }
   }
 
@@ -80,6 +100,7 @@ class MoveZScreenState extends State<MoveZScreen> {
       } else {
         try {
           await provider.refresh();
+          if (!mounted) return;
           if (provider.config != null) {
             // Safe to update state here because we're already async and not
             // in the middle of a build.
@@ -91,18 +112,20 @@ class MoveZScreenState extends State<MoveZScreen> {
           // Provider rethrows on error; surface a dialog from the screen
           // instead of letting the provider call notifyListeners during
           // widget build.
+          if (!mounted) return;
           setState(() {
             _apiErrorState = true;
           });
-          if (mounted) showErrorDialog(context, 'BLUE-BANANA');
+          _safeShowError('BLUE-BANANA');
           _logger.severe('Failed to refresh config: $e');
         }
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _apiErrorState = true;
       });
-      if (mounted) showErrorDialog(context, 'BLUE-BANANA');
+      _safeShowError('BLUE-BANANA');
       _logger.severe('Failed to get max Z: $e');
     }
   }
@@ -219,38 +242,46 @@ class MoveZScreenState extends State<MoveZScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Expanded(
-          child: GlassButton(
-            onPressed: _apiErrorState
-                ? null
-                : () {
-                    final manual =
-                        Provider.of<ManualProvider>(context, listen: false);
-                    manual.moveDelta(step);
-                  },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15)),
-              minimumSize: const Size(double.infinity, double.infinity),
-            ),
-            child: const Icon(Icons.arrow_upward, size: 50),
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () {
+                        final manual =
+                            Provider.of<ManualProvider>(context, listen: false);
+                        manual.moveDelta(step);
+                      },
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                  minimumSize: const Size(double.infinity, double.infinity),
+                ),
+                child: PhosphorIcon(PhosphorIcons.arrowUp(), size: 50),
+              );
+            },
           ),
         ),
         const SizedBox(height: 30),
         Expanded(
-          child: GlassButton(
-            onPressed: _apiErrorState
-                ? null
-                : () {
-                    final manual =
-                        Provider.of<ManualProvider>(context, listen: false);
-                    manual.moveDelta(-step);
-                  },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15)),
-              minimumSize: const Size(double.infinity, double.infinity),
-            ),
-            child: const Icon(Icons.arrow_downward, size: 50),
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () {
+                        final manual =
+                            Provider.of<ManualProvider>(context, listen: false);
+                        manual.moveDelta(-step);
+                      },
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                  minimumSize: const Size(double.infinity, double.infinity),
+                ),
+                child: PhosphorIcon(PhosphorIcons.arrowDown(), size: 50),
+              );
+            },
           ),
         ),
       ],
@@ -264,86 +295,13 @@ class MoveZScreenState extends State<MoveZScreen> {
         Expanded(
           child: Consumer<ManualProvider>(
             builder: (context, manual, _) {
-              return FutureBuilder<bool>(
-                future: manual.canMoveToTop(),
-                builder: (ctx, snap) {
-                  final supportsTop = snap.data == true;
-                  final enabled = !_apiErrorState &&
-                      !manual.busy &&
-                      (maxZ > 0.0 || supportsTop);
-                  return GlassButton(
-                    onPressed: !enabled
-                        ? null
-                        : () async {
-                            try {
-                              if (supportsTop) {
-                                _logger.info(
-                                    'Moving to device Top via moveToTop()');
-                                final ok = await manual.moveToTop();
-                                if (!ok && mounted)
-                                  showErrorDialog(
-                                      context, 'Failed to move to top');
-                              } else {
-                                _logger.info('Moving to ZMAX (maxZ=$maxZ)');
-                                final ok = await manual.move(maxZ);
-                                if (!ok && mounted)
-                                  showErrorDialog(
-                                      context, 'Failed to move to top');
-                              }
-                            } catch (e) {
-                              if (mounted)
-                                showErrorDialog(
-                                    context, 'Failed to move to top');
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15)),
-                      minimumSize: const Size(double.infinity, double.infinity),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(width: 16),
-                        const Icon(Icons.arrow_upward, size: 30),
-                        const Expanded(
-                          child: AutoSizeText(
-                            'Move to Top Limit',
-                            style: TextStyle(fontSize: 24),
-                            minFontSize: 20,
-                            maxLines: 1,
-                            overflowReplacement: Padding(
-                              padding: EdgeInsets.only(right: 20.0),
-                              child: Center(
-                                child: Text(
-                                  'Top',
-                                  style: TextStyle(fontSize: 24),
-                                ),
-                              ),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 25),
-        Expanded(
-          child: Consumer<ManualProvider>(
-            builder: (context, manual, _) {
               return GlassButton(
                 onPressed: _apiErrorState || manual.busy
                     ? null
                     : () async {
-                        _logger.info('Moving to ZMIN');
+                        _logger.info('Moving to home position');
                         final ok = await manual.manualHome();
-                        if (!ok && mounted)
-                          showErrorDialog(context, 'Failed to home');
+                        if (!ok) _safeShowError('GOLDEN-APE');
                       },
                 style: ElevatedButton.styleFrom(
                   shape: RoundedRectangleBorder(
@@ -353,7 +311,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                 child: Row(
                   children: [
                     const SizedBox(width: 16),
-                    const Icon(Icons.home, size: 30),
+                    PhosphorIcon(PhosphorIconsFill.house, size: 30),
                     const Expanded(
                       child: AutoSizeText(
                         'Return to Home',
@@ -382,14 +340,100 @@ class MoveZScreenState extends State<MoveZScreen> {
         Expanded(
           child: Consumer<ManualProvider>(
             builder: (context, manual, _) {
+              return FutureBuilder<bool>(
+                future: manual.canMoveToTop(),
+                builder: (ctx, snap) {
+                  final supportsTop = snap.data == true;
+                  final enabled = !_apiErrorState &&
+                      !manual.busy &&
+                      (maxZ > 0.0 || supportsTop);
+                  return GlassButton(
+                    onPressed: !enabled
+                        ? null
+                        : () async {
+                            try {
+                              final cfg = OrionConfig();
+                              if (cfg.isHomePositionUp()) {
+                                _logger
+                                    .info('Moving to Floor via moveToFloor()');
+                                final ok = await manual.moveToFloor();
+                                if (!ok) _safeShowError('GOLDEN-APE');
+                              } else if (supportsTop) {
+                                _logger.info(
+                                    'Moving to device Top via moveToTop()');
+                                final ok = await manual.moveToTop();
+                                if (!ok) _safeShowError('GOLDEN-APE');
+                              } else {
+                                _logger.info('Moving to ZMAX (maxZ=$maxZ)');
+                                final ok = await manual.move(maxZ);
+                                if (!ok) _safeShowError('GOLDEN-APE');
+                              }
+                            } catch (e) {
+                              if (!mounted) return;
+                              _safeShowError('GOLDEN-APE');
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15)),
+                      minimumSize: const Size(double.infinity, double.infinity),
+                    ),
+                    child: Builder(
+                      builder: (ctx) {
+                        final cfg = OrionConfig();
+                        final topLabel = cfg.isHomePositionUp()
+                            ? 'Move to Floor'
+                            : 'Move to Top';
+                        final overflowReplacementLabel =
+                            cfg.isHomePositionUp() ? 'Floor' : 'Top';
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(width: 16),
+                            cfg.isHomePositionUp()
+                                ? PhosphorIcon(PhosphorIcons.arrowDown(),
+                                    size: 30)
+                                : PhosphorIcon(PhosphorIcons.arrowUp(),
+                                    size: 30),
+                            Expanded(
+                              child: AutoSizeText(
+                                topLabel,
+                                style: const TextStyle(fontSize: 24),
+                                minFontSize: 20,
+                                maxLines: 1,
+                                overflowReplacement: Padding(
+                                  padding: const EdgeInsets.only(right: 20.0),
+                                  child: Center(
+                                    child: Text(
+                                      overflowReplacementLabel,
+                                      style: const TextStyle(fontSize: 24),
+                                    ),
+                                  ),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 25),
+        Expanded(
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
               return GlassButton(
                 onPressed: _apiErrorState || manual.busy
                     ? null
                     : () async {
                         _logger.severe('EMERGENCY STOP');
-                        final ok = await manual.manualCommand('M112');
-                        if (!ok && mounted)
-                          showErrorDialog(context, 'Failed emergency stop');
+                        final ok = await manual.emergencyStop();
+                        if (!ok) _safeShowError('CRITICAL');
                       },
                 style: ElevatedButton.styleFrom(
                   shape: RoundedRectangleBorder(
@@ -399,7 +443,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                 child: Row(
                   children: [
                     const SizedBox(width: 16),
-                    Icon(Icons.stop,
+                    PhosphorIcon(PhosphorIconsFill.stop,
                         size: 30,
                         color: _apiErrorState
                             ? null

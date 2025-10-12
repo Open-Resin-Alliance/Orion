@@ -148,12 +148,22 @@ class StatusScreenState extends State<StatusScreen> {
 
         if (_suppressOldStatus ||
             provider.isLoading ||
+            provider.minSpinnerActive ||
             status == null ||
             thumbnailLoadingForAutoOpen ||
             // If this screen was opened as a new print, wait until the
             // provider reports the job is ready to display. But allow
             // finished/canceled snapshots through so the UI doesn't lock up.
-            ((widget.newPrint && awaiting) &&
+            // If opened as a new print, wait until provider signals readiness
+            // (active job + file metadata + thumbnail). Additionally, ensure
+            // we have at least the file name (or have frozen it) before
+            // dismissing the global spinner. Some backends report the job
+            // active before file metadata arrives; keep showing the spinner
+            // until the UI can display a stable filename.
+            ((widget.newPrint &&
+                    (awaiting ||
+                        ((status.printData?.fileData?.name == null) &&
+                            _frozenFileName == null))) &&
                 !newPrintReady &&
                 !finishedSnapshot &&
                 !canceledSnapshot)) {

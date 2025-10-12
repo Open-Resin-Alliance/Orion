@@ -402,7 +402,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         ),
                       const SizedBox(height: 20.0),
                       OrionListTile(
-                        title: 'Use Custom Odyssey URL',
+                        title: 'Use Custom Backend URL',
                         icon: PhosphorIcons.network,
                         value: useCustomUrl,
                         onChanged: (bool value) {
