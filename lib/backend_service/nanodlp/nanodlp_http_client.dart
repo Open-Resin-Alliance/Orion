@@ -422,6 +422,49 @@ class NanoDlpHttpClient implements OdysseyClient {
       }();
 
   @override
+  Future<String> getBackendVersion() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/static/image_version');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.fine('NanoDLP image_version returned ${resp.statusCode}');
+        return 'NanoDLP';
+      }
+
+      final body = resp.body.trim();
+      if (body.isEmpty) return 'NanoDLP';
+
+      // Try to capture a full semver and any following +metadata tokens,
+      // e.g. "Athena2-16K-CM5+0.9.9+2025-08-01" -> capture "0.9.9+2025-08-01".
+      final fullSemverWithMeta =
+          RegExp(r'\d+\.\d+\.\d+(?:\+[^\s]+)*').firstMatch(body);
+      if (fullSemverWithMeta != null) {
+        return 'NanoDLP ${fullSemverWithMeta.group(0)}';
+      }
+
+      // Fallback: capture X.Y or X.Y.Z and any +metadata following it.
+      final partialWithMeta =
+          RegExp(r'\d+\.\d+(?:\.\d+)?(?:\+[^\s]+)*').firstMatch(body);
+      if (partialWithMeta != null) {
+        return 'NanoDLP ${partialWithMeta.group(0)}';
+      }
+
+      // As a last resort, try to pick a token after "+" or return the raw body.
+      final plusParts = body.split('+');
+      final candidate = plusParts.firstWhere((p) => RegExp(r'\d').hasMatch(p),
+          orElse: () => body);
+      return 'NanoDLP ${candidate.trim()}';
+    } catch (e, st) {
+      _log.fine('Failed to fetch backend version', e, st);
+      return 'NanoDLP';
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
   Future<Map<String, dynamic>> listItems(
       String location, int pageSize, int pageIndex, String subdirectory) async {
     try {
@@ -593,12 +636,87 @@ class NanoDlpHttpClient implements OdysseyClient {
   }
 
   @override
+  Future<bool> canMoveToFloor() async {
+    // Best-effort: check /status to see if device exposes z-axis controls
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/status');
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) return false;
+        // If status contains physical_state or similar keys, assume support.
+        final decoded = json.decode(resp.body) as Map<String, dynamic>;
+        return decoded.containsKey('CurrentHeight') ||
+            decoded.containsKey('physical_state');
+      } finally {
+        client.close();
+      }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> moveToFloor() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/z-axis/bottom');
+    _log.info('NanoDLP moveToFloor request: $uri');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.warning(
+            'NanoDLP moveToFloor failed: ${resp.statusCode} ${resp.body}');
+        throw Exception('NanoDLP moveToFloor failed: ${resp.statusCode}');
+      }
+      try {
+        final decoded = json.decode(resp.body);
+        final nm = NanoManualResult.fromDynamic(decoded);
+        return nm.toMap();
+      } catch (_) {
+        return NanoManualResult(ok: true).toMap();
+      }
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
   Future<Map<String, dynamic>> manualCommand(String command) async =>
       throw UnimplementedError('NanoDLP manualCommand not implemented');
 
   @override
   Future<Map<String, dynamic>> manualCure(bool cure) async =>
       throw UnimplementedError('NanoDLP manualCure not implemented');
+
+  @override
+  Future<Map<String, dynamic>> emergencyStop() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/printer/force-stop');
+    _log.info('NanoDLP emergencyStop commanded: $uri');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.warning(
+            'NanoDLP emergencyStop failed as expected: ${resp.statusCode} ${resp.body}');
+        // throw Exception('NanoDLP emergencyStop failed: ${resp.statusCode}');
+        client.close();
+        return NanoManualResult(ok: true)
+            .toMap(); // treat non-200 as success, emergency stop should have occurred.
+      }
+      try {
+        final decoded = json.decode(resp.body);
+        final nm = NanoManualResult.fromDynamic(decoded);
+        return nm.toMap();
+      } catch (_) {
+        return NanoManualResult(ok: true).toMap();
+      }
+    } finally {
+      client.close();
+    }
+  }
 
   @override
   Future<Map<String, dynamic>> manualHome() async => () async {
