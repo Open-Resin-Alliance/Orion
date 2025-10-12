@@ -48,16 +48,34 @@ uninstall_orion() {
   systemctl daemon-reload
 
   if (( enable_nano )); then
+    printf '\n[%s] Attempting to re-enable nanodlp-dsi.service...\n' "$SCRIPT_NAME"
+    # Reload systemd in case unit files changed
+    systemctl daemon-reload || true
+
+    # Ensure service is not masked, then enable & start it. Prefer --now to
+    # enable+start atomically; fall back to start if enable fails.
     if systemctl list-unit-files | grep -q '^nanodlp-dsi.service'; then
-      systemctl enable nanodlp-dsi.service || true
-      systemctl start nanodlp-dsi.service || true
+      systemctl unmask nanodlp-dsi.service 2>/dev/null || true
+      if ! systemctl enable --now nanodlp-dsi.service 2>/dev/null; then
+        systemctl start nanodlp-dsi.service 2>/dev/null || true
+      fi
+    else
+      # If the unit is not registered as an installed unit, still try to
+      # start it in case the runtime unit exists.
+      systemctl start nanodlp-dsi.service 2>/dev/null || true
     fi
+
+    # Print status for debugging in case the start failed
+    systemctl --no-pager status nanodlp-dsi.service || true
   fi
 
   rm -rf "$ORION_DIR"
   rm -f "$DEST_DSI"
   if [[ -f "$CONFIG_PATH" ]]; then
     rm -f "$CONFIG_PATH"
+  fi
+  if [[ -f "$VENDOR_CONFIG_PATH" ]]; then
+    rm -f "$VENDOR_CONFIG_PATH"
   fi
 
   rm -f "$ACTIVATE_PATH" "$REVERT_PATH"
@@ -112,6 +130,7 @@ main() {
   ORION_DIR="${TARGET_HOME}/orion"
   SERVICE_PATH="/etc/systemd/system/orion.service"
   CONFIG_PATH="${TARGET_HOME}/orion.cfg"
+  VENDOR_CONFIG_PATH="${TARGET_HOME}/vendor.cfg"
   BIN_DIR="/usr/local/bin"
   ACTIVATE_PATH="${BIN_DIR}/activate_orion"
   REVERT_PATH="${BIN_DIR}/revert_orion"
@@ -189,7 +208,27 @@ main() {
     ts=$(date +%s)
     cp "$CONFIG_PATH" "${CONFIG_PATH}.bak.${ts}"
   fi
+  if [[ -f "$VENDOR_CONFIG_PATH" ]]; then
+    local vts
+    vts=$(date +%s)
+    cp "$VENDOR_CONFIG_PATH" "${VENDOR_CONFIG_PATH}.bak.${vts}"
+  fi
   HOSTNAME_VALUE=$(hostname)
+  # Attempt to read a hardware serial from the device tree. Some systems
+  # expose a serial at /sys/firmware/devicetree/base/serial-number.
+  # The file may contain a trailing NUL; strip it. If unavailable, fall
+  # back to a safe default to keep the config valid.
+  if [[ -r "/sys/firmware/devicetree/base/serial-number" ]]; then
+    MACHINE_SERIAL=$(tr -d '\0' </sys/firmware/devicetree/base/serial-number 2>/dev/null || true)
+    # Remove newlines/carriage returns and any remaining non-printables.
+    MACHINE_SERIAL=$(printf '%s' "$MACHINE_SERIAL" | tr -d '\r\n' | sed 's/[^[:print:]]//g')
+    # Escape any double quotes to keep the JSON valid.
+    MACHINE_SERIAL=$(printf '%s' "$MACHINE_SERIAL" | sed 's/"/\\\"/g')
+    MACHINE_SERIAL=${MACHINE_SERIAL:-ATHENA2-0001}
+    printf '[%s] Detected machine serial: %s\n' "$SCRIPT_NAME" "$MACHINE_SERIAL"
+  else
+    MACHINE_SERIAL="ATHENA2-0001"
+  fi
   printf '\n[%s] Writing default Orion configuration to %s...\n' "$SCRIPT_NAME" "$CONFIG_PATH"
   cat >"$CONFIG_PATH" <<EOF
 {
@@ -205,6 +244,7 @@ main() {
   },
   "machine": {
     "machineName": "${HOSTNAME_VALUE}",
+    "machineSerial": "${MACHINE_SERIAL}",
     "firstRun": true
   },
   "developer": {
@@ -218,6 +258,39 @@ main() {
 }
 EOF
   chown "$ORIGINAL_USER":"$ORIGINAL_USER" "$CONFIG_PATH"
+
+  printf '\n[%s] Writing vendor configuration to %s...\n' "$SCRIPT_NAME" "$VENDOR_CONFIG_PATH"
+  cat >"$VENDOR_CONFIG_PATH" <<'EOF'
+{
+  "vendor": {
+    "vendorName": "Concepts 3D",
+    "vendorMachineName": "Athena 2",
+    "machineModelName": "Athena 2",
+    "homePosition": "up",
+    "vendorUrl": "https://concepts3d.ca"
+  },
+  "featureFlags": {
+    "enableBetaFeatures": false,
+    "enableDeveloperSettings": false,
+    "enableAdvancedSettings": true,
+    "enableExperimentalFeatures": false,
+    "enableResinProfiles": true,
+    "enableCustomName": false,
+    "hardwareFeatures": {
+        "hasHeatedChamber": true,
+        "hasHeatedVat": true,
+        "hasCamera": true,
+        "hasAirFilter": true,
+        "hasForceSensor": true
+    }
+  },
+  "advanced": {
+    "backend": "nanodlp",
+    "defaultLanguage": "en"
+  }
+}
+EOF
+  chown "$ORIGINAL_USER":"$ORIGINAL_USER" "$VENDOR_CONFIG_PATH"
 
   printf '\n[%s] Writing systemd service to %s...\n' "$SCRIPT_NAME" "$SERVICE_PATH"
   cat >"$SERVICE_PATH" <<EOF
