@@ -110,5 +110,25 @@ class FakeOdysseyClientForThumbnailTest implements OdysseyClient {
     throw UnimplementedError();
   }
 
+  @override
+  Future<bool> canMoveToFloor() {
+    return Future.value(false);
+  }
+
+  @override
+  Future<Map<String, dynamic>> moveToFloor() {
+    throw UnimplementedError();
+  }
+
   void main() {}
+
+  @override
+  Future<Map<String, dynamic>> emergencyStop() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String> getBackendVersion() {
+    throw UnimplementedError();
+  }
 }

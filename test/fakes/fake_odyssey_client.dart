@@ -108,4 +108,27 @@ class FakeOdysseyClient implements OdysseyClient {
     // No-op fake implementation
     return {};
   }
+
+  @override
+  Future<bool> canMoveToFloor() async {
+    // Default fake: not supported
+    return false;
+  }
+
+  @override
+  Future<Map<String, dynamic>> moveToFloor() async {
+    // No-op fake implementation
+    return {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> emergencyStop() async {
+    lastCommand = 'M112';
+    return {};
+  }
+
+  @override
+  Future<String> getBackendVersion() {
+    return Future.value('0.0.0');
+  }
 }
