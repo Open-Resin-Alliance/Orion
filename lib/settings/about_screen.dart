@@ -17,6 +17,7 @@
 
 import 'dart:io';
 
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -181,7 +182,11 @@ class AboutScreenState extends State<AboutScreen> {
         subtitle: FutureBuilder<String>(
           future: getVersionNumber(),
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-            return Text(snapshot.data ?? 'N/A');
+            return AutoSizeText(
+              snapshot.data ?? 'N/A',
+              maxLines: 1,
+              minFontSize: 12,
+            );
           },
         ),
       ),
