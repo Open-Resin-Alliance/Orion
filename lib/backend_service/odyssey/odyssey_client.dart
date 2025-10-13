@@ -1,3 +1,20 @@
+/*
+* Orion - Odyssey Client
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'dart:typed_data';
 import 'dart:async';
 
@@ -32,6 +49,16 @@ abstract class OdysseyClient {
   /// object parsed from the stream's data payloads.
   Stream<Map<String, dynamic>> getStatusStream();
 
+  /// Fetch recent notifications from the backend. Returns a list of JSON
+  /// objects representing notifications. Some backends (e.g. NanoDLP)
+  /// expose a `/notification` endpoint that returns an array.
+  Future<List<Map<String, dynamic>>> getNotifications();
+
+  /// Disable / acknowledge a notification on the backend when supported.
+  /// The timestamp argument is the numeric timestamp provided by the
+  /// notification payload (e.g. NanoDLP uses an integer timestamp).
+  Future<void> disableNotification(int timestamp);
+
   // Print control
   Future<void> cancelPrint();
   Future<void> pausePrint();
@@ -57,4 +84,10 @@ abstract class OdysseyClient {
   Future<Map<String, dynamic>> manualCommand(String command);
   Future<Map<String, dynamic>> emergencyStop();
   Future<void> displayTest(String test);
+
+  /// Fetch a specific 2D layer PNG from a NanoDLP-style plates endpoint.
+  /// plateId is the numeric plate identifier and layer is the layer index
+  /// (as reported by the backend). Implementations that don't support this
+  /// may return a placeholder image or empty bytes.
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer);
 }

@@ -16,7 +16,6 @@
 */
 
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -26,6 +25,7 @@ import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_manual.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:flutter/foundation.dart';
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:orion/util/orion_config.dart';
 
@@ -77,7 +77,7 @@ class NanoDlpHttpClient implements OdysseyClient {
     } catch (e) {
       apiUrl = 'http://localhost';
     }
-    _log.info('constructed NanoDlpHttpClient apiUrl=$apiUrl');
+    // _log.info('constructed NanoDlpHttpClient apiUrl=$apiUrl'); // commented out to reduce noise
   }
 
   http.Client _createClient() {
@@ -218,6 +218,29 @@ class NanoDlpHttpClient implements OdysseyClient {
         await Future.delayed(const Duration(milliseconds: 200));
         continue;
       }
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/notification');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) return [];
+      final decoded = json.decode(resp.body);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+      }
+      return [];
+    } catch (e, st) {
+      _log.fine('NanoDLP getNotifications failed', e, st);
+      return [];
+    } finally {
+      client.close();
     }
   }
 
@@ -744,6 +767,31 @@ class NanoDlpHttpClient implements OdysseyClient {
       }();
 
   @override
+  Future<void> disableNotification(int timestamp) async {
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/notification/disable/$timestamp');
+      _log.info('NanoDLP disableNotification: $uri');
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) {
+          _log.warning(
+              'NanoDLP disableNotification returned ${resp.statusCode}: ${resp.body}');
+          throw Exception(
+              'NanoDLP disableNotification failed: ${resp.statusCode}');
+        }
+        return;
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.warning('NanoDLP disableNotification error', e, st);
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> pausePrint() async {
     try {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
@@ -938,6 +986,33 @@ class NanoDlpHttpClient implements OdysseyClient {
     }
   }
 
+  /// Fetch a 2D layer PNG for a given plate and layer index. This will
+  /// return a canonical large-sized PNG (800x480) by force-resizing the
+  /// downloaded image. On error, a generated placeholder is returned.
+  @override
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/static/plates/$plateId/$layer.png');
+    final entry = await _downloadThumbnail(uri, 'plate $plateId layer $layer');
+    if (entry.bytes.isNotEmpty) {
+      try {
+        // Resize on a background isolate to avoid blocking the UI thread.
+        try {
+          return await compute(resizeLayer2DCompute, entry.bytes);
+        } catch (_) {
+          // If compute fails (e.g., in test environment), fall back to
+          // synchronous resize.
+          return NanoDlpThumbnailGenerator.resizeLayer2D(entry.bytes);
+        }
+      } catch (_) {
+        // fall through to placeholder
+      }
+    }
+    return NanoDlpThumbnailGenerator.generatePlaceholder(
+        NanoDlpThumbnailGenerator.largeWidth,
+        NanoDlpThumbnailGenerator.largeHeight);
+  }
+
   Future<List<NanoFile>> _fetchPlates({bool forceRefresh = false}) {
     if (!forceRefresh) {
       final cached = _platesCacheData;
@@ -976,7 +1051,7 @@ class NanoDlpHttpClient implements OdysseyClient {
   Future<List<NanoFile>> _loadPlatesFromNetwork() async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/plates/list/json');
-    _log.fine('Requesting NanoDLP plates list (no query params): $uri');
+    // _log.fine('Requesting NanoDLP plates list (no query params): $uri'); // commented out to reduce noise
 
     final client = _createClient();
     try {

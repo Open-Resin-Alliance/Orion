@@ -22,6 +22,7 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
 
 class OdysseyHttpClient implements OdysseyClient {
   late final String apiUrl;
@@ -100,6 +101,22 @@ class OdysseyHttpClient implements OdysseyClient {
   Future<Map<String, dynamic>> getStatus() async {
     final resp = await _odysseyGet('/status', {});
     return json.decode(resp.body) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    try {
+      final resp = await _odysseyGet('/notification', {});
+      final decoded = json.decode(resp.body);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 
   @override
@@ -219,6 +236,26 @@ class OdysseyHttpClient implements OdysseyClient {
   }
 
   @override
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer) async {
+    // Odyssey backend does not generally provide NanoDLP-style plate layer
+    // images. Return a placeholder matching the canonical NanoDLP large
+    // size so callers can display a consistent image.
+    try {
+      // Use the NanoDLP thumbnail generator's placeholder if available.
+      // Importing here avoids adding a package-level dependency at the
+      // top-level of this file which may not be desired for all builds.
+      // However, NanoDlpThumbnailGenerator is a light-weight helper already
+      // present in the project.
+      // ignore: avoid_dynamic_calls
+      return Future.value(NanoDlpThumbnailGenerator.generatePlaceholder(
+          NanoDlpThumbnailGenerator.largeWidth,
+          NanoDlpThumbnailGenerator.largeHeight));
+    } catch (_) {
+      return Future.value(Uint8List(0));
+    }
+  }
+
+  @override
   Future<void> startPrint(String location, String filePath) async {
     await _odysseyPost(
         '/print/start', {'location': location, 'file_path': filePath});
@@ -288,6 +325,12 @@ class OdysseyHttpClient implements OdysseyClient {
     } finally {
       client.close();
     }
+  }
+
+  @override
+  Future<void> disableNotification(int timestamp) {
+    // TODO: implement disableNotification
+    throw UnimplementedError();
   }
 }
 
