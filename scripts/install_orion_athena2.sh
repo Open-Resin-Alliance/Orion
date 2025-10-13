@@ -26,7 +26,7 @@ trap cleanup EXIT
 
 SCRIPT_NAME="$(basename "$0")"
 ORION_URL="https://github.com/Open-Resin-Alliance/Orion/releases/download/BRANCH_nanodlp_basic_support/orion_armv7.tar.gz"
-DOWNSAMPLED_RES="200, 200"
+DOWNSAMPLED_RES="210, 210"
 
 uninstall_orion() {
   local mode=${1:-manual}
