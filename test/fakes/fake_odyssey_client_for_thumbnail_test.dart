@@ -1,3 +1,20 @@
+/*
+* Orion - Fake Odyssey Client for Thumbnail Test
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -10,6 +27,13 @@ class FakeOdysseyClientForThumbnailTest implements OdysseyClient {
   @override
   Future<Uint8List> getFileThumbnail(
       String location, String filePath, String size) async {
+    return bytes;
+  }
+
+  @override
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer) async {
+    // For thumbnail tests, just return the supplied bytes as a stand-in
+    // for a plate layer image.
     return bytes;
   }
 
@@ -130,5 +154,16 @@ class FakeOdysseyClientForThumbnailTest implements OdysseyClient {
   @override
   Future<String> getBackendVersion() {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    return <Map<String, dynamic>>[];
+  }
+
+  @override
+  Future<void> disableNotification(int timestamp) async {
+    // no-op for this fake
+    return;
   }
 }
