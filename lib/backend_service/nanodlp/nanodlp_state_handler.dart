@@ -156,7 +156,12 @@ class NanoDlpStateHandler {
       return result;
     }
 
-    if (stateCode == 1 || stateCode == 5) {
+    // Treat state==1 as a transient printing/start state. For state==5
+    // (active print) require that the status payload's `Printing` flag is
+    // actually true before we consider the device printing. Some NanoDLP
+    // installs emit State==5 but have Printing==false in corner cases;
+    // requiring both helps avoid false-positive printing reports.
+    if (stateCode == 1 || (stateCode == 5 && ns.printing == true)) {
       final result = {
         'status': 'Printing',
         'paused': false,
