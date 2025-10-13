@@ -143,7 +143,7 @@ class DetailScreenState extends State<DetailScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Print Details'),
+          title: Text(_meta?.fileData.name ?? widget.fileName),
           centerTitle: true,
         ),
         body: Center(
@@ -182,11 +182,10 @@ class DetailScreenState extends State<DetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              buildNameCard(_meta?.fileData.name ?? widget.fileName),
-              const SizedBox(height: 16),
               Expanded(
                 child: Column(
                   children: [
+                    const SizedBox(height: 16),
                     buildThumbnailView(context),
                     const Spacer(),
                     Row(
@@ -258,7 +257,6 @@ class DetailScreenState extends State<DetailScreen> {
                 flex: 1,
                 child: ListView(
                   children: [
-                    buildNameCard(_meta?.fileData.name ?? widget.fileName),
                     buildInfoCard(
                         'Layer Height',
                         _meta?.layerHeight != null
@@ -287,7 +285,7 @@ class DetailScreenState extends State<DetailScreen> {
                         'File Size',
                         _meta?.fileData.fileSize != null
                             ? '${(_meta!.fileData.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB'
-                            : '-'),
+                            : '-')
                   ],
                 ),
               ),
@@ -310,8 +308,13 @@ class DetailScreenState extends State<DetailScreen> {
 
   Widget buildInfoCard(String title, String subtitle) {
     final cardContent = ListTile(
-      title: Text(title),
-      subtitle: Text(subtitle),
+      title: AutoSizeText(title),
+      subtitle: AutoSizeText(
+        subtitle,
+        maxLines: 1,
+        minFontSize: 18,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
 
     return GlassCard(
