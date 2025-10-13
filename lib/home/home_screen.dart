@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/l10n/generated/app_localizations.dart';
@@ -181,7 +182,7 @@ class HomeScreenState extends State<HomeScreen> {
                     },
                   );
                 },
-                child: const Icon(Icons.power_settings_new_outlined, size: 38),
+                child: PhosphorIcon(PhosphorIcons.power(), size: 42),
               ),
             ),
           ],
@@ -205,7 +206,7 @@ class HomeScreenState extends State<HomeScreen> {
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.print_outlined, size: 52),
+                                PhosphorIcon(PhosphorIcons.printer(), size: 52),
                                 Text(
                                   l10n.homeBtnPrint,
                                   style: const TextStyle(fontSize: 28),
@@ -215,6 +216,27 @@ class HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         const SizedBox(width: 20),
+                        if (_config.enableResinProfiles()) ...[
+                          Expanded(
+                            child: GlassButton(
+                              style: theme.elevatedButtonTheme.style,
+                              onPressed:
+                                  null, // () => context.go('/materials'),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  PhosphorIcon(PhosphorIcons.flask(), size: 52),
+                                  Text(
+                                    'Materials',
+                                    style: const TextStyle(fontSize: 28),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                        ],
                       ],
                     ),
                   ),
@@ -231,7 +253,7 @@ class HomeScreenState extends State<HomeScreen> {
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.handyman_outlined, size: 52),
+                                PhosphorIcon(PhosphorIcons.toolbox(), size: 52),
                                 Text(
                                   l10n.homeBtnTools,
                                   style: const TextStyle(fontSize: 28),
@@ -249,7 +271,7 @@ class HomeScreenState extends State<HomeScreen> {
                               mainAxisSize: MainAxisSize.min,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.settings_outlined, size: 52),
+                                PhosphorIcon(PhosphorIcons.gear(), size: 52),
                                 Text(
                                   l10n.homeBtnSettings,
                                   style: const TextStyle(fontSize: 28),
