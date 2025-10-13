@@ -17,6 +17,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/exposure_screen.dart';
 import 'package:orion/tools/move_z_screen.dart';
@@ -56,13 +58,13 @@ class ToolsScreenState extends State<ToolsScreen> {
                 : const MoveZScreen(),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
-          items: const <BottomNavigationBarItem>[
+          items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
-              icon: Icon(Icons.height),
+              icon: PhosphorIcon(PhosphorIcons.arrowsDownUp()),
               label: 'Move Z',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.lightbulb),
+              icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),
               label: 'Exposure',
             )
             // TODO: Implement Self Test
