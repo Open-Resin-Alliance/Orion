@@ -1,3 +1,20 @@
+/*
+* Orion - Backend Service
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'dart:typed_data';
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
@@ -72,6 +89,14 @@ class BackendService implements OdysseyClient {
   Stream<Map<String, dynamic>> getStatusStream() => _delegate.getStatusStream();
 
   @override
+  Future<List<Map<String, dynamic>>> getNotifications() =>
+      _delegate.getNotifications();
+
+  @override
+  Future<void> disableNotification(int timestamp) =>
+      _delegate.disableNotification(timestamp);
+
+  @override
   Future<void> cancelPrint() => _delegate.cancelPrint();
 
   @override
@@ -115,4 +140,8 @@ class BackendService implements OdysseyClient {
 
   @override
   Future<void> displayTest(String test) => _delegate.displayTest(test);
+
+  @override
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer) =>
+      _delegate.getPlateLayerImage(plateId, layer);
 }
