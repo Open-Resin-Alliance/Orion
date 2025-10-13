@@ -1,3 +1,20 @@
+/*
+* Orion - Fake Odyssey Client
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'dart:typed_data';
 import 'dart:async';
 
@@ -130,5 +147,23 @@ class FakeOdysseyClient implements OdysseyClient {
   @override
   Future<String> getBackendVersion() {
     return Future.value('0.0.0');
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    return <Map<String, dynamic>>[];
+  }
+
+  @override
+  Future<void> disableNotification(int timestamp) async {
+    // no-op fake for tests
+    return;
+  }
+
+  @override
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer) async {
+    // Tests that use this fake generally don't fetch real plate layers.
+    // Return empty bytes which callers should handle as placeholder.
+    return Uint8List(0);
   }
 }
