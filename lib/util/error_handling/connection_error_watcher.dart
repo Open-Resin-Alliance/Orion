@@ -55,7 +55,7 @@ class ConnectionErrorWatcher {
   }
 
   void _onProviderChange() async {
-    final _log = Logger('ConnErrorWatcher');
+    final log = Logger('ConnErrorWatcher');
     try {
       final hasError = _provider.error != null;
       final everHadSuccess = _provider.hasEverConnected;
@@ -69,7 +69,7 @@ class ConnectionErrorWatcher {
           (providerError != null) ||
           _dialogVisible;
       if (shouldLog) {
-        _log.info(
+        log.info(
             'provider error=${providerError != null} dialogVisible=$_dialogVisible');
         _lastProviderError = providerError;
         _lastDialogVisible = _dialogVisible;

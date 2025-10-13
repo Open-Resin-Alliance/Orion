@@ -1,7 +1,19 @@
 /*
- * Orion - Connection Error Dialog
- * Shows live reconnection attempt counts and countdown to next attempt.
- */
+* Orion - Connection Error Dialog
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 import 'dart:async';
 
@@ -139,8 +151,7 @@ class _ConnectionErrorDialogContentState
       try {
         final cfg = OrionConfig();
         backendName = cfg.getString('backend', category: 'advanced');
-        final devNano = cfg.getFlag('nanoDLPmode', category: 'developer');
-        final isNano = backendName == 'nanodlp' || devNano;
+        final isNano = cfg.isNanoDlpMode();
         if (isNano) {
           final base = cfg.getString('nanodlp.base_url', category: 'advanced');
           final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
