@@ -197,6 +197,51 @@ class ThumbnailCache {
       _cache.remove(key);
       _inFlight.remove(key);
     }
+    // Also remove any disk cache files for this location asynchronously.
+    scheduleMicrotask(() async {
+      try {
+        final dir = await _ensureDiskCacheDir();
+        final files = dir.listSync().whereType<File>();
+        for (final f in files) {
+          final decoded = Uri.decodeComponent(p.basename(f.path));
+          if (decoded.startsWith(prefix)) {
+            try {
+              await f.delete();
+            } catch (_) {
+              // ignore individual delete failures
+            }
+          }
+        }
+      } catch (_) {
+        // ignore disk errors
+      }
+    });
+  }
+
+  /// Delete all cached files on disk. This is best-effort and will not
+  /// throw on failure; it may be expensive so callers should prefer to run
+  /// this asynchronously (it already returns a Future).
+  Future<void> clearDisk() async {
+    try {
+      final dir = await _ensureDiskCacheDir();
+      final files = dir.listSync().whereType<File>().toList(growable: false);
+      for (final f in files) {
+        try {
+          await f.delete();
+        } catch (_) {
+          // ignore deletion errors
+        }
+      }
+    } catch (e, st) {
+      _log.fine('Failed to clear disk thumbnail cache: $e', e, st);
+    }
+  }
+
+  /// Clear both in-memory and on-disk caches. Prefer calling this
+  /// from an async context so disk work can be awaited.
+  Future<void> clearAll() async {
+    clear();
+    await clearDisk();
   }
 
   String _cacheKey(String location, OrionApiFile file, String size) {
@@ -328,7 +373,7 @@ class ThumbnailCache {
       final fname = _diskFileNameForKey(key);
       final file = File(p.join(dir.path, fname));
       // Write atomically by writing to a temp file and renaming.
-      final tmpFile = File(p.join(dir.path, '\$${fname}.tmp'));
+      final tmpFile = File(p.join(dir.path, '\$$fname.tmp'));
       await tmpFile.writeAsBytes(bytes, flush: true);
       await tmpFile.rename(file.path);
       // Suppress successful disk write logs.
