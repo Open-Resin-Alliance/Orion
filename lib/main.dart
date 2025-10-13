@@ -38,23 +38,26 @@ import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/status/status_screen.dart';
+import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/files_provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/backend_service/providers/print_provider.dart';
+import 'package:orion/backend_service/providers/notification_provider.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/tools/tools_screen.dart';
 import 'package:orion/util/error_handling/error_handler.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/error_handling/connection_error_watcher.dart';
+import 'package:orion/util/error_handling/notification_watcher.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     setWindowTitle('Orion - Open Resin Alliance');
-    setWindowMinSize(const Size(480, 480));
+    setWindowMinSize(const Size(480, 480 + 28)); // account for title bar
     if (kDebugMode) {
       setWindowMaxSize(const Size(800, 800));
     }
@@ -145,6 +148,10 @@ class OrionRoot extends StatelessWidget {
           lazy: false,
         ),
         ChangeNotifierProvider(
+          create: (_) => NotificationProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
           create: (_) => ConfigProvider(),
           lazy: false,
         ),
@@ -176,6 +183,7 @@ class OrionMainApp extends StatefulWidget {
 class OrionMainAppState extends State<OrionMainApp> {
   late final GoRouter _router;
   ConnectionErrorWatcher? _connWatcher;
+  NotificationWatcher? _notifWatcher;
   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
   bool _statusListenerAttached = false;
   bool _wasPrinting = false;
@@ -191,6 +199,7 @@ class OrionMainAppState extends State<OrionMainApp> {
   @override
   void dispose() {
     _connWatcher?.dispose();
+    _notifWatcher?.dispose();
     super.dispose();
   }
 
@@ -222,6 +231,12 @@ class OrionMainAppState extends State<OrionMainApp> {
               path: 'gridfiles',
               builder: (BuildContext context, GoRouterState state) {
                 return const GridFilesScreen();
+              },
+            ),
+            GoRoute(
+              path: 'materials',
+              builder: (BuildContext context, GoRouterState state) {
+                return const MaterialsScreen();
               },
             ),
             GoRoute(
@@ -287,6 +302,9 @@ class OrionMainAppState extends State<OrionMainApp> {
                 final navCtx = _navKey.currentContext;
                 if (_connWatcher == null && navCtx != null) {
                   _connWatcher = ConnectionErrorWatcher.install(navCtx);
+                }
+                if (_notifWatcher == null && navCtx != null) {
+                  _notifWatcher = NotificationWatcher.install(navCtx);
                 }
                 // Attach a listener to StatusProvider so we can auto-open
                 // the StatusScreen when a print becomes active (remote start).
