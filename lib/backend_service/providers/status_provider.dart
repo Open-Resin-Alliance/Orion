@@ -202,9 +202,8 @@ class StatusProvider extends ChangeNotifier {
     // attempting to establish an SSE subscription in that case.
     try {
       final cfg = OrionConfig();
-      final backend = cfg.getString('backend', category: 'advanced');
-      final devNano = cfg.getFlag('nanoDLPmode', category: 'developer');
-      if (backend == 'nanodlp' || devNano) {
+      final isNano = cfg.isNanoDlpMode();
+      if (isNano) {
         _log.info(
             'Backend is NanoDLP; skipping SSE subscription and using polling');
         _startPolling();
@@ -669,9 +668,7 @@ class StatusProvider extends ChangeNotifier {
         // visually responsive.
         try {
           final cfg = OrionConfig();
-          final backend = cfg.getString('backend', category: 'advanced');
-          final devNano = cfg.getFlag('nanoDLPmode', category: 'developer');
-          final isNano = backend == 'nanodlp' || devNano;
+          final isNano = cfg.isNanoDlpMode();
           if (!shouldNotify &&
               isNano &&
               (_status?.isPrinting == true || _status?.isPaused == true)) {
