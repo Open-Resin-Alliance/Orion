@@ -18,62 +18,33 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Provides adaptive configuration knobs for the glass widgets so that
-/// expensive visual effects can be tuned per platform. The Linux desktop
-/// renderer in particular struggles with multiple backdrop filters, so we
-/// dampen the blur radius while slightly boosting opacity to preserve the
-/// perceived look.
+/// Platform-adaptive configuration for glass widgets.
 class GlassPlatformConfig {
   const GlassPlatformConfig._();
 
-  /// Returns true when we are running on Flutter's Linux desktop target.
   static bool get isLinuxDesktop =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
 
-  /// Determines whether applying a live blur is acceptable for the current
-  /// surface. Small interactive elements on Linux tend to look fine without a
-  /// full backdrop blur and skipping it saves a costly render pass.
-  static bool shouldBlur({
-    bool interactiveSurface = false,
-    bool force = false,
-  }) {
-    if (force) {
-      return true;
-    }
-
-    if (!isLinuxDesktop) {
-      return true;
-    }
-
-    // Prioritise blur for larger structural surfaces like dialogs/cards, but
-    // skip it for small interactive controls by default.
-    if (interactiveSurface) {
-      return false;
-    }
-
-    return true;
+  /// Whether to apply a backdrop blur for this surface.
+  /// Small interactive controls (interactiveSurface=true) skip blur by
+  /// default to improve performance; pass [force] to override.
+  static bool shouldBlur(
+      {bool interactiveSurface = false, bool force = false}) {
+    if (force) return true;
+    return !interactiveSurface;
   }
 
-  /// Returns a platform-tuned blur sigma.
+  /// Platform-tuned blur sigma.
   static double blurSigma(double base) {
-    if (!isLinuxDesktop) {
-      return base;
-    }
-
-    // Linux performs significantly better with a lower sigma. Adding a small
-    // constant keeps the blur from looking too sharp on large surfaces.
+    if (!isLinuxDesktop) return base;
     final adjusted = (base * 0.65) + 1.5;
     return adjusted.clamp(0.0, base).toDouble();
   }
 
-  /// Normalises surface opacity for translucent fills. On Linux we boost the
-  /// opacity slightly to compensate for the reduced blur strength while trying
-  /// to maintain the darker glass aesthetic.
+  /// Surface opacity normalization. Slightly boosts opacity for better
+  /// readability; [emphasize] increases the boost.
   static double surfaceOpacity(double base, {bool emphasize = false}) {
     final reducedBase = (base - 0.02).clamp(0.0, 1.0);
-
-    if (!isLinuxDesktop) return reducedBase;
-
     final boost = emphasize ? 0.06 : 0.04;
     final maxOpacity = emphasize ? 0.28 : 0.22;
     final targetCap = (reducedBase + boost).clamp(0.0, maxOpacity);
@@ -81,20 +52,15 @@ class GlassPlatformConfig {
     return adjusted > targetCap ? targetCap : adjusted;
   }
 
-  /// Adjusts border opacity so that edge highlights remain visible when we
-  /// increase the surface opacity on Linux.
+  /// Border opacity adjustment so edge highlights remain visible with
+  /// increased surface opacity.
   static double borderOpacity(double base, {bool emphasize = false}) {
-    if (!isLinuxDesktop) {
-      return base;
-    }
-
     final boost = emphasize ? 0.07 : 0.05;
     final maxOpacity = emphasize ? 0.38 : 0.3;
     final adjusted = base + boost;
     return adjusted > maxOpacity ? maxOpacity : adjusted;
   }
 
-  /// Returns a shadow list suitable for surface elements such as cards.
   static List<BoxShadow> surfaceShadow({
     double blurRadius = 15.0,
     double yOffset = 4.0,
@@ -109,7 +75,6 @@ class GlassPlatformConfig {
         ),
       ];
     }
-
     return [
       BoxShadow(
         color: Colors.black.withValues(alpha: alpha),
@@ -119,17 +84,13 @@ class GlassPlatformConfig {
     ];
   }
 
-  /// Returns shadow settings for elevated interactive elements (FABs, buttons).
   static List<BoxShadow>? interactiveShadow({
     bool enabled = true,
     double blurRadius = 20.0,
     double yOffset = 4.0,
     double alpha = 0.1,
   }) {
-    if (!enabled) {
-      return null;
-    }
-
+    if (!enabled) return null;
     if (isLinuxDesktop) {
       return [
         BoxShadow(
@@ -139,7 +100,6 @@ class GlassPlatformConfig {
         ),
       ];
     }
-
     return [
       BoxShadow(
         color: Colors.black.withValues(alpha: alpha),
@@ -149,7 +109,6 @@ class GlassPlatformConfig {
     ];
   }
 
-  /// Returns a soft glow for selected controls (chips, toggles, etc.).
   static List<BoxShadow> selectionGlow({
     double blurRadius = 12.0,
     double alpha = 0.3,
@@ -163,7 +122,6 @@ class GlassPlatformConfig {
         ),
       ];
     }
-
     return [
       BoxShadow(
         color: Colors.white.withValues(alpha: alpha),
@@ -173,11 +131,6 @@ class GlassPlatformConfig {
     ];
   }
 
-  /// Tile mode used by blur filters. Using [TileMode.decal] prevents sampling
-  /// beyond the clipped region which slightly improves performance.
   static TileMode get blurTileMode => TileMode.decal;
-
-  /// Clip behaviour used by our glass surfaces. Keeping anti aliasing on
-  /// avoids jagged edges without incurring the cost of saveLayer operations.
   static Clip get clipBehavior => Clip.antiAlias;
 }
