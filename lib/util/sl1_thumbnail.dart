@@ -20,7 +20,6 @@ import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:typed_data';
 import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
