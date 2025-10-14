@@ -19,6 +19,7 @@ import 'dart:typed_data';
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
+import 'package:orion/backend_service/nanodlp/nanodlp_simulated_client.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// BackendService is a small façade that selects a concrete
@@ -36,11 +37,13 @@ class BackendService implements OdysseyClient {
   static OdysseyClient _chooseFromConfig() {
     try {
       final cfg = OrionConfig();
-      final backend = cfg.getString('backend', category: 'advanced');
-      if (backend == 'nanodlp') {
+      // Developer-mode simulated backend flag (developer.simulated = true)
+      final simulated = cfg.getFlag('simulated', category: 'developer');
+      if (simulated) {
+        return NanoDlpSimulatedClient();
+      }
+      if (cfg.isNanoDlpMode()) {
         // Return the NanoDLP adapter when explicitly requested in config.
-        // Add a small log to aid debugging in cases where config isn't applied.
-        // Note: avoid bringing logging package into this file if not used
         return NanoDlpHttpClient();
       }
     } catch (_) {
