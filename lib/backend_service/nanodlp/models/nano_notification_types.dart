@@ -66,22 +66,22 @@ const List<Map<String, dynamic>> _defaultNanoNotificationTypes = [
   },
   {
     'type': 'klipper-error',
-    'actions': ['confirm'],
+    'actions': ['close'],
     'priority': 3
   },
   {
     'type': 'aegis-error',
-    'actions': ['confirm'],
+    'actions': ['close'],
     'priority': 4
   },
   {
     'type': 'aegis-info',
-    'actions': ['confirm'],
+    'actions': ['close'],
     'priority': 5
   },
   {
     'type': 'default',
-    'actions': ['confirm'],
+    'actions': ['close'],
     'priority': 6
   },
 ];
