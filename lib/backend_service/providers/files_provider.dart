@@ -109,7 +109,7 @@ class FilesProvider extends ChangeNotifier {
       const ttl = Duration(seconds: 30);
       if (_usbAvailableCache != null && _usbAvailableCachedAt != null) {
         if (now.difference(_usbAvailableCachedAt!) < ttl) {
-          _log.fine('usbAvailable: returning cached=${_usbAvailableCache}');
+          _log.fine('usbAvailable: returning cached=$_usbAvailableCache');
           return _usbAvailableCache!;
         }
       }
