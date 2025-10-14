@@ -12,6 +12,7 @@ set -euo pipefail
 
 tmp_tar=""
 tmp_dir=""
+CLEAR_THUMBNAILS=0
 
 cleanup() {
   if [[ -n "$tmp_tar" && -f "$tmp_tar" ]]; then
@@ -32,6 +33,8 @@ uninstall_orion() {
   local mode=${1:-manual}
   local enable_nano=1
   if [[ $mode == "reinstall" ]]; then
+    enable_nano=0
+  elif [[ $mode == "reinstall_keep" ]]; then
     enable_nano=0
   fi
 
@@ -71,14 +74,22 @@ uninstall_orion() {
 
   rm -rf "$ORION_DIR"
   rm -f "$DEST_DSI"
-  if [[ -f "$CONFIG_PATH" ]]; then
-    rm -f "$CONFIG_PATH"
-  fi
-  if [[ -f "$VENDOR_CONFIG_PATH" ]]; then
-    rm -f "$VENDOR_CONFIG_PATH"
+  # Delete configs only for full override reinstall or manual uninstall
+  if [[ $mode != "reinstall_keep" ]]; then
+    if [[ -f "$CONFIG_PATH" ]]; then
+      rm -f "$CONFIG_PATH"
+    fi
+    if [[ -f "$VENDOR_CONFIG_PATH" ]]; then
+      rm -f "$VENDOR_CONFIG_PATH"
+    fi
   fi
 
   rm -f "$ACTIVATE_PATH" "$REVERT_PATH"
+
+  # Clear thumbnail cache automatically on full override reinstall
+  if [[ $mode == "reinstall" ]]; then
+    clear_thumbnail_cache_for_user "$ORIGINAL_USER"
+  fi
 
   if [[ $mode != "reinstall" ]]; then
     printf '\n[%s] Orion has been removed from this system.\n' "$SCRIPT_NAME"
@@ -100,6 +111,15 @@ require_root() {
 
 main() {
   require_root "$@"
+
+  # Parse CLI options (e.g., --clear-thumbnails)
+  for arg in "$@"; do
+    case "$arg" in
+      --clear-thumbnails|--clear-thumbnail-cache)
+        CLEAR_THUMBNAILS=1
+        ;;
+    esac
+  done
 
   ORIGINAL_USER=${SUDO_USER:-}
   if [[ -z "$ORIGINAL_USER" || "$ORIGINAL_USER" == "root" ]]; then
@@ -134,11 +154,14 @@ main() {
   BIN_DIR="/usr/local/bin"
   ACTIVATE_PATH="${BIN_DIR}/activate_orion"
   REVERT_PATH="${BIN_DIR}/revert_orion"
+  CLEAR_THUMBS_PATH="${BIN_DIR}/clear_orion_thumbnails"
 
   printf '\nTemporary Orion installer for Athena 2\n========================================\n'
   printf ' - Target user  : %s\n' "$ORIGINAL_USER"
   printf ' - Target home  : %s\n' "$TARGET_HOME"
   printf ' - Orion source : %s\n\n' "$ORION_URL"
+  printf 'Options:\n'
+  printf '  --clear-thumbnails   Clear Orion thumbnail disk cache for the target user during install.\n\n'
 
   read -r -p "Continue with installation? [y/N] " reply
   reply=${reply:-N}
@@ -155,12 +178,22 @@ main() {
   if [[ $existing == true ]]; then
     printf '\n[%s] Existing Orion installation detected.\n' "$SCRIPT_NAME"
     while true; do
-      read -r -p "Choose: [O]verride & reinstall / [U]ninstall / [C]ancel: " choice
+      read -r -p "Choose: [O]verride & reinstall (clears cache & configs) / [R]einstall (keep cache & configs) / [T]humbnail cache clear / [U]ninstall / [C]ancel: " choice
       choice=${choice:-C}
       case "$choice" in
         [Oo])
           uninstall_orion reinstall
           break
+          ;;
+        [Rr])
+          uninstall_orion reinstall_keep
+          break
+          ;;
+        [Tt])
+          printf '\n[%s] Clearing thumbnail cache for %s...\n' "$SCRIPT_NAME" "$ORIGINAL_USER"
+          clear_thumbnail_cache_for_user "$ORIGINAL_USER"
+          printf '[%s] Thumbnail cache cleared.\n' "$SCRIPT_NAME"
+          exit 0
           ;;
         [Uu])
           uninstall_orion manual
@@ -171,7 +204,7 @@ main() {
           exit 0
           ;;
         *)
-          printf '  Invalid selection. Please choose O, U, or C.\n'
+          printf '  Invalid selection. Please choose O, R, T, U, or C.\n'
           ;;
       esac
     done
@@ -369,10 +402,81 @@ systemctl start nanodlp-dsi.service
 EOF
   chmod 0755 "$REVERT_PATH"
 
+  # Install helper to clear thumbnail cache for the Orion user
+  printf '\n[%s] Installing helper command: %s...\n' "$SCRIPT_NAME" "$CLEAR_THUMBS_PATH"
+  cat >"$CLEAR_THUMBS_PATH" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+  if command -v sudo >/dev/null 2>&1; then
+    exec sudo -E "$0" "$@"
+  else
+    echo "clear_orion_thumbnails must be run as root or via sudo" >&2
+    exit 1
+  fi
+fi
+
+# Determine target non-root user
+TARGET_USER=${SUDO_USER:-${USER}}
+if [[ -z "${TARGET_USER}" || "${TARGET_USER}" == "root" ]]; then
+  echo "Unable to determine non-root target user." >&2
+  exit 1
+fi
+
+TARGET_HOME=$(eval echo "~${TARGET_USER}")
+if [[ ! -d "${TARGET_HOME}" ]]; then
+  echo "Home directory for ${TARGET_USER} not found at ${TARGET_HOME}" >&2
+  exit 1
+fi
+
+# Default Linux cache dir used by the app: $HOME/.cache/orion_thumbnail_cache
+CACHE_DIR="${TARGET_HOME}/.cache/orion_thumbnail_cache"
+
+echo "Clearing Orion thumbnail cache at ${CACHE_DIR} (user: ${TARGET_USER})..."
+rm -rf -- "${CACHE_DIR}" || true
+echo "Done."
+EOF
+  chmod 0755 "$CLEAR_THUMBS_PATH"
+
+  # If requested via CLI option, clear thumbnail cache now for target user
+  if [[ "$CLEAR_THUMBNAILS" -eq 1 ]]; then
+    printf '\n[%s] Clearing thumbnail cache for %s...\n' "$SCRIPT_NAME" "$ORIGINAL_USER"
+    clear_thumbnail_cache_for_user "$ORIGINAL_USER"
+  fi
+
   printf '\nInstallation complete!\n'
   printf ' Default config written to %s.\n' "$CONFIG_PATH"
   printf ' Use "activate_orion" to launch Orion and "revert_orion" to restore NanoDLP.\n'
+  printf ' Use "clear_orion_thumbnails" to clear the thumbnail disk cache.\n'
   systemctl status orion.service --no-pager
+}
+
+# Helper: clear thumbnail disk cache for a given user name
+clear_thumbnail_cache_for_user() {
+  local user_name="$1"
+  local home_dir
+  home_dir=$(eval echo "~${user_name}")
+  if [[ -z "$home_dir" || ! -d "$home_dir" ]]; then
+    printf '[%s] Cannot resolve home for user %s; skipping cache clear.\n' "$SCRIPT_NAME" "$user_name" >&2
+    return 0
+  fi
+
+  # Default Linux cache dir
+  local cache_dir_default="${home_dir}/.cache/orion_thumbnail_cache"
+  # If XDG_CACHE_HOME is defined for the environment, also clear that path
+  local xdg_cache_home="${XDG_CACHE_HOME:-}"
+  local cache_dir_xdg=""
+  if [[ -n "$xdg_cache_home" ]]; then
+    cache_dir_xdg="${xdg_cache_home%/}/orion_thumbnail_cache"
+  fi
+
+  printf '[%s] Clearing thumbnail cache at %s\n' "$SCRIPT_NAME" "$cache_dir_default"
+  rm -rf -- "$cache_dir_default" || true
+  if [[ -n "$cache_dir_xdg" ]]; then
+    printf '[%s] Clearing thumbnail cache at %s\n' "$SCRIPT_NAME" "$cache_dir_xdg"
+    rm -rf -- "$cache_dir_xdg" || true
+  fi
 }
 
 main "$@"
