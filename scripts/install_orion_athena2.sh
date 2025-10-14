@@ -267,7 +267,7 @@ main() {
 {
   "general": {
     "themeMode": "glass",
-    "colorSeed": "orange",
+    "colorSeed": "vendor",
     "useUsbByDefault": true
   },
   "advanced": {
@@ -300,7 +300,13 @@ EOF
     "vendorMachineName": "Athena 2",
     "machineModelName": "Athena 2",
     "homePosition": "up",
-    "vendorUrl": "https://concepts3d.ca"
+    "vendorUrl": "https://concepts3d.ca",
+    "vendorThemeSeed": "#FFFFA500",
+    "vendorThemeGradient": [
+      "#FF221505",
+      "#FF3A2605",
+      "#FF5B3B05"
+    ]
   },
   "featureFlags": {
     "enableBetaFeatures": false,
