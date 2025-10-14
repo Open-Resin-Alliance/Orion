@@ -465,6 +465,7 @@ class DetailScreenState extends State<DetailScreen> {
     return Row(
       children: [
         GlassButton(
+          tint: GlassButtonTint.negative,
           wantIcon: false,
           onPressed: () {
             launchDeleteDialog();
@@ -484,6 +485,7 @@ class DetailScreenState extends State<DetailScreen> {
         const SizedBox(width: 20),
         Expanded(
           child: GlassButton(
+            tint: GlassButtonTint.neutral,
             onPressed: () async {
               try {
                 final provider =

@@ -17,6 +17,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/backend_service/providers/notification_provider.dart';
@@ -133,13 +134,16 @@ class NotificationWatcher {
                     // Map actions to backend calls. Keep failures isolated.
                     if (act == 'stop') {
                       try {
+                        await BackendService().resumePrint();
+                        // Give a moment for the state to update before canceling.
+                        await Future.delayed(const Duration(milliseconds: 500));
                         await BackendService().cancelPrint();
                       } catch (_) {}
                     } else if (act == 'pause') {
                       try {
                         await BackendService().pausePrint();
                       } catch (_) {}
-                    } else if (act == 'resume') {
+                    } else if (act == 'resume' || act == 'continue') {
                       try {
                         await BackendService().resumePrint();
                       } catch (_) {}
@@ -155,8 +159,6 @@ class NotificationWatcher {
                           _locallyAcked.add(k);
                         } catch (_) {}
                       }
-                    } else if (act == 'continue') {
-                      // 'continue' is a no-op: dismiss and let printing continue.
                     } else {
                       // Unknown action - no-op for safety.
                     }
@@ -167,18 +169,32 @@ class NotificationWatcher {
                   }
                 }
 
-                final style = (act == 'stop')
-                    ? ElevatedButton.styleFrom(
-                        minimumSize: const Size(0, 56),
-                        backgroundColor: Colors.red.shade600,
-                      )
-                    : ElevatedButton.styleFrom(minimumSize: const Size(0, 60));
+                final GlassButtonTint tint;
+                if (act == 'stop') {
+                  tint = GlassButtonTint.negative;
+                } else if (act == 'pause') {
+                  tint = GlassButtonTint.warn;
+                } else if (act == 'resume' ||
+                    act == 'close' ||
+                    act == 'confirm' ||
+                    act == 'ack' ||
+                    act == 'acknowledge' ||
+                    act == 'continue') {
+                  tint = GlassButtonTint.neutral;
+                } else {
+                  tint = GlassButtonTint.none;
+                }
+
+                final style = ElevatedButton.styleFrom(
+                  minimumSize: Size(0, act == 'stop' ? 56 : 60),
+                );
 
                 return Flexible(
                   child: Padding(
                     padding: const EdgeInsets.only(right: 6.0),
                     child: GlassButton(
                       onPressed: onPressed,
+                      tint: tint,
                       style: style,
                       child: Text(label, style: const TextStyle(fontSize: 22)),
                     ),
@@ -189,17 +205,17 @@ class NotificationWatcher {
               return GlassAlertDialog(
                 title: Row(
                   children: [
-                    Icon(
-                      Icons.notification_important,
-                      color: Colors.orange.shade600,
-                      size: 26,
+                    PhosphorIcon(
+                      PhosphorIcons.warning(),
+                      color: Colors.orangeAccent,
+                      size: 28,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
                         getNanoTypeTitle(item.type),
                         style: const TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
+                            fontSize: 24, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],

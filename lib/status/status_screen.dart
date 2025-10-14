@@ -965,6 +965,7 @@ class StatusScreenState extends State<StatusScreen> {
     return Row(children: [
       Expanded(
         child: GlassButton(
+          tint: GlassButtonTint.neutral,
           onPressed: (!canShowOptions || provider.isCanceling)
               ? null
               : () {
@@ -1003,6 +1004,7 @@ class StatusScreenState extends State<StatusScreen> {
                                 height: 65,
                                 width: 450,
                                 child: GlassButton(
+                                  tint: GlassButtonTint.neutral,
                                   style: buttonStyle,
                                   onPressed: () {
                                     Navigator.pop(ctx);
@@ -1029,6 +1031,7 @@ class StatusScreenState extends State<StatusScreen> {
                                 height: 65,
                                 width: 450,
                                 child: HoldButton(
+                                  tint: GlassButtonTint.negative,
                                   style: buttonStyle,
                                   duration: const Duration(seconds: 2),
                                   onPressed: () {
@@ -1062,6 +1065,11 @@ class StatusScreenState extends State<StatusScreen> {
       const SizedBox(width: 20),
       Expanded(
         child: GlassButton(
+          tint: isCanceled || isFinished
+              ? GlassButtonTint.neutral
+              : isPaused
+                  ? GlassButtonTint.positive
+                  : GlassButtonTint.warn,
           onPressed: !pauseResumeEnabled
               ? null
               : () {

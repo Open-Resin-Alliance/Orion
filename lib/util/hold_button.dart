@@ -1,5 +1,5 @@
 /*
-* Orion - Orion HoldButton
+* Orion - Hold Button
 * Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@ class HoldButton extends StatefulWidget {
   final Widget child;
   final ButtonStyle? style;
   final Duration duration;
+  final GlassButtonTint tint;
 
   const HoldButton({
     super.key,
@@ -33,6 +34,7 @@ class HoldButton extends StatefulWidget {
     required this.child,
     this.style,
     this.duration = const Duration(seconds: 3),
+    this.tint = GlassButtonTint.none,
   });
 
   @override
@@ -94,6 +96,7 @@ class HoldButtonState extends State<HoldButton> with TickerProviderStateMixin {
         // Intentionally left empty: HoldButton manages tap events via GestureDetector.
         onPressed: () {},
         style: widget.style,
+        tint: widget.tint,
         child: Center(
           child: widget.child,
         ),
