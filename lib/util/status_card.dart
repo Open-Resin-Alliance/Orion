@@ -17,7 +17,6 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:orion/glasser/glasser.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 
 class StatusCard extends StatefulWidget {
@@ -138,7 +137,7 @@ class StatusCardState extends State<StatusCard> {
     // Default compact form with icon
     return Builder(
       builder: (context) {
-        return GlassCard(
+        return Card(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(999),
           ),
