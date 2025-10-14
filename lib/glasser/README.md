@@ -61,7 +61,27 @@ showDialog(
     ],
   ),
 );
+
+// Apply semantic tint accents that work in both themes
+GlassButton(
+  onPressed: () {},
+  tint: GlassButtonTint.negative,
+  child: Text('Stop'),
+)
 ```
+
+### Button Tints
+
+`GlassButton` supports semantic tint accents via the `tint` property. The available options are:
+
+- `GlassButtonTint.none` (default)
+- `GlassButtonTint.none` (default)
+- `GlassButtonTint.positive` (green accent)
+- `GlassButtonTint.off` (orange/off-accent)
+- `GlassButtonTint.neutral` (uses theme primary color)
+- `GlassButtonTint.negative` (red accent)
+
+Tint accents automatically adapt their styling for glass and non-glass themes, ensuring consistent semantics without extra configuration.
 
 ### Theme Detection
 
