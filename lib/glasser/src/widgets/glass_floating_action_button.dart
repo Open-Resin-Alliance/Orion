@@ -181,6 +181,7 @@ class GlassFloatingActionButton extends StatelessWidget {
           borderRadius: borderRadius,
           sigma: glassBlurSigma,
           opacity: fillOpacity,
+          floatingSurface: true,
           borderWidth: 1.6,
           emphasizeBorder: true,
           child: Material(
@@ -281,6 +282,7 @@ class GlassFloatingActionButton extends StatelessWidget {
               borderRadius: borderRadius,
               sigma: glassBlurSigma,
               opacity: fillOpacity,
+              floatingSurface: true,
               borderWidth: 1.6,
               emphasizeBorder: true,
               child: Center(

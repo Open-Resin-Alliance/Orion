@@ -18,7 +18,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../util/providers/theme_provider.dart';
+import '../constants.dart';
 import '../glass_effect.dart';
+import '../platform_config.dart';
 
 /// A dialog that automatically becomes glassmorphic when the glass theme is active.
 ///
@@ -60,14 +62,33 @@ class GlassDialog extends StatelessWidget {
       );
     }
 
+    final borderRadius = BorderRadius.circular(glassCornerRadius);
+    final shadow = GlassPlatformConfig.surfaceShadow(
+      blurRadius: 26,
+      yOffset: 12,
+      alpha: 0.24,
+    );
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      child: GlassEffect(
-        opacity: 0.1, // Use dialog-specific opacity
-        child: Padding(
-          padding: padding,
-          child: child,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          boxShadow: shadow,
+        ),
+        child: GlassEffect(
+          borderRadius: borderRadius,
+          sigma: glassBlurSigma,
+          opacity: 0.1, // Use dialog-specific opacity
+          floatingSurface: true,
+          borderWidth: 1.6,
+          emphasizeBorder: true,
+          interactiveSurface: false,
+          child: Padding(
+            padding: padding,
+            child: child,
+          ),
         ),
       ),
     );

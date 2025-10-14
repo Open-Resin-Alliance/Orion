@@ -30,10 +30,12 @@ class GlassEffect extends StatelessWidget {
   final BorderRadiusGeometry? borderRadius;
   final double borderWidth;
   final bool emphasizeBorder;
+  final Color? borderColor;
   final double borderAlpha;
   final bool useRawOpacity;
   final bool useRawBorderAlpha;
   final bool interactiveSurface;
+  final bool floatingSurface;
   final bool disableBlur;
   final bool forceBlur;
 
@@ -47,10 +49,12 @@ class GlassEffect extends StatelessWidget {
     this.borderRadius,
     this.borderWidth = 1.0,
     this.emphasizeBorder = false,
+    this.borderColor,
     this.borderAlpha = 0.2,
     this.useRawOpacity = false,
     this.useRawBorderAlpha = false,
     this.interactiveSurface = false,
+    this.floatingSurface = false,
     this.disableBlur = false,
     this.forceBlur = false,
   });
@@ -63,17 +67,22 @@ class GlassEffect extends StatelessWidget {
     final effectiveSigma = GlassPlatformConfig.blurSigma(sigma);
     final effectiveOpacity =
         useRawOpacity ? opacity : GlassPlatformConfig.surfaceOpacity(opacity);
+    // Only enable a backdrop blur for explicitly floating surfaces (dialogs,
+    // floating action buttons, etc.) or when [forceBlur] is true. Interactive
+    // surfaces (buttons, chips) skip blur by default for performance.
     final enableBlur = !disableBlur &&
-        GlassPlatformConfig.shouldBlur(
-          interactiveSurface: interactiveSurface,
-          force: forceBlur,
-        );
+        (forceBlur ||
+            (floatingSurface &&
+                GlassPlatformConfig.shouldBlur(
+                  interactiveSurface: interactiveSurface,
+                )));
 
     Widget decoratedChild = DecoratedBox(
       decoration: createGlassDecoration(
         opacity: effectiveOpacity,
         borderRadius: resolvedBorderRadius,
         color: color,
+        borderColor: borderColor,
         borderWidth: borderWidth,
         emphasizeBorder: emphasizeBorder,
         borderAlpha: borderAlpha,
@@ -107,6 +116,7 @@ BoxDecoration createGlassDecoration({
   BorderRadiusGeometry borderRadius =
       const BorderRadius.all(Radius.circular(glassCornerRadius)),
   Color? color,
+  Color? borderColor,
   double borderWidth = 1.0,
   bool emphasizeBorder = false,
   double borderAlpha = 0.2,
@@ -119,11 +129,13 @@ BoxDecoration createGlassDecoration({
           emphasize: emphasizeBorder,
         );
 
+  // Default base is white (frosted). Callers can override the base color if
+  // a different aesthetic is desired.
   return BoxDecoration(
-    color: (color ?? Colors.white).withValues(alpha: opacity),
+    color: (color ?? Colors.grey).withValues(alpha: opacity),
     borderRadius: borderRadius,
     border: Border.all(
-      color: Colors.white.withValues(
+      color: (borderColor ?? Colors.white).withValues(
         alpha: effectiveBorderAlpha,
       ),
       width: borderWidth,

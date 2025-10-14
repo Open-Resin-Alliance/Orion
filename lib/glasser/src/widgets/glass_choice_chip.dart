@@ -94,6 +94,7 @@ class GlassChoiceChip extends StatelessWidget {
         borderWidth: borderWidth,
         emphasizeBorder: selected,
         interactiveSurface: true,
+        floatingSurface: false,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
