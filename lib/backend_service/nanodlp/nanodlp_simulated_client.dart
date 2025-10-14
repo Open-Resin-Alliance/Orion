@@ -22,7 +22,7 @@ class NanoDlpSimulatedClient implements OdysseyClient {
   bool _paused = false;
   bool _cancelLatched = false;
   int _currentLayer = 0;
-  int _totalLayers = 200;
+  final int _totalLayers = 200;
 
   // Status stream
   final StreamController<Map<String, dynamic>> _statusController =
