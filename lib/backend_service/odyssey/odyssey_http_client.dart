@@ -124,6 +124,13 @@ class OdysseyHttpClient implements BackendClient {
   }
 
   @override
+  Future<dynamic> getAnalyticValue(int id) async {
+    // Odyssey doesn't support the scalar NanoDLP analytic/value endpoint.
+    // Return null to indicate unsupported / no-value.
+    return null;
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getNotifications() async {
     try {
       final resp = await _odysseyGet('/notification', {});

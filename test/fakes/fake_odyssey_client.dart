@@ -172,4 +172,10 @@ class FakeBackendClient implements BackendClient {
     // TODO: implement getAnalytics
     throw UnimplementedError();
   }
+
+  @override
+  Future<dynamic> getAnalyticValue(int id) async {
+    // Not used in most tests; return null to indicate unsupported.
+    return null;
+  }
 }

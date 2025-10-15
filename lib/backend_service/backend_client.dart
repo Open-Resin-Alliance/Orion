@@ -94,4 +94,8 @@ abstract class BackendClient {
   /// Fetch recent analytics entries. `n` requests the last N entries.
   /// Returns a list of JSON objects with keys like 'ID', 'T', 'V'.
   Future<List<Map<String, dynamic>>> getAnalytics(int n);
+
+  /// Fetch a single analytic value by metric id (e.g. /analytic/value/6).
+  /// Returns the raw value (number or string) or null on failure.
+  Future<dynamic> getAnalyticValue(int id);
 }
