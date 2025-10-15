@@ -20,8 +20,9 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/tools/exposure_screen.dart';
 import 'package:orion/tools/move_z_screen.dart';
+import 'package:orion/tools/exposure_screen.dart';
+import 'package:orion/tools/force_screen.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({super.key});
@@ -55,7 +56,9 @@ class ToolsScreenState extends State<ToolsScreen> {
             ? const MoveZScreen()
             : _selectedIndex == 1
                 ? const ExposureScreen()
-                : const MoveZScreen(),
+                : _selectedIndex == 2
+                    ? const ForceSensorScreen()
+                    : const MoveZScreen(),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           items: <BottomNavigationBarItem>[
@@ -66,7 +69,11 @@ class ToolsScreenState extends State<ToolsScreen> {
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),
               label: 'Exposure',
-            )
+            ),
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.chartLineUp()),
+              label: 'Force Sensor',
+            ),
             // TODO: Implement Self Test
             /*BottomNavigationBarItem(
             icon: Icon(Icons.check),

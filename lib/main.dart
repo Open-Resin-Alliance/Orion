@@ -45,6 +45,7 @@ import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/backend_service/providers/print_provider.dart';
 import 'package:orion/backend_service/providers/notification_provider.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/tools/tools_screen.dart';
 import 'package:orion/util/error_handling/error_handler.dart';
 import 'package:orion/util/providers/locale_provider.dart';
@@ -162,6 +163,10 @@ class OrionRoot extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => PrintProvider(),
           lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AnalyticsProvider(),
+          lazy: false,
         ),
         ChangeNotifierProvider(
           create: (_) => ManualProvider(),
