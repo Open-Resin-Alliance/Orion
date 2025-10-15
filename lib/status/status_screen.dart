@@ -22,7 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 
 import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -284,6 +284,33 @@ class StatusScreenState extends State<StatusScreen> {
             appBar: AppBar(
               automaticallyImplyLeading: false,
               centerTitle: true,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Builder(builder: (context) {
+                    final provider = Provider.of<StatusProvider>(context);
+                    final int? temp = provider.resinTemperature;
+                    return GlassCard(
+                        child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
+                            child: Row(
+                              children: [
+                                Icon(Icons.thermostat,
+                                    size: 20,
+                                    color:
+                                        Theme.of(context).colorScheme.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '$temp\u00B0C',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                            )));
+                  }),
+                ),
+              ],
               title: Builder(builder: (context) {
                 final deviceMsg = provider.deviceStatusMessage;
                 final statusText =
@@ -462,7 +489,8 @@ class StatusScreenState extends State<StatusScreen> {
         child: Row(children: [
           Expanded(
             flex: 1,
-            child: ListView(children: [
+            child: Column(children: [
+              Spacer(),
               _buildInfoCard(
                 'Current Z Position',
                 '${statusModel?.physicalState.z.toStringAsFixed(3) ?? '-'} mm',
@@ -480,6 +508,7 @@ class StatusScreenState extends State<StatusScreen> {
                     ? '-'
                     : '${usedMaterial.toStringAsFixed(2)} mL',
               ),
+              Spacer(),
             ]),
           ),
           const SizedBox(width: 16.0),
