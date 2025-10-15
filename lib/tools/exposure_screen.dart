@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
 import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:orion/util/orion_config.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -38,6 +39,7 @@ class ExposureScreen extends StatefulWidget {
 
 class ExposureScreenState extends State<ExposureScreen> {
   final _logger = Logger('Exposure');
+  final _config = OrionConfig();
   CancelableOperation? _exposureOperation;
   Completer<void>? _exposureCompleter;
 
@@ -45,6 +47,12 @@ class ExposureScreenState extends State<ExposureScreen> {
   bool _apiErrorState = false;
 
   Future<void> exposeScreen(String type) async {
+    int delayTime = 1; // Odyssey requires a 1 second delay before exposure
+
+    if (_config.isNanoDlpMode()) {
+      delayTime = 0;
+    }
+
     try {
       _logger.info('Testing exposure for $exposureTime seconds');
       final manual = Provider.of<ManualProvider>(context, listen: false);
@@ -67,7 +75,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         return;
       }
 
-      showExposureDialog(context, exposureTime, type: type);
+      showExposureDialog(context, exposureTime, delayTime, type: type);
       _exposureCompleter = Completer<void>();
       _exposureOperation = CancelableOperation.fromFuture(
         Future.any([
@@ -90,7 +98,8 @@ class ExposureScreenState extends State<ExposureScreen> {
     }
   }
 
-  void showExposureDialog(BuildContext context, int countdownTime,
+  void showExposureDialog(
+      BuildContext context, int countdownTime, int delayTime,
       {String? type}) {
     _logger.info('Showing countdown dialog');
 
@@ -100,7 +109,7 @@ class ExposureScreenState extends State<ExposureScreen> {
       builder: (BuildContext context) {
         return StreamBuilder<int>(
           stream: (() async* {
-            await Future.delayed(const Duration(seconds: 1));
+            await Future.delayed(Duration(seconds: delayTime));
             yield* Stream.periodic(const Duration(milliseconds: 1),
                     (i) => countdownTime * 1000 - i)
                 .take((countdownTime * 1000) + 1);
@@ -161,6 +170,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                     height: 180, // Make the progress indicator larger
                     width: 180, // Make the progress indicator larger
                     child: CircularProgressIndicator(
+                      backgroundColor: Colors.grey.shade800,
                       value: snapshot.data! / (countdownTime * 1000),
                       strokeWidth: 12, // Make the progress indicator thicker
                     ),
@@ -324,9 +334,8 @@ class ExposureScreenState extends State<ExposureScreen> {
                     const SizedBox(width: 30),
                     Expanded(
                       child: GlassButton(
-                        onPressed: _apiErrorState
-                            ? null
-                            : () => exposeScreen('Dimensions'),
+                        onPressed:
+                            _apiErrorState ? null : () => exposeScreen('Logo'),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -339,13 +348,13 @@ class ExposureScreenState extends State<ExposureScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             PhosphorIcon(
-                              PhosphorIconsFill.ruler,
+                              PhosphorIcons.linuxLogo(),
                               size: 40,
                               color: _apiErrorState ? Colors.grey : null,
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Measure',
+                              'Logo',
                               style: TextStyle(
                                 fontSize: 24,
                                 color: _apiErrorState ? Colors.grey : null,
@@ -368,7 +377,7 @@ class ExposureScreenState extends State<ExposureScreen> {
               Expanded(
                 child: GlassButton(
                   onPressed:
-                      _apiErrorState ? null : () => exposeScreen('Blank'),
+                      _apiErrorState ? null : () => exposeScreen('Measure'),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -380,13 +389,13 @@ class ExposureScreenState extends State<ExposureScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       PhosphorIcon(
-                        PhosphorIcons.square(),
+                        PhosphorIcons.ruler(),
                         size: 40,
                         color: _apiErrorState ? Colors.grey : null,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Blank',
+                        'Measure',
                         style: TextStyle(
                           fontSize: 24,
                           color: _apiErrorState ? Colors.grey : null,
@@ -411,8 +420,8 @@ class ExposureScreenState extends State<ExposureScreen> {
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.cleaning_services,
+                      PhosphorIcon(
+                        PhosphorIcons.broom(),
                         size: 40,
                         color: _apiErrorState ? Colors.grey : null,
                       ),
