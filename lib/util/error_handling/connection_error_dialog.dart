@@ -58,7 +58,7 @@ Future<void> showConnectionErrorDialog(BuildContext context) async {
             'showConnectionErrorDialog: attempting to show dialog (triesLeft=$triesLeft)');
         showDialog(
           context: context,
-          barrierDismissible: true,
+          barrierDismissible: false,
           useRootNavigator: true,
           builder: (BuildContext ctx) {
             return _ConnectionErrorDialogContent();
