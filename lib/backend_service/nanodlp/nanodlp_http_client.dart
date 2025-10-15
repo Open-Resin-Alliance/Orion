@@ -710,8 +710,37 @@ class NanoDlpHttpClient implements OdysseyClient {
       throw UnimplementedError('NanoDLP manualCommand not implemented');
 
   @override
-  Future<Map<String, dynamic>> manualCure(bool cure) async =>
-      throw UnimplementedError('NanoDLP manualCure not implemented');
+  Future<Map<String, dynamic>> manualCure(bool cure) async {
+    try {
+      final action = cure ? 'on' : 'blank';
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/projector/$action');
+      _log.info(
+          'NanoDLP manualCure($cure) request -> /projector/$action: $uri');
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) {
+          _log.warning(
+              'NanoDLP manualCure($cure) failed: ${resp.statusCode} ${resp.body}');
+          throw Exception(
+              'NanoDLP manualCure($cure) failed: ${resp.statusCode}');
+        }
+        try {
+          final decoded = json.decode(resp.body);
+          final nm = NanoManualResult.fromDynamic(decoded);
+          return nm.toMap();
+        } catch (_) {
+          return NanoManualResult(ok: true).toMap();
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.warning('NanoDLP manualCure($cure) error', e, st);
+      throw Exception('NanoDLP manualCure($cure) failed: $e');
+    }
+  }
 
   @override
   Future<Map<String, dynamic>> emergencyStop() async {
@@ -919,8 +948,43 @@ class NanoDlpHttpClient implements OdysseyClient {
   }
 
   @override
-  Future<void> displayTest(String test) async =>
-      throw UnimplementedError('NanoDLP displayTest not implemented');
+  Future<void> displayTest(String test) async {
+    // Map test names to real NanoDLP test endpoints.
+    const Map<String, String> testMappings = {
+      'Grid': '/projector/generate/calibration',
+      // So far Athena is the only printer with NanoDLP that we support
+      'Logo': '/projector/display/general***athena.png',
+      'Measure': '/projector/generate/boundaries',
+      'White': '/projector/generate/white',
+    };
+
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      // Resolve mapped command; fall back to legacy /display/test/<test> if unknown.
+      final mapped = testMappings[test];
+      final command = mapped ?? '/display/test/$test';
+      final cmdWithSlash = command.startsWith('/') ? command : '/$command';
+      final uri = Uri.parse('$baseNoSlash$cmdWithSlash');
+
+      _log.info('NanoDLP displayTest request for "$test": $uri');
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) {
+          _log.warning(
+              'NanoDLP displayTest failed: ${resp.statusCode} ${resp.body}');
+          throw Exception('NanoDLP displayTest failed: ${resp.statusCode}');
+        }
+        // Some installs return JSON or plain text; ignore body and treat 200 as success
+        return;
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.warning('NanoDLP displayTest error', e, st);
+      rethrow;
+    }
+  }
 
   bool _matchesPath(String? lhs, String rhs) {
     if (lhs == null) return false;
