@@ -121,12 +121,16 @@ class NotificationWatcher {
 
           final dialogFuture = showDialog(
             context: context,
-            barrierDismissible: true,
+            barrierDismissible: false,
             useRootNavigator: true,
             builder: (BuildContext ctx) {
               dialogCtx = ctx;
               // Build action buttons from config
-              final buttons = actions.map<Widget>((act) {
+              // Build core button widgets, split into primary vs others so
+              // primary actions (resume/continue/confirm/etc.) appear on the
+              // right side of the dialog.
+              final List<Widget> coreButtons = [];
+              for (final act in actions) {
                 final label = act[0].toUpperCase() + act.substring(1);
 
                 Future<void> onPressed() async {
@@ -189,15 +193,51 @@ class NotificationWatcher {
                   minimumSize: Size(0, act == 'stop' ? 56 : 60),
                 );
 
+                coreButtons.add(
+                  GlassButton(
+                    onPressed: onPressed,
+                    tint: tint,
+                    style: style,
+                    child: Text(label, style: const TextStyle(fontSize: 22)),
+                  ),
+                );
+              }
+
+              // Place non-primary buttons first, primary buttons (resume/confirm)
+              // after them so primary is on the right. Primary set matches the
+              // tint mapping above.
+              final primarySet = {
+                'resume',
+                'close',
+                'confirm',
+                'ack',
+                'acknowledge',
+                'continue'
+              };
+
+              final List<Widget> primary = [];
+              final List<Widget> others = [];
+              for (var i = 0; i < actions.length; i++) {
+                final act = actions[i];
+                final core = coreButtons[i];
+                if (primarySet.contains(act)) {
+                  primary.add(core);
+                } else {
+                  others.add(core);
+                }
+              }
+
+              final ordered = [...others, ...primary];
+
+              // Wrap with Flexible and padding; last item gets no trailing padding.
+              final buttons = ordered.asMap().entries.map<Widget>((entry) {
+                final idx = entry.key;
+                final widget = entry.value;
+                final isLast = idx == ordered.length - 1;
                 return Flexible(
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 6.0),
-                    child: GlassButton(
-                      onPressed: onPressed,
-                      tint: tint,
-                      style: style,
-                      child: Text(label, style: const TextStyle(fontSize: 22)),
-                    ),
+                    padding: EdgeInsets.only(right: isLast ? 0.0 : 6.0),
+                    child: widget,
                   ),
                 );
               }).toList(growable: false);
