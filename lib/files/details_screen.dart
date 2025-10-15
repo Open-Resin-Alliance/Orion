@@ -143,8 +143,76 @@ class DetailScreenState extends State<DetailScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_meta?.fileData.name ?? widget.fileName),
           centerTitle: true,
+          title: Builder(builder: (context) {
+            // Use a single base font size for both title lines so they appear
+            // visually consistent. If the AppBar theme provides a title
+            // fontSize, use that as the base; otherwise default to 14 and
+            // reduce slightly.
+            final baseFontSize =
+                (Theme.of(context).appBarTheme.titleTextStyle?.fontSize ?? 14) -
+                    10;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.fileName.isNotEmpty ? widget.fileName : 'No file',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(
+                        fontSize: baseFontSize,
+                        fontWeight: FontWeight.normal,
+                        color: Theme.of(context)
+                            .appBarTheme
+                            .titleTextStyle
+                            ?.color
+                            ?.withValues(alpha: 0.95),
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _meta != null
+                      ? DateTime.fromMillisecondsSinceEpoch(
+                              _meta!.fileData.lastModified * 1000)
+                          .toString()
+                          .split('.')
+                          .first
+                      : '',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                          .appBarTheme
+                          .titleTextStyle
+                          ?.merge(TextStyle(
+                            fontWeight: FontWeight.normal,
+                            fontSize: baseFontSize,
+                          ))
+                          .copyWith(
+                            // Make status less visually dominant by lowering
+                            // its alpha relative to the AppBar title color.
+                            color: Theme.of(context)
+                                .appBarTheme
+                                .titleTextStyle
+                                ?.color
+                                ?.withValues(alpha: 0.65),
+                          ) ??
+                      TextStyle(
+                        fontSize: baseFontSize,
+                        fontWeight: FontWeight.normal,
+                        color: Theme.of(context)
+                            .appBarTheme
+                            .titleTextStyle
+                            ?.color
+                            ?.withValues(alpha: 0.65),
+                      ),
+                ),
+              ],
+            );
+          }),
         ),
         body: Center(
           child: loading
@@ -227,14 +295,6 @@ class DetailScreenState extends State<DetailScreen> {
                       ),
                     ]),
                     const SizedBox(height: 5),
-                    buildInfoCard(
-                      'Modified Date',
-                      _meta != null
-                          ? DateTime.fromMillisecondsSinceEpoch(
-                                  _meta!.fileData.lastModified * 1000)
-                              .toString()
-                          : '-',
-                    ),
                     const Spacer(),
                     buildPrintButtons(),
                   ],
@@ -255,8 +315,9 @@ class DetailScreenState extends State<DetailScreen> {
             children: [
               Expanded(
                 flex: 1,
-                child: ListView(
+                child: Column(
                   children: [
+                    Spacer(),
                     buildInfoCard(
                         'Layer Height',
                         _meta?.layerHeight != null
@@ -274,18 +335,11 @@ class DetailScreenState extends State<DetailScreen> {
                           : '-',
                     ),
                     buildInfoCard(
-                      'Modified Date',
-                      _meta != null
-                          ? DateTime.fromMillisecondsSinceEpoch(
-                                  _meta!.fileData.lastModified * 1000)
-                              .toString()
-                          : '-',
-                    ),
-                    buildInfoCard(
                         'File Size',
                         _meta?.fileData.fileSize != null
                             ? '${(_meta!.fileData.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB'
-                            : '-')
+                            : '-'),
+                    Spacer(),
                   ],
                 ),
               ),
