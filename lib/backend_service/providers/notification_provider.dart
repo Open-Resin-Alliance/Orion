@@ -19,7 +19,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_service.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// A simple notification model used locally.
@@ -41,7 +41,7 @@ class NotificationItem {
 }
 
 class NotificationProvider extends ChangeNotifier {
-  final OdysseyClient _client;
+  final BackendClient _client;
   final _log = Logger('NotificationProvider');
 
   Timer? _timer;
@@ -65,7 +65,7 @@ class NotificationProvider extends ChangeNotifier {
     return copy;
   }
 
-  NotificationProvider({OdysseyClient? client})
+  NotificationProvider({BackendClient? client})
       : _client = client ?? BackendService() {
     _start();
   }

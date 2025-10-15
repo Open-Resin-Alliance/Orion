@@ -18,10 +18,10 @@
 import 'dart:typed_data';
 import 'dart:async';
 
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 
 /// Simple fake client used by unit tests to assert ManualProvider behavior.
-class FakeOdysseyClient implements OdysseyClient {
+class FakeBackendClient implements BackendClient {
   bool moveCalled = false;
   double? lastMoveHeight;
   bool manualHomeCalled = false;
@@ -165,5 +165,11 @@ class FakeOdysseyClient implements OdysseyClient {
     // Tests that use this fake generally don't fetch real plate layers.
     // Return empty bytes which callers should handle as placeholder.
     return Uint8List(0);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) {
+    // TODO: implement getAnalytics
+    throw UnimplementedError();
   }
 }

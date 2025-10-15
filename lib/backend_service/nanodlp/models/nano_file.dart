@@ -24,6 +24,7 @@ class NanoFile {
   final String? name;
   final int? layerCount;
   final double? printTime; // seconds
+  final int? resinTemperature;
 
   // Extended metadata commonly returned by /plates/list/json or similar
   final int? lastModified;
@@ -44,6 +45,7 @@ class NanoFile {
     this.name,
     this.layerCount,
     this.printTime,
+    this.resinTemperature,
     this.lastModified,
     this.parentPath,
     this.fileSize,
@@ -129,6 +131,24 @@ class NanoFile {
         return numeric / 1000.0;
       }
       return numeric;
+    }
+
+    int? parseResinTemperature(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v is String) {
+        var s = v.trim().toLowerCase();
+        // Remove degree symbol and common suffixes like 'c' or '°c'
+        s = s.replaceAll('°', '').replaceAll('c', '').trim();
+        // Strip any non-number characters except dot, sign and exponent
+        final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+        if (numStr.isEmpty) return null;
+        final d = double.tryParse(numStr);
+        if (d != null) return d.round();
+        return int.tryParse(numStr);
+      }
+      return null;
     }
 
     String? path = json['path']?.toString() ??
@@ -269,11 +289,18 @@ class NanoFile {
       parentPath = resolvedPath.substring(0, resolvedPath.lastIndexOf('/'));
     }
 
+    // Try several common keys for resin temperature returned by NanoDLP/status
+    final resinTemp = parseResinTemperature(json['resin'] ??
+        json['Resin'] ??
+        json['resin_temperature'] ??
+        json['ResinTemperature']);
+
     return NanoFile(
       path: resolvedPath,
       name: resolvedName,
       layerCount: layerCount,
       printTime: printTime,
+      resinTemperature: resinTemp,
       lastModified: finalLastModified,
       parentPath: parentPath ?? '',
       fileSize: fileSize,

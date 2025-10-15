@@ -20,11 +20,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 
-class OdysseyHttpClient implements OdysseyClient {
+class OdysseyHttpClient implements BackendClient {
   late final String apiUrl;
   final _log = Logger('OdysseyHttpClient');
   final http.Client Function() _clientFactory;
@@ -101,6 +101,26 @@ class OdysseyHttpClient implements OdysseyClient {
   Future<Map<String, dynamic>> getStatus() async {
     final resp = await _odysseyGet('/status', {});
     return json.decode(resp.body) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) async {
+    // Odyssey doesn't currently define a standard analytics endpoint. As a
+    // best-effort, try '/analytic/data/<n>' on Odyssey host; otherwise return
+    // an empty list.
+    try {
+      final uri = _dynUri(apiUrl, '/analytic/data/$n', {});
+      final client = _createClient();
+      final resp = await client.get(uri);
+      client.close();
+      if (resp.statusCode != 200) return [];
+      final decoded = json.decode(resp.body);
+      if (decoded is List)
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+    } catch (_) {}
+    return [];
   }
 
   @override

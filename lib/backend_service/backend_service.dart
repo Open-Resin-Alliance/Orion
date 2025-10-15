@@ -16,25 +16,25 @@
 */
 
 import 'dart:typed_data';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_simulated_client.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_simulated_client.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// BackendService is a small façade that selects a concrete
-/// `OdysseyClient` implementation at runtime. This centralizes the
+/// `BackendClient` implementation at runtime. This centralizes the
 /// point where an alternative backend implementation (different API)
 /// can be swapped in without changing providers or UI code.
-class BackendService implements OdysseyClient {
-  final OdysseyClient _delegate;
+class BackendService implements BackendClient {
+  final BackendClient _delegate;
 
   /// Default constructor: picks the concrete implementation based on
   /// configuration (or defaults to the HTTP adapter).
-  BackendService({OdysseyClient? delegate})
+  BackendService({BackendClient? delegate})
       : _delegate = delegate ?? _chooseFromConfig();
 
-  static OdysseyClient _chooseFromConfig() {
+  static BackendClient _chooseFromConfig() {
     try {
       final cfg = OrionConfig();
       // Developer-mode simulated backend flag (developer.simulated = true)
@@ -52,7 +52,7 @@ class BackendService implements OdysseyClient {
     return OdysseyHttpClient();
   }
 
-  // Forward all OdysseyClient methods to the selected delegate.
+  // Forward all BackendClient methods to the selected delegate.
   @override
   Future<Map<String, dynamic>> listItems(
           String location, int pageSize, int pageIndex, String subdirectory) =>
@@ -147,4 +147,8 @@ class BackendService implements OdysseyClient {
   @override
   Future<Uint8List> getPlateLayerImage(int plateId, int layer) =>
       _delegate.getPlateLayerImage(plateId, layer);
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) =>
+      _delegate.getAnalytics(n);
 }

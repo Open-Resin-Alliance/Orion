@@ -24,17 +24,17 @@ import 'package:orion/backend_service/nanodlp/models/nano_file.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_manual.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:flutter/foundation.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// NanoDLP adapter (initial implementation)
 ///
-/// Implements a small subset of the `OdysseyClient` contract needed for
+/// Implements a small subset of the `BackendClient` contract needed for
 /// StatusProvider and thumbnail fetching. Other methods remain unimplemented
 /// and should be added as needed.
-class NanoDlpHttpClient implements OdysseyClient {
+class NanoDlpHttpClient implements BackendClient {
   late final String apiUrl;
   final _log = Logger('NanoDlpHttpClient');
   final http.Client Function() _clientFactory;
@@ -261,6 +261,29 @@ class NanoDlpHttpClient implements OdysseyClient {
         // ignore and continue
       }
       await Future.delayed(pollInterval);
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/analytic/data/$n');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) return [];
+      final decoded = json.decode(resp.body);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+      }
+      return [];
+    } catch (e, st) {
+      _log.fine('NanoDLP getAnalytics failed', e, st);
+      return [];
+    } finally {
+      client.close();
     }
   }
 

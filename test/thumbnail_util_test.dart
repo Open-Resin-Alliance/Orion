@@ -35,7 +35,7 @@ void main() {
       return null;
     });
     final data = Uint8List.fromList(List<int>.generate(16, (i) => i % 256));
-    final fake = FakeOdysseyClientForThumbnailTest(data);
+    final fake = FakeBackendClientForThumbnailTest(data);
 
     final path = await ThumbnailUtil.extractThumbnail('local', '', 'test.sl1',
         client: fake);

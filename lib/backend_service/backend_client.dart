@@ -1,5 +1,5 @@
 /*
-* Orion - Odyssey Client
+* Orion - Backend Client
 * Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +18,10 @@
 import 'dart:typed_data';
 import 'dart:async';
 
-/// Minimal abstraction over the Odyssey API used by providers. This allows
+/// Minimal abstraction over the Backend API used by providers. This allows
 /// swapping implementations (real HTTP client, mock, or unit-test doubles)
 /// while keeping providers free from direct dependency on ApiService.
-abstract class OdysseyClient {
+abstract class BackendClient {
   Future<Map<String, dynamic>> listItems(
       String location, int pageSize, int pageIndex, String subdirectory);
 
@@ -90,4 +90,8 @@ abstract class OdysseyClient {
   /// (as reported by the backend). Implementations that don't support this
   /// may return a placeholder image or empty bytes.
   Future<Uint8List> getPlateLayerImage(int plateId, int layer);
+
+  /// Fetch recent analytics entries. `n` requests the last N entries.
+  /// Returns a list of JSON objects with keys like 'ID', 'T', 'V'.
+  Future<List<Map<String, dynamic>>> getAnalytics(int n);
 }

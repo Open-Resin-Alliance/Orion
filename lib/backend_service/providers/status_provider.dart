@@ -21,13 +21,13 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 
 /// Polls the backend `/status` endpoint and exposes a typed [StatusModel].
@@ -38,11 +38,12 @@ import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 /// * Lazy thumbnail fetching and caching
 /// * Convenience accessors for the UI
 class StatusProvider extends ChangeNotifier {
-  final OdysseyClient _client;
+  final BackendClient _client;
   final _log = Logger('StatusProvider');
 
   StatusModel? _status;
   String? _deviceStatusMessage;
+  int? _resinTemperature;
 
   /// Optional raw device-provided status message (e.g. NanoDLP "Status"
   /// field). When present this may be used to override the app bar title
@@ -50,6 +51,9 @@ class StatusProvider extends ChangeNotifier {
   /// "Peel Detection Started" are surfaced directly.
   String? get deviceStatusMessage => _deviceStatusMessage;
   StatusModel? get status => _status;
+
+  /// Current resin temperature reported by the backend (degrees Celsius).
+  int? get resinTemperature => _resinTemperature;
 
   bool _loading = true;
   bool get isLoading => _loading;
@@ -167,7 +171,7 @@ class StatusProvider extends ChangeNotifier {
 
   bool? get sseSupported => _sseSupported;
 
-  StatusProvider({OdysseyClient? client})
+  StatusProvider({BackendClient? client})
       : _client = client ?? BackendService() {
     // Prefer an SSE subscription when the backend supports it. If the
     // connection fails we fall back to the existing polling loop. See
@@ -235,7 +239,7 @@ class StatusProvider extends ChangeNotifier {
       // If config read fails, proceed to attempt SSE as a best-effort.
     }
 
-    _log.info('Attempting SSE subscription via OdysseyClient.getStatusStream');
+    _log.info('Attempting SSE subscription via BackendClient.getStatusStream');
     try {
       final stream = _client.getStatusStream();
       // When SSE becomes active, cancel any existing polling loop so we rely
@@ -256,6 +260,33 @@ class StatusProvider extends ChangeNotifier {
                     ?.toString();
           } catch (_) {
             _deviceStatusMessage = null;
+          }
+          // Capture resin temperature if the backend provides it (common NanoDLP fields)
+          try {
+            final maybeTemp = raw['resin'] ??
+                raw['Resin'] ??
+                raw['resin_temperature'] ??
+                raw['ResinTemperature'];
+            int? parsedTemp;
+            if (maybeTemp == null) {
+              parsedTemp = null;
+            } else if (maybeTemp is num) {
+              parsedTemp = maybeTemp.toInt();
+            } else {
+              final s = maybeTemp
+                  .toString()
+                  .trim()
+                  .toLowerCase()
+                  .replaceAll('°', '')
+                  .replaceAll('c', '')
+                  .trim();
+              final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+              parsedTemp =
+                  double.tryParse(numStr)?.round() ?? int.tryParse(numStr);
+            }
+            _resinTemperature = parsedTemp;
+          } catch (_) {
+            // ignore parsing errors and leave _resinTemperature unchanged
           }
           final parsed = StatusModel.fromJson(raw);
           // (previous snapshot removed) transitional clears now rely on the
@@ -493,6 +524,32 @@ class StatusProvider extends ChangeNotifier {
                 ?.toString();
       } catch (_) {
         _deviceStatusMessage = null;
+      }
+      // Capture resin temperature if available
+      try {
+        final maybeTemp = raw['resin'] ??
+            raw['Resin'] ??
+            raw['resin_temperature'] ??
+            raw['ResinTemperature'];
+        int? parsedTemp;
+        if (maybeTemp == null) {
+          parsedTemp = null;
+        } else if (maybeTemp is num) {
+          parsedTemp = maybeTemp.toInt();
+        } else {
+          final s = maybeTemp
+              .toString()
+              .trim()
+              .toLowerCase()
+              .replaceAll('°', '')
+              .replaceAll('c', '')
+              .trim();
+          final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+          parsedTemp = double.tryParse(numStr)?.round() ?? int.tryParse(numStr);
+        }
+        _resinTemperature = parsedTemp;
+      } catch (_) {
+        // ignore
       }
       final parsed = StatusModel.fromJson(raw);
       // Compute fingerprint difference to detect meaningful changes that
