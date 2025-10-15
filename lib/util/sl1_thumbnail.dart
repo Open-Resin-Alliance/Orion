@@ -18,9 +18,9 @@
 import 'dart:io';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_service.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:flutter/foundation.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -32,8 +32,8 @@ class ThumbnailUtil {
   /// which forwards to the existing `ApiService` implementation.
   static Future<String> extractThumbnail(
       String location, String subdirectory, String filename,
-      {String size = "Small", OdysseyClient? client}) async {
-    final OdysseyClient odysseyClient = client ?? BackendService();
+      {String size = "Small", BackendClient? client}) async {
+    final BackendClient odysseyClient = client ?? BackendService();
     try {
       // Build a safe relative path for the file on the server. Normalize
       // separators and strip any leading slashes so we never request
@@ -138,8 +138,8 @@ class ThumbnailUtil {
   /// janking the UI thread.
   static Future<Uint8List> extractThumbnailBytes(
       String location, String subdirectory, String filename,
-      {String size = "Small", OdysseyClient? client}) async {
-    final OdysseyClient odysseyClient = client ?? BackendService();
+      {String size = "Small", BackendClient? client}) async {
+    final BackendClient odysseyClient = client ?? BackendService();
     try {
       String finalLocation = _isDefaultDir(subdirectory)
           ? filename

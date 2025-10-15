@@ -5,7 +5,7 @@ import 'fakes/fake_odyssey_client.dart';
 void main() {
   group('ManualProvider', () {
     test('move forwards to client and toggles busy flag', () async {
-      final fake = FakeOdysseyClient();
+      final fake = FakeBackendClient();
       final provider = ManualProvider(client: fake);
 
       expect(provider.busy, isFalse);
@@ -20,7 +20,7 @@ void main() {
     });
 
     test('move handles client exception gracefully', () async {
-      final fake = FakeOdysseyClient();
+      final fake = FakeBackendClient();
       fake.throwOnMove = true;
       final provider = ManualProvider(client: fake);
 
@@ -32,7 +32,7 @@ void main() {
     });
 
     test('manualHome forwards correctly', () async {
-      final fake = FakeOdysseyClient();
+      final fake = FakeBackendClient();
       final provider = ManualProvider(client: fake);
       final ok = await provider.manualHome();
       expect(ok, isTrue);
@@ -40,7 +40,7 @@ void main() {
     });
 
     test('manualCommand forwards correctly', () async {
-      final fake = FakeOdysseyClient();
+      final fake = FakeBackendClient();
       final provider = ManualProvider(client: fake);
       final ok = await provider.manualCommand('M112');
       expect(ok, isTrue);
@@ -48,7 +48,7 @@ void main() {
     });
 
     test('manualCure and displayTest forwards correctly', () async {
-      final fake = FakeOdysseyClient();
+      final fake = FakeBackendClient();
       final provider = ManualProvider(client: fake);
       final ok1 = await provider.manualCure(true);
       final ok2 = await provider.displayTest('Grid');

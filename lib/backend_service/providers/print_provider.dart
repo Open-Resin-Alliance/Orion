@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 
 /// Provider to encapsulate print-related actions (start, cancel, pause, resume)
 /// and expose simple busy/error state for UI wiring.
 class PrintProvider extends ChangeNotifier {
-  final OdysseyClient _client;
+  final BackendClient _client;
   final _log = Logger('PrintProvider');
 
   bool _busy = false;
@@ -16,7 +16,7 @@ class PrintProvider extends ChangeNotifier {
   Object? _error;
   Object? get error => _error;
 
-  PrintProvider({OdysseyClient? client}) : _client = client ?? BackendService();
+  PrintProvider({BackendClient? client}) : _client = client ?? BackendService();
 
   Future<bool> startPrint(String location, String filePath) async {
     _log.info('startPrint: $location/$filePath');

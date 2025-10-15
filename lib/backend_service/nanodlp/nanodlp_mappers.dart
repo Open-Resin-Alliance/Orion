@@ -16,7 +16,7 @@
 */
 
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_state_handler.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_state_handler.dart';
 
 /// Map NanoDLP DTOs into Odyssey-shaped maps expected by StatusModel.fromJson
 Map<String, dynamic> nanoStatusToOdysseyMap(NanoStatus ns) {
@@ -108,6 +108,14 @@ Map<String, dynamic> nanoStatusToOdysseyMap(NanoStatus ns) {
     'pause_latched': pauseLatched,
     'finished': finished,
   };
+
+  // Preserve a few original numeric fields from the NanoDLP payload so
+  // consumers that expect the raw keys (e.g., StatusProvider parsing logic)
+  // can access them. These are derived from the parsed NanoStatus fields.
+  // Keep keys lowercase to match common NanoDLP payloads.
+  result['resin'] = ns.resinLevel;
+  result['temp'] = ns.temp;
+  result['mcu'] = ns.mcuTemp;
 
   return result;
 }

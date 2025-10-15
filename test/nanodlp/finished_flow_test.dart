@@ -17,7 +17,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_state_handler.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_state_handler.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 

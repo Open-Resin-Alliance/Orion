@@ -18,11 +18,11 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 
-class FakeOdysseyClientForThumbnailTest implements OdysseyClient {
+class FakeBackendClientForThumbnailTest implements BackendClient {
   final Uint8List bytes;
-  FakeOdysseyClientForThumbnailTest(this.bytes);
+  FakeBackendClientForThumbnailTest(this.bytes);
 
   @override
   Future<Uint8List> getFileThumbnail(
@@ -165,5 +165,11 @@ class FakeOdysseyClientForThumbnailTest implements OdysseyClient {
   Future<void> disableNotification(int timestamp) async {
     // no-op for this fake
     return;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) {
+    // TODO: implement getAnalytics
+    throw UnimplementedError();
   }
 }

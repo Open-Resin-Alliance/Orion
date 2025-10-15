@@ -4,19 +4,19 @@
 * without a physical printer. Behavior is intentionally simple: it
 * simulates a print job advancing layers over time and responds to
 * control commands (start/pause/resume/cancel). This implementation
-* implements the OdysseyClient interface used by the app.
+* implements the BackendClient interface used by the app.
 */
 
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:math' as math;
 
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 
-class NanoDlpSimulatedClient implements OdysseyClient {
+class NanoDlpSimulatedClient implements BackendClient {
   // Simulated job state
   bool _printing = false;
   bool _paused = false;
@@ -194,6 +194,12 @@ class NanoDlpSimulatedClient implements OdysseyClient {
 
   @override
   Stream<Map<String, dynamic>> getStatusStream() => _statusController.stream;
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) async {
+    // Simulated client has no analytics; return empty list.
+    return [];
+  }
 
   @override
   Future<bool> usbAvailable() async => false;

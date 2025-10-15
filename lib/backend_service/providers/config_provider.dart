@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/odyssey/models/config_models.dart';
 
 class ConfigProvider extends ChangeNotifier {
-  final OdysseyClient _client;
+  final BackendClient _client;
   final _log = Logger('ConfigProvider');
 
   ConfigModel? _config;
@@ -18,7 +18,7 @@ class ConfigProvider extends ChangeNotifier {
   Object? _error;
   Object? get error => _error;
 
-  ConfigProvider({OdysseyClient? client})
+  ConfigProvider({BackendClient? client})
       : _client = client ?? BackendService() {
     // Don't call refresh synchronously during construction — when the
     // provider is created inside widget build (e.g. `create: (_) =>
