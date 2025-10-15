@@ -202,6 +202,12 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   @override
+  Future<dynamic> getAnalyticValue(int id) async {
+    // Simulated client does not provide scalar analytic values.
+    return null;
+  }
+
+  @override
   Future<bool> usbAvailable() async => false;
 
   @override

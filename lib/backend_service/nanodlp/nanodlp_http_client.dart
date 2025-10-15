@@ -288,6 +288,33 @@ class NanoDlpHttpClient implements BackendClient {
   }
 
   @override
+  Future<dynamic> getAnalyticValue(int id) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/analytic/value/$id');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) return null;
+      final body = resp.body.trim();
+      // NanoDLP returns a plain numeric value like "-3.719..." so try parsing
+      final v = double.tryParse(body);
+      if (v != null) return v;
+      // Fallback: try JSON decode (in case the server returns JSON)
+      try {
+        final decoded = json.decode(body);
+        return decoded;
+      } catch (_) {
+        return body;
+      }
+    } catch (e, st) {
+      _log.fine('NanoDLP getAnalyticValue failed', e, st);
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
   Future<Uint8List> getFileThumbnail(
       String location, String filePath, String size) async {
     final dims = _thumbnailDimensions(size);

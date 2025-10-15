@@ -172,4 +172,10 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
     // TODO: implement getAnalytics
     throw UnimplementedError();
   }
+
+  @override
+  Future<dynamic> getAnalyticValue(int id) async {
+    // Not used by thumbnail tests.
+    return null;
+  }
 }

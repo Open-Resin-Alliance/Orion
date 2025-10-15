@@ -151,4 +151,7 @@ class BackendService implements BackendClient {
   @override
   Future<List<Map<String, dynamic>>> getAnalytics(int n) =>
       _delegate.getAnalytics(n);
+
+  @override
+  Future<dynamic> getAnalyticValue(int id) => _delegate.getAnalyticValue(id);
 }
