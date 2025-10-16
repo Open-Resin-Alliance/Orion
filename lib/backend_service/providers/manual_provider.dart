@@ -233,4 +233,24 @@ class ManualProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> manualTareForceSensor() async {
+    _log.info('tareForceSensor');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.tareForceSensor();
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('tareForceSensor failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return true; // Return true even on error to avoid blocking UI
+    }
+  }
 }

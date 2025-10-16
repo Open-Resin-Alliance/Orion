@@ -154,4 +154,7 @@ class BackendService implements BackendClient {
 
   @override
   Future<dynamic> getAnalyticValue(int id) => _delegate.getAnalyticValue(id);
+
+  @override
+  Future<dynamic> tareForceSensor() => _delegate.tareForceSensor();
 }

@@ -8,6 +8,7 @@
 */
 
 import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:math' as math;
 
@@ -203,8 +204,32 @@ class NanoDlpSimulatedClient implements BackendClient {
 
   @override
   Future<dynamic> getAnalyticValue(int id) async {
-    // Simulated client does not provide scalar analytic values.
-    return null;
+    // Smoothly ramp to a large peak after restart instead of an instant jump.
+    final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
+    const period = 60.0; // restart every 40 seconds
+    final elapsed = now % period;
+
+    const maxAmp = 6000.0; // target peak amplitude
+    const decayTime = 30.0; // seconds to decay back down
+    final decay = math.log(30.0) / decayTime;
+    final envelope = math.exp(-decay * elapsed);
+
+    // ramp up over the first few seconds after a restart to avoid an immediate jump
+    const rampUpTime = 2.0; // seconds to reach full amplitude
+    final ramp = (elapsed >= rampUpTime) ? 1.0 : (elapsed / rampUpTime);
+
+    // use cosine for oscillation, scaled by ramp and decay envelope
+    final raw =
+        math.cos(2 * math.pi * (elapsed / 3.0)) * maxAmp * ramp * envelope;
+
+    // small random noise in [-5,5]
+    final noise = (Random().nextDouble() * 10.0) - 5.0;
+
+    // once the oscillation has decayed below ±5, return only the small random noise
+    if (raw.abs() < 5.0) return noise;
+
+    // otherwise return the oscillation with a little jitter
+    return raw + noise * 0.2;
   }
 
   @override
@@ -259,5 +284,11 @@ class NanoDlpSimulatedClient implements BackendClient {
   void dispose() {
     _tickTimer?.cancel();
     _statusController.close();
+  }
+
+  @override
+  Future tareForceSensor() {
+    // TODO: implement tareForceSensor
+    throw UnimplementedError();
   }
 }
