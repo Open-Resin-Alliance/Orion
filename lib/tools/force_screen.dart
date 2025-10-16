@@ -19,7 +19,10 @@ import 'dart:math';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/orion_config.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/analytics_provider.dart';
@@ -56,96 +59,133 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final prov = Provider.of<AnalyticsProvider>(context);
+    // Use listen: false to prevent automatic rebuilds - we control it via _listener
+    final prov = Provider.of<AnalyticsProvider>(context, listen: false);
+    final manual = Provider.of<ManualProvider>(context, listen: false);
     final series = prov.pressureSeries.isNotEmpty
         ? prov.pressureSeries
         : prov.getSeriesForKey('Pressure');
     bool isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     void togglePause() {
-      setState(() {
-        _isPaused = !_isPaused;
-      });
+      setState(
+        () {
+          _isPaused = !_isPaused;
+        },
+      );
     }
 
-    void doTare() {
-      // Tare to the latest sample value if available
-      final values = series
-          .map((m) {
-            final vRaw = m['v'];
-            if (vRaw is num) return vRaw.toDouble();
-            return double.tryParse(vRaw?.toString() ?? '');
-          })
-          .where((v) => v != null)
-          .cast<double>()
-          .toList(growable: false);
-      setState(() {
-        _tareOffset = values.isNotEmpty ? values.last : 0.0;
-      });
+    void doTare() async {
+      try {
+        await manual.manualTareForceSensor();
+      } catch (_) {
+        showErrorDialog(context, 'BLUE-BANANA');
+      }
     }
 
     return Scaffold(
-      body: Padding(
-        padding:
-            const EdgeInsets.only(left: 12.0, right: 12.0, bottom: 6, top: 6),
-        child: isLandscape
-            ? buildLandscapeLayout(context, series,
-                isPaused: _isPaused,
-                onPauseToggle: togglePause,
-                onTare: doTare,
-                tareOffset: _tareOffset)
-            : buildPortraitLayout(context, series,
-                isPaused: _isPaused,
-                onPauseToggle: togglePause,
-                onTare: doTare,
-                tareOffset: _tareOffset),
-      ),
+      body: isLandscape
+          ? buildLandscapeLayout(
+              context,
+              series,
+              isPaused: _isPaused,
+              onPauseToggle: togglePause,
+              onTare: doTare,
+              tareOffset: _tareOffset,
+            )
+          : buildPortraitLayout(
+              context,
+              series,
+              isPaused: _isPaused,
+              onPauseToggle: togglePause,
+              onTare: doTare,
+              tareOffset: _tareOffset,
+            ),
     );
   }
 }
 
 Widget buildStatsCard(String label, String value) {
   return GlassCard(
+    margin: const EdgeInsets.only(
+      left: 12.0,
+      right: 0.0,
+      top: 6.0,
+      bottom: 6.0,
+    ),
     child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
+      padding: const EdgeInsets.all(8.0),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 18,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );
 }
 
+OrionConfig config = OrionConfig();
+
 String _formatMass(double grams) {
-  // Show in kg when >= 1000 g, otherwise show in g.
-  if (grams.abs() >= 1000.0) {
-    final kg = grams / 1000.0;
-    // Show kilograms with two decimal places (x.xx kg)
-    return '${kg.toStringAsFixed(2)} kg';
+  if (config.getFlag('overrideRawForceSensorValues', category: 'developer')) {
+    final negative = grams.isNegative;
+    final absVal = grams.abs();
+
+    String withCommas(String intPart) {
+      final buffer = StringBuffer();
+      int count = 0;
+      for (int i = intPart.length - 1; i >= 0; i--) {
+        buffer.write(intPart[i]);
+        count++;
+        if (count % 3 == 0 && i != 0) buffer.write(',');
+      }
+      return buffer.toString().split('').reversed.join();
+    }
+
+    if (absVal >= 1000.0) {
+      // For 1,000 g and above, show whole grams without decimal places.
+      final rounded = absVal.round();
+      final intWithCommas = withCommas(rounded.toString());
+      return '${negative ? '-' : ''}$intWithCommas';
+    } else {
+      // Below 1,000 g show one decimal place.
+      final fixed = absVal.toStringAsFixed(2); // e.g. "999.99"
+      final parts = fixed.split('.');
+      final intPart = parts[0];
+      final decPart = parts.length > 1 ? parts[1] : '0';
+      final intWithCommas = withCommas(intPart);
+      return '${negative ? '-' : ''}$intWithCommas.$decPart';
+    }
+  } else {
+    // Show in kg when >= 1000 g, otherwise show in g.
+    if (grams.abs() >= 1000.0) {
+      final kg = grams / 1000.0;
+      // Show kilograms with two decimal places (x.xx kg)
+      return '${kg.toStringAsFixed(2)} kg';
+    }
+    return '${grams.toStringAsFixed(0)} g';
   }
-  return '${grams.toStringAsFixed(0)} g';
 }
 
 Widget buildControlButtons(BuildContext context,
@@ -155,14 +195,6 @@ Widget buildControlButtons(BuildContext context,
   final theme = Theme.of(context).copyWith(
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
-        shape: WidgetStateProperty.resolveWith<OutlinedBorder?>((
-          Set<WidgetState> states,
-        ) {
-          return RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-            side: const BorderSide(color: Colors.transparent),
-          );
-        }),
         minimumSize: WidgetStateProperty.resolveWith<Size?>((
           Set<WidgetState> states,
         ) {
@@ -177,6 +209,12 @@ Widget buildControlButtons(BuildContext context,
     children: [
       Expanded(
         child: GlassButton(
+          margin: const EdgeInsets.only(
+            left: 0.0,
+            right: 12.0,
+            top: 4.0,
+            bottom: 6.0,
+          ),
           tint: !isPaused ? GlassButtonTint.none : GlassButtonTint.positive,
           onPressed: onPauseToggle,
           style: theme.elevatedButtonTheme.style,
@@ -189,17 +227,24 @@ Widget buildControlButtons(BuildContext context,
                   : const PhosphorIcon(PhosphorIconsFill.pause, size: 40),
               const SizedBox(
                   height: 8), // Add some space between icon and label
-              Text(isPaused ? 'Resume' : 'Pause',
-                  style: const TextStyle(fontSize: 22)),
+              Text(
+                isPaused ? 'Resume' : 'Pause',
+                style: const TextStyle(fontSize: 22),
+              ),
             ],
           ),
         ),
       ),
-      const SizedBox(height: 16),
       Expanded(
         child: GlassButton(
+          margin: const EdgeInsets.only(
+            left: 0.0,
+            right: 12.0,
+            top: 6.0,
+            bottom: 4.0,
+          ),
           tint: GlassButtonTint.none,
-          onPressed: onTare,
+          onPressed: isPaused ? null : onTare,
           style: theme.elevatedButtonTheme.style,
           child: const Column(
             mainAxisSize: MainAxisSize.min,
@@ -207,7 +252,10 @@ Widget buildControlButtons(BuildContext context,
             children: [
               PhosphorIcon(PhosphorIconsFill.scales, size: 40),
               SizedBox(height: 8), // Add some space between icon and label
-              Text('Tare', style: TextStyle(fontSize: 24)),
+              Text(
+                'Tare',
+                style: TextStyle(fontSize: 22),
+              ),
             ],
           ),
         ),
@@ -229,9 +277,11 @@ Widget buildPortraitLayout(
     children: [
       Expanded(
         child: GlassCard(
+          margin: const EdgeInsets.all(0.0),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: _PressureLineChart(series: series, tareOffset: tareOffset),
+            child: _PressureLineChart(
+                series: series, tareOffset: tareOffset, isPaused: isPaused),
           ),
         ),
       ),
@@ -272,35 +322,33 @@ Widget buildLandscapeLayout(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       SizedBox(
-        width: 130,
+        width: 140,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Expanded(
               child: SizedBox(
-                width: 130,
+                width: 140,
+                child: buildStatsCard(
+                  'Maximum',
+                  _formatMass(maxVal),
+                ),
+              ),
+            ),
+            Expanded(
+              child: SizedBox(
+                width: 140,
                 child: buildStatsCard(
                   'Current',
                   _formatMass(currentVal),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
             Expanded(
               child: SizedBox(
-                width: 130,
+                width: 140,
                 child: buildStatsCard(
-                  'Max',
-                  _formatMass(maxVal),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: SizedBox(
-                width: 130,
-                child: buildStatsCard(
-                  'Min',
+                  'Minimum',
                   _formatMass(minVal),
                 ),
               ),
@@ -308,19 +356,15 @@ Widget buildLandscapeLayout(
           ],
         ),
       ),
-      const SizedBox(width: 12),
       Expanded(
         flex: 3,
         child: GlassCard(
-          child: Padding(
-            padding: const EdgeInsets.all(2.0),
-            child: _PressureLineChart(series: series, tareOffset: tareOffset),
-          ),
+          margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
+          child: _PressureLineChart(series: series, tareOffset: tareOffset),
         ),
       ),
-      const SizedBox(width: 12),
       SizedBox(
-        width: 130,
+        width: 140,
         child: buildControlButtons(context,
             isPaused: isPaused, onPauseToggle: onPauseToggle, onTare: onTare),
       ),
@@ -331,14 +375,16 @@ Widget buildLandscapeLayout(
 class _PressureLineChart extends StatefulWidget {
   final List<Map<String, dynamic>> series;
   final double tareOffset;
-  const _PressureLineChart({required this.series, this.tareOffset = 0.0});
+  final bool isPaused;
+  const _PressureLineChart(
+      {required this.series, this.tareOffset = 0.0, this.isPaused = false});
 
   @override
   State<_PressureLineChart> createState() => _PressureLineChartState();
 }
 
 class _PressureLineChartState extends State<_PressureLineChart> {
-  static const int _windowSize = 600; // stable X-axis window
+  static const int _windowSize = 900; // stable X-axis window, 15Hz * 60s
   double? _displayMin;
   double? _displayMax;
   double _windowMaxX = 0.0;
@@ -463,25 +509,10 @@ class _PressureLineChartState extends State<_PressureLineChart> {
   void didUpdateWidget(covariant _PressureLineChart oldWidget) {
     super.didUpdateWidget(oldWidget);
     final spots = _toSpots(widget.series);
-    _updateDisplayRange(spots);
-  }
-
-  Widget leftTitleWidgets(double value, TitleMeta meta) {
-    const style = TextStyle(
-      fontSize: 20,
-    );
-    String text;
-    if (value == 0) {
-      text = '0';
-    } else if (value == _displayMin) {
-      text = _displayMin!.toStringAsFixed(0);
-    } else if (value == _displayMax) {
-      text = _displayMax!.toStringAsFixed(0);
-    } else {
-      return const SizedBox.shrink();
+    // Only update display range when not paused
+    if (!widget.isPaused) {
+      _updateDisplayRange(spots);
     }
-
-    return Text(text, style: style, textAlign: TextAlign.left);
   }
 
   @override
@@ -489,7 +520,10 @@ class _PressureLineChartState extends State<_PressureLineChart> {
     final spots = _toSpots(widget.series);
     if (spots.isEmpty) return const Center(child: Text('No data'));
 
-    _updateDisplayRange(spots);
+    // Only update display range when not paused
+    if (!widget.isPaused) {
+      _updateDisplayRange(spots);
+    }
     final displayMin = _displayMin ?? spots.map((s) => s.y).reduce(min) - 1.0;
     final displayMax = _displayMax ?? spots.map((s) => s.y).reduce(max) + 1.0;
 
@@ -503,13 +537,6 @@ class _PressureLineChartState extends State<_PressureLineChart> {
         ),
         gridData: FlGridData(show: true),
         titlesData: FlTitlesData(
-          /*leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 60,
-              getTitlesWidget: leftTitleWidgets,
-            ),
-          ),*/
           leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -519,8 +546,8 @@ class _PressureLineChartState extends State<_PressureLineChart> {
         maxY: displayMax,
         // Fixed screen range so the grid remains stationary while the data
         // moves underneath. X runs from 0 to _windowSize-1.
-        maxX: (_windowSize - 1).toDouble(),
-        minX: 0.0,
+        maxX: (_windowSize + 10.0).toDouble(),
+        minX: -10.0,
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -536,7 +563,7 @@ class _PressureLineChartState extends State<_PressureLineChart> {
             isStrokeCapRound: true,
             dotData: FlDotData(show: false),
             color: Theme.of(context).colorScheme.primary,
-            barWidth: 2,
+            barWidth: 1.5,
           )
         ],
       ),
