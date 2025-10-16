@@ -98,4 +98,8 @@ abstract class BackendClient {
   /// Fetch a single analytic value by metric id (e.g. /analytic/value/6).
   /// Returns the raw value (number or string) or null on failure.
   Future<dynamic> getAnalyticValue(int id);
+
+  /// Tare the force sensor if supported by the backend.
+  /// Returns a boolean indicating success or failure.
+  Future<dynamic> tareForceSensor();
 }

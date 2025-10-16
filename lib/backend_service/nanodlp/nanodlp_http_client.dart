@@ -756,8 +756,35 @@ class NanoDlpHttpClient implements BackendClient {
   }
 
   @override
-  Future<Map<String, dynamic>> manualCommand(String command) async =>
-      throw UnimplementedError('NanoDLP manualCommand not implemented');
+  Future<Map<String, dynamic>> manualCommand(String command) async {
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/gcode');
+      _log.info('NanoDLP manualCommand($command) request -> POST /gcode: $uri');
+      final client = _createClient();
+      try {
+        final resp = await client.post(uri, body: {'gcode': command});
+        if (resp.statusCode != 200) {
+          _log.warning(
+              'NanoDLP manualCommand($command) failed: ${resp.statusCode} ${resp.body}');
+          throw Exception(
+              'NanoDLP manualCommand($command) failed: ${resp.statusCode}');
+        }
+        try {
+          final decoded = json.decode(resp.body);
+          final nm = NanoManualResult.fromDynamic(decoded);
+          return nm.toMap();
+        } catch (_) {
+          return NanoManualResult(ok: true).toMap();
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.warning('NanoDLP manualCommand($command) error', e, st);
+      throw Exception('NanoDLP manualCommand($command) failed: $e');
+    }
+  }
 
   @override
   Future<Map<String, dynamic>> manualCure(bool cure) async {
@@ -1258,6 +1285,16 @@ class NanoDlpHttpClient implements BackendClient {
       case 'Small':
       default:
         return (400, 400);
+    }
+  }
+
+  @override
+  Future tareForceSensor() async {
+    try {
+      manualCommand('[[PressureWrite 1]]');
+    } catch (e, st) {
+      _log.warning('NanoDLP tareForceSensor error', e, st);
+      rethrow;
     }
   }
 }
