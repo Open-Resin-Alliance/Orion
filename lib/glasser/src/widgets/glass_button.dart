@@ -64,6 +64,7 @@ class GlassButton extends StatelessWidget {
   final ButtonStyle? style;
   final bool wantIcon;
   final GlassButtonTint tint;
+  final EdgeInsetsGeometry? margin;
 
   const GlassButton({
     super.key,
@@ -72,6 +73,7 @@ class GlassButton extends StatelessWidget {
     this.style,
     this.wantIcon = false,
     this.tint = GlassButtonTint.none,
+    this.margin,
   });
 
   @override
@@ -97,8 +99,9 @@ class GlassButton extends StatelessWidget {
       onPressed: onPressed,
       style: style,
       wantIcon: wantIcon,
-      tintPalette: tintPalette,
-      child: child, // Pass the wantIcon parameter
+      tintPalette: tintPalette, // Pass the wantIcon parameter
+      margin: margin,
+      child: child,
     );
   }
 }
@@ -110,6 +113,7 @@ class _GlassmorphicButton extends StatelessWidget {
   final ButtonStyle? style;
   final bool wantIcon;
   final _GlassButtonTintPalette? tintPalette;
+  final EdgeInsetsGeometry? margin;
 
   const _GlassmorphicButton({
     required this.child,
@@ -117,6 +121,7 @@ class _GlassmorphicButton extends StatelessWidget {
     this.style,
     this.wantIcon = true,
     this.tintPalette,
+    this.margin,
   });
 
   @override
@@ -144,21 +149,15 @@ class _GlassmorphicButton extends StatelessWidget {
       isEnabled ? 0.14 : 0.1,
       emphasize: isEnabled,
     );
-    // When a tint is present we keep the white frosted base but make it a
-    // little more opaque so the tint's outline/text read better. We also
-    // blend a subtle tint over the white so the button keeps a frosted
-    // appearance while carrying semantic color.
-    final effectiveFillOpacity =
-        hasTint ? (fillOpacity + 0.06).clamp(0.0, 1.0) : fillOpacity;
+
     Color? blendedFillColor;
     if (hasTint) {
       // Blend a low-opacity tint over white. Use alphaBlend so the result
       // keeps white highlights while adding color.
-      blendedFillColor = Color.alphaBlend(
-        tintColor!.withValues(alpha: 0.75),
-        Colors.white,
-      );
+      blendedFillColor =
+          Color.alphaBlend(tintColor!.withValues(alpha: 0.75), Colors.white);
     }
+
     final shadow = GlassPlatformConfig.interactiveShadow(
       enabled: isEnabled,
       blurRadius: isCircle ? 18 : 16,
@@ -167,6 +166,7 @@ class _GlassmorphicButton extends StatelessWidget {
     );
 
     Widget buttonChild = Container(
+      margin: margin ?? const EdgeInsets.all(0.0),
       decoration: BoxDecoration(
         borderRadius: borderRadius,
         boxShadow: shadow,
@@ -174,7 +174,10 @@ class _GlassmorphicButton extends StatelessWidget {
       child: GlassEffect(
         borderRadius: borderRadius,
         sigma: glassBlurSigma,
-        opacity: effectiveFillOpacity,
+        opacity: GlassPlatformConfig.surfaceOpacity(
+          0.12,
+          emphasize: isEnabled,
+        ),
         // Provide a subtle tinted white base when a tint is requested so the
         // control remains frosted but carries semantic color.
         color: blendedFillColor,
@@ -206,7 +209,7 @@ class _GlassmorphicButton extends StatelessWidget {
                     : Colors.white.withValues(alpha: 0.1))
                 : null,
             child: Opacity(
-              opacity: isEnabled ? 1.0 : 0.6,
+              opacity: isEnabled ? 1.0 : 0.4,
               child: Padding(
                 padding: isCircle
                     ? const EdgeInsets.all(0)
