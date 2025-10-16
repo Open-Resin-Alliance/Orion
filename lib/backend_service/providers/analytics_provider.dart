@@ -31,7 +31,7 @@ class AnalyticsProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get pressureSeries =>
       List.unmodifiable(_pressureSeries);
 
-  int pollIntervalHertz = 10; // 10 Hz
+  int pollIntervalHertz = 15; // 15 Hz
   double get pollIntervalMilliseonds => 1000.0 / pollIntervalHertz;
   int get _maxPressureSamples => (60 * pollIntervalHertz); // 1 minute
 
