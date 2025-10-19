@@ -34,6 +34,7 @@ import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/layer_preview_cache.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 
 class StatusScreen extends StatefulWidget {
   final bool newPrint;
@@ -284,33 +285,7 @@ class StatusScreenState extends State<StatusScreen> {
             appBar: AppBar(
               automaticallyImplyLeading: false,
               centerTitle: true,
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Builder(builder: (context) {
-                    final provider = Provider.of<StatusProvider>(context);
-                    final int? temp = provider.resinTemperature;
-                    return GlassCard(
-                        child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 6),
-                            child: Row(
-                              children: [
-                                Icon(Icons.thermostat,
-                                    size: 20,
-                                    color:
-                                        Theme.of(context).colorScheme.primary),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '$temp\u00B0C',
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                            )));
-                  }),
-                ),
-              ],
+              actions: const [SystemStatusWidget()],
               title: Builder(builder: (context) {
                 final deviceMsg = provider.deviceStatusMessage;
                 final statusText =
