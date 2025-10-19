@@ -115,10 +115,11 @@ class OdysseyHttpClient implements BackendClient {
       client.close();
       if (resp.statusCode != 200) return [];
       final decoded = json.decode(resp.body);
-      if (decoded is List)
+      if (decoded is List) {
         return decoded
             .whereType<Map<String, dynamic>>()
             .toList(growable: false);
+      }
     } catch (_) {}
     return [];
   }
@@ -356,13 +357,11 @@ class OdysseyHttpClient implements BackendClient {
 
   @override
   Future<void> disableNotification(int timestamp) {
-    // TODO: implement disableNotification
     throw UnimplementedError();
   }
 
   @override
   Future tareForceSensor() {
-    // TODO: implement tareForceSensor
     throw UnimplementedError();
   }
 }
@@ -372,6 +371,7 @@ class _TimeoutHttpClient extends http.BaseClient {
 
   final http.Client _inner;
   final Duration _timeout;
+  // ignore: unused_field
   final Logger _log;
   final String _label;
 
@@ -381,7 +381,9 @@ class _TimeoutHttpClient extends http.BaseClient {
     return future.timeout(_timeout, onTimeout: () {
       final msg =
           '$_label ${request.method} ${request.url} timed out after ${_timeout.inSeconds}s';
-      _log.warning(msg);
+      // Downgrade to FINE to avoid noisy repeated WARN logs when the
+      // higher-level StatusProvider already reports backend errors.
+      _log.fine(msg);
       throw TimeoutException(msg);
     });
   }

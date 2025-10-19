@@ -236,8 +236,9 @@ class NanoDlpHttpClient implements BackendClient {
             .toList(growable: false);
       }
       return [];
-    } catch (e, st) {
-      _log.fine('NanoDLP getNotifications failed', e, st);
+    } catch (e) {
+      // Silent on per-call failure: higher-level StatusProvider will report
+      // backend connectivity issues. Suppress fine-level noise here.
       return [];
     } finally {
       client.close();
@@ -279,8 +280,8 @@ class NanoDlpHttpClient implements BackendClient {
             .toList(growable: false);
       }
       return [];
-    } catch (e, st) {
-      _log.fine('NanoDLP getAnalytics failed', e, st);
+    } catch (e) {
+      // Suppress fine-level noise; keep failure behavior but don't log here.
       return [];
     } finally {
       client.close();
@@ -306,8 +307,8 @@ class NanoDlpHttpClient implements BackendClient {
       } catch (_) {
         return body;
       }
-    } catch (e, st) {
-      _log.fine('NanoDLP getAnalyticValue failed', e, st);
+    } catch (e) {
+      // Suppress fine-level noise; return null on failure.
       return null;
     } finally {
       client.close();
@@ -1304,6 +1305,7 @@ class _TimeoutHttpClient extends http.BaseClient {
 
   final http.Client _inner;
   final Duration _timeout;
+  // ignore: unused_field
   final Logger _log;
   final String _label;
 
@@ -1313,7 +1315,9 @@ class _TimeoutHttpClient extends http.BaseClient {
     return future.timeout(_timeout, onTimeout: () {
       final msg =
           '$_label ${request.method} ${request.url} timed out after ${_timeout.inSeconds}s';
-      _log.warning(msg);
+      // Intentionally do not log per-request timeouts here. The higher-level
+      // StatusProvider already reports backend connectivity issues and
+      // repeated per-request timeout warnings spam the logs during an outage.
       throw TimeoutException(msg);
     });
   }
