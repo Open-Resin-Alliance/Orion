@@ -18,21 +18,23 @@
 import 'package:flutter/material.dart';
 
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/backend_service/odyssey/models/status_models.dart';
 
 class StatusCard extends StatefulWidget {
   final bool isCanceling;
   final bool isPausing;
   final double progress;
   final Color statusColor;
-  final Map<String, dynamic> status;
+  final StatusModel? status;
 
-  const StatusCard(
-      {super.key,
-      required this.isCanceling,
-      required this.isPausing,
-      required this.progress,
-      required this.statusColor,
-      required this.status});
+  const StatusCard({
+    super.key,
+    required this.isCanceling,
+    required this.isPausing,
+    required this.progress,
+    required this.statusColor,
+    required this.status,
+  });
 
   @override
   StatusCardState createState() => StatusCardState();
@@ -43,11 +45,12 @@ class StatusCardState extends State<StatusCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.status['status'] == 'Idle' && widget.status['layer'] != null) {
+    final s = widget.status;
+    if (s != null && s.isIdle && s.layer != null) {
       cardIcon = const Icon(Icons.check);
-    } else if (widget.isCanceling || widget.status['layer'] == null) {
+    } else if (widget.isCanceling || (s?.layer == null)) {
       cardIcon = const Icon(Icons.stop);
-    } else if (widget.isPausing || widget.status['paused'] == true) {
+    } else if (widget.isPausing || s?.isPaused == true) {
       cardIcon = const Icon(Icons.pause);
     }
 
@@ -60,18 +63,18 @@ class StatusCardState extends State<StatusCard> {
     bool showFullCircle = false;
 
     // Only show spinner when actively transitioning from printing state
-    if (widget.isPausing && widget.status['paused'] != true) {
+    if (widget.isPausing && s?.isPaused != true) {
       showSpinner = true; // Actively pausing from printing
     } else if (widget.isCanceling &&
         !widget
             .isPausing && // Key: if isPausing is false when canceling, we're canceling from active print
-        widget.status['paused'] != true &&
-        widget.status['layer'] != null) {
+        s?.isPaused != true &&
+        s?.layer != null) {
       showSpinner = true; // Actively canceling from printing (not from paused)
     }
 
     // Show full circle when canceled or canceling from paused
-    if (widget.status['layer'] == null) {
+    if (s?.layer == null) {
       showFullCircle = true; // Already canceled
     } else if (widget.isCanceling && widget.isPausing) {
       showFullCircle =
@@ -87,9 +90,9 @@ class StatusCardState extends State<StatusCard> {
     // If the print is active, not paused, canceled or finished, it is active.
     final isActive = (widget.isPausing == false &&
         widget.isCanceling == false &&
-        widget.status['layer'] != null &&
-        widget.status['paused'] != true &&
-        widget.status['status'] != 'Idle');
+        s?.layer != null &&
+        s?.isPaused != true &&
+        s?.isIdle != true);
 
     // While the print is active, show the progress in percentage. (overlapping text for outline effect)
     return isActive

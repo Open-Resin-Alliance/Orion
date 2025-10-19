@@ -24,7 +24,9 @@ import 'package:path/path.dart' as path;
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
 
-import 'package:orion/api_services/api_services.dart';
+import 'package:orion/backend_service/providers/files_provider.dart';
+import 'package:orion/backend_service/odyssey/models/files_models.dart';
+
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/status/status_screen.dart';
 import 'package:orion/util/sl1_thumbnail.dart';
@@ -52,91 +54,78 @@ class DetailScreen extends StatefulWidget {
 
 class DetailScreenState extends State<DetailScreen> {
   final _logger = Logger('DetailScreen');
-  final ApiService _api = ApiService();
 
   bool isLandScape = false;
   int maxNameLength = 0;
   bool loading = true; // Add loading state
-
-  FileStat? fileStat;
-  String fileName = ''; // path.basename(widget.file.path)
-  String layerHeight = ''; // layerHeight
-  String fileSize = ''; // fileStat!.size
-  String modifiedDate = ''; // fileCreationTimestamp
-  String materialName = ''; // materialName
-  String fileExtension = ''; // path.extension(widget.file.path)
-  String thumbnailPath = ''; // extractThumbnail(widget.file, hash)
-  String printTime = ''; // printTime
-  double printTimeInSeconds = 0; // printTime in seconds
-  String materialVolume = ''; // usedMaterial
-  double materialVolumeInMilliliters = 0; // usedMaterial in milliliters
-
-  late ValueNotifier<Future<String>> thumbnailFutureNotifier;
-  // ignore: unused_field
-  Future<void>? _initFileDetailsFuture;
+  FileMetadata? _meta;
+  Future<String>? _thumbnailFuture;
+  bool _isThumbnailLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _initFileDetailsFuture = _initFileDetails();
+    _loadMetadata();
   }
 
-  Future<void> _initFileDetails() async {
+  Future<void> _loadMetadata() async {
+    setState(() {
+      loading = true;
+    });
+
+    final provider = Provider.of<FilesProvider>(context, listen: false);
+    final filePath = DetailScreen._isDefaultDir(widget.fileSubdirectory)
+        ? widget.fileName
+        : '${widget.fileSubdirectory}/${widget.fileName}';
+
     try {
-      final fileDetails = await _api.getFileMetadata(
+      final FileMetadata? meta =
+          await provider.fetchFileMetadata(widget.fileLocation, filePath);
+      if (meta == null) {
+        setState(() {
+          _meta = null;
+          _thumbnailFuture = null;
+          loading = false;
+        });
+        return;
+      }
+
+      // Kick off thumbnail extraction but render metadata directly from the
+      // typed model in build(). This mirrors the approach used in StatusScreen
+      // where presentation derives values directly from the provider model.
+      final thumbFuture = ThumbnailUtil.extractThumbnail(
         widget.fileLocation,
-        [
-          (DetailScreen._isDefaultDir(widget.fileSubdirectory)
-              ? ''
-              : widget.fileSubdirectory),
-          widget.fileName
-        ].join(DetailScreen._isDefaultDir(widget.fileSubdirectory) ? '' : '/'),
+        widget.fileSubdirectory,
+        widget.fileName,
+        size: 'Large',
       );
 
-      String tempFileName = fileDetails['file_data']['name'] ?? 'Placeholder';
-      String tempFileSize =
-          (fileDetails['file_data']['file_size'] / 1024 / 1024)
-                  .toStringAsFixed(2) +
-              ' MB'; // convert to MB
-      String tempFileExtension = path.extension(tempFileName);
-      String tempLayerHeight =
-          '${fileDetails['layer_height'].toStringAsFixed(3)} mm';
-      String tempModifiedDate = DateTime.fromMillisecondsSinceEpoch(
-              fileDetails['file_data']['last_modified'] * 1000)
-          .toString(); // convert to milliseconds
-      String tempMaterialName =
-          'N/A'; // this information is not provided by the API
-      String tempThumbnailPath = await ThumbnailUtil.extractThumbnail(
-          widget.fileLocation, widget.fileSubdirectory, widget.fileName,
-          size: 'Large'); // fetch thumbnail from API
-      double tempPrintTimeInSeconds = fileDetails['print_time'];
-      Duration printDuration =
-          Duration(seconds: tempPrintTimeInSeconds.toInt());
-      String tempPrintTime =
-          '${printDuration.inHours.remainder(24).toString().padLeft(2, '0')}:${printDuration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${printDuration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
-      double tempMaterialVolumeInMilliliters = fileDetails['used_material'];
-      String tempMaterialVolume =
-          '${tempMaterialVolumeInMilliliters.toStringAsFixed(2)} mL';
+      // Track thumbnail loading separately so we can optionally overlay a
+      // full-screen spinner while the image downloads to avoid UI flicker.
+      if (mounted) {
+        setState(() {
+          _meta = meta;
+          _thumbnailFuture = thumbFuture;
+          loading = false;
+          _isThumbnailLoading = true;
+        });
+      }
 
-      setState(() {
-        fileName = tempFileName;
-        fileSize = tempFileSize;
-        fileExtension = tempFileExtension;
-        layerHeight = tempLayerHeight;
-        modifiedDate = tempModifiedDate;
-        materialName = tempMaterialName;
-        thumbnailPath = tempThumbnailPath;
-        printTimeInSeconds = tempPrintTimeInSeconds;
-        printTime = tempPrintTime;
-        materialVolumeInMilliliters = tempMaterialVolumeInMilliliters;
-        materialVolume = tempMaterialVolume;
-        loading = false; // Set loading to false when data is fetched
+      // Clear the thumbnail-loading flag when the future completes (success or error).
+      thumbFuture.whenComplete(() {
+        if (mounted) {
+          setState(() {
+            _isThumbnailLoading = false;
+          });
+        }
       });
-    } catch (e) {
-      _logger.severe('Failed to fetch file details', e);
-      setState(() {
-        loading = false; // Set loading to false even if there's an error
-      });
+    } catch (e, st) {
+      _logger.severe('Failed to load file metadata', e, st);
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
     }
   }
 
@@ -147,25 +136,33 @@ class DetailScreenState extends State<DetailScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('File Details'),
+          title: Text(_meta?.fileData.name ?? widget.fileName),
           centerTitle: true,
         ),
         body: Center(
-          child: loading // Show CircularProgressIndicator if loading
+          child: loading
               ? const CircularProgressIndicator()
-              : LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    return isLandScape
-                        ? Padding(
-                            padding: const EdgeInsets.only(
-                                left: 16, right: 16, bottom: 20),
-                            child: buildLandscapeLayout(context))
-                        : Padding(
-                            padding: const EdgeInsets.only(
-                                left: 16, right: 16, bottom: 20),
-                            child: buildPortraitLayout(context));
-                  },
-                ),
+              : _meta == null
+                  ? const Text('Failed to load file metadata')
+                  // If the thumbnail is still downloading, show a full-screen
+                  // spinner instead of rendering the details layout to avoid
+                  // partial UI flicker.
+                  : (_isThumbnailLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : LayoutBuilder(
+                          builder: (BuildContext context,
+                              BoxConstraints constraints) {
+                            return isLandScape
+                                ? Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 16, right: 16, bottom: 20),
+                                    child: buildLandscapeLayout(context))
+                                : Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 16, right: 16, bottom: 20),
+                                    child: buildPortraitLayout(context));
+                          },
+                        )),
         ),
       ),
     );
@@ -178,7 +175,7 @@ class DetailScreenState extends State<DetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              buildNameCard(fileName),
+              buildNameCard(_meta?.fileData.name ?? widget.fileName),
               const SizedBox(height: 16),
               Expanded(
                 child: Column(
@@ -188,25 +185,53 @@ class DetailScreenState extends State<DetailScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: buildInfoCard('Layer Height', layerHeight),
+                          child: buildInfoCard(
+                            'Layer Height',
+                            _meta?.layerHeight != null
+                                ? '${_meta!.layerHeight!.toStringAsFixed(3)} mm'
+                                : '-',
+                          ),
                         ),
                         Expanded(
-                          child: buildInfoCard('Material & Volume',
-                              '$materialName - $materialVolume'),
+                          child: buildInfoCard(
+                            'Material & Volume',
+                            _meta?.usedMaterial != null
+                                ? _meta?.materialName != null
+                                    ? '${_meta?.materialName} - ${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
+                                    : 'N/A - ${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
+                                : 'N/A - -',
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 5),
                     Row(children: [
                       Expanded(
-                        child: buildInfoCard('Print Time', printTime),
+                        child: buildInfoCard(
+                          'Print Time',
+                          _meta?.printTime != null
+                              ? _meta!.formattedPrintTime
+                              : '-',
+                        ),
                       ),
                       Expanded(
-                        child: buildInfoCard('File Size', fileSize),
+                        child: buildInfoCard(
+                          'File Size',
+                          _meta?.fileData.fileSize != null
+                              ? '${(_meta!.fileData.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB'
+                              : '-',
+                        ),
                       ),
                     ]),
                     const SizedBox(height: 5),
-                    buildInfoCard('Modified Date', modifiedDate),
+                    buildInfoCard(
+                      'Modified Date',
+                      _meta != null
+                          ? DateTime.fromMillisecondsSinceEpoch(
+                                  _meta!.fileData.lastModified * 1000)
+                              .toString()
+                          : '-',
+                    ),
                     const Spacer(),
                     buildPrintButtons(),
                   ],
@@ -229,13 +254,39 @@ class DetailScreenState extends State<DetailScreen> {
                 flex: 1,
                 child: ListView(
                   children: [
-                    buildNameCard(fileName),
-                    buildInfoCard('Layer Height', layerHeight),
+                    buildNameCard(_meta?.fileData.name ?? widget.fileName),
                     buildInfoCard(
-                        'Material & Volume', '$materialName - $materialVolume'),
-                    buildInfoCard('Print Time', printTime),
-                    buildInfoCard('Modified Date', modifiedDate),
-                    buildInfoCard('File Size', fileSize),
+                        'Layer Height',
+                        _meta?.layerHeight != null
+                            ? '${_meta!.layerHeight!.toStringAsFixed(3)} mm'
+                            : '-'),
+                    buildInfoCard(
+                      'Material & Volume',
+                      _meta?.usedMaterial != null
+                          ? _meta?.materialName != null
+                              ? '${_meta?.materialName} - ${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
+                              : 'N/A - ${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
+                          : 'N/A - -',
+                    ),
+                    buildInfoCard(
+                      'Print Time',
+                      _meta?.printTime != null
+                          ? _meta!.formattedPrintTime
+                          : '-',
+                    ),
+                    buildInfoCard(
+                      'Modified Date',
+                      _meta != null
+                          ? DateTime.fromMillisecondsSinceEpoch(
+                                  _meta!.fileData.lastModified * 1000)
+                              .toString()
+                          : '-',
+                    ),
+                    buildInfoCard(
+                        'File Size',
+                        _meta?.fileData.fileSize != null
+                            ? '${(_meta!.fileData.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB'
+                            : '-'),
                   ],
                 ),
               ),
@@ -274,7 +325,7 @@ class DetailScreenState extends State<DetailScreen> {
       builder: (context, constraints) {
         final marqueeHeight = 32.0; // or 36.0 if you want more vertical space
         final nameText = AutoSizeText(
-          fileName,
+          title,
           maxLines: 1,
           minFontSize: 18,
           style: TextStyle(
@@ -293,7 +344,7 @@ class DetailScreenState extends State<DetailScreen> {
               fadingEdgeEndFraction: 0.1,
               blankSpace: 40.0,
               startPadding: 4.0,
-              text: fileName,
+              text: title,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -320,9 +371,20 @@ class DetailScreenState extends State<DetailScreen> {
   }
 
   Widget buildThumbnailView(BuildContext context) {
-    final Widget imageWidget = thumbnailPath.isNotEmpty
-        ? Image.file(File(thumbnailPath))
-        : const Center(child: CircularProgressIndicator());
+    final Widget imageWidget = _thumbnailFuture == null
+        ? const Center(child: CircularProgressIndicator())
+        : FutureBuilder<String>(
+            future: _thumbnailFuture,
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snap.hasError || snap.data == null || snap.data!.isEmpty) {
+                return const Center(child: Icon(Icons.broken_image));
+              }
+              return Image.file(File(snap.data!));
+            },
+          );
 
     final themeProvider = Provider.of<ThemeProvider>(context);
 
@@ -362,12 +424,22 @@ class DetailScreenState extends State<DetailScreen> {
             GlassButton(
               onPressed: () async {
                 try {
-                  await _api.deleteFile(
-                    widget.fileLocation,
-                    path.join(widget.fileSubdirectory, widget.fileName),
-                  );
-                  _logger.info('File ${widget.fileName} deleted successfully');
-                  if (mounted) Navigator.of(context).pop(true);
+                  final provider =
+                      Provider.of<FilesProvider>(context, listen: false);
+                  final filePath =
+                      DetailScreen._isDefaultDir(widget.fileSubdirectory)
+                          ? widget.fileName
+                          : path.join(widget.fileSubdirectory, widget.fileName);
+                  final ok =
+                      await provider.deleteFile(widget.fileLocation, filePath);
+                  if (ok) {
+                    _logger
+                        .info('File ${widget.fileName} deleted successfully');
+                    if (mounted) Navigator.of(context).pop(true);
+                  } else {
+                    _logger.severe('Failed to delete file ${widget.fileName}');
+                    if (mounted) Navigator.of(context).pop(false);
+                  }
                 } catch (e) {
                   _logger.severe('Failed to delete file ${widget.fileName}', e);
                   if (mounted) Navigator.of(context).pop(false);
@@ -408,18 +480,27 @@ class DetailScreenState extends State<DetailScreen> {
         const SizedBox(width: 20),
         Expanded(
           child: GlassButton(
-            onPressed: () {
+            onPressed: () async {
               try {
-                String subdirectory = widget.fileSubdirectory;
-                _api.startPrint(widget.fileLocation,
-                    path.join(subdirectory, widget.fileName));
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const StatusScreen(
-                        newPrint: true,
-                      ),
-                    ));
+                final provider =
+                    Provider.of<FilesProvider>(context, listen: false);
+                final filePath =
+                    DetailScreen._isDefaultDir(widget.fileSubdirectory)
+                        ? widget.fileName
+                        : path.join(widget.fileSubdirectory, widget.fileName);
+                final ok =
+                    await provider.startPrint(widget.fileLocation, filePath);
+                if (ok) {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StatusScreen(
+                          newPrint: true,
+                        ),
+                      ));
+                } else {
+                  _logger.severe('Failed to start print');
+                }
               } catch (e) {
                 _logger.severe('Failed to start print', e);
               }

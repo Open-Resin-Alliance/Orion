@@ -21,7 +21,9 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
-import 'package:orion/api_services/api_services.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 
@@ -36,26 +38,47 @@ class ExposureScreen extends StatefulWidget {
 
 class ExposureScreenState extends State<ExposureScreen> {
   final _logger = Logger('Exposure');
-  final ApiService _api = ApiService();
   CancelableOperation? _exposureOperation;
   Completer<void>? _exposureCompleter;
 
   int exposureTime = 3;
   bool _apiErrorState = false;
 
-  void exposeScreen(String type) {
+  Future<void> exposeScreen(String type) async {
     try {
       _logger.info('Testing exposure for $exposureTime seconds');
-      _api.displayTest(type);
-      _api.manualCure(true);
+      final manual = Provider.of<ManualProvider>(context, listen: false);
+
+      final okDisplay = await manual.displayTest(type);
+      if (!okDisplay) {
+        setState(() {
+          _apiErrorState = true;
+        });
+        if (mounted) showErrorDialog(context, 'Failed to start display test');
+        return;
+      }
+
+      final okCure = await manual.manualCure(true);
+      if (!okCure) {
+        setState(() {
+          _apiErrorState = true;
+        });
+        if (mounted) showErrorDialog(context, 'Failed to enable cure');
+        return;
+      }
+
       showExposureDialog(context, exposureTime, type: type);
       _exposureCompleter = Completer<void>();
       _exposureOperation = CancelableOperation.fromFuture(
         Future.any([
           Future.delayed(Duration(seconds: exposureTime)),
           _exposureCompleter!.future,
-        ]).then((_) {
-          _api.manualCure(false);
+        ]).then((_) async {
+          try {
+            await manual.manualCure(false);
+          } catch (e) {
+            _logger.warning('Failed to disable cure after exposure: $e');
+          }
         }),
       );
     } catch (e) {
@@ -191,7 +214,8 @@ class ExposureScreenState extends State<ExposureScreen> {
 
   Future<void> getApiStatus() async {
     try {
-      await _api.getConfig();
+      final provider = Provider.of<ConfigProvider>(context, listen: false);
+      if (provider.config == null) await provider.refresh();
     } catch (e) {
       setState(() {
         _apiErrorState = true;

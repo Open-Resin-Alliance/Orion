@@ -21,7 +21,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:orion/api_services/api_services.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/util/hold_button.dart';
@@ -35,7 +36,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class HomeScreenState extends State<HomeScreen> {
-  final ApiService _api = ApiService();
   final OrionConfig _config = OrionConfig();
   bool isRemote = false;
 
@@ -114,7 +114,16 @@ class HomeScreenState extends State<HomeScreen> {
                                   child: HoldButton(
                                     onPressed: () {
                                       Navigator.pop(context);
-                                      _api.manualCommand('FIRMWARE_RESTART');
+                                      // Use ManualProvider instead of direct ApiService
+                                      try {
+                                        final manual =
+                                            Provider.of<ManualProvider>(context,
+                                                listen: false);
+                                        manual
+                                            .manualCommand('FIRMWARE_RESTART');
+                                      } catch (_) {
+                                        // If provider isn't available, ignore
+                                      }
                                     },
                                     child: Text(
                                       l10n.homeFirmwareRestart,
