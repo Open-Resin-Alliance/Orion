@@ -50,6 +50,10 @@ class WifiScreen extends StatefulWidget {
 class WifiScreenState extends State<WifiScreen> {
   final Logger _logger = Logger('WifiScreen');
   bool _connectionFailed = false;
+  Map<String, String>? _lastNetworkDetails;
+  late Future<Map<String, String>> _networkDetailsFuture;
+  // Keep a reference to the provider so we can remove the listener on dispose.
+  WiFiProvider? _providerListener;
 
   final GlobalKey<SpawnOrionTextFieldState> wifiPasswordKey =
       GlobalKey<SpawnOrionTextFieldState>();
@@ -63,6 +67,72 @@ class WifiScreenState extends State<WifiScreen> {
         context.read<WiFiProvider>().scanNetworks();
       }
     });
+    // Initialize cached future with a single fetch. We'll refresh on provider changes.
+    _networkDetailsFuture =
+        (widget.networkDetailsFetcher?.call() ?? getNetworkDetails())
+            .then((net) {
+      _lastNetworkDetails = Map<String, String>.from(net);
+      return net;
+    });
+    // Defer adding provider listener until after the first frame where context is valid.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<WiFiProvider>();
+      _providerListener = provider;
+      provider.addListener(_onWifiProviderChanged);
+    });
+  }
+
+  @override
+  void dispose() {
+    try {
+      _providerListener?.removeListener(_onWifiProviderChanged);
+    } catch (_) {}
+    super.dispose();
+  }
+
+  void _onWifiProviderChanged() {
+    // Called when WiFiProvider notifies. Avoid fetching/updating network
+    // details while we're connected: that causes frequent UI rebuilds.
+    final provider = _providerListener ?? context.read<WiFiProvider>();
+    final bool isConnected = (provider.currentSSID ?? '').isNotEmpty ||
+        provider.connectionType == 'ethernet';
+
+    if (isConnected) {
+      // We're connected — do not refresh network details on every provider
+      // notification. This keeps the UI stable. If we previously didn't have
+      // details, keep the cached ones.
+      return;
+    }
+
+    // Not connected: refresh network details and update UI only if values changed.
+    final fetcher = widget.networkDetailsFetcher ?? getNetworkDetails;
+    fetcher().then((net) {
+      if (!_mapsEqual(net, _lastNetworkDetails)) {
+        if (mounted) {
+          setState(() {
+            _lastNetworkDetails = Map<String, String>.from(net);
+            _networkDetailsFuture = Future.value(net);
+          });
+        }
+      } else {
+        // Update cached future so FutureBuilder stops showing waiting state
+        _networkDetailsFuture = Future.value(net);
+      }
+    }).catchError((e) {
+      _logger.warning('Failed to refresh network details: $e');
+    });
+  }
+
+  bool _mapsEqual(Map<String, String>? a, Map<String, String>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (!b.containsKey(key)) return false;
+      if (a[key] != b[key]) return false;
+    }
+    return true;
   }
 
   Future<String> getIPAddress() async {
@@ -203,69 +273,69 @@ class WifiScreenState extends State<WifiScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Consumer<WiFiProvider>(
-        builder: (context, wifiProvider, child) {
-          if (wifiProvider.isScanning) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (!Platform.isLinux &&
-              !kDebugMode &&
-              wifiProvider.connectionType != 'ethernet') {
-            // Feature is primarily for Linux Wi‑Fi management. Allow
-            // non-Linux when the provider reports an active Ethernet
-            // connection (useful for macOS/dev flow where Ethernet is
-            // assumed).
-            return const Center(
-              child: Text(
-                'Sorry, this feature is only available on Linux',
-                style: TextStyle(
-                  fontSize: 24,
-                ),
-              ),
-            );
-          } else {
-            final networks = wifiProvider.availableNetworks;
+      body: Selector<WiFiProvider, String>(
+        selector: (_, p) => '${p.currentSSID ?? ''}|${p.connectionType}',
+        builder: (context, selectedKey, child) {
+          // Only rebuild when currentSSID or connectionType changes. For
+          // connected states we want to avoid rebuilding on frequent provider
+          // notifications; for disconnected states we still allow a Consumer
+          // inside to react to scans and list updates.
+          final wifiProvider =
+              Provider.of<WiFiProvider>(context, listen: false);
+          final bool isConnected =
+              (wifiProvider.currentSSID ?? '').isNotEmpty ||
+                  wifiProvider.connectionType == 'ethernet';
+
+          if (isConnected) {
+            // Mark external ValueNotifier once per connection.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) widget.isConnected.value = true;
+            });
+
+            // Build the connected UI using cached future; do NOT listen to
+            // further provider notifications to avoid frequent rebuilds.
             final String currentSSID = wifiProvider.currentSSID ?? '';
             final String connectionType = wifiProvider.connectionType;
-            // Treat ethernet reported by the provider as a connected state
-            if (currentSSID.isNotEmpty || connectionType == 'ethernet') {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  widget.isConnected.value = true;
-                }
-              });
-              return FutureBuilder<Map<String, String>>(
-                future:
-                    widget.networkDetailsFetcher?.call() ?? getNetworkDetails(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  } else {
-                    final Map<String, String> net = snapshot.data ??
-                        {'ip': '', 'mac': '', 'speed': '', 'iface': ''};
-                    bool isLandscape = MediaQuery.of(context).orientation ==
-                        Orientation.landscape;
-                    return Center(
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: isLandscape
-                              ? buildLandscapeLayout(context, currentSSID, net,
-                                  networks, connectionType)
-                              : buildPortraitLayout(context, currentSSID, net,
-                                  networks, connectionType),
-                        ),
+            return FutureBuilder<Map<String, String>>(
+              future: _networkDetailsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else {
+                  final Map<String, String> net = snapshot.data ??
+                      {'ip': '', 'mac': '', 'speed': '', 'iface': ''};
+                  bool isLandscape = MediaQuery.of(context).orientation ==
+                      Orientation.landscape;
+                  final networks = wifiProvider.availableNetworks; // read once
+                  return Center(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: isLandscape
+                            ? buildLandscapeLayout(context, currentSSID, net,
+                                networks, connectionType)
+                            : buildPortraitLayout(context, currentSSID, net,
+                                networks, connectionType),
                       ),
-                    );
-                  }
-                },
-              );
-            } else {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  widget.isConnected.value = false;
+                    ),
+                  );
                 }
+              },
+            );
+          }
+
+          // Not connected: allow full listening so the scan and list update UI
+          // can refresh normally.
+          return Consumer<WiFiProvider>(
+            builder: (context, wifiProvider, child) {
+              if (wifiProvider.isScanning) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final networks = wifiProvider.availableNetworks;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) widget.isConnected.value = false;
               });
               return RefreshIndicator(
                 onRefresh: () async {
@@ -358,16 +428,21 @@ class WifiScreenState extends State<WifiScreen> {
                                   ),
                                   actions: [
                                     GlassButton(
+                                      tint: GlassButtonTint.negative,
                                       onPressed: () {
                                         Navigator.of(context).pop();
                                         setState(() {
                                           _connectionFailed = false;
                                         });
                                       },
+                                      style: ElevatedButton.styleFrom(
+                                        minimumSize: const Size(90, 60),
+                                      ),
                                       child: const Text('Close',
                                           style: TextStyle(fontSize: 20)),
                                     ),
                                     GlassButton(
+                                      tint: GlassButtonTint.positive,
                                       onPressed: () {
                                         if (!wifiProvider.isConnecting) {
                                           if (Theme.of(context).platform ==
@@ -386,6 +461,9 @@ class WifiScreenState extends State<WifiScreen> {
                                           }
                                         }
                                       },
+                                      style: ElevatedButton.styleFrom(
+                                        minimumSize: const Size(90, 60),
+                                      ),
                                       child: const Text('Confirm',
                                           style: TextStyle(fontSize: 20)),
                                     ),
@@ -400,8 +478,8 @@ class WifiScreenState extends State<WifiScreen> {
                   },
                 ),
               );
-            }
-          }
+            },
+          );
         },
       ),
     );
