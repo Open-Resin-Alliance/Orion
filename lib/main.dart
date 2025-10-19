@@ -50,6 +50,7 @@ import 'package:orion/tools/tools_screen.dart';
 import 'package:orion/util/error_handling/error_handler.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/providers/wifi_provider.dart';
 import 'package:orion/util/error_handling/connection_error_watcher.dart';
 import 'package:orion/util/error_handling/notification_watcher.dart';
 
@@ -142,6 +143,10 @@ class OrionRoot extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => ThemeProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => WiFiProvider(),
           lazy: false,
         ),
         ChangeNotifierProvider(
@@ -306,7 +311,12 @@ class OrionMainAppState extends State<OrionMainApp> {
               try {
                 final navCtx = _navKey.currentContext;
                 if (_connWatcher == null && navCtx != null) {
-                  _connWatcher = ConnectionErrorWatcher.install(navCtx);
+                  _connWatcher =
+                      ConnectionErrorWatcher.install(navCtx, onReconnect: () {
+                    Logger('ConnErrorWatcher').info('Reconnected');
+                  }, onDisconnect: () {
+                    Logger('ConnErrorWatcher').info('Disconnected');
+                  });
                 }
                 if (_notifWatcher == null && navCtx != null) {
                   _notifWatcher = NotificationWatcher.install(navCtx);
