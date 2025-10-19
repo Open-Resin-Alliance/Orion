@@ -35,13 +35,24 @@ class ConnectionErrorWatcher {
   Object? _lastProviderError;
   bool? _lastDialogVisible;
 
-  ConnectionErrorWatcher._(this._context) {
+  // Optional callbacks invoked on connection state transitions.
+  final VoidCallback? onReconnect;
+  final VoidCallback? onDisconnect;
+
+  ConnectionErrorWatcher._(this._context,
+      {this.onReconnect, this.onDisconnect}) {
     _provider = Provider.of<StatusProvider>(_context, listen: false);
   }
 
   /// Install the watcher and begin listening immediately.
-  static ConnectionErrorWatcher install(BuildContext context) {
-    final watcher = ConnectionErrorWatcher._(context);
+  ///
+  /// Optional callbacks can be provided to react to reconnect/disconnect
+  /// events. By default the watcher only shows/dismisses the modal dialog
+  /// (no toast/banners are shown).
+  static ConnectionErrorWatcher install(BuildContext context,
+      {VoidCallback? onReconnect, VoidCallback? onDisconnect}) {
+    final watcher = ConnectionErrorWatcher._(context,
+        onReconnect: onReconnect, onDisconnect: onDisconnect);
     watcher._start();
     return watcher;
   }
@@ -57,9 +68,13 @@ class ConnectionErrorWatcher {
   void _onProviderChange() async {
     final log = Logger('ConnErrorWatcher');
     try {
-      final hasError = _provider.error != null;
-      // Only log transitions or when there's something noteworthy to report
       final providerError = _provider.error;
+      final hasError = providerError != null;
+
+      // Determine previous state from cached value
+      final hadError = _lastProviderError != null;
+
+      // Only log transitions or when there's something noteworthy to report
       final shouldLog = (providerError != _lastProviderError) ||
           (_dialogVisible != _lastDialogVisible) ||
           (providerError != null) ||
@@ -70,6 +85,28 @@ class ConnectionErrorWatcher {
         _lastProviderError = providerError;
         _lastDialogVisible = _dialogVisible;
       }
+
+      // Callbacks for transitions: null->error (disconnect), error->null (reconnect)
+      if (!hadError && hasError) {
+        // Transition: connected -> disconnected
+        if (onDisconnect != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try {
+              onDisconnect!();
+            } catch (_) {}
+          });
+        }
+      } else if (hadError && !hasError) {
+        // Transition: disconnected -> reconnected
+        if (onReconnect != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try {
+              onReconnect!();
+            } catch (_) {}
+          });
+        }
+      }
+
       if (hasError && !_dialogVisible) {
         _dialogVisible = true;
         // Show the dialog; this Future completes when the dialog is dismissed
