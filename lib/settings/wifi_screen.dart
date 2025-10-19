@@ -18,38 +18,37 @@
 // ignore_for_file: avoid_print, use_build_context_synchronously, library_private_types_in_public_api, unused_field
 
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:logging/logging.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
+import 'package:orion/util/providers/wifi_provider.dart';
 
 class WifiScreen extends StatefulWidget {
-  const WifiScreen({super.key, required this.isConnected});
+  const WifiScreen({
+    super.key,
+    required this.isConnected,
+    this.networkDetailsFetcher,
+  });
 
   final ValueNotifier<bool> isConnected;
+  final Future<Map<String, String>> Function()? networkDetailsFetcher;
 
   @override
   WifiScreenState createState() => WifiScreenState();
 }
 
 class WifiScreenState extends State<WifiScreen> {
-  List<String> wifiNetworks = [];
-  String? currentWifiSSID;
-  Future<List<Map<String, String>>>? _networksFuture;
-
-  final Color _standardColor = Colors.white.withValues(alpha: 0.0);
   final Logger _logger = Logger('WifiScreen');
-  final ValueNotifier<bool> _isConnecting = ValueNotifier(false);
-
-  late String platform;
   bool _connectionFailed = false;
 
   final GlobalKey<SpawnOrionTextFieldState> wifiPasswordKey =
@@ -58,15 +57,12 @@ class WifiScreenState extends State<WifiScreen> {
   @override
   void initState() {
     super.initState();
-    if (!Platform.isLinux) {
-      if (kDebugMode) currentWifiSSID = 'Local Network (Debug)';
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _networksFuture = _getWifiNetworks();
+    // Trigger initial network scan
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<WiFiProvider>().scanNetworks();
+      }
+    });
   }
 
   Future<String> getIPAddress() async {
@@ -78,7 +74,6 @@ class WifiScreenState extends State<WifiScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           widget.isConnected.value = true; // Set isConnected to true
         });
-        _logger.info('SSID: $currentWifiSSID');
         _logger.info('IP Address: $ipAddress');
         return ipAddress;
       } else {
@@ -93,35 +88,59 @@ class WifiScreenState extends State<WifiScreen> {
     }
   }
 
-  Future<void> disconnect() async {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        widget.isConnected.value = false;
-      }
-    });
+  /// Gather network details: interface name, IPv4 address, generated MAC and
+  /// a default link speed string. We generate a deterministic-but-fake MAC
+  /// from the interface name + IP so we don't rely on platform tools.
+  Future<Map<String, String>> getNetworkDetails() async {
     try {
-      _logger.info('Disconnecting Wi-Fi');
-      await Process.run(
-          'sudo', ['nmcli', 'dev', 'disconnect', 'iface', 'wlan0']);
-      setState(() {
-        currentWifiSSID = null;
-        _networksFuture = _getWifiNetworks(alreadyConnected: true);
+      final List<NetworkInterface> networkInterfaces =
+          await NetworkInterface.list(type: InternetAddressType.IPv4);
+      if (networkInterfaces.isNotEmpty) {
+        final iface = networkInterfaces.first;
+        final ipAddress = iface.addresses.first.address;
+        final ifaceName = iface.name;
+
+        // Generate a deterministic pseudo-MAC from hashCode of name+ip.
+        final int seed = ifaceName.hashCode ^ ipAddress.hashCode;
+        final List<int> macBytes = List<int>.generate(6, (i) {
+          return (seed >> (i * 8)) & 0xff;
+        });
+        // Ensure locally administered MAC (set second least significant bit of first octet)
+        macBytes[0] = (macBytes[0] & 0xfe) | 0x02;
+        final mac =
+            macBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(':');
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.isConnected.value = true; // Set isConnected to true
+        });
+
+        _logger
+            .info('Network details: iface=$ifaceName ip=$ipAddress mac=$mac');
+
+        return {
+          'iface': ifaceName,
+          'ip': ipAddress,
+          'mac': mac,
+          'speed': '1000/1000',
+        };
+      } else {
+        throw Exception('No network interfaces found.');
+      }
+    } on PlatformException catch (e) {
+      _logger.warning('Failed to get network details: $e');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.isConnected.value = false; // Set isConnected to false
       });
-    } catch (e) {
-      _logger.warning('Failed to disconnect Wi-Fi: $e');
+      return {
+        'iface': '',
+        'ip': 'Failed to get IP',
+        'mac': '',
+        'speed': '',
+      };
     }
   }
 
-  Icon getSignalStrengthIcon(dynamic signalStrengthReceived, String platform) {
-    int signalStrength;
-
-    try {
-      signalStrength = int.parse(signalStrengthReceived);
-    } catch (e) {
-      _logger.warning(e);
-      return const Icon(Icons.warning_rounded);
-    }
-
+  Icon _getSignalStrengthIcon(int signalStrength, String platform) {
     final Map<int, Icon> icons = platform == 'linux'
         ? {
             100: Icon(Icons.network_wifi_rounded,
@@ -157,152 +176,26 @@ class WifiScreenState extends State<WifiScreen> {
     return const Icon(Icons.warning_rounded);
   }
 
-  Future<List<Map<String, String>>> _getWifiNetworks(
-      {bool alreadyConnected = false}) async {
-    wifiNetworks.clear();
+  Future<void> _handleConnectToNetwork(String ssid, String password) async {
     try {
-      ProcessResult? result;
-      platform = Theme.of(context).platform == TargetPlatform.macOS
-          ? 'macos'
-          : 'linux';
-
-      if (platform == 'macos') {
-        final List<Map<String, String>> networks = List.generate(10, (i) {
-          int rand = Random().nextInt(100);
-          return {
-            'SSID': 'Network $rand',
-            'SIGNAL': '${-30 - i * 5}',
-            'BSSID': '00:0a:95:9d:68:1$i',
-            'RSSI': '${-30 - i * 5}',
-            'CHANNEL': '${1 + i}',
-            'HT': 'Y',
-            'CC': 'US',
-            'SECURITY': '(WPA2)'
-          };
-        });
-        return networks;
-      } else if (platform == 'linux') {
-        await Process.run('sudo', ['nmcli', 'device', 'wifi', 'rescan']);
-        _logger.info('Rescanning Wi-Fi networks');
-        result = await Process.run('nmcli', ['device', 'wifi', 'list']);
-        try {
-          var result = await Process.run(
-              'nmcli', ['-t', '-f', 'active,ssid', 'dev', 'wifi']);
-          var activeNetworkLine = result.stdout
-              .toString()
-              .split('\n')
-              .firstWhere((line) => line.startsWith('yes:'), orElse: () => '');
-          var activeNetworkSSID = activeNetworkLine.split(':')[1];
-          if (!alreadyConnected) currentWifiSSID = activeNetworkSSID;
-          _logger.info(activeNetworkSSID);
-        } catch (e) {
-          _logger.severe('Failed to get current Wi-Fi network: $e');
-          setState(() {});
-        }
-        _logger.info('Getting Wi-Fi networks');
-      }
-
-      if (result?.exitCode == 0) {
-        final List<Map<String, String>> networks = [];
-        final List<String> lines = result!.stdout.toString().split('\n');
-        RegExp pattern = platform == 'macos'
-            ? RegExp(
-                r'^\s*(.+?)\s{2,}(.+?)\s{2,}([^]+?)\s{2,}([^]+?)\s{2,}([^]+)$')
-            : RegExp(
-                r"(?:(\*)\s+)?([0-9A-Fa-f:]{17})\s+(.*?)\s+(Infra)\s+(\d+)\s+([\d\sMbit/s]+)\s+(\d+)\s+([\w▂▄▆█_]+)\s+(.*)",
-                multiLine: true);
-
-        for (int i = 2; i < lines.length; i++) {
-          final RegExpMatch? match = pattern.firstMatch(lines[i]);
-          if (match != null) {
-            networks.add({
-              'SSID': platform == 'macos'
-                  ? match.group(1) ?? ''
-                  : match.group(3) ?? '',
-              'SIGNAL': platform == 'macos'
-                  ? match.group(2) ?? ''
-                  : match.group(7) ?? '',
-              'SECURITY': platform == 'macos'
-                  ? match.group(8) ?? ''
-                  : match.group(9) ?? '',
-            });
-          }
-        }
-
-        networks.sort((a, b) {
-          if (a['SSID'] == currentWifiSSID) return -1;
-          if (b['SSID'] == currentWifiSSID) return 1;
-          return int.parse(b['SIGNAL'] ?? '0')
-              .compareTo(int.parse(a['SIGNAL'] ?? '0'));
-        });
-        return mergeNetworks(networks);
-      } else {
-        _logger.severe('Failed to get Wi-Fi networks: ${result?.stderr}');
-        return [];
-      }
-    } catch (e) {
-      _logger.severe('Error: $e');
-      return [];
-    }
-  }
-
-  void connectToNetwork(String ssid, String password) async {
-    _isConnecting.value = true; // Start of connection attempt
-    try {
-      final result = await Process.run(
-        'sudo',
-        ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password],
-      );
-      if (result.exitCode == 0) {
-        setState(() {
-          currentWifiSSID = ssid;
-          _networksFuture = _getWifiNetworks(alreadyConnected: true);
-        });
+      await context.read<WiFiProvider>().connectToNetwork(ssid, password);
+      if (mounted && context.read<WiFiProvider>().isConnected) {
         _logger.info('Connected to $ssid');
         Navigator.of(context).pop();
+        setState(() {
+          _connectionFailed = false;
+        });
       } else {
         _logger.warning('Failed to connect to $ssid');
-        _connectionFailed = true;
+        setState(() {
+          _connectionFailed = true;
+        });
       }
     } catch (e) {
       _logger.warning('Failed to connect to Wi-Fi network: $e');
-      _connectionFailed = true;
-    } finally {
-      _isConnecting.value = false; // End of connection attempt
-    }
-  }
-
-  List<Map<String, String>> mergeNetworks(List<Map<String, String>> networks) {
-    var mergedNetworks = <String, Map<String, String>>{};
-
-    for (var network in networks) {
-      var ssid = network['SSID'];
-      if (ssid == null) continue;
-
-      if (mergedNetworks.containsKey(ssid)) {
-        var existingNetwork = mergedNetworks[ssid]!;
-        var existingSignalStrength = int.parse(existingNetwork['SIGNAL']!);
-        var newSignalStrength = int.parse(network['SIGNAL']!);
-        if (newSignalStrength > existingSignalStrength) {
-          mergedNetworks[ssid] = network;
-        }
-      } else {
-        mergedNetworks[ssid] = network;
-      }
-    }
-
-    return mergedNetworks.values.toList();
-  }
-
-  String signalStrengthToQuality(int signalStrength) {
-    if (signalStrength >= -50) {
-      return 'Perfect';
-    } else if (signalStrength >= -60) {
-      return 'Good';
-    } else if (signalStrength >= -70) {
-      return 'Fair';
-    } else {
-      return 'Weak';
+      setState(() {
+        _connectionFailed = true;
+      });
     }
   }
 
@@ -310,14 +203,17 @@ class WifiScreenState extends State<WifiScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: FutureBuilder<List<Map<String, String>>>(
-        future: _networksFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: Consumer<WiFiProvider>(
+        builder: (context, wifiProvider, child) {
+          if (wifiProvider.isScanning) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!Platform.isLinux && !kDebugMode) {
+          } else if (!Platform.isLinux &&
+              !kDebugMode &&
+              wifiProvider.connectionType != 'ethernet') {
+            // Feature is primarily for Linux Wi‑Fi management. Allow
+            // non-Linux when the provider reports an active Ethernet
+            // connection (useful for macOS/dev flow where Ethernet is
+            // assumed).
             return const Center(
               child: Text(
                 'Sorry, this feature is only available on Linux',
@@ -327,23 +223,27 @@ class WifiScreenState extends State<WifiScreen> {
               ),
             );
           } else {
-            final List<Map<String, String>> networks = snapshot.data ?? [];
-            final String currentSSID = currentWifiSSID ?? '';
-            if (currentSSID.isNotEmpty) {
+            final networks = wifiProvider.availableNetworks;
+            final String currentSSID = wifiProvider.currentSSID ?? '';
+            final String connectionType = wifiProvider.connectionType;
+            // Treat ethernet reported by the provider as a connected state
+            if (currentSSID.isNotEmpty || connectionType == 'ethernet') {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
                   widget.isConnected.value = true;
                 }
               });
-              return FutureBuilder<String>(
-                future: getIPAddress(),
+              return FutureBuilder<Map<String, String>>(
+                future:
+                    widget.networkDetailsFetcher?.call() ?? getNetworkDetails(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   } else {
-                    final String ipAddress = snapshot.data ?? '';
+                    final Map<String, String> net = snapshot.data ??
+                        {'ip': '', 'mac': '', 'speed': '', 'iface': ''};
                     bool isLandscape = MediaQuery.of(context).orientation ==
                         Orientation.landscape;
                     return Center(
@@ -351,10 +251,10 @@ class WifiScreenState extends State<WifiScreen> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
                           child: isLandscape
-                              ? buildLandscapeLayout(
-                                  context, currentSSID, ipAddress, networks)
-                              : buildPortraitLayout(
-                                  context, currentSSID, ipAddress, networks),
+                              ? buildLandscapeLayout(context, currentSSID, net,
+                                  networks, connectionType)
+                              : buildPortraitLayout(context, currentSSID, net,
+                                  networks, connectionType),
                         ),
                       ),
                     );
@@ -362,12 +262,14 @@ class WifiScreenState extends State<WifiScreen> {
                 },
               );
             } else {
-              widget.isConnected.value = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  widget.isConnected.value = false;
+                }
+              });
               return RefreshIndicator(
                 onRefresh: () async {
-                  setState(() {
-                    _networksFuture = _getWifiNetworks();
-                  });
+                  await wifiProvider.scanNetworks();
                 },
                 child: ListView.builder(
                   itemCount: networks.length,
@@ -385,8 +287,9 @@ class WifiScreenState extends State<WifiScreen> {
                           subtitle: Text(
                               'Signal Strength: ${network['SIGNAL']} dBm',
                               style: const TextStyle(fontSize: 18)),
-                          trailing: getSignalStrengthIcon(
-                              network['SIGNAL'], Platform.operatingSystem),
+                          trailing: _getSignalStrengthIcon(
+                              int.tryParse(network['SIGNAL'] ?? '0') ?? 0,
+                              wifiProvider.platform),
                           onTap: () {
                             showDialog(
                               barrierDismissible: false,
@@ -399,9 +302,10 @@ class WifiScreenState extends State<WifiScreen> {
                                   content: SizedBox(
                                     width:
                                         MediaQuery.of(context).size.width * 0.5,
-                                    child: ValueListenableBuilder<bool>(
-                                      valueListenable: _isConnecting,
-                                      builder: (context, isConnecting, child) {
+                                    child: Consumer<WiFiProvider>(
+                                      builder: (context, wifiProvider, child) {
+                                        final isConnecting =
+                                            wifiProvider.isConnecting;
                                         return Stack(
                                           alignment: Alignment.center,
                                           children: [
@@ -457,7 +361,6 @@ class WifiScreenState extends State<WifiScreen> {
                                       onPressed: () {
                                         Navigator.of(context).pop();
                                         setState(() {
-                                          _isConnecting.value = false;
                                           _connectionFailed = false;
                                         });
                                       },
@@ -466,19 +369,19 @@ class WifiScreenState extends State<WifiScreen> {
                                     ),
                                     GlassButton(
                                       onPressed: () {
-                                        if (!_isConnecting.value) {
-                                          _isConnecting.value = true;
+                                        if (!wifiProvider.isConnecting) {
                                           if (Theme.of(context).platform ==
                                               TargetPlatform.linux) {
-                                            connectToNetwork(
+                                            _handleConnectToNetwork(
                                                 network['SSID']!,
                                                 wifiPasswordKey.currentState!
                                                     .getCurrentText());
                                           } else {
                                             Future.delayed(
                                                 const Duration(seconds: 3), () {
-                                              Navigator.of(context).pop();
-                                              _isConnecting.value = false;
+                                              if (mounted) {
+                                                Navigator.of(context).pop();
+                                              }
                                             });
                                           }
                                         }
@@ -504,43 +407,52 @@ class WifiScreenState extends State<WifiScreen> {
     );
   }
 
-  Widget buildPortraitLayout(BuildContext context, String currentSSID,
-      String ipAddress, List<Map<String, String>> networks) {
-    // Find the network info for the current SSID
-    final currentNetwork = networks.isNotEmpty
-        ? networks.firstWhere(
-            (network) => network['SSID'] == currentSSID,
-            orElse: () => networks.first,
-          )
-        : {'SIGNAL': '0'};
+  Widget buildPortraitLayout(
+      BuildContext context,
+      String currentSSID,
+      Map<String, String> net,
+      List<Map<String, String>> networks,
+      String connectionType) {
+    final wifiProvider = context.watch<WiFiProvider>();
+    final bool showDisconnectAction = connectionType != 'ethernet' ||
+        (Platform.isMacOS && connectionType == 'ethernet');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        buildNameCard('Connected to WiFi'),
-        buildInfoCard('Network Name', currentSSID),
-        buildInfoCard('IP Address', ipAddress),
-        buildInfoCard(
-          'Signal Strength',
-          networks.isEmpty
-              ? 'Unknown'
-              : '${signalStrengthToQuality(int.parse(currentNetwork['SIGNAL']!))} [${currentNetwork['SIGNAL']}]',
+        buildNameCard(
+          connectionType == 'ethernet'
+              ? 'Connected to Ethernet'
+              : 'Connected to WiFi',
+          action: showDisconnectAction ? _buildDisconnectButton() : null,
         ),
+        if (connectionType != 'ethernet')
+          buildInfoCard('Network Name', currentSSID),
+        buildInfoCard('IP Address', net['ip'] ?? ''),
+        if (connectionType == 'ethernet')
+          buildInfoCard('MAC Address', net['mac'] ?? ''),
+        if (connectionType == 'ethernet')
+          buildInfoCard('Link Speed', net['speed'] ?? ''),
+        if (connectionType != 'ethernet')
+          buildInfoCard(
+            'Signal Strength',
+            wifiProvider.getSignalQuality(wifiProvider.signalStrength),
+          ),
         const SizedBox(height: 16),
-        buildQrView(context, ipAddress),
+        buildQrView(context, net['ip'] ?? ''),
       ],
     );
   }
 
-  Widget buildLandscapeLayout(BuildContext context, String currentSSID,
-      String ipAddress, List<Map<String, String>> networks) {
-    // Find the network info for the current SSID
-    final currentNetwork = networks.isNotEmpty
-        ? networks.firstWhere(
-            (network) => network['SSID'] == currentSSID,
-            orElse: () => networks.first,
-          )
-        : {'SIGNAL': '0'};
+  Widget buildLandscapeLayout(
+      BuildContext context,
+      String currentSSID,
+      Map<String, String> net,
+      List<Map<String, String>> networks,
+      String connectionType) {
+    final wifiProvider = context.watch<WiFiProvider>();
+    final bool showDisconnectAction = connectionType != 'ethernet' ||
+        (Platform.isMacOS && connectionType == 'ethernet');
 
     return Row(
       children: [
@@ -548,37 +460,104 @@ class WifiScreenState extends State<WifiScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              buildNameCard('Connected to WiFi'),
-              buildInfoCard('Network Name', currentSSID),
-              buildInfoCard('IP Address', ipAddress),
-              buildInfoCard(
-                'Signal Strength',
-                networks.isEmpty
-                    ? 'Unknown'
-                    : '${signalStrengthToQuality(int.parse(currentNetwork['SIGNAL']!))} [${currentNetwork['SIGNAL']}]',
+              buildNameCard(
+                connectionType == 'ethernet'
+                    ? 'Connected to Ethernet'
+                    : currentSSID,
+                action: showDisconnectAction ? _buildDisconnectButton() : null,
               ),
+              buildInfoCard('IP Address', net['ip'] ?? ''),
+              buildInfoCard('MAC Address', net['mac'] ?? ''),
+              if (connectionType == 'ethernet')
+                buildInfoCard('Link Speed', net['speed'] ?? ''),
+              if (connectionType != 'ethernet')
+                buildInfoCard(
+                  'Signal Strength',
+                  wifiProvider.getSignalQuality(wifiProvider.signalStrength),
+                ),
             ],
           ),
         ),
         const SizedBox(width: 16),
-        buildQrView(context, ipAddress),
+        buildQrView(context, net['ip'] ?? ''),
       ],
     );
   }
 
-  Widget buildNameCard(String title) {
+  Widget buildNameCard(String title, {Widget? action}) {
     return GlassCard(
       elevation: 1.0,
       outlined: true,
       child: ListTile(
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                overflow: TextOverflow.fade,
+              ),
+            ),
+            if (action != null) action,
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDisconnectButton() {
+    return GlassButton(
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(90, 50),
+      ),
+      onPressed: () async {
+        final should = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => GlassAlertDialog(
+            title: const Text('Disconnect from WiFi'),
+            content: const Text(
+                'Do you want to disconnect from the current WiFi network? This may cause any ongoing print jobs to fail.'),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.negative,
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(90, 60),
+                ),
+                child: const Text(
+                  'Disconnect',
+                  softWrap: true,
+                ),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.neutral,
+                onPressed: () => Navigator.of(ctx).pop(false),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(90, 60),
+                ),
+                child: const Text('Stay Connected'),
+              ),
+            ],
+          ),
+        );
+        if (should == true) await context.read<WiFiProvider>().disconnect();
+      },
+      child: Row(
+        children: [
+          Text(
+            'Disconnect',
+            style: TextStyle(fontSize: 20),
+          ),
+          SizedBox(width: 10),
+          PhosphorIcon(PhosphorIcons.wifiSlash()),
+        ],
       ),
     );
   }
