@@ -158,9 +158,8 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
                     // Use a material icon for ethernet
                     PhosphorIconsFill.network,
                     size: widget.iconSize,
-                    color: wifiProvider.isConnected
-                        ? Theme.of(context).colorScheme.secondary
-                        : Colors.red.shade300,
+                    color:
+                        wifiProvider.isConnected ? null : Colors.red.shade300,
                   )
                 : PhosphorIcon(
                     _getWifiIcon(wifiConnected, signalStrength, platform),
@@ -263,22 +262,11 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
         return SizedBox(
           width: widget.iconSize,
           height: widget.iconSize,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              PhosphorIcon(
-                // No target set - heater is disabled
-                PhosphorIcons.fire(),
-                color: Theme.of(context).colorScheme.secondary,
-                size: widget.iconSize * 0.9,
-              ),
-              PhosphorIcon(
-                // No target set - heater is disabled
-                PhosphorIcons.x(),
-                color: Colors.redAccent,
-                size: widget.iconSize,
-              ),
-            ],
+          child: PhosphorIcon(
+            // No target set - heater is disabled
+            PhosphorIcons.drop(),
+            color: Theme.of(context).colorScheme.secondary,
+            size: widget.iconSize,
           ),
         );
       case ThermalState.stable:
@@ -325,22 +313,22 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
     // Linux uses 0-100 percentage, macOS uses negative dBm
     if (platform == 'linux') {
       if (signalStrength >= 80) {
-        return PhosphorIcons.wifiHigh();
+        return PhosphorIconsFill.wifiHigh;
       } else if (signalStrength >= 60) {
-        return PhosphorIcons.wifiMedium();
+        return PhosphorIconsFill.wifiMedium;
       } else if (signalStrength >= 40) {
-        return PhosphorIcons.wifiLow();
+        return PhosphorIconsFill.wifiLow;
       } else {
         return PhosphorIcons.wifiSlash();
       }
     } else if (platform == 'macos') {
       // macOS signal strength (negative dBm values)
       if (signalStrength >= -50) {
-        return PhosphorIcons.wifiHigh();
+        return PhosphorIconsFill.wifiHigh;
       } else if (signalStrength >= -70) {
-        return PhosphorIcons.wifiMedium();
+        return PhosphorIconsFill.wifiMedium;
       } else if (signalStrength >= -90) {
-        return PhosphorIcons.wifiLow();
+        return PhosphorIconsFill.wifiLow;
       } else {
         return PhosphorIcons.wifiSlash();
       }
