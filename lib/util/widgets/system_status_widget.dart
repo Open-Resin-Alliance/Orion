@@ -61,7 +61,18 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
   Widget build(BuildContext context) {
     final analyticsProvider = context.watch<AnalyticsProvider>();
     final statusProvider = context.watch<StatusProvider>();
-    final wifiProvider = context.watch<WiFiProvider>();
+    // Select only the specific WiFiProvider fields we care about so the
+    // widget only rebuilds when these values actually change. This avoids
+    // flicker caused by frequent provider notifications that don't change
+    // the semantic network status.
+    final bool wifiConnected =
+        context.select<WiFiProvider, bool>((p) => p.isConnected);
+    final int? signalStrength =
+        context.select<WiFiProvider, int?>((p) => p.signalStrength);
+    final String platform =
+        context.select<WiFiProvider, String>((p) => p.platform);
+    final String connectionType =
+        context.select<WiFiProvider, String>((p) => p.connectionType);
 
     // Get current and target temperature from analytics
     final currentTemp = analyticsProvider.getLatestForKey('TemperatureInside');
@@ -102,10 +113,6 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
       }
       return s;
     }
-
-    final wifiConnected = wifiProvider.isConnected;
-    final signalStrength = wifiProvider.signalStrength;
-    final platform = wifiProvider.platform;
 
     // Prepare compact temperature display values and icon before building widgets
     final currentDisplay = displayVal(temperature);
@@ -152,14 +159,12 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
         if (widget.showWifi) ...[
           Transform.translate(
             offset: const Offset(0, -1),
-            child: wifiProvider.connectionType == 'ethernet' &&
-                    wifiProvider.isConnected
+            child: connectionType == 'ethernet' && wifiConnected
                 ? PhosphorIcon(
                     // Use a material icon for ethernet
                     PhosphorIconsFill.network,
                     size: widget.iconSize,
-                    color:
-                        wifiProvider.isConnected ? null : Colors.red.shade300,
+                    color: wifiConnected ? null : Colors.red.shade300,
                   )
                 : PhosphorIcon(
                     _getWifiIcon(wifiConnected, signalStrength, platform),
@@ -215,7 +220,7 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
               child: SizedBox(
                 width: reservedWidth,
                 child: Text(
-                  '${currentDisplay}°C',
+                  '$currentDisplay°C',
                   textAlign: TextAlign.right,
                   overflow: TextOverflow.clip,
                 ),
