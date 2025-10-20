@@ -15,6 +15,8 @@
 * limitations under the License.
 */
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -76,8 +78,54 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
 
     // Get current and target temperature from analytics
     final currentTemp = analyticsProvider.getLatestForKey('TemperatureInside');
-    final targetTemp =
+
+    // Also consider other heater targets: chamber and PTC.
+    // We want to consider all three targets simultaneously. Each target may be
+    // disabled (0) or set to a positive temperature. Compute an effective
+    // target by taking the max of all positive target values. If all present
+    // targets are exactly 0, treat heaters as disabled.
+    final dynamic rawInsideTarget =
         analyticsProvider.getLatestForKey('TemperatureInsideTarget');
+    final dynamic rawChamberTarget =
+        analyticsProvider.getLatestForKey('TemperatureChamberTarget');
+    final dynamic rawPtcTarget =
+        analyticsProvider.getLatestForKey('TemperaturePTCTarget');
+
+    double? parseTarget(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    }
+
+    final insideTarget = parseTarget(rawInsideTarget);
+    final chamberTarget = parseTarget(rawChamberTarget);
+    final ptcTarget = parseTarget(rawPtcTarget);
+
+    // Collect positive targets (greater than 0)
+    final positives = <double>[];
+    if (insideTarget != null && insideTarget > 0) positives.add(insideTarget);
+    if (chamberTarget != null && chamberTarget > 0)
+      positives.add(chamberTarget);
+    if (ptcTarget != null && ptcTarget > 0) positives.add(ptcTarget);
+
+    // If we have any positive targets, effectiveTarget is their max.
+    // If not, but at least one raw target was explicitly provided and equals
+    // 0, then we treat heater(s) as disabled (explicit zero).
+    double? effectiveTargetFromAnalytics;
+    if (positives.isNotEmpty) {
+      effectiveTargetFromAnalytics = positives.reduce(max);
+    } else {
+      // check if any of the raw targets was explicitly provided as 0
+      final anyExplicitZero = (insideTarget != null && insideTarget == 0) ||
+          (chamberTarget != null && chamberTarget == 0) ||
+          (ptcTarget != null && ptcTarget == 0);
+      if (anyExplicitZero) {
+        // mark explicitly disabled by setting to 0.0 (handled later)
+        effectiveTargetFromAnalytics = 0.0;
+      } else {
+        effectiveTargetFromAnalytics = null;
+      }
+    }
 
     // Parse to double if available (preserve decimals) and fallback to statusProvider
     final double? temperature = currentTemp != null
@@ -87,12 +135,9 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
         : (statusProvider.resinTemperature
             ?.toDouble()); // Fallback to status provider
 
-    // targetTemperature: keep null when not provided (represents no target)
-    final double? targetTemperature = targetTemp != null
-        ? (targetTemp is num
-            ? targetTemp.toDouble()
-            : double.tryParse(targetTemp.toString()))
-        : null;
+    // targetTemperature: use effective target computed from analytics if any,
+    // otherwise null. Note: an explicit 0.0 indicates disabled heater(s).
+    final double? targetTemperature = effectiveTargetFromAnalytics;
 
     // Helper to format a temperature value. Always show one decimal place
     // (e.g., 27.0, 03.5) to keep the widget compact and consistent.

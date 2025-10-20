@@ -211,6 +211,12 @@ class NanoDlpSimulatedClient implements BackendClient {
     // TemperatureInsideTarget (id 12)
     entries.add({'T': 12, 'V': 0, 'id': now});
 
+    // TemperatureChamberTarget (id 23)
+    entries.add({'T': 23, 'V': 0, 'id': now});
+
+    // TemperaturePTCTarget (id 24)
+    entries.add({'T': 25, 'V': 0, 'id': now});
+
     // Keep the list small but deterministic for tests.
     return entries;
   }
