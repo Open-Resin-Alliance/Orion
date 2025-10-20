@@ -92,6 +92,16 @@ class WiFiProvider with ChangeNotifier {
 
   Future<void> _fetchWiFiStatus() async {
     if (_disposed) return;
+    // Snapshot previous state so we only notify listeners when meaningful
+    // values change. This reduces noisy notifications that cause UI flicker.
+    final prevCurrentSSID = _currentSSID;
+    final prevSignalStrength = _signalStrength;
+    final prevIsConnected = _isConnected;
+    final prevConnectionType = _connectionType;
+    final prevIpAddress = _ipAddress;
+    final prevIfaceName = _ifaceName;
+    final prevMacAddress = _macAddress;
+    final prevLinkSpeed = _linkSpeed;
 
     try {
       if (_platform == 'linux') {
@@ -107,7 +117,17 @@ class WiFiProvider with ChangeNotifier {
         _connectionType = 'none';
       }
 
-      if (!_disposed) notifyListeners();
+      // Determine if any of the observed fields changed
+      final changed = (prevCurrentSSID != _currentSSID) ||
+          (prevSignalStrength != _signalStrength) ||
+          (prevIsConnected != _isConnected) ||
+          (prevConnectionType != _connectionType) ||
+          (prevIpAddress != _ipAddress) ||
+          (prevIfaceName != _ifaceName) ||
+          (prevMacAddress != _macAddress) ||
+          (prevLinkSpeed != _linkSpeed);
+
+      if (changed && !_disposed) notifyListeners();
     } catch (e, st) {
       _log.fine('Failed to fetch WiFi status', e, st);
       _isConnected = false;
@@ -115,7 +135,17 @@ class WiFiProvider with ChangeNotifier {
       _signalStrength = null;
       _ipAddress = null;
       _connectionType = 'none';
-      if (!_disposed) notifyListeners();
+
+      final changed = (prevCurrentSSID != _currentSSID) ||
+          (prevSignalStrength != _signalStrength) ||
+          (prevIsConnected != _isConnected) ||
+          (prevConnectionType != _connectionType) ||
+          (prevIpAddress != _ipAddress) ||
+          (prevIfaceName != _ifaceName) ||
+          (prevMacAddress != _macAddress) ||
+          (prevLinkSpeed != _linkSpeed);
+
+      if (changed && !_disposed) notifyListeners();
     }
   }
 
