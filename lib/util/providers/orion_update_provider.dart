@@ -263,12 +263,61 @@ class OrionUpdateProvider extends ChangeNotifier {
         return;
       }
 
-      final scriptContent = '''
-#!/bin/bash
+      // Normalize the target install directory to ensure we operate on an
+      // `orion` subfolder rather than a user's home directory.
+      String installDir;
+      if (orionFolder.endsWith('/orion') || orionFolder.endsWith('/orion/')) {
+        installDir = orionFolder.endsWith('/') ? orionFolder : '$orionFolder/';
+      } else {
+        installDir = '${orionFolder}orion/';
+      }
+      // Ensure trailing slash
+      if (!installDir.endsWith('/')) installDir = '$installDir/';
+
+      // Safety checks: never operate directly on the user's home, root, or
+      // other obvious dangerous targets.
+      final dangerous = [
+        '/',
+        '/home',
+        '/home/',
+        '/home/$localUser',
+        '/home/$localUser/',
+        '/root',
+        '/root/'
+      ];
+      if (dangerous.contains(installDir) || installDir.trim().isEmpty) {
+        _logger.severe(
+            'Refusing to run update: computed installDir looks unsafe: $installDir');
+        _dismissUpdateDialog(context);
+        return;
+      }
+
+      // Verify the install directory actually exists and looks like an Orion
+      // install (contains orion.cfg or a directory structure). If it doesn't,
+      // abort to avoid operating at a higher level.
+      try {
+        final checkDir = Directory(installDir);
+        final hasCfg = File('${installDir}orion.cfg').existsSync();
+        final hasDir = checkDir.existsSync();
+        if (!hasCfg && !hasDir) {
+          _logger.severe(
+              'Refusing to run update: installDir does not look like an Orion install: $installDir');
+          _dismissUpdateDialog(context);
+          return;
+        }
+      } catch (e) {
+        _logger.severe('Error while verifying installDir: $e');
+        _dismissUpdateDialog(context);
+        return;
+      }
+
+      // Use the safe installDir in the script so we never rm -R the user's
+      // home directory by accident.
+      final scriptContent = '''#!/bin/bash
 
 # Variables
 local_user=$localUser
-orion_folder=$orionFolder
+orion_folder=$installDir
 new_orion_folder=$newOrionFolder
 upgrade_folder=$upgradeFolder
 backup_folder=$backupFolder
@@ -278,26 +327,46 @@ if [ -d \$backup_folder ]; then
   sudo rm -R \$backup_folder
 fi
 
-# Backup the current Orion directory
-sudo cp -R \$orion_folder \$backup_folder
+# Backup the current Orion directory (safe-targeted)
+if [ -d "\$orion_folder" ]; then
+  sudo cp -R "\$orion_folder" "\$backup_folder"
+else
+  # Fallback: try to copy orion subdir
+  if [ -d "${installDir}orion" ]; then
+    sudo cp -R "${installDir}orion" "\$backup_folder"
+    orion_folder="${installDir}orion"
+  fi
+fi
 
-# Remove the old Orion directory
-sudo rm -R \$orion_folder
+# Remove the old Orion directory (targeted)
+if [ -d "\$orion_folder" ]; then
+  sudo rm -R "\$orion_folder"
+fi
 
-# Restore config file
-sudo cp \$backup_folder/orion.cfg \$new_orion_folder
+# Restore config file if present
+if [ -f "\$backup_folder/orion.cfg" ] && [ -d "\$new_orion_folder" ]; then
+  sudo cp "\$backup_folder/orion.cfg" "\$new_orion_folder"
+fi
 
 # Move the new Orion directory to the original location
-sudo mv \$new_orion_folder \$orion_folder
+if [ -d "\$new_orion_folder" ]; then
+  sudo mv "\$new_orion_folder" "\$orion_folder"
+fi
 
 # Delete the upgrade and new folder
-sudo rm -R \$upgrade_folder
+if [ -d "\$upgrade_folder" ]; then
+  sudo rm -R "\$upgrade_folder"
+fi
 
 # Fix permissions
-sudo chown -R \$local_user:\$local_user \$orion_folder
+if [ -d "\$orion_folder" ]; then
+  sudo chown -R "\$local_user":"\$local_user" "\$orion_folder"
+fi
 
-# Restart the Orion service
-sudo systemctl restart orion.service
+# Restart the Orion service if available
+if command -v systemctl >/dev/null 2>&1; then
+  sudo systemctl restart orion.service || true
+fi
 ''';
 
       final scriptFile = File(scriptPath);
