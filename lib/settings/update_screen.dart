@@ -71,10 +71,15 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
     _betaUpdatesOverride =
         _config.getFlag('releaseOverride', category: 'developer');
     _release = _config.getString('overrideRelease', category: 'developer');
-    _repo = _config.getString('overrideRepo', category: 'developer');
+    final repoOverride =
+        _config.getString('overrideRepo', category: 'developer');
+    _repo = repoOverride.trim().isNotEmpty
+        ? repoOverride.trim()
+        : 'Open-Resin-Alliance';
     _logger.info('Firmware spoofing enabled: $_isFirmwareSpoofingEnabled');
     _logger.info('Beta updates override enabled: $_betaUpdatesOverride');
     _logger.info('Release channel override: $_release');
+    _logger.info('Repo: $_repo');
   }
 
   Future<void> _initUpdateCheck() async {
@@ -96,6 +101,11 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   Future<void> _checkForUpdates(String release) async {
     if (_isFirmwareSpoofingEnabled) {
       // Force update: always allow install, skip version check
+      // Respect branch override: fetch releases for the selected branch
+      if (release.isNotEmpty && release != 'BRANCH_dev') {
+        await _checkForBERUpdates(release);
+        return;
+      }
       final String url =
           'https://api.github.com/repos/$_repo/orion/releases/latest';
       try {
@@ -202,10 +212,12 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   }
 
   bool isCurrentCommitUpToDate(String commitSha) {
-    _logger.info('Current commit SHA: ${_currentVersion.split('+')[1]}');
+    final parts = _currentVersion.split('+');
+    final currentCommit = parts.length > 1 ? parts[1] : '';
+    _logger.info('Current commit SHA: $currentCommit');
     _logger.info('Latest commit SHA: $commitSha');
     if (_isFirmwareSpoofingEnabled) return false;
-    return commitSha == _currentVersion.split('+')[1];
+    return commitSha == currentCommit;
   }
 
   Future<void> _checkForBERUpdates(String release) async {
@@ -519,17 +531,22 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                     ),
                     const Divider(),
                     Text(
-                        _betaUpdatesOverride
-                            ? _preRelease
-                                ? 'Latest Commit: $_latestVersion'
-                                : 'Rollback to: ${_latestVersion.split('(')[1].split(')')[0]}'
-                            : 'Latest Version: ${_latestVersion.split('+')[0]}',
-                        style: const TextStyle(fontSize: 22)),
+                      _betaUpdatesOverride
+                          ? 'Latest Commit: $_latestVersion'
+                          : (_latestVersion.contains('+')
+                              ? 'Latest Version: ${_latestVersion.split('+')[0]}'
+                              : 'Latest Version: $_latestVersion'),
+                      style: const TextStyle(fontSize: 22),
+                    ),
                     const SizedBox(height: 10),
                     Text(
                       _betaUpdatesOverride
-                          ? 'Commit Date: ${_commitDate.split('T')[0]}' // Display commit date if beta updates are enabled
-                          : 'Release Date: ${_releaseDate.split('T')[0]}',
+                          ? (_commitDate.contains('T')
+                              ? 'Commit Date: ${_commitDate.split('T')[0]}'
+                              : 'Commit Date: $_commitDate')
+                          : (_releaseDate.contains('T')
+                              ? 'Release Date: ${_releaseDate.split('T')[0]}'
+                              : 'Release Date: $_releaseDate'),
                       style: const TextStyle(fontSize: 20, color: Colors.grey),
                     ),
                     const SizedBox(height: 10),
