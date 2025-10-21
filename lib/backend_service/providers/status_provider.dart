@@ -135,6 +135,19 @@ class StatusProvider extends ChangeNotifier {
   // int _sseConsecutiveErrors = 0; // reserved for future use
   bool _fetchInFlight = false;
   bool _disposed = false;
+  // True while the provider is attempting the first initial connection.
+  // This is used by the UI to show a startup/splash screen until the
+  // first status refresh completes (success or failure).
+  bool _initialAttemptInProgress = true;
+
+  bool get initialAttemptInProgress => _initialAttemptInProgress;
+
+  // True once we've received at least one successful status response. Used
+  // by the startup gate and connection error handling logic to differentiate
+  // between initial startup and post-startup connection loss.
+  bool _everHadSuccessfulStatus = false;
+
+  bool get hasEverConnected => _everHadSuccessfulStatus;
 
   // SSE (Server-Sent Events) client state. When streaming is active we
   // rely on incoming events instead of the periodic polling loop.
@@ -595,6 +608,7 @@ class StatusProvider extends ChangeNotifier {
       _status = parsed;
       _error = null;
       _loading = false;
+      _everHadSuccessfulStatus = true;
 
       // Successful refresh -> shorten polling interval
       _pollIntervalSeconds = _minPollIntervalSeconds;
@@ -667,8 +681,12 @@ class StatusProvider extends ChangeNotifier {
       _loading = false;
       // On failure, increase consecutive error count and back off polling
       _consecutiveErrors = min(_consecutiveErrors + 1, _maxReconnectAttempts);
+      // Keep backoff short until we've ever seen a successful status so the
+      // startup experience remains responsive. After the first success we
+      // revert to the normal ramp-to-60s behavior for subsequent failures.
+      final maxBackoff = _everHadSuccessfulStatus ? _maxPollIntervalSeconds : 5;
       final backoff = _computeBackoff(_consecutiveErrors,
-          base: _minPollIntervalSeconds, max: _maxPollIntervalSeconds);
+          base: _minPollIntervalSeconds, max: maxBackoff);
       _pollIntervalSeconds = backoff;
       _nextPollRetryAt = DateTime.now().add(Duration(seconds: backoff));
       // Clear timestamp when timer expires
@@ -684,6 +702,12 @@ class StatusProvider extends ChangeNotifier {
           'Status refresh failed after $elapsedStr; backing off polling for ${_pollIntervalSeconds}s (attempt $_consecutiveErrors)');
     } finally {
       _fetchInFlight = false;
+      // The initial attempt is finished once we've done at least one fetch
+      // (success or failure). Clear the flag so UI can dismiss any startup
+      // overlay.
+      if (_initialAttemptInProgress) {
+        _initialAttemptInProgress = false;
+      }
       if (!_disposed) {
         // Only notify listeners if one of the meaningful observable fields
         // actually changed. This avoids spamming watchers with identical

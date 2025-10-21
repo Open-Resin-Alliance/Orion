@@ -58,6 +58,10 @@ class ConnectionErrorWatcher {
     final log = Logger('ConnErrorWatcher');
     try {
       final hasError = _provider.error != null;
+      final everHadSuccess = _provider.hasEverConnected;
+      // If the provider is still performing its initial attempt, don't
+      // surface the connection error dialog yet; the startup gate will
+      // show a blocking startup UI while initialAttemptInProgress is true.
       // Only log transitions or when there's something noteworthy to report
       final providerError = _provider.error;
       final shouldLog = (providerError != _lastProviderError) ||
@@ -70,6 +74,21 @@ class ConnectionErrorWatcher {
         _lastProviderError = providerError;
         _lastDialogVisible = _dialogVisible;
       }
+      // Suppress the dialog while initial startup is still in progress or we
+      // have never seen a successful status. StartupGate presents the blocking
+      // overlay in that phase, so surfacing an additional dialog would be
+      // redundant. After we have connected successfully at least once, allow
+      // the dialog to appear for any subsequent connection interruptions.
+      if (_provider.initialAttemptInProgress || !everHadSuccess) {
+        if (_dialogVisible) {
+          try {
+            Navigator.of(_context, rootNavigator: true).maybePop();
+          } catch (_) {}
+          _dialogVisible = false;
+        }
+        return;
+      }
+
       if (hasError && !_dialogVisible) {
         _dialogVisible = true;
         // Show the dialog; this Future completes when the dialog is dismissed
