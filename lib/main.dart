@@ -33,7 +33,7 @@ import 'package:orion/files/files_screen.dart';
 import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/home/home_screen.dart';
-import 'package:orion/home/onboarding_screen.dart';
+import 'package:orion/home/startup_gate.dart';
 import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/settings_screen.dart';
@@ -220,9 +220,10 @@ class OrionMainAppState extends State<OrionMainApp> {
         GoRoute(
           path: '/',
           builder: (BuildContext context, GoRouterState state) {
-            return initialSetupTrigger()
-                ? const OnboardingScreen()
-                : const HomeScreen();
+            // Let the StartupGate decide whether to show the startup overlay
+            // while the initial backend connection attempt completes. It will
+            // render the onboarding screen or the HomeScreen once connected.
+            return const StartupGate();
           },
           routes: <RouteBase>[
             GoRoute(
@@ -310,6 +311,7 @@ class OrionMainAppState extends State<OrionMainApp> {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               try {
                 final navCtx = _navKey.currentContext;
+                // Startup gating is handled by the root route's StartupGate.
                 if (_connWatcher == null && navCtx != null) {
                   _connWatcher =
                       ConnectionErrorWatcher.install(navCtx, onReconnect: () {
@@ -333,8 +335,8 @@ class OrionMainAppState extends State<OrionMainApp> {
                         final active =
                             (s?.isPrinting == true) || (s?.isPaused == true);
                         if (active && !_wasPrinting) {
-                          // Only navigate if not already on /status
-                          // Navigate to status on transition to active print.
+                          // Only navigate if not already on /status. Navigate
+                          // to status on transition to active print.
                           try {
                             final navState = _navKey.currentState;
                             final sModel = statusProv.status;
