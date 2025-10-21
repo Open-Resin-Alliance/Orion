@@ -26,8 +26,12 @@ jobs:
         with:
           channel: "stable" # or: 'beta', 'dev', 'master' (or 'main')
           flutter-version: ${{ steps.flutterpi_engine.outputs.latest }}
+          cache: true
 
-      - run: sudo apt-get update && sudo apt-get install -y gtk+-3.0
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: gtk+-3.0
+
       - run: flutter pub global activate flutterpi_tool
 
       # Add these steps to verify and fix localization files
