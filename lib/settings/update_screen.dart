@@ -94,6 +94,46 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   }
 
   Future<void> _checkForUpdates(String release) async {
+    if (_isFirmwareSpoofingEnabled) {
+      // Force update: always allow install, skip version check
+      final String url =
+          'https://api.github.com/repos/$_repo/orion/releases/latest';
+      try {
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          final jsonResponse = json.decode(response.body);
+          final String latestVersion =
+              jsonResponse['tag_name'].replaceAll('v', '');
+          final String releaseNotes = jsonResponse['body'];
+          final String releaseDate = jsonResponse['published_at'];
+          // Find the asset URL for orion_armv7.tar.gz
+          final asset = jsonResponse['assets'].firstWhere(
+              (asset) => asset['name'] == 'orion_armv7.tar.gz',
+              orElse: () => null);
+          final String assetUrl =
+              asset != null ? asset['browser_download_url'] : '';
+          safeSetState(() {
+            _latestVersion = latestVersion;
+            _releaseNotes = releaseNotes;
+            _releaseDate = releaseDate;
+            _isLoading = false;
+            _isUpdateAvailable = true;
+            _assetUrl = assetUrl;
+          });
+        } else {
+          safeSetState(() {
+            _logger.warning('Failed to fetch updates');
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        _logger.warning(e.toString());
+        safeSetState(() {
+          _isLoading = false;
+        });
+      }
+      return;
+    }
     if (_betaUpdatesOverride) {
       await _checkForBERUpdates(release);
     } else {
@@ -200,7 +240,10 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
               final String commitDate = commitJson['commit']['committer']
                   ['date']; // Fetch commit date
 
-              if (isCurrentCommitUpToDate(shortCommitSha)) {
+              if (_isFirmwareSpoofingEnabled) {
+                // Force update: always allow install, skip version check
+                _logger.info('Force update enabled, skipping version check.');
+              } else if (isCurrentCommitUpToDate(shortCommitSha)) {
                 _logger.info(
                     'Current version is up-to-date with the latest pre-release.');
                 safeSetState(() {
