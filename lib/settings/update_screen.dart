@@ -18,7 +18,6 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:auto_size_text/auto_size_text.dart';
@@ -26,6 +25,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/util/providers/orion_update_provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/pubspec.dart';
@@ -55,9 +56,11 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   String _currentVersion = '';
   String _release = 'BRANCH_dev';
   String _assetUrl = '';
+  String _repo = 'Open-Resin-Alliance';
 
   final Logger _logger = Logger('UpdateScreen');
   final OrionConfig _config = OrionConfig();
+  // Update dialog state is handled by OrionUpdateProvider
 
   @override
   void initState() {
@@ -68,6 +71,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
     _betaUpdatesOverride =
         _config.getFlag('releaseOverride', category: 'developer');
     _release = _config.getString('overrideRelease', category: 'developer');
+    _repo = _config.getString('overrideRepo', category: 'developer');
     _logger.info('Firmware spoofing enabled: $_isFirmwareSpoofingEnabled');
     _logger.info('Beta updates override enabled: $_betaUpdatesOverride');
     _logger.info('Release channel override: $_release');
@@ -93,8 +97,8 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
     if (_betaUpdatesOverride) {
       await _checkForBERUpdates(release);
     } else {
-      const String url =
-          'https://api.github.com/repos/thecontrappostoshop/orion/releases/latest';
+      final String url =
+          'https://api.github.com/repos/$_repo/orion/releases/latest';
       int retryCount = 0;
       const int maxRetries = 3;
       const int initialDelay = 750;
@@ -169,8 +173,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
       _logger.warning('release name is empty');
       release = 'BRANCH_dev';
     }
-    String url =
-        'https://api.github.com/repos/thecontrappostoshop/orion/releases';
+    String url = 'https://api.github.com/repos/$_repo/orion/releases';
     int retryCount = 0;
     const int maxRetries = 3;
     const int initialDelay = 750; // Initial delay in milliseconds
@@ -187,7 +190,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
             final String latestVersion = releaseItem['tag_name'];
             final String commitSha = releaseItem['target_commitish'];
             final commitUrl =
-                'https://api.github.com/repos/thecontrappostoshop/orion/commits/$commitSha';
+                'https://api.github.com/repos/$_repo/orion/commits/$commitSha';
             final commitResponse = await http.get(Uri.parse(commitUrl));
             if (commitResponse.statusCode == 200) {
               final commitJson = json.decode(commitResponse.body);
@@ -325,6 +328,68 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
     );
   }
 
+  Future<void> launchUpdateDialog() async {
+    bool shouldUpdate = await showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return GlassAlertDialog(
+          title: Row(
+            children: [
+              PhosphorIcon(
+                PhosphorIcons.download(),
+                color: Theme.of(context).colorScheme.primary,
+                size: 32,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Update Orion',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+              'Do you want to update the Orion HMI?\nThis will download the latest version from GitHub.'),
+          actions: [
+            GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
+              child: const Text(
+                'Dismiss',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+            GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
+              child: const Text(
+                'Update Now',
+                style: TextStyle(fontSize: 20),
+              ),
+            )
+          ],
+        );
+      },
+    );
+
+    if (shouldUpdate) {
+      final provider = Provider.of<OrionUpdateProvider>(context, listen: false);
+      await provider.performUpdate(context, _assetUrl);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -430,6 +495,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                       children: [
                         Expanded(
                           child: GlassButton(
+                            tint: GlassButtonTint.neutral,
                             onPressed: _viewChangelog,
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size.fromHeight(65),
@@ -465,8 +531,9 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                             width: 12), // Add some space between the buttons
                         Expanded(
                           child: GlassButton(
+                            tint: GlassButtonTint.positive,
                             onPressed: () async {
-                              _performUpdate(context);
+                              launchUpdateDialog();
                             },
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size.fromHeight(65),
@@ -524,7 +591,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
               ),
             ),
           ),
-          // TODO: Placeholder for Odyssey updater - pending API changes
+          // TODO: Placeholder for Backend / OS updater - pending API changes
           GlassCard(
             outlined: true,
             child: Padding(
@@ -539,7 +606,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                           size: 30),
                       const SizedBox(width: 10),
                       const Text(
-                        'Odyssey Updater',
+                        'Backend Updater',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -558,196 +625,6 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
       ),
     );
   }
-
-  Future<void> _performUpdate(BuildContext context) async {
-    final String localUser = Platform.environment['USER'] ?? 'pi';
-    final String upgradeFolder = '/home/$localUser/orion_upgrade/';
-    final String downloadPath = '$upgradeFolder/orion_armv7.tar.gz';
-    final String orionFolder = '/home/$localUser/orion/';
-    final String newOrionFolder = '/home/$localUser/orion_new/';
-    final String backupFolder = '/home/$localUser/orion_backup/';
-    final String scriptPath = '$upgradeFolder/update_orion.sh';
-
-    if (_assetUrl.isEmpty) {
-      _logger.warning('Asset URL is empty');
-      return;
-    }
-
-    _logger.info('Downloading from $_assetUrl');
-
-    // Show the update dialog
-    _showUpdateDialog(context, 'Starting update...');
-
-    try {
-      // Purge and recreate the upgrade folder
-      final upgradeDir = Directory(upgradeFolder);
-      if (await upgradeDir.exists()) {
-        try {
-          await upgradeDir.delete(recursive: true);
-        } catch (e) {
-          _logger.warning('Could not purge upgrade directory');
-        }
-      }
-      await upgradeDir.create(recursive: true);
-
-      final newDir = Directory(newOrionFolder);
-      if (await newDir.exists()) {
-        try {
-          await newDir.delete(recursive: true);
-        } catch (e) {
-          _logger.warning('Could not purge new Orion directory');
-        }
-      }
-      await newDir.create(recursive: true);
-
-      // Update dialog text
-      _updateDialogText(context, 'Downloading update file...');
-
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Download the update file
-      final response = await http.get(Uri.parse(_assetUrl));
-      if (response.statusCode == 200) {
-        final file = File(downloadPath);
-        await file.writeAsBytes(response.bodyBytes);
-
-        // Update dialog text
-        _updateDialogText(context, 'Extracting update file...');
-
-        await Future.delayed(const Duration(seconds: 1));
-
-        // Extract the update to the new directory
-        final extractResult = await Process.run('sudo',
-            ['tar', '--overwrite', '-xzf', downloadPath, '-C', newOrionFolder]);
-        if (extractResult.exitCode != 0) {
-          _logger.warning(
-              'Failed to extract update file: ${extractResult.stderr}');
-          _dismissUpdateDialog(context);
-          return;
-        }
-
-        // Create the update script
-        final scriptContent = '''
-#!/bin/bash
-
-# Variables
-local_user=$localUser
-orion_folder=$orionFolder
-new_orion_folder=$newOrionFolder
-upgrade_folder=$upgradeFolder
-backup_folder=$backupFolder
-
-# If previous backup exists, delete it
-if [ -d \$backup_folder ]; then
-  sudo rm -R \$backup_folder
-fi
-
-# Backup the current Orion directory
-sudo cp -R \$orion_folder \$backup_folder
-
-# Remove the old Orion directory
-sudo rm -R \$orion_folder
-
-# Restore config file
-sudo cp \$backup_folder/orion.cfg \$new_orion_folder
-
-# Move the new Orion directory to the original location
-sudo mv \$new_orion_folder \$orion_folder
-
-# Delete the upgrade and new folder
-sudo rm -R \$upgrade_folder
-
-# Fix permissions
-sudo chown -R \$local_user:\$local_user \$orion_folder
-
-# Restart the Orion service
-sudo systemctl restart orion.service
-''';
-
-        final scriptFile = File(scriptPath);
-        await scriptFile.writeAsString(scriptContent);
-        await Process.run('chmod', ['+x', scriptPath]);
-
-        // Update dialog text
-        _updateDialogText(context, 'Executing update script...');
-
-        await Future.delayed(const Duration(seconds: 2));
-
-        // Execute the update script
-        final result = await Process.run('nohup', ['sudo', scriptPath]);
-        if (result.exitCode == 0) {
-          _logger.info('Update script executed successfully');
-        } else {
-          _logger.warning('Failed to execute update script: ${result.stderr}');
-        }
-      } else {
-        _logger.warning('Failed to download update file');
-      }
-    } catch (e) {
-      _logger.warning('Update failed: $e');
-    } finally {
-      // Dismiss the update dialog
-      _dismissUpdateDialog(context);
-    }
-  }
-
-  Future<void> _showUpdateDialog(BuildContext context, String message) {
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: EdgeInsets.zero,
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height,
-              color: Theme.of(context).colorScheme.surface,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const SizedBox(
-                    height: 75,
-                    width: 75,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 6,
-                    ),
-                  ),
-                  const SizedBox(height: 60),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 32),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _updateDialogText(BuildContext context, String message) {
-    if (Navigator.of(context).canPop()) {
-      // Show the new dialog first
-      _showUpdateDialog(context, message).then((_) {
-        // Pop the old dialog after the new one has been rendered
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
-      });
-    } else {
-      // If there's no dialog to pop, just show the new one
-      _showUpdateDialog(context, message);
-    }
-  }
-
-  void _dismissUpdateDialog(BuildContext context) {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
-  }
 }
+  // Update flow is handled by OrionUpdateProvider via
+  // `Provider.of<OrionUpdateProvider>(context, listen: false).performUpdate(...)`.
