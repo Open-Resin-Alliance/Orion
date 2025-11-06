@@ -47,6 +47,12 @@ class GlassCard extends StatelessWidget {
   final ShapeBorder? shape;
   final bool outlined;
 
+  /// Optional accent color applied as a border and subtle overlay tint when non-null.
+  final Color? accentColor;
+
+  /// Opacity of the accent overlay (0.0 - 1.0). Defaults to a subtle tint.
+  final double accentOpacity;
+
   const GlassCard({
     super.key,
     required this.child,
@@ -55,6 +61,8 @@ class GlassCard extends StatelessWidget {
     this.elevation,
     this.shape,
     this.outlined = false,
+    this.accentColor,
+    this.accentOpacity = 0.06,
   });
 
   @override
@@ -62,7 +70,9 @@ class GlassCard extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     if (!themeProvider.isGlassTheme) {
-      return outlined
+      // For non-glass theme, if an accent color is provided, render a bordered
+      // wrapper so the accent is visible regardless of the theme.
+      final card = outlined
           ? Card.outlined(
               margin: margin,
               color: color,
@@ -77,6 +87,26 @@ class GlassCard extends StatelessWidget {
               shape: shape,
               child: child,
             );
+
+      if (accentColor != null) {
+        final borderRadius = (shape is RoundedRectangleBorder &&
+                (shape as RoundedRectangleBorder).borderRadius is BorderRadius)
+            ? (shape as RoundedRectangleBorder).borderRadius as BorderRadius
+            : BorderRadius.circular(glassCornerRadius);
+
+        // Use a softer border width consistent with GlassButton's material
+        // styling so material and glass variants match visually.
+        return Container(
+          margin: margin ?? const EdgeInsets.all(4.0),
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            border: Border.all(color: accentColor!, width: 1.4),
+          ),
+          child: card,
+        );
+      }
+
+      return card;
     }
 
     // Extract borderRadius from shape if possible
@@ -88,6 +118,17 @@ class GlassCard extends StatelessWidget {
       }
     }
 
+    final hasAccent = accentColor != null;
+    final tintColor = accentColor;
+
+    // Provide a blended white base when tinted so the glass stays frosted
+    // but carries the accent color subtly (matching GlassButton behavior).
+    Color? blendedFillColor;
+    if (hasAccent) {
+      blendedFillColor =
+          Color.alphaBlend(tintColor!.withOpacity(0.75), Colors.white);
+    }
+
     return Container(
       margin: margin ?? const EdgeInsets.all(4.0), // Default Card margin
       decoration: BoxDecoration(
@@ -97,6 +138,10 @@ class GlassCard extends StatelessWidget {
           yOffset: outlined ? 3 : 4,
           alpha: outlined ? 0.14 : 0.12,
         ),
+        // In the glass theme, prefer drawing the border via GlassEffect so
+        // we avoid a doubled border (outer Container + inner GlassEffect).
+        // The material/non-glass branch still draws an outer border.
+        border: null,
       ),
       child: GlassEffect(
         borderRadius: borderRadius,
@@ -106,12 +151,36 @@ class GlassCard extends StatelessWidget {
         ),
         sigma: glassBlurSigma,
         borderWidth: outlined ? 1.4 : 1.0,
+        // When tinted, prefer a stronger border alpha and use the raw tint
+        // alpha so the color matches the material button variant.
+        borderColor: hasAccent ? tintColor : null,
+        // When not accented, fall back to the standard subtle border alpha
+        // so untinted cards still have a visible edge in the glass theme.
+        borderAlpha: hasAccent ? 0.45 : 0.2,
+        useRawBorderAlpha: hasAccent,
+        // Provide a subtle tinted white base when a tint is present.
+        color: blendedFillColor,
         floatingSurface: false,
         child: Material(
           type: MaterialType.transparency,
           shape: RoundedRectangleBorder(borderRadius: borderRadius),
           clipBehavior: Clip.antiAlias,
-          child: child,
+          child: Stack(
+            children: [
+              child,
+              if (hasAccent)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: tintColor!.withOpacity(accentOpacity),
+                        borderRadius: borderRadius,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
