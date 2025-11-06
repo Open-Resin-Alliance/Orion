@@ -30,6 +30,22 @@ class ManualProvider extends ChangeNotifier {
   bool _busy = false;
   bool get busy => _busy;
 
+  // Cached heater enabled state. These are nullable until loaded from the
+  // backend via [refreshHeaterEnabled]. When non-null they reflect whether the
+  // heater is currently enabled (true) or disabled (false).
+  bool? _vatEnabled;
+  bool? get vatEnabled => _vatEnabled;
+  double? _vatTemp;
+  double? get vatTemp => _vatTemp;
+
+  bool? _chamberEnabled;
+  bool? get chamberEnabled => _chamberEnabled;
+  double? _chamberTemp;
+  double? get chamberTemp => _chamberTemp;
+
+  bool _heaterStateLoaded = false;
+  bool get heaterStateLoaded => _heaterStateLoaded;
+
   Object? _error;
   Object? get error => _error;
 
@@ -252,5 +268,113 @@ class ManualProvider extends ChangeNotifier {
       notifyListeners();
       return true; // Return true even on error to avoid blocking UI
     }
+  }
+
+  Future<bool> setVatTemperature(double temperature) async {
+    _log.info('setVatTemperature: $temperature');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.setVatTemperature(temperature);
+      // only update cached state after a successful call
+      _vatEnabled = temperature > 0.0;
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('setVatTemperature failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return true; // We do not receive confirmation from backend
+    }
+  }
+
+  Future<bool> setChamberTemperature(double temperature) async {
+    _log.info('setChamberTemperature: $temperature');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.setChamberTemperature(temperature);
+      // only update cached state after a successful call
+      _chamberEnabled = temperature > 0.0;
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('setChamberTemperature failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return true; // We do not receive confirmation from backend
+    }
+  }
+
+  /// Refresh the cached heater enabled/disabled state from the backend.
+  ///
+  /// Returns true on success, false if the backend call failed. After this
+  /// returns the public getters [vatEnabled], [chamberEnabled] and
+  /// [heaterStateLoaded] will be updated and listeners notified.
+  Future<bool> refreshHeaterEnabled({bool quiet = false}) async {
+    if (!quiet) _log.info('refreshHeaterEnabled');
+    bool anySuccess = false;
+    // Call each backend check independently so one failing client doesn't
+    // prevent the other from being used. Treat missing/unimplemented
+    // methods as simply unavailable rather than fatal.
+    try {
+      final vat = await _client.isVatTemperatureControlEnabled();
+      final vatTemp = await _client.getVatTemperature();
+      _vatEnabled = vat;
+      _vatTemp = vatTemp;
+      anySuccess = true;
+    } catch (e, st) {
+      _log.fine('isVatTemperatureControlEnabled failed', e, st);
+      _vatEnabled = null;
+      _vatTemp = 0;
+    }
+
+    try {
+      final chamber = await _client.isChamberTemperatureControlEnabled();
+      final chamberTemp = await _client.getChamberTemperature();
+      _chamberEnabled = chamber;
+      _chamberTemp = chamberTemp;
+      anySuccess = true;
+    } catch (e, st) {
+      _log.fine('isChamberTemperatureControlEnabled failed', e, st);
+      _chamberEnabled = null;
+      _chamberTemp = 0;
+    }
+
+    _heaterStateLoaded = true;
+    notifyListeners();
+
+    if (!anySuccess) {
+      // If neither check succeeded, emit a warning so callers know refresh
+      // didn't retrieve any state. If at least one succeeded, prefer the
+      // partial state and avoid noisy warnings.
+      if (!quiet)
+        _log.warning('refreshHeaterEnabled failed: no backend responses');
+      return false;
+    }
+    return true;
+  }
+
+  /// Convenience helpers to enable/disable the heaters. When enabling without
+  /// specifying a temperature a small non-zero temperature (1.0) is used so the
+  /// backend receives a non-zero value. In practice callers normally enable
+  /// the heater and then set a target temperature via [setVatTemperature] or
+  /// [setChamberTemperature].
+  Future<bool> setVatEnabled(bool enabled, {double? temperature}) async {
+    final temp = enabled ? (temperature ?? 1.0) : 0.0;
+    return await setVatTemperature(temp);
+  }
+
+  Future<bool> setChamberEnabled(bool enabled, {double? temperature}) async {
+    final temp = enabled ? (temperature ?? 1.0) : 0.0;
+    return await setChamberTemperature(temp);
   }
 }
