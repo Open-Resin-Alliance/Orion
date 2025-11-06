@@ -25,6 +25,8 @@ import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_manual.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_machine.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
@@ -541,6 +543,31 @@ class NanoDlpHttpClient implements BackendClient {
   Future<Map<String, dynamic>> listItems(
       String location, int pageSize, int pageIndex, String subdirectory) async {
     try {
+      // Special-case: callers may request 'Resins' which NanoDLP exposes
+      // only via an HTML page. Scrape the /profiles page for profile names
+      // and ids and return them as a files-like list.
+      if (location.toLowerCase() == 'resins') {
+        try {
+          final profiles = await _fetchProfiles();
+          _log.info(
+              'listItems: mapped ${profiles.length} resin profiles from NanoDLP');
+          return {
+            'files': profiles,
+            'dirs': <Map<String, dynamic>>[],
+            'page_index': pageIndex,
+            'page_size': pageSize,
+          };
+        } catch (e, st) {
+          _log.warning('NanoDLP _fetchProfiles failed', e, st);
+          return {
+            'files': <Map<String, dynamic>>[],
+            'dirs': <Map<String, dynamic>>[],
+            'page_index': pageIndex,
+            'page_size': pageSize,
+          };
+        }
+      }
+
       final plates = await _fetchPlates();
       final files = plates.map((p) => p.toOdysseyFileEntry()).toList();
       _log.info('listItems: mapped ${files.length} files from NanoDLP payload');
@@ -558,6 +585,34 @@ class NanoDlpHttpClient implements BackendClient {
         'page_index': pageIndex,
         'page_size': pageSize,
       };
+    }
+  }
+
+  /// Scrape the NanoDLP /profiles HTML page to extract profile names and ids.
+  /// Returns a list of maps compatible with the ResinsProvider expectations.
+  Future<List<Map<String, dynamic>>> _fetchProfiles() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/json/db/profiles.json');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.warning('NanoDLP profiles JSON returned ${resp.statusCode}');
+        return [];
+      }
+
+      dynamic decoded;
+      try {
+        decoded = json.decode(resp.body);
+      } catch (e, st) {
+        _log.warning('Failed to decode profiles JSON', e, st);
+        return [];
+      }
+
+      final parsed = NanoProfile.parseFromJson(decoded);
+      return parsed.map((p) => p.toMap()).toList(growable: false);
+    } finally {
+      client.close();
     }
   }
 
@@ -1295,6 +1350,457 @@ class NanoDlpHttpClient implements BackendClient {
     } catch (e, st) {
       _log.warning('NanoDLP tareForceSensor error', e, st);
       rethrow;
+    }
+  }
+
+  @override
+  Future setChamberTemperature(double temperature) async {
+    try {
+      manualCommand('SET_CHAMBER_HEATER TARGET=$temperature');
+    } catch (e, st) {
+      _log.warning('NanoDLP setChamberTemperature error', e, st);
+      rethrow;
+    }
+  }
+
+  @override
+  Future setVatTemperature(double temperature) async {
+    try {
+      manualCommand('SET_VAT_HEATER TARGET=$temperature');
+    } catch (e, st) {
+      _log.warning('NanoDLP setVatTemperature error', e, st);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> isChamberTemperatureControlEnabled() async {
+    try {
+      final val = await getAnalyticValue(23);
+      if (val is num) return val > 0;
+      final parsed = double.tryParse(val?.toString() ?? '');
+      if (parsed != null) return parsed > 0;
+      return false;
+    } catch (e, st) {
+      _log.warning('NanoDLP isChamberTemperatureControlEnabled error', e, st);
+      // Do not throw; absence of analytics should be treated as "disabled"
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> isVatTemperatureControlEnabled() async {
+    try {
+      final val = await getAnalyticValue(12);
+      if (val is num) return val > 0;
+      final parsed = double.tryParse(val?.toString() ?? '');
+      if (parsed != null) return parsed > 0;
+      return false;
+    } catch (e, st) {
+      _log.warning('NanoDLP isVatTemperatureControlEnabled error', e, st);
+      // Do not throw; treat missing data as disabled
+      return false;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getMachine() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/json/db/machine.json');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.fine('NanoDLP machine.json returned ${resp.statusCode}');
+        return {};
+      }
+      dynamic decoded;
+      try {
+        decoded = json.decode(resp.body);
+      } catch (e, st) {
+        _log.fine('Failed to decode machine.json', e, st);
+        return {};
+      }
+      try {
+        final nm = NanoMachine.fromDecoded(decoded);
+        final out = nm.toJson();
+        // include raw payload for backward compatibility
+        out['raw'] = nm.raw;
+        return out;
+      } catch (e, st) {
+        _log.fine('Failed to parse machine.json into NanoMachine', e, st);
+        if (decoded is Map<String, dynamic>) return decoded;
+        return {};
+      }
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
+  Future<int?> getDefaultProfileId() async {
+    try {
+      final machine = await getMachine();
+      final cand = machine['DefaultProfile'] ??
+          machine['defaultProfileId'] ??
+          machine['defaultProfile'] ??
+          machine['DefaultProfileID'];
+      if (cand == null) return null;
+      return int.tryParse('$cand');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> setDefaultProfileId(int id) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/profile/default/$id');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.warning(
+            'NanoDLP setDefaultProfile returned ${resp.statusCode} ${resp.body}');
+        throw Exception('Failed to set default profile: ${resp.statusCode}');
+      }
+      return;
+    } catch (e, st) {
+      _log.warning('NanoDLP setDefaultProfile error', e, st);
+      rethrow;
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProfileJson(int id) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final candidates = [
+      Uri.parse('$baseNoSlash/profile/json/$id'),
+      Uri.parse('$baseNoSlash/profile/json/$id.json'),
+      Uri.parse('$baseNoSlash/json/db/profile/$id'),
+      Uri.parse('$baseNoSlash/json/db/profile_$id.json'),
+      Uri.parse('$baseNoSlash/json/db/profiles.json'),
+      Uri.parse('$baseNoSlash/json/db/profiles'),
+    ];
+
+    for (final uri in candidates) {
+      final client = _createClient();
+      try {
+        _log.fine('getProfileJson: trying $uri');
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) {
+          _log.fine('getProfileJson: $uri returned ${resp.statusCode}');
+          continue;
+        }
+
+        dynamic decoded;
+        try {
+          decoded = json.decode(resp.body);
+        } catch (e) {
+          _log.fine('getProfileJson: failed to decode JSON from $uri: $e');
+          continue;
+        }
+
+        // If it's a map that looks like a profile, return it.
+        if (decoded is Map<String, dynamic>) {
+          // If this map contains profiles/data list, try extracting the
+          // matching entry.
+          for (final listKey in ['profiles', 'data', 'items']) {
+            final maybeList = decoded[listKey];
+            if (maybeList is List) {
+              for (final e in maybeList) {
+                if (e is Map) {
+                  final cand = e['ProfileID'] ?? e['ProfileId'] ?? e['id'];
+                  if (cand != null && int.tryParse('$cand') == id) {
+                    return Map<String, dynamic>.from(e);
+                  }
+                }
+              }
+            }
+          }
+
+          // Heuristic: if the map itself looks like a profile (has ProfileID)
+          final cand =
+              decoded['ProfileID'] ?? decoded['ProfileId'] ?? decoded['id'];
+          if (cand != null) {
+            _log.fine('getProfileJson: found profile at $uri (id=$id)');
+            return Map<String, dynamic>.from(decoded);
+          }
+
+          // Otherwise continue to next candidate
+          continue;
+        }
+
+        // If it's a list, search for matching entry.
+        if (decoded is List) {
+          for (final e in decoded) {
+            if (e is Map) {
+              final cand = e['ProfileID'] ?? e['ProfileId'] ?? e['id'];
+              if (cand != null && int.tryParse('$cand') == id) {
+                _log.fine(
+                    'getProfileJson: found profile inside list at $uri (id=$id)');
+                return Map<String, dynamic>.from(e);
+              }
+            }
+          }
+        }
+      } catch (e, st) {
+        _log.fine('getProfileJson: request to $uri failed', e, st);
+        // ignore and try next
+      } finally {
+        try {
+          client.close();
+        } catch (_) {}
+      }
+    }
+
+    // As a final fallback, try fetching the profiles JSON via the helper
+    // used by listItems and locate the original raw entry.
+    try {
+      final uri = Uri.parse('$baseNoSlash/json/db/profiles.json');
+      _log.fine('getProfileJson: fallback fetch $uri');
+      final client = _createClient();
+      final resp = await client.get(uri);
+      client.close();
+      if (resp.statusCode == 200) {
+        final decoded = json.decode(resp.body);
+        // decoded may be a map or list; reuse parsing logic from above
+        if (decoded is List) {
+          for (final e in decoded) {
+            if (e is Map) {
+              final cand = e['ProfileID'] ?? e['ProfileId'] ?? e['id'];
+              if (cand != null && int.tryParse('$cand') == id) {
+                _log.fine(
+                    'getProfileJson: found profile in fallback at $uri (id=$id)');
+                return Map<String, dynamic>.from(e);
+              }
+            }
+          }
+        } else if (decoded is Map) {
+          for (final listKey in ['profiles', 'data', 'items']) {
+            final maybeList = decoded[listKey];
+            if (maybeList is List) {
+              for (final e in maybeList) {
+                if (e is Map) {
+                  final cand = e['ProfileID'] ?? e['ProfileId'] ?? e['id'];
+                  if (cand != null && int.tryParse('$cand') == id) {
+                    return Map<String, dynamic>.from(e);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e, st) {
+      _log.fine('getProfileJson: fallback fetch failed', e, st);
+    }
+
+    _log.fine('getProfileJson: no profile JSON found for id=$id');
+    return {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> editProfile(
+      int id, Map<String, dynamic> fields) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/profile/edit/simple/$id');
+    _log.info(
+        'NanoDLP editProfile POST -> $uri fields=${fields.keys.toList()}');
+    final client = _createClient();
+    try {
+      // Build application/x-www-form-urlencoded body.
+      // Convert all field values to strings as expected by NanoDLP.
+      final body = <String, String>{};
+      fields.forEach((k, v) {
+        if (v == null) return;
+        body[k] = '$v';
+      });
+
+      final resp = await client.post(uri, body: body);
+      if (resp.statusCode != 200 && resp.statusCode != 201) {
+        _log.warning('editProfile failed: ${resp.statusCode} ${resp.body}');
+        throw Exception('editProfile failed: ${resp.statusCode}');
+      }
+
+      if (resp.body.trim().isEmpty) return {};
+      try {
+        final decoded = json.decode(resp.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        return {};
+      } catch (_) {
+        return {};
+      }
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
+  Future getChamberTemperature() async {
+    try {
+      final val = await getAnalyticValue(23);
+      return val;
+    } catch (e, st) {
+      _log.warning('NanoDLP getChamberTemperature error', e, st);
+      // Do not throw; treat missing data as disabled
+      return 0;
+    }
+  }
+
+  @override
+  Future getVatTemperature() async {
+    try {
+      final val = await getAnalyticValue(12);
+      return val;
+    } catch (e, st) {
+      _log.warning('NanoDLP getVatTemperature error', e, st);
+      // Do not throw; treat missing data as disabled
+      return 0;
+    }
+  }
+
+  @override
+  Future<void> preheatAndMix(double temperature) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse(
+        '$baseNoSlash/athena-iot/control/preheat_and_mix?temperature=${temperature.toStringAsFixed(1)}');
+    _log.info('NanoDLP preheatAndMix request: $uri');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.warning(
+            'NanoDLP preheatAndMix failed: ${resp.statusCode} ${resp.body}');
+        throw Exception('NanoDLP preheatAndMix failed: ${resp.statusCode}');
+      }
+      return;
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
+  Future<String?> getCalibrationImageUrl(int modelId) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    return '$baseNoSlash/static/shots/calibration-images/$modelId.png';
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCalibrationModels() async {
+    final url = '$apiUrl/static/config/calibrationConfig.json';
+    final client = _createClient();
+    try {
+      final response = await client.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) {
+          return data.cast<Map<String, dynamic>>();
+        }
+      }
+      _log.warning(
+          'Failed to fetch calibration models: ${response.statusCode}');
+      return [];
+    } catch (e) {
+      _log.warning('Error fetching calibration models: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> startCalibrationPrint({
+    required int calibrationModelId,
+    required List<double> exposureTimes,
+    required int profileId,
+  }) async {
+    final url = '$apiUrl/api/v1/athena/calibration/add/$calibrationModelId';
+    final client = _createClient();
+
+    final curetimes = exposureTimes.map((e) => e.toStringAsFixed(1)).join(',');
+
+    try {
+      final response = await client.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'curetimes': curetimes,
+          'ProfileID': profileId.toString(),
+        },
+      );
+
+      if (response.statusCode == 200) {
+        _log.info('Calibration print job submitted successfully');
+        return true;
+      } else {
+        _log.warning(
+            'Failed to submit calibration print: ${response.statusCode}');
+        return false;
+      }
+    } on TimeoutException catch (e) {
+      _log.warning(
+          'Calibration submission timed out: $e - job may still have started');
+      // Return true on timeout since the job might have started
+      // The caller will poll for progress to verify
+      return true;
+    } catch (e) {
+      _log.severe('Error submitting calibration print: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<double?> getSlicerProgress() async {
+    final url = '$apiUrl/slicer';
+    final client = _createClient();
+
+    try {
+      final response = await client.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final percentage = data['percentage'];
+
+        // NanoDLP returns percentage as a string, not a number
+        if (percentage != null) {
+          final percentValue = percentage is num
+              ? percentage.toDouble()
+              : double.tryParse(percentage.toString());
+
+          if (percentValue != null) {
+            _log.fine('Slicer progress: $percentValue%');
+            return percentValue / 100.0; // Convert to 0.0-1.0
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      _log.warning('Error fetching slicer progress: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<bool?> isCalibrationPlateProcessed() async {
+    final url = '$apiUrl/json/db/plates.json';
+    final client = _createClient();
+
+    try {
+      final response = await client.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final plates = json.decode(response.body) as List;
+        final calibrationPlate = plates.firstWhere(
+          (plate) => plate['PlateID'] == 0,
+          orElse: () => null,
+        );
+        if (calibrationPlate != null) {
+          return calibrationPlate['Processed'] == true;
+        }
+      }
+      return null;
+    } catch (e) {
+      _log.warning('Error checking calibration plate status: $e');
+      return null;
     }
   }
 }

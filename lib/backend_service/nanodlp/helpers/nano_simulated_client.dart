@@ -127,7 +127,82 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>> getMachine() async {
+    // Provide a small simulated machine.json-like payload for tests/dev.
+    return {
+      'Name': 'NanoDLP-Sim',
+      'UUID': 'sim-uuid',
+      'DefaultProfile': _defaultProfileId ?? 0,
+      'CustomValues': {'VatHeaterPresent': '0', 'ChamberHeaterPresent': '0'},
+    };
+  }
+
+  int? _defaultProfileId;
+
+  @override
+  Future<int?> getDefaultProfileId() async {
+    return _defaultProfileId;
+  }
+
+  @override
+  Future<void> setDefaultProfileId(int id) async {
+    _defaultProfileId = id;
+    return;
+  }
+
+  @override
   Future<String> getBackendVersion() async => 'NanoDLP-sim-1.0';
+
+  @override
+  Future<Map<String, dynamic>> getProfileJson(int id) async {
+    // Return a simple simulated profile payload. Include a few keys that the
+    // EditResinScreen expects (both top-level and CustomValues) so the UI
+    // can read sane defaults during development.
+    return {
+      'ResinID': 0,
+      'ProfileID': id,
+      'Title': 'Simulated Resin Profile #$id',
+      'Desc': 'Simulated profile for UI development',
+      'CustomValues': {
+        'burn_in_cure_time': '10',
+        'normal_cure_time': '8',
+        'lift_after_print': '5.0',
+        'burn_in_count': '3',
+        'wait_after_cure': '2',
+        'wait_after_life': '2'
+      },
+      // Also include top-level keys to make parsing simpler in some codepaths
+      'burn_in_cure_time': 10,
+      'normal_cure_time': 8,
+      'lift_after_print': 5.0,
+      'burn_in_count': 3,
+      'wait_after_cure': 2,
+      'wait_after_life': 2,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> editProfile(
+      int id, Map<String, dynamic> fields) async {
+    // In the simulated client, simply echo back the submitted fields merged
+    // into a simulated profile representation so UI code can observe the
+    // change without a real backend.
+    final base = await getProfileJson(id);
+    final merged = Map<String, dynamic>.from(base);
+    try {
+      // Overlay CustomValues if present
+      final cv = merged['CustomValues'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(merged['CustomValues'])
+          : <String, dynamic>{};
+      fields.forEach((k, v) {
+        // Put small fields into CustomValues to emulate NanoDLP behavior
+        cv[k] = v;
+        merged[k] = v;
+      });
+      merged['CustomValues'] = cv;
+    } catch (_) {}
+    return merged;
+  }
 
   @override
   Future<Uint8List> getFileThumbnail(
@@ -290,5 +365,98 @@ class NanoDlpSimulatedClient implements BackendClient {
   Future tareForceSensor() {
     // TODO: implement tareForceSensor
     throw UnimplementedError();
+  }
+
+  @override
+  Future setChamberTemperature(double temperature) {
+    // TODO: implement setChamberTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future setVatTemperature(double temperature) {
+    // TODO: implement setVatTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> isChamberTemperatureControlEnabled() {
+    // TODO: implement isChamberTemperatureControlEnabled
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> isVatTemperatureControlEnabled() {
+    // TODO: implement isVatTemperatureControlEnabled
+    throw UnimplementedError();
+  }
+
+  @override
+  Future getChamberTemperature() {
+    // TODO: implement getChamberTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future getVatTemperature() {
+    // TODO: implement getVatTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> preheatAndMix(double temperature) async {
+    // Simulated client: no-op
+    return;
+  }
+
+  @override
+  Future<String?> getCalibrationImageUrl(int modelId) async {
+    // Simulated client: return placeholder
+    return 'http://localhost/static/shots/calibration-images/$modelId.png';
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCalibrationModels() async {
+    // Simulated client: return mock calibration models
+    return [
+      {
+        "id": 1,
+        "name": "J3D Calibration RERF",
+        "models": 6,
+        "info": {"resinRequired": 21, "height": 3700}
+      },
+      {
+        "id": 2,
+        "name": "J3D Calibration Boxes of Calibration",
+        "models": 6,
+        "info": {"resinRequired": 9, "height": 10100}
+      }
+    ];
+  }
+
+  @override
+  Future<bool> startCalibrationPrint({
+    required int calibrationModelId,
+    required List<double> exposureTimes,
+    required int profileId,
+  }) async {
+    // Simulated client: pretend to submit successfully
+    await Future.delayed(const Duration(milliseconds: 200));
+    return true;
+  }
+
+  @override
+  Future<double?> getSlicerProgress() async {
+    // Simulated client: return mock progress
+    await Future.delayed(const Duration(milliseconds: 100));
+    return 0.95; // 50% progress
+  }
+
+  @override
+  Future<bool?> isCalibrationPlateProcessed() async {
+    // Simulated client: return false (not yet processed)
+    await Future.delayed(const Duration(milliseconds: 100));
+    startPrint('', '');
+    return false;
   }
 }

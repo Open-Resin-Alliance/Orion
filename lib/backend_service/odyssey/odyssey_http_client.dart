@@ -115,10 +115,11 @@ class OdysseyHttpClient implements BackendClient {
       client.close();
       if (resp.statusCode != 200) return [];
       final decoded = json.decode(resp.body);
-      if (decoded is List)
+      if (decoded is List) {
         return decoded
             .whereType<Map<String, dynamic>>()
             .toList(growable: false);
+      }
     } catch (_) {}
     return [];
   }
@@ -364,6 +365,146 @@ class OdysseyHttpClient implements BackendClient {
   Future tareForceSensor() {
     // TODO: implement tareForceSensor
     throw UnimplementedError();
+  }
+
+  @override
+  Future setChamberTemperature(double temperature) {
+    // TODO: implement setChamberTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future setVatTemperature(double temperature) {
+    // TODO: implement setVatTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> isChamberTemperatureControlEnabled() {
+    // TODO: implement isChamberTemperatureControlEnabled
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> isVatTemperatureControlEnabled() {
+    // TODO: implement isVatTemperatureControlEnabled
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> getMachine() async {
+    // Odyssey backend does not expose NanoDLP-style machine.json. Provide
+    // a best-effort map using getConfig() information so callers can still
+    // query something useful.
+    try {
+      final cfg = await getConfig();
+      final general = cfg['general'] as Map<String, dynamic>? ?? {};
+      final advanced = cfg['advanced'] as Map<String, dynamic>? ?? {};
+      return {
+        'Name': general['hostname'] ?? '',
+        'UUID': advanced['uuid'] ?? '',
+        'DefaultProfile': 0,
+        'CustomValues': {},
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  @override
+  Future<int?> getDefaultProfileId() async {
+    // Odyssey doesn't expose NanoDLP-style default profile metadata. Return
+    // null to indicate no default profile is known.
+    try {
+      final m = await getMachine();
+      final cand =
+          m['DefaultProfile'] ?? m['defaultProfileId'] ?? m['defaultProfile'];
+      if (cand == null) return null;
+      return int.tryParse('$cand');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> setDefaultProfileId(int id) async {
+    // Odyssey doesn't provide a standard default-profile endpoint. Best-effort
+    // no-op so callers can attempt to set a default without crashing.
+    return;
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProfileJson(int id) async {
+    // Odyssey backend doesn't expose NanoDLP-style profile JSON. Return an
+    // empty map to indicate unsupported.
+    return {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> editProfile(
+      int id, Map<String, dynamic> fields) async {
+    // Odyssey does not provide a NanoDLP-style profile edit endpoint.
+    // Implement as a no-op that returns an empty map to indicate unsupported.
+    _log.fine('editProfile called on OdysseyHttpClient (unsupported) id=$id');
+    return {};
+  }
+
+  @override
+  Future getChamberTemperature() {
+    // TODO: implement getChamberTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future getVatTemperature() {
+    // TODO: implement getVatTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> preheatAndMix(double temperature) async {
+    // Odyssey does not support Athena-specific preheat_and_mix endpoint
+    _log.fine('preheatAndMix called on OdysseyHttpClient (unsupported)');
+    return;
+  }
+
+  @override
+  Future<String?> getCalibrationImageUrl(int modelId) async {
+    // Odyssey does not support calibration images
+    _log.fine(
+        'getCalibrationImageUrl called on OdysseyHttpClient (unsupported)');
+    return null;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCalibrationModels() async {
+    // Odyssey does not support calibration models
+    _log.fine('getCalibrationModels called on OdysseyHttpClient (unsupported)');
+    return [];
+  }
+
+  @override
+  Future<bool> startCalibrationPrint({
+    required int calibrationModelId,
+    required List<double> exposureTimes,
+    required int profileId,
+  }) async {
+    _log.fine(
+        'startCalibrationPrint called on OdysseyHttpClient (unsupported)');
+    return false;
+  }
+
+  @override
+  Future<double?> getSlicerProgress() async {
+    _log.fine('getSlicerProgress called on OdysseyHttpClient (unsupported)');
+    return null;
+  }
+
+  @override
+  Future<bool?> isCalibrationPlateProcessed() async {
+    _log.fine(
+        'isCalibrationPlateProcessed called on OdysseyHttpClient (unsupported)');
+    return null;
   }
 }
 
