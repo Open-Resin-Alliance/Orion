@@ -326,7 +326,7 @@ class AboutScreenState extends State<AboutScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: QrImageView(
-                data: 'https://github.com/TheContrappostoShop/Orion',
+                data: 'https://github.com/Open-Resin-Alliance/Orion',
                 version: QrVersions.auto,
                 size: 250,
                 eyeStyle: QrEyeStyle(
