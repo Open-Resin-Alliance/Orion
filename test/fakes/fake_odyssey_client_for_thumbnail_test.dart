@@ -286,8 +286,6 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
 
   @override
   Future tareForceSensor() {
-    // TODO: implement tareForceSensor
-  Future tareForceSensor() {
     throw UnimplementedError();
   }
 }

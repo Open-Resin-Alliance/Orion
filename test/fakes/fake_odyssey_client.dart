@@ -279,7 +279,6 @@ class FakeBackendClient implements BackendClient {
       required List<double> exposureTimes,
       required int profileId}) {
     // TODO: implement startCalibrationPrint
-  Future tareForceSensor() {
     throw UnimplementedError();
   }
 }
