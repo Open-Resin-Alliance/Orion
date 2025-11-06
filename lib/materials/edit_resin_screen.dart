@@ -1,0 +1,500 @@
+/*
+* Orion - Edit Resin Screen
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
+import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
+import 'package:orion/backend_service/providers/resins_provider.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/error_handling/error_dialog.dart';
+
+/// Edit screen showing 6 cards (2x3 grid) displaying current resin parameter
+/// values. Tapping any card opens a dialog with a slider to adjust the value.
+class EditResinScreen extends StatefulWidget {
+  final ResinProfile? resin;
+
+  const EditResinScreen({super.key, this.resin});
+
+  @override
+  EditResinScreenState createState() => EditResinScreenState();
+}
+
+class EditResinScreenState extends State<EditResinScreen> {
+  final _log = Logger('EditResinScreen');
+
+  late int _burnInTime; // seconds
+  late int _normalTime; // seconds
+  late double _liftAfter; // mm
+  late int _burnInCount; // count
+  late int _waitAfterCure; // seconds
+  late int _waitAfterLife; // seconds
+
+  late Map<String, dynamic> _initial;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize from any metadata available on the provided resin immediately
+    // so the UI can render quickly. After that, attempt to fetch the full
+    // profile JSON from the backend (when supported) and, if available,
+    // overwrite the in-memory fields with the authoritative values.
+    final meta = widget.resin?.meta ?? {};
+    final norm = NanoProfile.normalizeForEdit(meta);
+
+    _burnInTime = norm['burn_in_cure_time'] as int;
+    _normalTime = norm['normal_cure_time'] as int;
+    _liftAfter = norm['lift_after_print'] as double;
+    _burnInCount = norm['burn_in_count'] as int;
+    _waitAfterCure = norm['wait_after_cure'] as int;
+    _waitAfterLife = norm['wait_after_life'] as int;
+
+    _initial = Map<String, dynamic>.from(norm);
+
+    // Fetch and normalize detailed profile data (model handles backend
+    // specifics). This keeps the UI simple and backend-agnostic.
+    Future(() async {
+      try {
+        final svc = BackendService();
+        final details = await NanoProfile.getResinProfileDetails(
+            widget.resin?.meta ?? {}, svc);
+        if (details.isEmpty) return;
+
+        final mergedMeta = details['meta'] as Map<String, dynamic>? ?? {};
+        final normalized = details['normalized'] as Map<String, dynamic>? ?? {};
+
+        try {
+          _log.fine(
+              'Applying normalized profile values preview=${normalized.toString()}');
+        } catch (_) {}
+
+        if (!mounted) return;
+        setState(() {
+          _loadFromMeta(mergedMeta);
+          _burnInTime = normalized['burn_in_cure_time'] as int? ?? _burnInTime;
+          _normalTime = normalized['normal_cure_time'] as int? ?? _normalTime;
+          _liftAfter = normalized['lift_after_print'] as double? ?? _liftAfter;
+          _burnInCount = normalized['burn_in_count'] as int? ?? _burnInCount;
+          _waitAfterCure =
+              normalized['wait_after_cure'] as int? ?? _waitAfterCure;
+          _waitAfterLife =
+              normalized['wait_after_life'] as int? ?? _waitAfterLife;
+        });
+      } catch (e, st) {
+        _log.fine('Failed to fetch or apply profile details', e, st);
+      }
+    });
+  }
+
+  void _loadFromMeta(Map<String, dynamic> meta) {
+    // Delegate normalization to the NanoProfile model so the UI remains
+    // backend-agnostic and we avoid duplicating candidate-key logic here.
+    final normalized = NanoProfile.normalizeForEdit(meta);
+
+    _burnInTime = normalized['burn_in_cure_time'] as int? ?? 10;
+    _normalTime = normalized['normal_cure_time'] as int? ?? 8;
+    _liftAfter = normalized['lift_after_print'] as double? ?? 5.0;
+    _burnInCount = normalized['burn_in_count'] as int? ?? 3;
+    _waitAfterCure = normalized['wait_after_cure'] as int? ?? 2;
+    _waitAfterLife = normalized['wait_after_life'] as int? ?? 2;
+
+    _initial = Map<String, dynamic>.from(normalized);
+  }
+
+  void _reset() {
+    setState(() {
+      _burnInTime = _initial['burn_in_cure_time'] as int;
+      _normalTime = _initial['normal_cure_time'] as int;
+      _liftAfter = _initial['lift_after_print'] as double;
+      _burnInCount = _initial['burn_in_count'] as int;
+      _waitAfterCure = _initial['wait_after_cure'] as int;
+      _waitAfterLife = _initial['wait_after_life'] as int;
+    });
+  }
+
+  void _save() async {
+    final result = {
+      'burn_in_cure_time': _burnInTime,
+      'normal_cure_time': _normalTime,
+      'lift_after_print': _liftAfter,
+      'burn_in_count': _burnInCount,
+      'wait_after_cure': _waitAfterCure,
+      'wait_after_life': _waitAfterLife,
+    };
+
+    _log.info('Saving profile edits: $result');
+    // Try to post back to backend when we can identify a profile id in the
+    // provided resin meta. Otherwise just return the result to the caller.
+    int? profileId;
+    try {
+      final meta = widget.resin?.meta ?? {};
+      profileId = (meta['id'] ?? meta['ProfileID'] ?? meta['ProfileId']) is int
+          ? (meta['id'] ?? meta['ProfileID'] ?? meta['ProfileId']) as int
+          : int.tryParse(
+              '${meta['id'] ?? meta['ProfileID'] ?? meta['ProfileId']}');
+    } catch (_) {
+      profileId = null;
+    }
+
+    if (profileId == null || profileId == 0) {
+      Navigator.of(context).pop(result);
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+    });
+
+    try {
+      final svc = BackendService();
+      // Convert our normalized fields to backend-specific format using the
+      // model layer (keeps UI backend-agnostic)
+      final backendFields = NanoProfile.denormalizeForBackend(result);
+      final resp = await svc.editProfile(profileId, backendFields);
+      _log.fine('editProfile response: $resp');
+      // Return the submitted result (or backend response) to the caller so
+      // callers can update UI immediately.
+      Navigator.of(context).pop(resp.isNotEmpty ? resp : result);
+    } catch (e, st) {
+      _log.severe('Failed to post profile edits', e, st);
+      showErrorDialog(context, 'PROFILE-EDIT-FAILED');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildCard({
+    required String title,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return GlassCard(
+      outlined: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade400,
+                  letterSpacing: 0.3,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const Spacer(),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    height: 1.0,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editValue({
+    required String title,
+    required double currentValue,
+    required double min,
+    required double max,
+    required String suffix,
+    required int decimals,
+    double? step,
+    required ValueChanged<double> onSave,
+  }) async {
+    double tempValue = currentValue;
+    final effectiveStep = step ?? (decimals == 0 ? 1.0 : 0.1);
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => GlassAlertDialog(
+          title: Text(title,
+              style:
+                  const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 24),
+                Text(
+                  decimals == 0
+                      ? '${tempValue.round()}$suffix'
+                      : '${tempValue.toStringAsFixed(decimals)}$suffix',
+                  style: const TextStyle(
+                      fontSize: 46, fontWeight: FontWeight.w700, height: 1.0),
+                ),
+                const SizedBox(height: 18),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: Theme.of(context).colorScheme.primary,
+                    inactiveTrackColor: Colors.grey.shade700,
+                    thumbColor: Colors.white,
+                    overlayColor: Colors.white.withValues(alpha: 0.2),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 12.0),
+                    overlayShape:
+                        const RoundSliderOverlayShape(overlayRadius: 24.0),
+                    trackHeight: 8.0,
+                  ),
+                  child: Slider(
+                    value: tempValue,
+                    min: min,
+                    max: max,
+                    divisions: ((max - min) / effectiveStep).round(),
+                    onChanged: (v) {
+                      setDialogState(() {
+                        tempValue = decimals == 0
+                            ? v.roundToDouble()
+                            : double.parse(v.toStringAsFixed(decimals));
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+          actions: [
+            GlassButton(
+              tint: GlassButtonTint.negative,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(120, 60),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            GlassButton(
+              tint: GlassButtonTint.positive,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(120, 60),
+              ),
+              onPressed: () {
+                onSave(tempValue);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.resin?.name ?? 'Edit Resin';
+
+    return GlassApp(
+      child: Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: Padding(
+          padding: const EdgeInsets.only(
+              left: 16.0, right: 16.0, bottom: 20.0, top: 8.0),
+          child: Column(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildCard(
+                              title: 'Burn-In Layer Cure Time',
+                              value: '$_burnInTime s',
+                              onTap: () => _editValue(
+                                title: 'Burn-In Layer Cure Time',
+                                currentValue: _burnInTime.toDouble(),
+                                min: 0,
+                                max: 30,
+                                suffix: ' s',
+                                decimals: 1,
+                                step: 0.2,
+                                onSave: (v) =>
+                                    setState(() => _burnInTime = v.round()),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildCard(
+                              title: 'Burn-In Layer Count',
+                              value: '$_burnInCount',
+                              onTap: () => _editValue(
+                                title: 'Burn-In Layer Count',
+                                currentValue: _burnInCount.toDouble(),
+                                min: 0,
+                                max: 20,
+                                suffix: '',
+                                decimals: 0,
+                                onSave: (v) =>
+                                    setState(() => _burnInCount = v.round()),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildCard(
+                              title: 'Normal Layer Cure Time',
+                              value: '$_normalTime s',
+                              onTap: () => _editValue(
+                                title: 'Normal Layer Cure Time',
+                                currentValue: _normalTime.toDouble(),
+                                min: 0,
+                                max: 15,
+                                suffix: ' s',
+                                decimals: 1,
+                                step: 0.1,
+                                onSave: (v) =>
+                                    setState(() => _normalTime = v.round()),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildCard(
+                              title: 'Wait After Cure',
+                              value: '$_waitAfterCure s',
+                              onTap: () => _editValue(
+                                title: 'Wait After Cure',
+                                currentValue: _waitAfterCure.toDouble(),
+                                min: 0,
+                                max: 20,
+                                suffix: ' s',
+                                decimals: 1,
+                                step: 0.5,
+                                onSave: (v) =>
+                                    setState(() => _waitAfterCure = v.round()),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildCard(
+                              title: 'Lift After Print',
+                              value: '${_liftAfter.toStringAsFixed(1)} mm',
+                              onTap: () => _editValue(
+                                title: 'Lift After Print',
+                                currentValue: _liftAfter,
+                                min: 0,
+                                max: 20,
+                                suffix: ' mm',
+                                decimals: 1,
+                                step: 0.1,
+                                onSave: (v) => setState(() => _liftAfter = v),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildCard(
+                              title: 'Wait After Lift',
+                              value: '$_waitAfterLife s',
+                              onTap: () => _editValue(
+                                title: 'Wait After Lift',
+                                currentValue: _waitAfterLife.toDouble(),
+                                min: 0,
+                                max: 20,
+                                suffix: ' s',
+                                decimals: 1,
+                                step: 0.5,
+                                onSave: (v) =>
+                                    setState(() => _waitAfterLife = v.round()),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: GlassButton(
+                      tint: GlassButtonTint.negative,
+                      onPressed: _reset,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 65),
+                      ),
+                      child:
+                          const Text('Reset', style: TextStyle(fontSize: 22)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GlassButton(
+                      tint: GlassButtonTint.positive,
+                      onPressed: _saving ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 65),
+                      ),
+                      child: _saving
+                          ? const Text('Saving…',
+                              style: TextStyle(fontSize: 22))
+                          : const Text('Save', style: TextStyle(fontSize: 22)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
