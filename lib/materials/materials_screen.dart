@@ -21,6 +21,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/materials/heater_screen.dart';
 import 'package:orion/materials/resins_screen.dart';
 import 'package:orion/materials/calibration_screen.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class MaterialsScreen extends StatefulWidget {
@@ -50,6 +51,7 @@ class MaterialsScreenState extends State<MaterialsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Materials'),
+          actions: const [SystemStatusWidget()],
         ),
         body: _selectedIndex == 0
             ? const HeaterScreen()
