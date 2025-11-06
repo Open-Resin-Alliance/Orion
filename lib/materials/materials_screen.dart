@@ -18,6 +18,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/materials/heater_screen.dart';
+import 'package:orion/materials/resins_screen.dart';
+import 'package:orion/materials/calibration_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class MaterialsScreen extends StatefulWidget {
@@ -28,7 +31,7 @@ class MaterialsScreen extends StatefulWidget {
 }
 
 class MaterialsScreenState extends State<MaterialsScreen> {
-  int _selectedIndex = 1;
+  int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -49,24 +52,30 @@ class MaterialsScreenState extends State<MaterialsScreen> {
           title: const Text('Materials'),
         ),
         body: _selectedIndex == 0
-            ? const Center(child: Text('To Be Implemented Soon!'))
+            ? const HeaterScreen()
             : _selectedIndex == 1
-                ? const Center(child: Text('To Be Implemented Soon!'))
-                : const Center(child: Text('To Be Implemented Soon!')),
+                ? const ResinsScreen()
+                : const CalibrationScreen(),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.thermometer()),
+              activeIcon: PhosphorIcon(PhosphorIconsFill.thermometer,
+                  color: Theme.of(context).colorScheme.primary),
+              label: 'Heaters',
+            ),
+            BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.flask()),
+              activeIcon: PhosphorIcon(PhosphorIconsFill.flask,
+                  color: Theme.of(context).colorScheme.primary),
               label: 'Resins',
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.scales()),
+              activeIcon: PhosphorIcon(PhosphorIconsFill.scales,
+                  color: Theme.of(context).colorScheme.primary),
               label: 'Calibration',
-            ),
-            BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.thermometer()),
-              label: 'Heaters',
             ),
           ],
           currentIndex: _selectedIndex,

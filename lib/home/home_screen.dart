@@ -220,8 +220,7 @@ class HomeScreenState extends State<HomeScreen> {
                           Expanded(
                             child: GlassButton(
                               style: theme.elevatedButtonTheme.style,
-                              onPressed:
-                                  null, // () => context.go('/materials'),
+                              onPressed: () => context.go('/materials'),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 mainAxisAlignment: MainAxisAlignment.center,
