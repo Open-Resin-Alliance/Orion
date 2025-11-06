@@ -19,10 +19,12 @@
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
+import 'package:orion/materials/post_calibration_overlay.dart';
+import 'package:orion/materials/calibration_context_provider.dart';
+import 'package:orion/materials/calibration_progress_overlay.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'dart:typed_data';
-import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 
 import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -34,12 +36,14 @@ import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/layer_preview_cache.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 
 class StatusScreen extends StatefulWidget {
   final bool newPrint;
   final Uint8List? initialThumbnailBytes;
   final String? initialFilePath;
   final int? initialPlateId;
+  final VoidCallback? onReturnHome;
 
   const StatusScreen({
     super.key,
@@ -47,6 +51,7 @@ class StatusScreen extends StatefulWidget {
     this.initialThumbnailBytes,
     this.initialFilePath,
     this.initialPlateId,
+    this.onReturnHome,
   });
 
   @override
@@ -70,6 +75,12 @@ class StatusScreenState extends State<StatusScreen> {
   @override
   void initState() {
     super.initState();
+
+    _log.info('StatusScreen opened - newPrint: ${widget.newPrint}');
+
+    // Mark calibration overlay as hidden so it doesn't reappear
+    CalibrationProgressOverlay.markAsHidden();
+
     if (widget.newPrint) {
       _suppressOldStatus = true; // force spinner for fresh print session
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -94,6 +105,95 @@ class StatusScreenState extends State<StatusScreen> {
   int? _lastPrefetchedLayer;
   int? _resolvedPlateIdForPrefetch;
   String? _resolvedFilePathForPrefetch;
+  final Logger _log = Logger('StatusScreen');
+
+  /// Check if current print is a calibration print and show post-calibration overlay
+  Future<void> _checkAndShowCalibrationOverlay() async {
+    try {
+      final provider = context.read<StatusProvider>();
+      final status = provider.status;
+      final fileData = status?.printData?.fileData;
+
+      if (fileData != null) {
+        final meta = await BackendService().getFileMetadata(
+            fileData.locationCategory ?? 'Local', fileData.path);
+        final plateId = meta['plate_id'] as int?;
+
+        // PlateID 0 is calibration print in NanoDLP
+        if (plateId == 0) {
+          _log.info(
+              'Detected calibration print completion, showing post-calibration overlay');
+
+          // Get calibration context
+          final calibrationContext =
+              context.read<CalibrationContextProvider>().context;
+
+          if (!mounted) return;
+
+          // Navigate home first
+          Navigator.popUntil(context, ModalRoute.withName('/'));
+
+          // Show post-calibration overlay if we have context
+          if (calibrationContext != null) {
+            Navigator.of(context).push(
+              PageRouteBuilder(
+                opaque: false,
+                barrierDismissible: false,
+                transitionDuration: const Duration(milliseconds: 300),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  );
+                },
+                pageBuilder: (context, _, __) => PostCalibrationOverlay(
+                  calibrationModelName: calibrationContext.calibrationModelName,
+                  resinProfileName: calibrationContext.resinProfileName,
+                  startExposure: calibrationContext.startExposure,
+                  exposureIncrement: calibrationContext.exposureIncrement,
+                  profileId: calibrationContext.profileId,
+                  calibrationModelId: calibrationContext.calibrationModelId,
+                  evaluationGuideUrl: calibrationContext.evaluationGuideUrl,
+                  onComplete: () {
+                    // Pop everything: overlay, StatusScreen, CalibrationScreen, progress overlay
+                    Navigator.of(context).popUntil(ModalRoute.withName('/'));
+                    // Clear context after evaluation is complete
+                    context.read<CalibrationContextProvider>().clearContext();
+                  },
+                ),
+              ),
+            );
+          } else {
+            _log.warning('Calibration print detected but no context available');
+          }
+
+          // Reset status after navigation settles
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try {
+              context.read<StatusProvider>().resetStatus();
+            } catch (_) {
+              // Provider no longer in tree
+            }
+          });
+
+          return;
+        }
+      }
+    } catch (e) {
+      _log.warning('Error checking for calibration print: $e');
+    }
+
+    // Not a calibration print, proceed with normal home navigation
+    Navigator.popUntil(context, ModalRoute.withName('/'));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        context.read<StatusProvider>().resetStatus();
+      } catch (_) {
+        // Provider no longer in tree
+      }
+    });
+  }
 
   bool _bytesEqual(Uint8List a, Uint8List b) {
     if (identical(a, b)) return true;
@@ -1103,20 +1203,15 @@ class StatusScreenState extends State<StatusScreen> {
               ? null
               : () {
                   if (isCanceled || isFinished) {
-                    // Navigate home first so the status reset does not briefly
-                    // render a spinner on the StatusScreen just before popping.
-                    Navigator.popUntil(context, ModalRoute.withName('/'));
-                    // Defer reset until after navigation settles; we only care
-                    // about showing a clean spinner on the NEXT status visit.
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      final mountedContext = context;
-                      // Provider still available via root; safe to reset.
-                      try {
-                        mountedContext.read<StatusProvider>().resetStatus();
-                      } catch (_) {
-                        // If provider no longer in tree (unlikely), ignore.
-                      }
-                    });
+                    // If onReturnHome callback is provided (e.g., for calibration),
+                    // call it instead of navigating home
+                    if (widget.onReturnHome != null) {
+                      widget.onReturnHome!();
+                      return;
+                    }
+
+                    // Check if this was a calibration print and show post-calibration overlay
+                    _checkAndShowCalibrationOverlay();
                     return;
                   }
                   if (s.isIdle && s.layer == null) {
