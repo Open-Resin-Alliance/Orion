@@ -27,12 +27,50 @@ import 'package:orion/util/orion_config.dart';
 /// point where an alternative backend implementation (different API)
 /// can be swapped in without changing providers or UI code.
 class BackendService implements BackendClient {
-  final BackendClient _delegate;
+  BackendClient _delegate;
 
   /// Default constructor: picks the concrete implementation based on
-  /// configuration (or defaults to the HTTP adapter).
+  /// configuration (or defaults to the HTTP adapter). The selected
+  /// delegate may be reloaded later by calling [reloadFromConfig].
   BackendService({BackendClient? delegate})
-      : _delegate = delegate ?? _chooseFromConfig();
+      : _delegate = delegate ?? _chooseFromConfig() {
+    _registerConfigListener();
+  }
+
+  // Automatically reload the delegate when the on-disk config is updated.
+  // We register a listener with OrionConfig so onboarding or settings
+  // flows that call setString()/setFlag() cause the backend to re-evaluate.
+  void _registerConfigListener() {
+    OrionConfig.addChangeListener(_handleConfigChange);
+  }
+
+  void _handleConfigChange() {
+    try {
+      reloadFromConfig();
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  /// Dispose the backend service and remove any registered listeners.
+  void dispose() {
+    try {
+      OrionConfig.removeChangeListener(_handleConfigChange);
+    } catch (_) {}
+  }
+
+  /// Re-read configuration and pick a new backend implementation.
+  ///
+  /// This is useful when configuration (for example `orion.cfg` or
+  /// `vendor.cfg`) has been updated after app startup and you need the
+  /// BackendService to switch between real and simulated adapters.
+  void reloadFromConfig() {
+    try {
+      _delegate = _chooseFromConfig();
+    } catch (_) {
+      // Keep the existing delegate on any error while reloading.
+    }
+  }
 
   static BackendClient _chooseFromConfig() {
     try {

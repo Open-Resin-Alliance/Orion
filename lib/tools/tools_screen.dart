@@ -23,6 +23,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/move_z_screen.dart';
 import 'package:orion/tools/exposure_screen.dart';
 import 'package:orion/tools/force_screen.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({super.key});
@@ -51,6 +52,7 @@ class ToolsScreenState extends State<ToolsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Tools'),
+          actions: const [SystemStatusWidget()],
         ),
         body: _selectedIndex == 0
             ? const MoveZScreen()
@@ -64,14 +66,26 @@ class ToolsScreenState extends State<ToolsScreen> {
           items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.arrowsDownUp()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.arrowsDownUp,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               label: 'Move Z',
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.lightbulbFilament,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               label: 'Exposure',
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.chartLineUp()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.chartLineUp,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               label: 'Force Sensor',
             ),
             // TODO: Implement Self Test

@@ -32,6 +32,9 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/settings/about_dialog.dart';
+import 'package:orion/util/markdown_screen.dart';
+import 'package:orion/settings/fancy_license_screen.dart';
 
 Logger _logger = Logger('AboutScreen');
 OrionConfig config = OrionConfig();
@@ -177,17 +180,80 @@ class AboutScreenState extends State<AboutScreen> {
     return GlassCard(
       elevation: 1.0,
       outlined: true,
-      child: ListTile(
-        title: const Text('UI & API Version'),
-        subtitle: FutureBuilder<String>(
-          future: getVersionNumber(),
-          builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-            return AutoSizeText(
-              snapshot.data ?? 'N/A',
-              maxLines: 1,
-              minFontSize: 12,
-            );
-          },
+      child: InkWell(
+        onTap: () {
+          showOrionAboutDialog(
+            context: context,
+            applicationName: 'Orion',
+            applicationVersion:
+                'Version ${Pubspec.version} - ${Pubspec.versionFull.toString().split('+')[1] == 'SELFCOMPILED' ? 'Local Build' : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}'}',
+            applicationLegalese:
+                'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
+            applicationIcon: const FlutterLogo(size: 100),
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.only(left: 10, right: 10),
+                child: GlassCard(
+                  child: ListTile(
+                    leading: const Icon(Icons.list, size: 30),
+                    title: const Text('Changelog'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const MarkdownScreen(filename: 'CHANGELOG.md'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: GlassCard(
+                  child: ListTile(
+                    title: const Text('Open-Source Licenses'),
+                    leading: const Icon(Icons.favorite, size: 30),
+                    onTap: () {
+                      showFancyLicensePage(
+                        context: context,
+                        applicationName: 'Orion',
+                        applicationVersion: Pubspec.version,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+        child: ListTile(
+          title: Text.rich(
+            TextSpan(
+              style: Theme.of(context).textTheme.titleMedium,
+              children: [
+                const TextSpan(text: 'UI & API Version '),
+                TextSpan(
+                  text: '(Tap for more info)',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          subtitle: FutureBuilder<String>(
+            future: getVersionNumber(),
+            builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+              return AutoSizeText(
+                snapshot.data ?? 'N/A',
+                maxLines: 1,
+                minFontSize: 12,
+              );
+            },
+          ),
         ),
       ),
     );
@@ -233,81 +299,84 @@ class AboutScreenState extends State<AboutScreen> {
                 softWrap: false,
               ),
             ),
-            GlassButton(
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+            if (config.enableCustomName()) ...[
+              GlassButton(
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  minimumSize: const Size(90, 50), // Same width as Edit button
                 ),
-                minimumSize: const Size(90, 50), // Same width as Edit button
-              ),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return GlassAlertDialog(
-                      title: const Center(child: Text('Custom Machine Name')),
-                      content: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.5,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            children: [
-                              SpawnOrionTextField(
-                                key: cNameTextFieldKey,
-                                keyboardHint: 'Enter a custom name',
-                                locale:
-                                    Localizations.localeOf(context).toString(),
-                                scrollController: _scrollController,
-                                presetText: config.getString('machineName',
-                                    category: 'machine'),
-                              ),
-                              OrionKbExpander(textFieldKey: cNameTextFieldKey),
-                            ],
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return GlassAlertDialog(
+                        title: const Center(child: Text('Custom Machine Name')),
+                        content: SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.5,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                SpawnOrionTextField(
+                                  key: cNameTextFieldKey,
+                                  keyboardHint: 'Enter a custom name',
+                                  locale: Localizations.localeOf(context)
+                                      .toString(),
+                                  scrollController: _scrollController,
+                                  presetText: config.getString('machineName',
+                                      category: 'machine'),
+                                ),
+                                OrionKbExpander(
+                                    textFieldKey: cNameTextFieldKey),
+                              ],
+                            ),
                           ),
                         ),
+                        actions: [
+                          GlassButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(0, 60)),
+                            child: const Text('Close',
+                                style: TextStyle(fontSize: 20)),
+                          ),
+                          GlassButton(
+                            onPressed: () {
+                              setState(() {
+                                customName = cNameTextFieldKey.currentState!
+                                    .getCurrentText();
+                                config.setString('machineName', customName,
+                                    category: 'machine');
+                              });
+                              Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(0, 60)),
+                            child: const Text('Confirm',
+                                style: TextStyle(fontSize: 20)),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                child: Row(
+                  children: [
+                    const Text(
+                      'Edit',
+                      style: TextStyle(
+                        fontSize: 20,
                       ),
-                      actions: [
-                        GlassButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(0, 60)),
-                          child: const Text('Close',
-                              style: TextStyle(fontSize: 20)),
-                        ),
-                        GlassButton(
-                          onPressed: () {
-                            setState(() {
-                              customName = cNameTextFieldKey.currentState!
-                                  .getCurrentText();
-                              config.setString('machineName', customName,
-                                  category: 'machine');
-                            });
-                            Navigator.of(context).pop();
-                          },
-                          style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(0, 60)),
-                          child: const Text('Confirm',
-                              style: TextStyle(fontSize: 20)),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-              child: Row(
-                children: [
-                  const Text(
-                    'Edit',
-                    style: TextStyle(
-                      fontSize: 20,
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  PhosphorIcon(PhosphorIcons.notePencil()),
-                ],
+                    const SizedBox(width: 10),
+                    PhosphorIcon(PhosphorIcons.notePencil()),
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

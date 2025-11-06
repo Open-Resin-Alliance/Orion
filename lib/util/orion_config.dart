@@ -27,6 +27,20 @@ import 'package:path/path.dart' as path;
 class OrionConfig {
   final _logger = Logger('OrionConfig');
   late final String _configPath;
+  // Simple change listener registry so other services can react when
+  // `orion.cfg` is updated via _writeConfig(). Listeners should be
+  // lightweight and avoid throwing.
+  static final List<VoidCallback> _changeListeners = [];
+
+  /// Register a callback to be invoked after `orion.cfg` is written.
+  static void addChangeListener(VoidCallback cb) {
+    if (!_changeListeners.contains(cb)) _changeListeners.add(cb);
+  }
+
+  /// Remove a previously-registered change listener.
+  static void removeChangeListener(VoidCallback cb) {
+    _changeListeners.remove(cb);
+  }
 
   OrionConfig() {
     _configPath = Platform.environment['ORION_CFG'] ?? '.';
@@ -200,8 +214,9 @@ class OrionConfig {
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.
   bool getFeatureFlag(String key, {bool defaultValue = false}) {
-    var vendor = _getVendorConfig();
-    final flags = vendor['featureFlags'];
+    // Read merged config so `orion.cfg` can override vendor-provided flags.
+    var merged = _getConfig();
+    final flags = merged['featureFlags'];
     if (flags is Map && flags.containsKey(key)) {
       return flags[key] == true;
     }
@@ -216,11 +231,12 @@ class OrionConfig {
       getFeatureFlag('enableExperimentalFeatures');
   bool enableResinProfiles() => getFeatureFlag('enableResinProfiles');
   bool enableCustomName() => getFeatureFlag('enableCustomName');
+  bool enablePowerControl() => getFeatureFlag('enablePowerControl');
 
   /// Return nested `hardwareFeatures` map (may be empty)
   Map<String, dynamic> getHardwareFeatures() {
-    var vendor = _getVendorConfig();
-    final flags = vendor['featureFlags'];
+    var merged = _getConfig();
+    final flags = merged['featureFlags'];
     if (flags is Map && flags['hardwareFeatures'] is Map<String, dynamic>) {
       return Map<String, dynamic>.from(flags['hardwareFeatures']);
     }
@@ -244,8 +260,8 @@ class OrionConfig {
 
   /// Return the full featureFlags map (may be empty)
   Map<String, dynamic> getFeatureFlags() {
-    var vendor = _getVendorConfig();
-    final flags = vendor['featureFlags'];
+    var merged = _getConfig();
+    final flags = merged['featureFlags'];
     if (flags is Map<String, dynamic>) return Map<String, dynamic>.from(flags);
     return {};
   }
@@ -298,11 +314,35 @@ class OrionConfig {
     };
 
     if (!configFile.existsSync() || configFile.readAsStringSync().isEmpty) {
-      // Remove vendor section before writing
-      var configToWrite = Map<String, dynamic>.from(defaultConfig);
-      _writeConfig(configToWrite);
-      // Return merged view for reading
-      return _mergeConfigs(defaultConfig, vendorConfig);
+      // When creating the initial orion.cfg, write a merged view that
+      // includes vendor-provided defaults so runtime immediately sees
+      // backend, featureFlags and hardwareFeatures without waiting for
+      // a later write from onboarding. Vendor preferences should override
+      // the app defaults for initial setup.
+      var mergedInit = _mergeConfigs(defaultConfig, vendorConfig);
+
+      try {
+        final vendorBlock = vendorConfig['vendor'];
+        if (vendorBlock is Map<String, dynamic>) {
+          final vThemeMode = vendorBlock['themeMode'];
+          if (vThemeMode is String && vThemeMode.isNotEmpty) {
+            mergedInit['general'] ??= {};
+            mergedInit['general']['themeMode'] = vThemeMode;
+          }
+
+          final vSeed = vendorBlock['vendorThemeSeed'];
+          if (vSeed is String && vSeed.isNotEmpty) {
+            mergedInit['general'] ??= {};
+            mergedInit['general']['colorSeed'] = 'vendor';
+          }
+        }
+      } catch (e) {
+        _logger.fine('Failed to apply vendor initial theme defaults: $e');
+      }
+
+      _writeConfig(mergedInit);
+      // Return the merged view for reading
+      return mergedInit;
     }
 
     var userConfig =
@@ -334,12 +374,53 @@ class OrionConfig {
             internal['defaultLanguage'];
       }
     }
+    // Allow vendor to preconfigure a theme mode or use the vendor color seed
+    // as the default. If vendor provides 'vendor.themeMode' or
+    // 'vendor.vendorThemeSeed' prefer those values when orion.cfg has no
+    // explicit setting.
+    try {
+      final vendorBlock = vendor['vendor'];
+      if (vendorBlock is Map<String, dynamic>) {
+        // Vendor-provided theme mode (e.g. 'glass')
+        final vThemeMode = vendorBlock['themeMode'];
+        if (vThemeMode is String) {
+          configToWrite['general'] ??= {};
+          if (configToWrite['general']['themeMode'] == null ||
+              (configToWrite['general']['themeMode'] as String).isEmpty) {
+            configToWrite['general']['themeMode'] = vThemeMode;
+          }
+        }
+
+        // If vendor has a theme seed, default to using the vendor seed
+        // by setting colorSeed to the special value 'vendor' unless the
+        // user has already chosen a seed.
+        final vSeed = vendorBlock['vendorThemeSeed'];
+        if (vSeed is String && vSeed.isNotEmpty) {
+          configToWrite['general'] ??= {};
+          if (configToWrite['general']['colorSeed'] == null ||
+              (configToWrite['general']['colorSeed'] as String).isEmpty) {
+            configToWrite['general']['colorSeed'] = 'vendor';
+          }
+        }
+      }
+    } catch (e) {
+      _logger.fine('Failed to copy vendor theme defaults: $e');
+    }
+
     configToWrite.remove('vendor');
 
     var fullPath = path.join(_configPath, 'orion.cfg');
     var configFile = File(fullPath);
     var encoder = const JsonEncoder.withIndent('  ');
     configFile.writeAsStringSync(encoder.convert(configToWrite));
+    // Notify any registered listeners that the on-disk config has changed.
+    for (final cb in _changeListeners) {
+      try {
+        cb();
+      } catch (e) {
+        _logger.warning('Config change listener threw: $e');
+      }
+    }
   }
 
   void blowUp(BuildContext context, String imagePath) {

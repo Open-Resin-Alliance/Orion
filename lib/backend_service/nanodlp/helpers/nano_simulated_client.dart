@@ -273,8 +273,27 @@ class NanoDlpSimulatedClient implements BackendClient {
 
   @override
   Future<List<Map<String, dynamic>>> getAnalytics(int n) async {
-    // Simulated client has no analytics; return empty list.
-    return [];
+    // Simulated analytics payloads for UI and testing.
+    // Provide TemperatureInside (T id 7) and TemperatureInsideTarget (T id 12)
+    // so the AnalyticsProvider / SystemStatusWidget can display stable
+    // simulated values (22°C current and 22°C target).
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final entries = <Map<String, dynamic>>[];
+
+    // TemperatureInside (id 7)
+    entries.add({'T': 7, 'V': 22, 'id': now});
+
+    // TemperatureInsideTarget (id 12)
+    entries.add({'T': 12, 'V': 0, 'id': now});
+
+    // TemperatureChamberTarget (id 23)
+    entries.add({'T': 23, 'V': 0, 'id': now});
+
+    // TemperaturePTCTarget (id 24)
+    entries.add({'T': 25, 'V': 0, 'id': now});
+
+    // Keep the list small but deterministic for tests.
+    return entries;
   }
 
   @override
@@ -363,7 +382,6 @@ class NanoDlpSimulatedClient implements BackendClient {
 
   @override
   Future tareForceSensor() {
-    // TODO: implement tareForceSensor
     throw UnimplementedError();
   }
 

@@ -18,6 +18,7 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:path/path.dart' as path;
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
@@ -144,6 +145,7 @@ class DetailScreenState extends State<DetailScreen> {
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
+          actions: [SystemStatusWidget()],
           title: Builder(builder: (context) {
             // Use a single base font size for both title lines so they appear
             // visually consistent. If the AppBar theme provides a title

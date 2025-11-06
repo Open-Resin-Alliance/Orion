@@ -88,10 +88,13 @@ class GlassButton extends StatelessWidget {
         tintPalette == null ? style : tintPalette.toButtonStyle().merge(style);
 
     if (!themeProvider.isGlassTheme) {
-      return ElevatedButton(
-        onPressed: onPressed,
-        style: resolvedMaterialStyle,
-        child: child,
+      return Padding(
+        padding: margin ?? const EdgeInsets.all(0.0),
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: resolvedMaterialStyle,
+          child: child,
+        ),
       );
     }
 
@@ -145,7 +148,7 @@ class _GlassmorphicButton extends StatelessWidget {
     final hasTint = palette != null;
     final tintColor = palette?.color;
 
-    final fillOpacity = GlassPlatformConfig.surfaceOpacity(
+    GlassPlatformConfig.surfaceOpacity(
       isEnabled ? 0.14 : 0.1,
       emphasize: isEnabled,
     );

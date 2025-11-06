@@ -190,7 +190,6 @@ class FakeBackendClient implements BackendClient {
 
   @override
   Future<List<Map<String, dynamic>>> getAnalytics(int n) {
-    // TODO: implement getAnalytics
     throw UnimplementedError();
   }
 
@@ -280,6 +279,7 @@ class FakeBackendClient implements BackendClient {
       required List<double> exposureTimes,
       required int profileId}) {
     // TODO: implement startCalibrationPrint
+  Future tareForceSensor() {
     throw UnimplementedError();
   }
 }

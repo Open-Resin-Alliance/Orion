@@ -25,6 +25,7 @@ import 'dart:ui';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:path/path.dart' as path;
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -221,18 +222,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         appBar: AppBar(
           title: Text(_getDisplayNameForDirectory(_directory)),
           centerTitle: false,
-          actions: <Widget>[
-            Padding(
-              padding: const EdgeInsets.only(right: 15.0),
-              child: IconButton(
-                icon: const Icon(Icons.refresh),
-                iconSize: 35,
-                onPressed: () {
-                  refresh();
-                },
-              ),
-            ),
-          ],
+          actions: <Widget>[SystemStatusWidget()],
         ),
         body: Consumer<FilesProvider>(
           builder: (context, provider, child) {
@@ -286,6 +276,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             );
           },
         ),
+        floatingActionButton: _buildRefreshFab(),
       ),
     );
   }
@@ -616,5 +607,26 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildRefreshFab() {
+    return SizedBox(
+      width: 70,
+      height: 70,
+      child: GlassFloatingActionButton(
+        tint: GlassButtonTint.positive,
+        onPressed: _isLoading ? null : () => refresh(),
+        child: _isLoading
+            ? const SizedBox(
+                width: 30,
+                height: 30,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2.5,
+                ),
+              )
+            : PhosphorIcon(PhosphorIcons.arrowClockwise(), size: 36),
+      ),
+    );
   }
 }

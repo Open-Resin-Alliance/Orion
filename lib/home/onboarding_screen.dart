@@ -40,6 +40,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/providers/wifi_provider.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -685,8 +686,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
       },
     );
 
-    if (shouldDisconnect) {
-      await _wifiScreenKey.currentState?.disconnect();
+    if (shouldDisconnect && mounted) {
+      await context.read<WiFiProvider>().disconnect();
       setState(() {
         isConnected.value = false;
       });

@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -64,6 +65,97 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
 
+    void showPowerOptionsDialog() {
+      isRemote = _config.getFlag('useCustomUrl', category: 'advanced');
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return GlassDialog(
+            padding: const EdgeInsets.all(8), // Reduced padding
+            child: SizedBox(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      '${l10n.homePowerOptions} ${isRemote ? l10n.homePowerRemote : l10n.homePowerLocal}',
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    child: SizedBox(
+                      height: 65,
+                      width: 450,
+                      child: HoldButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          // Use ManualProvider instead of direct ApiService
+                          try {
+                            final manual = Provider.of<ManualProvider>(context,
+                                listen: false);
+                            manual.manualCommand('FIRMWARE_RESTART');
+                          } catch (_) {
+                            // If provider isn't available, ignore
+                          }
+                        },
+                        child: Text(
+                          l10n.homeFirmwareRestart,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                      height: 20), // Add some spacing between the buttons
+                  if (!isRemote)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      child: SizedBox(
+                        height: 65,
+                        width: 450,
+                        child: HoldButton(
+                          onPressed: () {
+                            Process.run('sudo', ['reboot', 'now']);
+                          },
+                          child: Text(
+                            l10n.homeRebootSystem,
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (!isRemote) const SizedBox(height: 20),
+                  if (!isRemote)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      child: SizedBox(
+                        height: 65,
+                        width: 450,
+                        child: HoldButton(
+                          onPressed: () {
+                            Process.run('sudo', ['shutdown', 'now']);
+                          },
+                          child: Text(
+                            l10n.homeShutdownSystem,
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (!isRemote) const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
     return GlassApp(
       child: Scaffold(
         appBar: AppBar(
@@ -79,113 +171,7 @@ class HomeScreenState extends State<HomeScreen> {
               child: LiveClock(),
             ),
           ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 25),
-              child: InkWell(
-                onTap: () {
-                  isRemote =
-                      _config.getFlag('useCustomUrl', category: 'advanced');
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return GlassDialog(
-                        padding: const EdgeInsets.all(8), // Reduced padding
-                        child: SizedBox(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              const SizedBox(height: 10),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  '${l10n.homePowerOptions} ${isRemote ? l10n.homePowerRemote : l10n.homePowerLocal}',
-                                  style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 20, right: 20),
-                                child: SizedBox(
-                                  height: 65,
-                                  width: 450,
-                                  child: HoldButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      // Use ManualProvider instead of direct ApiService
-                                      try {
-                                        final manual =
-                                            Provider.of<ManualProvider>(context,
-                                                listen: false);
-                                        manual
-                                            .manualCommand('FIRMWARE_RESTART');
-                                      } catch (_) {
-                                        // If provider isn't available, ignore
-                                      }
-                                    },
-                                    child: Text(
-                                      l10n.homeFirmwareRestart,
-                                      style: const TextStyle(fontSize: 24),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(
-                                  height:
-                                      20), // Add some spacing between the buttons
-                              if (!isRemote)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 20, right: 20),
-                                  child: SizedBox(
-                                    height: 65,
-                                    width: 450,
-                                    child: HoldButton(
-                                      onPressed: () {
-                                        Process.run('sudo', ['reboot', 'now']);
-                                      },
-                                      child: Text(
-                                        l10n.homeRebootSystem,
-                                        style: const TextStyle(fontSize: 24),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              if (!isRemote) const SizedBox(height: 20),
-                              if (!isRemote)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 20, right: 20),
-                                  child: SizedBox(
-                                    height: 65,
-                                    width: 450,
-                                    child: HoldButton(
-                                      onPressed: () {
-                                        Process.run(
-                                            'sudo', ['shutdown', 'now']);
-                                      },
-                                      child: Text(
-                                        l10n.homeShutdownSystem,
-                                        style: const TextStyle(fontSize: 24),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              if (!isRemote) const SizedBox(height: 20),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-                child: PhosphorIcon(PhosphorIcons.power(), size: 42),
-              ),
-            ),
-          ],
+          actions: [SystemStatusWidget()],
         ),
         body: Center(
           child: LayoutBuilder(
@@ -279,6 +265,26 @@ class HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
+                        if (_config.enablePowerControl()) ...[
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: GlassButton(
+                              style: theme.elevatedButtonTheme.style,
+                              onPressed: () => showPowerOptionsDialog(),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  PhosphorIcon(PhosphorIcons.power(), size: 52),
+                                  Text(
+                                    'Power',
+                                    style: const TextStyle(fontSize: 28),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(width: 20),
                       ],
                     ),
@@ -326,7 +332,8 @@ class LiveClockState extends State<LiveClock> {
   @override
   Widget build(BuildContext context) {
     return Text(
-        '${_dateTime.hour.toString().padLeft(2, '0')}:${_dateTime.minute.toString().padLeft(2, '0')}',
-        style: const TextStyle(fontSize: 28));
+      '${_dateTime.hour.toString().padLeft(2, '0')}:${_dateTime.minute.toString().padLeft(2, '0')}',
+      style: const TextStyle(fontSize: 28),
+    );
   }
 }
