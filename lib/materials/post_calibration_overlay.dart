@@ -20,7 +20,9 @@ import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/materials/calibration_screen.dart';
+import 'package:orion/materials/materials_screen.dart';
+import 'package:orion/util/orion_config.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 /// Overlay shown after a calibration print completes
@@ -54,14 +56,73 @@ class PostCalibrationOverlay extends StatefulWidget {
 class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
   final _logger = Logger('PostCalibrationOverlay');
   final _backendService = BackendService();
+  final _config = OrionConfig();
   int _currentStep = 0; // 0 = QR code, 1 = evaluation
-  int? _selectedPiece;
+  // Allow up to two selected pieces for fine-tuning
+  final List<int> _selectedPieces = [];
+  bool _doNotShowAgain = false;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _doNotShowAgain = _config.getFlag(
+        'skip_calibration_${widget.calibrationModelId}',
+        category: 'calibration',
+      );
+      // If user previously opted to skip the guide for this model, go
+      // straight to the evaluation step.
+      if (_doNotShowAgain) {
+        _currentStep = 1;
+      }
+    } catch (e) {
+      _logger.fine('Failed to read skip flag: $e');
+      _doNotShowAgain = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GlassApp(
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _currentStep == 0
+                    ? PhosphorIcons.checkCircle()
+                    : PhosphorIconsFill.magnifyingGlass,
+                size: 36,
+                color: _currentStep == 0
+                    ? Colors.greenAccent
+                    : Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _currentStep == 0
+                        ? 'Calibration Complete!'
+                        : 'Evaluate Test Print',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          centerTitle: true,
+        ),
         body: SafeArea(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
@@ -83,8 +144,141 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 _currentStep == 0 ? _buildQrCodeView() : _buildEvaluationView(),
           ),
         ),
+        floatingActionButton: _buildFloatingActionButtons(),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
+  }
+
+  Widget _buildFloatingActionButtons() {
+    if (_currentStep == 0) {
+      // QR code screen: only show next button
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Left: Do Not Show Again toggle
+            GlassFloatingActionButton.extended(
+              heroTag: 'do_not_show',
+              onPressed: () {
+                // Toggle and persist; if enabling skip, immediately show
+                // the evaluation screen so user doesn't have to press
+                // Next.
+                final newValue = !_doNotShowAgain;
+                try {
+                  _config.setFlag(
+                    'skip_calibration_${widget.calibrationModelId}',
+                    newValue,
+                    category: 'calibration',
+                  );
+                } catch (e) {
+                  _logger.warning('Failed to persist skip flag: $e');
+                }
+                setState(() {
+                  _doNotShowAgain = newValue;
+                  if (_doNotShowAgain) _currentStep = 1;
+                });
+              },
+              label: 'Skip Guide',
+              icon: Icon(_doNotShowAgain
+                  ? PhosphorIcons.checkSquare()
+                  : PhosphorIcons.square()),
+              scale: 1.3,
+              iconAfterLabel: false,
+            ),
+            GlassFloatingActionButton.extended(
+              tint: GlassButtonTint.positive,
+              heroTag: 'next',
+              onPressed: () {
+                setState(() {
+                  _currentStep = 1;
+                });
+              },
+              label: 'Next',
+              icon: Icon(PhosphorIcons.caretRight()),
+              scale: 1.3,
+              iconAfterLabel: true,
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Evaluation screen: back, reconfigure, and save buttons
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            GlassFloatingActionButton.extended(
+              tint: GlassButtonTint.neutral,
+              heroTag: 'back',
+              onPressed: () {
+                // If the guide was skipped by default, this button acts as
+                // a direct link to the guide. Otherwise it behaves as a
+                // regular Back button to return to the QR guide screen.
+                setState(() {
+                  _currentStep = 0;
+                });
+              },
+              label: _doNotShowAgain ? 'Guide' : 'Back',
+              icon: Icon(_doNotShowAgain
+                  ? PhosphorIcons.info()
+                  : PhosphorIcons.caretLeft()),
+              scale: 1.3,
+              iconAfterLabel: false,
+            ),
+            const SizedBox(width: 12),
+            GlassFloatingActionButton.extended(
+              tint: GlassButtonTint.negative,
+              heroTag: 'reconfigure',
+              onPressed: () {
+                // Pop overlay and navigate to MaterialsScreen on the Calibration tab
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const MaterialsScreen(initialIndex: 2),
+                  ),
+                );
+              },
+              label: 'Reconfigure',
+              icon: Icon(PhosphorIconsFill.arrowCounterClockwise),
+              scale: 1.3,
+              iconAfterLabel: false,
+            ),
+            const Spacer(),
+            // When two pieces are selected allow fine-tuning between them.
+            if (_selectedPieces.length == 2)
+              GlassFloatingActionButton.extended(
+                tint: GlassButtonTint.positive,
+                heroTag: 'fine_tune',
+                onPressed: () {
+                  _showFineTuneDialog();
+                },
+                label: 'Fine-Tune',
+                icon: Icon(PhosphorIcons.slidersHorizontal()),
+                scale: 1.3,
+                iconAfterLabel: true,
+              )
+            else
+              GlassFloatingActionButton.extended(
+                tint: GlassButtonTint.positive,
+                heroTag: 'save',
+                onPressed: _selectedPieces.length != 1
+                    ? null
+                    : () {
+                        _saveOptimalExposure();
+                      },
+                label: 'Save',
+                icon: Icon(PhosphorIcons.check()),
+                scale: 1.3,
+                iconAfterLabel: true,
+              ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildQrCodeView() {
@@ -108,89 +302,49 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
     return Padding(
       key: const ValueKey('qr'),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Compact header matching evaluation screen
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                PhosphorIconsFill.qrCode,
-                size: 32,
-                color: Colors.blue.shade300,
+              Text(
+                'Scan the QR code for the ${widget.calibrationModelName} evaluation guide.',
+                style: const TextStyle(
+                  fontSize: 21,
+                  color: Colors.white70,
+                ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'CALIBRATION COMPLETE',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  if (widget.resinProfileName != null)
-                    Text(
-                      widget.resinProfileName!,
-                      style: TextStyle(
-                        fontSize: 17,
-                        color: Colors.grey.shade400,
+              const SizedBox(height: 32),
+              Center(
+                child: GlassCard(
+                  elevation: 1.0,
+                  outlined: true,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: QrImageView(
+                      data: evaluationGuideUrl,
+                      version: QrVersions.auto,
+                      size: 260,
+                      gapless: true,
+                      errorCorrectionLevel: QrErrorCorrectLevel.M,
+                      eyeStyle: QrEyeStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      dataModuleStyle: QrDataModuleStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        dataModuleShape: QrDataModuleShape.circle,
                       ),
                     ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Scan the QR code for the ${widget.calibrationModelName} evaluation guide',
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white70,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: QrImageView(
-                  data: evaluationGuideUrl,
-                  version: QrVersions.auto,
-                  size: 240,
-                  gapless: true,
-                  errorCorrectionLevel: QrErrorCorrectLevel.M,
-                  eyeStyle: QrEyeStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  dataModuleStyle: QrDataModuleStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    dataModuleShape: QrDataModuleShape.circle,
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: GlassButton(
-              tint: GlassButtonTint.positive,
-              onPressed: () {
-                setState(() {
-                  _currentStep = 1;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 65),
-              ),
-              child: const Text('Next', style: TextStyle(fontSize: 22)),
-            ),
-          ),
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -202,41 +356,6 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          // Compact header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                PhosphorIconsFill.magnifyingGlass,
-                size: 32,
-                color: Colors.blue.shade300,
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    'EVALUATE RESULTS',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  if (widget.resinProfileName != null)
-                    Text(
-                      widget.resinProfileName!,
-                      style: TextStyle(
-                        fontSize: 17,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
           // 3x2 Grid
           Expanded(
             child: Center(
@@ -253,7 +372,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   final pieceNumber = index + 1;
                   final exposure =
                       widget.startExposure + (widget.exposureIncrement * index);
-                  final isSelected = _selectedPiece == pieceNumber;
+                  final isSelected = _selectedPieces.contains(pieceNumber);
 
                   return GlassButton(
                     tint: isSelected
@@ -261,7 +380,43 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         : GlassButtonTint.neutral,
                     onPressed: () {
                       setState(() {
-                        _selectedPiece = pieceNumber;
+                        if (isSelected) {
+                          // Deselect if already selected
+                          _selectedPieces.remove(pieceNumber);
+                          return;
+                        }
+
+                        if (_selectedPieces.isEmpty) {
+                          // First selection
+                          _selectedPieces.add(pieceNumber);
+                          return;
+                        }
+
+                        if (_selectedPieces.length == 1) {
+                          final existing = _selectedPieces.first;
+                          if ((existing - pieceNumber).abs() == 1) {
+                            // Adjacent — select as second
+                            _selectedPieces.add(pieceNumber);
+                          } else {
+                            // Non-adjacent selection replaces prior choice
+                            _selectedPieces.clear();
+                            _selectedPieces.add(pieceNumber);
+                          }
+                          return;
+                        }
+
+                        // If two are already selected, replace the oldest with
+                        // the new selection, but ensure resulting pair are
+                        // adjacent; otherwise leave only the new selection.
+                        _selectedPieces.removeAt(0);
+                        _selectedPieces.add(pieceNumber);
+                        final a = _selectedPieces[0];
+                        final b = _selectedPieces[1];
+                        if ((a - b).abs() != 1) {
+                          // Not adjacent — clear other and keep only the new
+                          _selectedPieces.clear();
+                          _selectedPieces.add(pieceNumber);
+                        }
                       });
                     },
                     style: ElevatedButton.styleFrom(
@@ -295,74 +450,54 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           const Text(
-            'Select the test piece that matches the evaluation guide, or redo calibration',
+            'Select the test piece that matches the evaluation guide.\n If unsure, select the two pieces that look best.',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               color: Colors.white70,
             ),
             textAlign: TextAlign.center,
           ),
-
-          // Action buttons
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: GlassButton(
-                  tint: GlassButtonTint.warn,
-                  onPressed: () {
-                    // Pop overlay and navigate to CalibrationScreen
-                    Navigator.of(context).pop(); // Pop overlay
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CalibrationScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 65),
-                  ),
-                  child:
-                      const Text('Reconfigure', style: TextStyle(fontSize: 22)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: GlassButton(
-                  tint: GlassButtonTint.positive,
-                  onPressed: _selectedPiece == null
-                      ? null
-                      : () {
-                          _saveOptimalExposure();
-                        },
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 65),
-                  ),
-                  child: const Text('Save Settings',
-                      style: TextStyle(fontSize: 22)),
-                ),
-              ),
-            ],
-          ),
+          // Space for floating action buttons
+          const SizedBox(height: 85),
         ],
       ),
     );
   }
 
   void _saveOptimalExposure() async {
-    if (_selectedPiece == null) return;
+    if (_selectedPieces.isEmpty) return;
 
-    final optimalExposure = widget.startExposure +
-        (widget.exposureIncrement * (_selectedPiece! - 1));
+    final pieceNumber = _selectedPieces.first;
+    final optimalExposure =
+        widget.startExposure + (widget.exposureIncrement * (pieceNumber - 1));
+
+    // Fetch current profile to get the actual previous exposure time
+    double previousExposure = widget.startExposure;
+    try {
+      final profileJson =
+          await _backendService.getProfileJson(widget.profileId);
+      if (profileJson != null) {
+        final normalized = NanoProfile.normalizeForEdit(profileJson);
+        previousExposure =
+            (normalized['normal_cure_time'] as num?)?.toDouble() ??
+                widget.startExposure;
+      }
+    } catch (e) {
+      _logger.warning('Failed to fetch current profile for comparison: $e');
+      // Continue with widget.startExposure as fallback
+    }
 
     try {
       _logger.info(
           'Saving optimal exposure ${optimalExposure}s to profile ${widget.profileId}');
-      await _backendService.editProfile(widget.profileId, {
-        'LayerCureTime': optimalExposure,
-      });
+
+      // Normalize to the canonical key and convert to backend fields
+      final normalized = {'normal_cure_time': optimalExposure};
+      final backendFields = NanoProfile.denormalizeForBackend(normalized);
+
+      await _backendService.editProfile(widget.profileId, backendFields);
       _logger.info('Successfully saved optimal exposure to profile');
     } catch (e) {
       _logger.warning('Failed to save optimal exposure to profile: $e');
@@ -373,25 +508,310 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     showDialog(
       context: context,
       builder: (context) => GlassAlertDialog(
-        title: const Text('Settings Saved'),
-        content: Text(
-          'Optimal layer exposure time of ${optimalExposure.toStringAsFixed(1)}s has been saved to ${widget.resinProfileName ?? 'the resin profile'}.',
-          style: const TextStyle(fontSize: 18),
+        title: const Text('Calibration Complete',
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.resinProfileName ?? 'Resin Profile',
+              style: TextStyle(
+                fontSize: 22,
+                color: Colors.grey.shade400,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      'Previous',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${previousExposure.toStringAsFixed(1)}s',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Icon(
+                    Icons.arrow_forward,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 40,
+                  ),
+                ),
+                Column(
+                  children: [
+                    Text(
+                      'Optimal',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${optimalExposure.toStringAsFixed(1)}s',
+                      style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Layer exposure time updated',
+              style: TextStyle(
+                fontSize: 20,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
         ),
         actions: [
           GlassButton(
             tint: GlassButtonTint.positive,
             style: ElevatedButton.styleFrom(
-              minimumSize: const Size(100, 65),
+              minimumSize: const Size(120, 65),
             ),
             onPressed: () {
               Navigator.of(context).pop(); // Close dialog
               widget.onComplete(); // Close overlay
             },
-            child: const Text('Done'),
+            child: const Text('Done', style: TextStyle(fontSize: 22)),
           ),
         ],
       ),
+    );
+  }
+
+  void _showFineTuneDialog() {
+    if (_selectedPieces.length != 2) return;
+
+    final p1 = _selectedPieces[0];
+    final p2 = _selectedPieces[1];
+    final e1 = widget.startExposure + (widget.exposureIncrement * (p1 - 1));
+    final e2 = widget.startExposure + (widget.exposureIncrement * (p2 - 1));
+    final minExp = e1 < e2 ? e1 : e2;
+    final maxExp = e1 < e2 ? e2 : e1;
+
+    double value = minExp;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          final range = (maxExp - minExp).abs();
+          final divisions =
+              range <= 0.0001 ? 1 : ((range / 0.05).round()).clamp(1, 1000);
+
+          return GlassAlertDialog(
+            title: const Text('Fine-Tune Exposure',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Select a value between ${minExp.toStringAsFixed(2)}s and ${maxExp.toStringAsFixed(2)}s',
+                  style: const TextStyle(fontSize: 20),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '${value.toStringAsFixed(2)}s',
+                  style: TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary),
+                ),
+                Slider(
+                  value: value,
+                  min: minExp,
+                  max: maxExp,
+                  divisions: divisions,
+                  onChanged: (v) {
+                    // Snap to 0.05s steps for cleanliness
+                    final snapped = (v / 0.05).round() * 0.05;
+                    setStateDialog(() {
+                      value = double.parse(snapped.toStringAsFixed(2));
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.neutral,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(100, 65),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(100, 65),
+                ),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+
+                  // Fetch current profile to get the actual previous exposure time
+                  double previousExposure = widget.startExposure;
+                  try {
+                    final profileJson =
+                        await _backendService.getProfileJson(widget.profileId);
+                    if (profileJson != null) {
+                      final normalized =
+                          NanoProfile.normalizeForEdit(profileJson);
+                      previousExposure =
+                          (normalized['normal_cure_time'] as num?)
+                                  ?.toDouble() ??
+                              widget.startExposure;
+                    }
+                  } catch (e) {
+                    _logger.warning(
+                        'Failed to fetch current profile for comparison: $e');
+                    // Continue with widget.startExposure as fallback
+                  }
+
+                  // Save the chosen fine-tuned exposure
+                  try {
+                    final normalized = {'normal_cure_time': value};
+                    final backendFields =
+                        NanoProfile.denormalizeForBackend(normalized);
+                    await _backendService.editProfile(
+                        widget.profileId, backendFields);
+                  } catch (e) {
+                    _logger.warning('Failed to save fine-tuned exposure: $e');
+                  }
+
+                  showDialog(
+                    context: context,
+                    builder: (context) => GlassAlertDialog(
+                      title: const Text('Calibration Complete',
+                          style: TextStyle(
+                              fontSize: 26, fontWeight: FontWeight.bold)),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.resinProfileName ?? 'Resin Profile',
+                            style: TextStyle(
+                              fontSize: 22,
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Column(
+                                children: [
+                                  Text(
+                                    'Previous',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey.shade500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${previousExposure.toStringAsFixed(1)}s',
+                                    style: TextStyle(
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade600,
+                                      decoration: TextDecoration.lineThrough,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Icon(
+                                  Icons.arrow_forward,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 40,
+                                ),
+                              ),
+                              Column(
+                                children: [
+                                  Text(
+                                    'Fine-Tuned',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${value.toStringAsFixed(2)}s',
+                                    style: TextStyle(
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Layer exposure time updated',
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        GlassButton(
+                          tint: GlassButtonTint.positive,
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(120, 65),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            widget.onComplete();
+                          },
+                          child: const Text('Done',
+                              style: TextStyle(fontSize: 22)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('Save', style: TextStyle(fontSize: 22)),
+              ),
+            ],
+          );
+        });
+      },
     );
   }
 }
