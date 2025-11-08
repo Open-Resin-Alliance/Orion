@@ -189,7 +189,12 @@ class AboutScreenState extends State<AboutScreen> {
                 'Version ${Pubspec.version} - ${Pubspec.versionFull.toString().split('+')[1] == 'SELFCOMPILED' ? 'Local Build' : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}'}',
             applicationLegalese:
                 'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
-            applicationIcon: const FlutterLogo(size: 100),
+            applicationIcon: Image.asset(
+              'assets/images/open_resin_alliance_logo_darkmode.png',
+              width: 100,
+              height: 100,
+              fit: BoxFit.contain,
+            ),
             children: <Widget>[
               Padding(
                 padding: const EdgeInsets.only(left: 10, right: 10),
@@ -395,7 +400,7 @@ class AboutScreenState extends State<AboutScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: QrImageView(
-                data: 'https://github.com/TheContrappostoShop/Orion',
+                data: 'https://github.com/Open-Resin-Alliance/Orion',
                 version: QrVersions.auto,
                 size: 250,
                 eyeStyle: QrEyeStyle(

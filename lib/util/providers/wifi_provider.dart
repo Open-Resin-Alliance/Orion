@@ -297,21 +297,24 @@ class WiFiProvider with ChangeNotifier {
           _log.fine('Failed reading MAC from sysfs: $e');
         }
 
-        // Try sysfs for speed (works for many ethernet interfaces)
-        try {
-          final speedFile = File('/sys/class/net/$iface/speed');
-          if (await speedFile.exists()) {
-            final val = (await speedFile.readAsString()).trim();
-            if (val.isNotEmpty) {
-              _linkSpeed = '$val/$val';
+        // Try sysfs for speed (only works for ethernet interfaces, not wireless)
+        if (_connectionType == 'ethernet') {
+          try {
+            final speedFile = File('/sys/class/net/$iface/speed');
+            if (await speedFile.exists()) {
+              final val = (await speedFile.readAsString()).trim();
+              if (val.isNotEmpty && val != '-1') {
+                _linkSpeed = '$val/$val';
+              }
             }
+          } catch (e) {
+            _log.fine('Failed reading speed from sysfs: $e');
           }
-        } catch (e) {
-          _log.fine('Failed reading speed from sysfs: $e');
         }
 
         // Fallback: try nmcli device show
-        if (_macAddress == null || _linkSpeed == null) {
+        if (_macAddress == null ||
+            (_linkSpeed == null && _connectionType == 'ethernet')) {
           try {
             final res =
                 await Process.run('nmcli', ['-t', 'device', 'show', iface]);
@@ -327,6 +330,7 @@ class WiFiProvider with ChangeNotifier {
                 if (_macAddress == null && key == 'GENERAL.HWADDR') {
                   _macAddress = val;
                 } else if (_linkSpeed == null &&
+                    _connectionType == 'ethernet' &&
                     (key == 'SPEED' || key == 'GENERAL.SPEED')) {
                   // nmcli may use SPEED or GENERAL.SPEED depending on version
                   final sp = val.replaceAll(RegExp(r'\s+'), '');
@@ -343,8 +347,10 @@ class WiFiProvider with ChangeNotifier {
           }
         }
 
-        // If link speed still unknown, try ethtool as a final fallback (common on Linux)
-        if (_linkSpeed == null && _platform == 'linux') {
+        // If link speed still unknown for ethernet, try ethtool as a final fallback (common on Linux)
+        if (_linkSpeed == null &&
+            _platform == 'linux' &&
+            _connectionType == 'ethernet') {
           try {
             final eth = await Process.run('ethtool', [iface]);
             if (eth.exitCode == 0) {

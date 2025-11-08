@@ -18,17 +18,25 @@
 import 'package:flutter/material.dart';
 
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/materials/heater_screen.dart';
+import 'package:orion/materials/resins_screen.dart';
+import 'package:orion/materials/calibration_screen.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class MaterialsScreen extends StatefulWidget {
-  const MaterialsScreen({super.key});
+  // Make initialIndex nullable to be defensive against hot-reload/runtime
+  // instances where the field might temporarily be null. We'll default to 0
+  // in initState.
+  final int? initialIndex;
+  const MaterialsScreen({super.key, this.initialIndex});
 
   @override
   MaterialsScreenState createState() => MaterialsScreenState();
 }
 
 class MaterialsScreenState extends State<MaterialsScreen> {
-  int _selectedIndex = 1;
+  int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -39,6 +47,7 @@ class MaterialsScreenState extends State<MaterialsScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex ?? 0;
   }
 
   @override
@@ -47,26 +56,33 @@ class MaterialsScreenState extends State<MaterialsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Materials'),
+          actions: const [SystemStatusWidget()],
         ),
         body: _selectedIndex == 0
-            ? const Center(child: Text('To Be Implemented Soon!'))
+            ? const HeaterScreen()
             : _selectedIndex == 1
-                ? const Center(child: Text('To Be Implemented Soon!'))
-                : const Center(child: Text('To Be Implemented Soon!')),
+                ? const ResinsScreen()
+                : const CalibrationScreen(),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.thermometer()),
+              activeIcon: PhosphorIcon(PhosphorIconsFill.thermometer,
+                  color: Theme.of(context).colorScheme.primary),
+              label: 'Heaters',
+            ),
+            BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.flask()),
+              activeIcon: PhosphorIcon(PhosphorIconsFill.flask,
+                  color: Theme.of(context).colorScheme.primary),
               label: 'Resins',
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.scales()),
+              activeIcon: PhosphorIcon(PhosphorIconsFill.scales,
+                  color: Theme.of(context).colorScheme.primary),
               label: 'Calibration',
-            ),
-            BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.thermometer()),
-              label: 'Heaters',
             ),
           ],
           currentIndex: _selectedIndex,

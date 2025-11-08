@@ -194,5 +194,96 @@ class BackendService implements BackendClient {
   Future<dynamic> getAnalyticValue(int id) => _delegate.getAnalyticValue(id);
 
   @override
+  Future<Map<String, dynamic>> getMachine() => _delegate.getMachine();
+
+  @override
+  Future<int?> getDefaultProfileId() => _delegate.getDefaultProfileId();
+
+  @override
+  Future<Map<String, dynamic>> editProfile(
+      int id, Map<String, dynamic> fields) async {
+    try {
+      return await _delegate.editProfile(id, fields);
+    } catch (e, _) {
+      // Treat backend-specific errors as empty result so callers don't crash
+      return {};
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProfileJson(int id) async {
+    try {
+      return await _delegate.getProfileJson(id);
+    } catch (e, _) {
+      // Don't let backend-specific fetch failures throw into UI code —
+      // treat as unsupported/empty result.
+      // Note: individual delegates should log details; keep this quiet
+      // at info level to avoid spamming.
+      return {};
+    }
+  }
+
+  @override
+  Future<void> setDefaultProfileId(int id) => _delegate.setDefaultProfileId(id);
+
+  @override
   Future<dynamic> tareForceSensor() => _delegate.tareForceSensor();
+
+  @override
+  Future setChamberTemperature(double temperature) =>
+      _delegate.setChamberTemperature(temperature);
+
+  @override
+  Future setVatTemperature(double temperature) =>
+      _delegate.setVatTemperature(temperature);
+
+  @override
+  Future getChamberTemperature() => _delegate.getChamberTemperature();
+
+  @override
+  Future getVatTemperature() => _delegate.getVatTemperature();
+
+  @override
+  Future<bool> isChamberTemperatureControlEnabled() {
+    return _delegate.isChamberTemperatureControlEnabled();
+  }
+
+  @override
+  Future<bool> isVatTemperatureControlEnabled() {
+    return _delegate.isVatTemperatureControlEnabled();
+  }
+
+  @override
+  Future<void> preheatAndMix(double temperature) =>
+      _delegate.preheatAndMix(temperature);
+
+  @override
+  Future<void> preheatAndMixStandalone() => _delegate.preheatAndMixStandalone();
+
+  @override
+  Future<String?> getCalibrationImageUrl(int modelId) =>
+      _delegate.getCalibrationImageUrl(modelId);
+
+  @override
+  Future<List<Map<String, dynamic>>> getCalibrationModels() =>
+      _delegate.getCalibrationModels();
+
+  @override
+  Future<bool> startCalibrationPrint({
+    required int calibrationModelId,
+    required List<double> exposureTimes,
+    required int profileId,
+  }) =>
+      _delegate.startCalibrationPrint(
+        calibrationModelId: calibrationModelId,
+        exposureTimes: exposureTimes,
+        profileId: profileId,
+      );
+
+  @override
+  Future<double?> getSlicerProgress() => _delegate.getSlicerProgress();
+
+  @override
+  Future<bool?> isCalibrationPlateProcessed() =>
+      _delegate.isCalibrationPlateProcessed();
 }

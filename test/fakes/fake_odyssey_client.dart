@@ -155,6 +155,27 @@ class FakeBackendClient implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>> getMachine() async {
+    return {};
+  }
+
+  @override
+  Future<int?> getDefaultProfileId() async {
+    return null;
+  }
+
+  @override
+  Future<void> setDefaultProfileId(int id) async {
+    // Record or ignore in fake - no-op for most tests.
+    return;
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProfileJson(int id) async {
+    return {};
+  }
+
+  @override
   Future<void> disableNotification(int timestamp) async {
     // no-op fake for tests
     return;
@@ -179,7 +200,85 @@ class FakeBackendClient implements BackendClient {
   }
 
   @override
-  Future tareForceSensor() {
+  Future<dynamic> tareForceSensor() async {
+    return null;
+  }
+
+  @override
+  Future setChamberTemperature(double temperature) async {
+    return null;
+  }
+
+  @override
+  Future setVatTemperature(double temperature) async {
+    return null;
+  }
+
+  @override
+  Future<bool> isChamberTemperatureControlEnabled() async {
+    return false;
+  }
+
+  @override
+  Future<bool> isVatTemperatureControlEnabled() async {
+    return false;
+  }
+
+  @override
+  Future<Map<String, dynamic>> editProfile(
+      int id, Map<String, dynamic> fields) {
+    // TODO: implement editProfile
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> getCalibrationImageUrl(int modelId) {
+    // TODO: implement getCalibrationImageUrl
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCalibrationModels() {
+    // TODO: implement getCalibrationModels
+    throw UnimplementedError();
+  }
+
+  @override
+  Future getChamberTemperature() {
+    // TODO: implement getChamberTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<double?> getSlicerProgress() {
+    // TODO: implement getSlicerProgress
+    throw UnimplementedError();
+  }
+
+  @override
+  Future getVatTemperature() {
+    // TODO: implement getVatTemperature
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool?> isCalibrationPlateProcessed() {
+    // TODO: implement isCalibrationPlateProcessed
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> preheatAndMix(double temperature) {
+    // TODO: implement preheatAndMix
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> startCalibrationPrint(
+      {required int calibrationModelId,
+      required List<double> exposureTimes,
+      required int profileId}) {
+    // TODO: implement startCalibrationPrint
     throw UnimplementedError();
   }
 }

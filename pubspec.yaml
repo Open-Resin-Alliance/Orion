@@ -104,6 +104,8 @@ flutter:
     - assets/images/placeholder.png
     - assets/images/bsod.png
     - assets/images/open_resin_alliance_logo_darkmode.png
+    - assets/images/athena_logo.svg
+    - assets/images/c3d.svg
     - assets/scripts/set_orion_config.sh
     - README.md
     - CHANGELOG.md

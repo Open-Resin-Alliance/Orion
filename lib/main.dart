@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:window_size/window_size.dart';
@@ -39,6 +40,7 @@ import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/status/status_screen.dart';
 import 'package:orion/materials/materials_screen.dart';
+import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/files_provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
@@ -177,6 +179,16 @@ class OrionRoot extends StatelessWidget {
           create: (_) => ManualProvider(),
           lazy: true,
         ),
+        ChangeNotifierProvider(
+          create: (_) => ResinsProvider(),
+          // Prefetch calibration models and images at app startup so
+          // opening the Calibration screen can show thumbnails immediately.
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CalibrationContextProvider(),
+          lazy: true,
+        )
       ],
       child: const OrionMainApp(),
     );

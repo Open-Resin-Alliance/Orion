@@ -225,8 +225,8 @@ class AboutDialog extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(10.0),
         child: SizedBox(
-          height: 54,
-          width: 54,
+          height: 65,
+          width: 65,
           child: FittedBox(
             fit: BoxFit.contain,
             child: applicationIcon!,
@@ -245,15 +245,17 @@ class AboutDialog extends StatelessWidget {
             margin: EdgeInsets.zero,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                applicationLegalese,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      height: 3.0,
-                      fontSize: 16,
-                    ),
-                textAlign: TextAlign.center,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  applicationLegalese,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        height: 3.0,
+                        fontSize: 18,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ),
