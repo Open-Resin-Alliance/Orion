@@ -25,7 +25,11 @@ import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class MaterialsScreen extends StatefulWidget {
-  const MaterialsScreen({super.key});
+  // Make initialIndex nullable to be defensive against hot-reload/runtime
+  // instances where the field might temporarily be null. We'll default to 0
+  // in initState.
+  final int? initialIndex;
+  const MaterialsScreen({super.key, this.initialIndex});
 
   @override
   MaterialsScreenState createState() => MaterialsScreenState();
@@ -43,6 +47,7 @@ class MaterialsScreenState extends State<MaterialsScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex ?? 0;
   }
 
   @override
