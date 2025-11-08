@@ -36,6 +36,8 @@ class HeaterScreenState extends State<HeaterScreen> {
   final _logger = Logger('Heater');
 
   int _targetTemperature = 30; // Default to 30°C
+  int? _lastBackendTemperature;
+  bool _isUserInteracting = false;
   // Heater enabled/disabled state is now stored in [ManualProvider]. We refresh
   // that state after the first frame and listen to provider updates in build().
   Timer? _heaterRefreshTimer;
@@ -55,13 +57,39 @@ class HeaterScreenState extends State<HeaterScreen> {
         try {
           final vat = manual.vatTemp ?? 0.0;
           final chamber = manual.chamberTemp ?? 0.0;
-          final int desired = (vat > 0.0)
+
+          // If both reported temps are zero, treat that as "no backend
+          // target" rather than defaulting to 30°C. This avoids stomping a
+          // user-chosen value when heaters are off.
+          final int? desiredFromBackend = (vat > 0.0)
               ? vat.round()
-              : ((chamber > 0.0) ? chamber.round() : 30);
-          if (mounted && _targetTemperature != desired) {
-            setState(() {
-              _targetTemperature = desired;
-            });
+              : ((chamber > 0.0) ? chamber.round() : null);
+
+          // If we have a backend value and we never initialized the last
+          // backend temperature, adopt it and update the UI accordingly.
+          if (_lastBackendTemperature == null && desiredFromBackend != null) {
+            _lastBackendTemperature = desiredFromBackend;
+            if (mounted && _targetTemperature != desiredFromBackend) {
+              setState(() {
+                _targetTemperature = desiredFromBackend;
+              });
+            }
+            return;
+          }
+
+          // If backend has no meaningful target (both heaters off) do not
+          // overwrite anything. Otherwise, only apply backend-driven updates
+          // when the backend value has actually changed and the user is not
+          // currently interacting with the slider.
+          if (desiredFromBackend != null &&
+              desiredFromBackend != _lastBackendTemperature &&
+              !_isUserInteracting) {
+            _lastBackendTemperature = desiredFromBackend;
+            if (mounted && _targetTemperature != desiredFromBackend) {
+              setState(() {
+                _targetTemperature = desiredFromBackend;
+              });
+            }
           }
         } catch (e, st) {
           _logger.fine('Failed to apply manual provider temps', e, st);
@@ -383,8 +411,8 @@ class HeaterScreenState extends State<HeaterScreen> {
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -420,60 +448,79 @@ class HeaterScreenState extends State<HeaterScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            Container(
-              height: 10,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.blue.shade700,
-                    Colors.cyan.shade500,
-                    Colors.amber.shade500,
-                    Colors.orange.shade500,
-                    Colors.red.shade600,
-                    Colors.red.shade800
-                  ],
-                  // Adjust stops so that 30°C (midpoint of 20-40) maps to a
-                  // relatively warm color (orange) at the center of the gradient.
-                  stops: const [0.0, 0.20, 0.40, 0.60, 0.8, 1.0],
-                ),
-              ),
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: Colors.transparent,
-                  inactiveTrackColor: Colors.transparent,
-                  thumbColor: Colors.white,
-                  overlayColor: Colors.white.withOpacity(0.2),
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 12.0,
+            const Spacer(),
+            SizedBox(
+              height: 30,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Background gradient bar
+                  Container(
+                    height: 10,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.blue.shade700,
+                          Colors.cyan.shade500,
+                          Colors.amber.shade500,
+                          Colors.orange.shade500,
+                          Colors.red.shade600,
+                          Colors.red.shade800
+                        ],
+                        // Adjust stops so that 30°C (midpoint of 20-40) maps to a
+                        // relatively warm color (orange) at the center of the gradient.
+                        stops: const [0.0, 0.20, 0.40, 0.60, 0.80, 1.0],
+                      ),
+                    ),
                   ),
-                  overlayShape: const RoundSliderOverlayShape(
-                    overlayRadius: 24.0,
+                  // Slider with proper touch target
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: Colors.transparent,
+                      inactiveTrackColor: Colors.transparent,
+                      thumbColor: Colors.white,
+                      overlayColor: Colors.white.withValues(alpha: 0.2),
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 12.0,
+                      ),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 28.0,
+                      ),
+                      trackHeight: 48.0,
+                    ),
+                    child: Slider(
+                      value: _targetTemperature.toDouble(),
+                      min: 20,
+                      max: 40,
+                      divisions: 20,
+                      onChangeStart: (value) {
+                        // User has started dragging - avoid applying backend
+                        // updates until they finish interacting.
+                        _isUserInteracting = true;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          _targetTemperature = value.round();
+                        });
+                      },
+                      onChangeEnd: (value) {
+                        _isUserInteracting = false;
+                        final int ended = value.round();
+                        // Remember the user's chosen temperature as the
+                        // latest backend-synced value so the periodic
+                        // refresh doesn't immediately override it.
+                        _lastBackendTemperature = ended;
+                        _logger.info(
+                          'Target temperature set to: ${ended}°C',
+                        );
+                        onChangeEnd(value);
+                      },
+                    ),
                   ),
-                  trackHeight: 8.0,
-                ),
-                child: Slider(
-                  value: _targetTemperature.toDouble(),
-                  min: 20,
-                  max: 40,
-                  divisions: 20,
-                  onChanged: (value) {
-                    setState(() {
-                      _targetTemperature = value.round();
-                    });
-                  },
-                  onChangeEnd: (value) {
-                    _logger.info(
-                      'Target temperature set to: ${value.round()}°C',
-                    );
-                    onChangeEnd(value);
-                  },
-                ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            const Spacer(),
           ],
         ),
       ),
