@@ -189,7 +189,12 @@ class AboutScreenState extends State<AboutScreen> {
                 'Version ${Pubspec.version} - ${Pubspec.versionFull.toString().split('+')[1] == 'SELFCOMPILED' ? 'Local Build' : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}'}',
             applicationLegalese:
                 'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
-            applicationIcon: const FlutterLogo(size: 100),
+            applicationIcon: Image.asset(
+              'assets/images/open_resin_alliance_logo_darkmode.png',
+              width: 100,
+              height: 100,
+              fit: BoxFit.contain,
+            ),
             children: <Widget>[
               Padding(
                 padding: const EdgeInsets.only(left: 10, right: 10),
