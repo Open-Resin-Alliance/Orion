@@ -428,6 +428,12 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   @override
+  Future<void> preheatAndMixStandalone() async {
+    // Simulated client: no-op
+    return;
+  }
+
+  @override
   Future<String?> getCalibrationImageUrl(int modelId) async {
     // Simulated client: return placeholder
     return 'http://localhost/static/shots/calibration-images/$modelId.png';

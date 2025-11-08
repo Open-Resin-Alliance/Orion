@@ -151,6 +151,10 @@ abstract class BackendClient {
   /// This is an Athena-specific feature exposed via /athena-iot/control/preheat_and_mix
   Future<void> preheatAndMix(double temperature);
 
+  /// Trigger preheat and mix operation without temperature (standalone mode).
+  /// This is an Athena-specific feature exposed via /athena-iot/control/preheat_and_mix_standalone
+  Future<void> preheatAndMixStandalone();
+
   /// Get the URL for a calibration model preview image by ID.
   /// Returns the full URL path to the image (e.g. http://host/static/shots/calibration-images/1.png)
   /// or null if not supported by the backend.

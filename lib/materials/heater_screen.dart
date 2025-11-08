@@ -207,7 +207,7 @@ class HeaterScreenState extends State<HeaterScreen> {
       try {
         // Use the athena-iot preheat_and_mix endpoint if available
         final svc = BackendService();
-        await svc.preheatAndMix(_targetTemperature.toDouble());
+        await svc.preheatAndMixStandalone();
         _logger
             .info('Mix and Preheat activated - Target: $_targetTemperature°C');
       } catch (_) {

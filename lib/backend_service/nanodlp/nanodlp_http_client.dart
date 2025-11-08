@@ -1674,6 +1674,27 @@ class NanoDlpHttpClient implements BackendClient {
   }
 
   @override
+  Future<void> preheatAndMixStandalone() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri =
+        Uri.parse('$baseNoSlash/athena-iot/control/preheat_and_mix_standalone');
+    _log.info('NanoDLP preheatAndMixStandalone request: $uri');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.warning(
+            'NanoDLP preheatAndMixStandalone failed: ${resp.statusCode} ${resp.body}');
+        throw Exception(
+            'NanoDLP preheatAndMixStandalone failed: ${resp.statusCode}');
+      }
+      return;
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
   Future<String?> getCalibrationImageUrl(int modelId) async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     return '$baseNoSlash/static/shots/calibration-images/$modelId.png';

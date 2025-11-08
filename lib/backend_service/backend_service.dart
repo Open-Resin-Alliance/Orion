@@ -258,6 +258,9 @@ class BackendService implements BackendClient {
       _delegate.preheatAndMix(temperature);
 
   @override
+  Future<void> preheatAndMixStandalone() => _delegate.preheatAndMixStandalone();
+
+  @override
   Future<String?> getCalibrationImageUrl(int modelId) =>
       _delegate.getCalibrationImageUrl(modelId);
 

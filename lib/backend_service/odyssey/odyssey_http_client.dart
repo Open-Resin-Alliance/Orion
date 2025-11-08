@@ -467,6 +467,14 @@ class OdysseyHttpClient implements BackendClient {
   }
 
   @override
+  Future<void> preheatAndMixStandalone() async {
+    // Odyssey does not support Athena-specific preheat_and_mix_standalone endpoint
+    _log.fine(
+        'preheatAndMixStandalone called on OdysseyHttpClient (unsupported)');
+    return;
+  }
+
+  @override
   Future<String?> getCalibrationImageUrl(int modelId) async {
     // Odyssey does not support calibration images
     _log.fine(
