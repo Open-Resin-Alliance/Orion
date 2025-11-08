@@ -37,12 +37,12 @@ class EditResinScreen extends StatefulWidget {
 class EditResinScreenState extends State<EditResinScreen> {
   final _log = Logger('EditResinScreen');
 
-  late int _burnInTime; // seconds
-  late int _normalTime; // seconds
+  late double _burnInTime; // seconds
+  late double _normalTime; // seconds
   late double _liftAfter; // mm
   late int _burnInCount; // count
-  late int _waitAfterCure; // seconds
-  late int _waitAfterLife; // seconds
+  late double _waitAfterCure; // seconds
+  late double _waitAfterLife; // seconds
 
   late Map<String, dynamic> _initial;
   bool _saving = false;
@@ -57,12 +57,12 @@ class EditResinScreenState extends State<EditResinScreen> {
     final meta = widget.resin?.meta ?? {};
     final norm = NanoProfile.normalizeForEdit(meta);
 
-    _burnInTime = norm['burn_in_cure_time'] as int;
-    _normalTime = norm['normal_cure_time'] as int;
+    _burnInTime = (norm['burn_in_cure_time'] as num).toDouble();
+    _normalTime = (norm['normal_cure_time'] as num).toDouble();
     _liftAfter = norm['lift_after_print'] as double;
     _burnInCount = norm['burn_in_count'] as int;
-    _waitAfterCure = norm['wait_after_cure'] as int;
-    _waitAfterLife = norm['wait_after_life'] as int;
+    _waitAfterCure = (norm['wait_after_cure'] as num).toDouble();
+    _waitAfterLife = (norm['wait_after_life'] as num).toDouble();
 
     _initial = Map<String, dynamic>.from(norm);
 
@@ -86,14 +86,18 @@ class EditResinScreenState extends State<EditResinScreen> {
         if (!mounted) return;
         setState(() {
           _loadFromMeta(mergedMeta);
-          _burnInTime = normalized['burn_in_cure_time'] as int? ?? _burnInTime;
-          _normalTime = normalized['normal_cure_time'] as int? ?? _normalTime;
+          _burnInTime = (normalized['burn_in_cure_time'] as num?)?.toDouble() ??
+              _burnInTime;
+          _normalTime = (normalized['normal_cure_time'] as num?)?.toDouble() ??
+              _normalTime;
           _liftAfter = normalized['lift_after_print'] as double? ?? _liftAfter;
           _burnInCount = normalized['burn_in_count'] as int? ?? _burnInCount;
           _waitAfterCure =
-              normalized['wait_after_cure'] as int? ?? _waitAfterCure;
+              (normalized['wait_after_cure'] as num?)?.toDouble() ??
+                  _waitAfterCure;
           _waitAfterLife =
-              normalized['wait_after_life'] as int? ?? _waitAfterLife;
+              (normalized['wait_after_life'] as num?)?.toDouble() ??
+                  _waitAfterLife;
         });
       } catch (e, st) {
         _log.fine('Failed to fetch or apply profile details', e, st);
@@ -106,24 +110,24 @@ class EditResinScreenState extends State<EditResinScreen> {
     // backend-agnostic and we avoid duplicating candidate-key logic here.
     final normalized = NanoProfile.normalizeForEdit(meta);
 
-    _burnInTime = normalized['burn_in_cure_time'] as int? ?? 10;
-    _normalTime = normalized['normal_cure_time'] as int? ?? 8;
+    _burnInTime = (normalized['burn_in_cure_time'] as num?)?.toDouble() ?? 10.0;
+    _normalTime = (normalized['normal_cure_time'] as num?)?.toDouble() ?? 8.0;
     _liftAfter = normalized['lift_after_print'] as double? ?? 5.0;
     _burnInCount = normalized['burn_in_count'] as int? ?? 3;
-    _waitAfterCure = normalized['wait_after_cure'] as int? ?? 2;
-    _waitAfterLife = normalized['wait_after_life'] as int? ?? 2;
+    _waitAfterCure = (normalized['wait_after_cure'] as num?)?.toDouble() ?? 2.0;
+    _waitAfterLife = (normalized['wait_after_life'] as num?)?.toDouble() ?? 2.0;
 
     _initial = Map<String, dynamic>.from(normalized);
   }
 
   void _reset() {
     setState(() {
-      _burnInTime = _initial['burn_in_cure_time'] as int;
-      _normalTime = _initial['normal_cure_time'] as int;
+      _burnInTime = (_initial['burn_in_cure_time'] as num).toDouble();
+      _normalTime = (_initial['normal_cure_time'] as num).toDouble();
       _liftAfter = _initial['lift_after_print'] as double;
       _burnInCount = _initial['burn_in_count'] as int;
-      _waitAfterCure = _initial['wait_after_cure'] as int;
-      _waitAfterLife = _initial['wait_after_life'] as int;
+      _waitAfterCure = (_initial['wait_after_cure'] as num).toDouble();
+      _waitAfterLife = (_initial['wait_after_life'] as num).toDouble();
     });
   }
 
@@ -143,10 +147,7 @@ class EditResinScreenState extends State<EditResinScreen> {
     int? profileId;
     try {
       final meta = widget.resin?.meta ?? {};
-      profileId = (meta['id'] ?? meta['ProfileID'] ?? meta['ProfileId']) is int
-          ? (meta['id'] ?? meta['ProfileID'] ?? meta['ProfileId']) as int
-          : int.tryParse(
-              '${meta['id'] ?? meta['ProfileID'] ?? meta['ProfileId']}');
+      profileId = ResinsProvider.resolveProfileIdFromMeta(meta);
     } catch (_) {
       profileId = null;
     }
@@ -167,12 +168,135 @@ class EditResinScreenState extends State<EditResinScreen> {
       final backendFields = NanoProfile.denormalizeForBackend(result);
       final resp = await svc.editProfile(profileId, backendFields);
       _log.fine('editProfile response: $resp');
+
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
+
+      // Show success dialog with old→new comparison for normal cure time
+      double parseNum(dynamic v) {
+        if (v == null) return 0.0;
+        if (v is num) return v.toDouble();
+        final pd = double.tryParse('$v');
+        return pd ?? 0.0;
+      }
+
+      final oldNormalTime = parseNum(_initial['normal_cure_time']);
+      final newNormalTime = parseNum(result['normal_cure_time']);
+      final hasChanged = oldNormalTime != newNormalTime;
+
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (context) => GlassAlertDialog(
+            title: const Text('Profile Saved',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.resin?.name ?? 'Resin Profile',
+                  style: TextStyle(
+                    fontSize: 22,
+                    color: Colors.grey.shade400,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (hasChanged) ...[
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Column(
+                        children: [
+                          Text(
+                            'Previous',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${oldNormalTime.toStringAsFixed(2)}s',
+                            style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade600,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Icon(
+                          Icons.arrow_forward,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 40,
+                        ),
+                      ),
+                      Column(
+                        children: [
+                          Text(
+                            'Updated',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${newNormalTime.toStringAsFixed(2)}s',
+                            style: TextStyle(
+                              fontSize: 42,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                Text(
+                  hasChanged
+                      ? 'Layer exposure time updated'
+                      : 'Profile settings saved successfully',
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(120, 65),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Done', style: TextStyle(fontSize: 22)),
+              ),
+            ],
+          ),
+        );
+      }
+
       // Return the submitted result (or backend response) to the caller so
       // callers can update UI immediately.
-      Navigator.of(context).pop(resp.isNotEmpty ? resp : result);
+      if (mounted) {
+        Navigator.of(context).pop(resp.isNotEmpty ? resp : result);
+      }
     } catch (e, st) {
       _log.severe('Failed to post profile edits', e, st);
-      showErrorDialog(context, 'PROFILE-EDIT-FAILED');
+      if (mounted) showErrorDialog(context, 'PROFILE-EDIT-FAILED');
     } finally {
       if (mounted) {
         setState(() {
@@ -341,17 +465,16 @@ class EditResinScreenState extends State<EditResinScreen> {
                           Expanded(
                             child: _buildCard(
                               title: 'Burn-In Layer Cure Time',
-                              value: '$_burnInTime s',
+                              value: '${_burnInTime.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
                                 title: 'Burn-In Layer Cure Time',
                                 currentValue: _burnInTime.toDouble(),
                                 min: 0,
                                 max: 30,
                                 suffix: ' s',
-                                decimals: 1,
-                                step: 0.2,
-                                onSave: (v) =>
-                                    setState(() => _burnInTime = v.round()),
+                                decimals: 2,
+                                step: 0.02,
+                                onSave: (v) => setState(() => _burnInTime = v),
                               ),
                             ),
                           ),
@@ -382,7 +505,8 @@ class EditResinScreenState extends State<EditResinScreen> {
                           Expanded(
                             child: _buildCard(
                               title: 'Normal Layer Cure Time',
-                              value: '$_normalTime s',
+                              // Display two decimals but restrict edits to 0.1s
+                              value: '${_normalTime.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
                                 title: 'Normal Layer Cure Time',
                                 currentValue: _normalTime.toDouble(),
@@ -391,8 +515,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                                 suffix: ' s',
                                 decimals: 1,
                                 step: 0.1,
-                                onSave: (v) =>
-                                    setState(() => _normalTime = v.round()),
+                                onSave: (v) => setState(() => _normalTime = v),
                               ),
                             ),
                           ),
@@ -400,17 +523,17 @@ class EditResinScreenState extends State<EditResinScreen> {
                           Expanded(
                             child: _buildCard(
                               title: 'Wait After Cure',
-                              value: '$_waitAfterCure s',
+                              value: '${_waitAfterCure.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
                                 title: 'Wait After Cure',
                                 currentValue: _waitAfterCure.toDouble(),
                                 min: 0,
                                 max: 20,
                                 suffix: ' s',
-                                decimals: 1,
-                                step: 0.5,
+                                decimals: 2,
+                                step: 0.05,
                                 onSave: (v) =>
-                                    setState(() => _waitAfterCure = v.round()),
+                                    setState(() => _waitAfterCure = v),
                               ),
                             ),
                           ),
@@ -441,17 +564,17 @@ class EditResinScreenState extends State<EditResinScreen> {
                           Expanded(
                             child: _buildCard(
                               title: 'Wait After Lift',
-                              value: '$_waitAfterLife s',
+                              value: '${_waitAfterLife.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
                                 title: 'Wait After Lift',
                                 currentValue: _waitAfterLife.toDouble(),
                                 min: 0,
                                 max: 20,
                                 suffix: ' s',
-                                decimals: 1,
-                                step: 0.5,
+                                decimals: 2,
+                                step: 0.05,
                                 onSave: (v) =>
-                                    setState(() => _waitAfterLife = v.round()),
+                                    setState(() => _waitAfterLife = v),
                               ),
                             ),
                           ),
