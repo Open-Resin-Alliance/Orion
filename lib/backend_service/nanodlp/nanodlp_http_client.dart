@@ -97,129 +97,119 @@ class NanoDlpHttpClient implements BackendClient {
   Future<Map<String, dynamic>> getStatus() async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/status');
-    // Attempt the status request with one retry on transient failure.
-    int attempt = 0;
-    while (true) {
-      attempt += 1;
-      final client = _createClient();
-      try {
-        final resp = await client.get(uri);
-        if (resp.statusCode != 200) {
-          throw Exception('NanoDLP status call failed: ${resp.statusCode}');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        throw Exception('NanoDLP status call failed: ${resp.statusCode}');
+      }
+      final decoded = json.decode(resp.body) as Map<String, dynamic>;
+      // Remove very large fields we don't need (e.g. FillAreas) to avoid
+      // costly parsing and memory churn when polling /status frequently.
+      if (decoded.containsKey('FillAreas')) {
+        try {
+          decoded.remove('FillAreas');
+        } catch (_) {
+          // ignore any removal errors; parsing will continue without it
         }
-        final decoded = json.decode(resp.body) as Map<String, dynamic>;
-        // Remove very large fields we don't need (e.g. FillAreas) to avoid
-        // costly parsing and memory churn when polling /status frequently.
-        if (decoded.containsKey('FillAreas')) {
-          try {
-            decoded.remove('FillAreas');
-          } catch (_) {
-            // ignore any removal errors; parsing will continue without it
-          }
-        }
-        var nano = NanoStatus.fromJson(decoded);
+      }
+      var nano = NanoStatus.fromJson(decoded);
 
-        // If the status payload doesn't include file metadata but does include
-        // a PlateID, try to resolve the plate from the plates list so we can
-        // populate file metadata & enable thumbnail lookup on the UI.
-        if (nano.file == null) {
-          int? plateId;
+      // If the status payload doesn't include file metadata but does include
+      // a PlateID, try to resolve the plate from the plates list so we can
+      // populate file metadata & enable thumbnail lookup on the UI.
+      if (nano.file == null) {
+        int? plateId;
+        try {
+          final candidate = decoded['PlateID'] ??
+              decoded['plate_id'] ??
+              decoded['Plateid'] ??
+              decoded['plateId'];
+          if (candidate is int) plateId = candidate;
+          if (candidate is String) plateId = int.tryParse(candidate);
+        } catch (_) {
+          plateId = null;
+        }
+        if (plateId != null) {
           try {
-            final candidate = decoded['PlateID'] ??
-                decoded['plate_id'] ??
-                decoded['Plateid'] ??
-                decoded['plateId'];
-            if (candidate is int) plateId = candidate;
-            if (candidate is String) plateId = int.tryParse(candidate);
-          } catch (_) {
-            plateId = null;
-          }
-          if (plateId != null) {
-            try {
-              // If we previously resolved this plate and the cache is fresh,
-              // reuse it.
-              if (_resolvedPlateId == plateId &&
-                  _resolvedPlateFile != null &&
-                  _resolvedPlateTime != null &&
-                  DateTime.now().difference(_resolvedPlateTime!) <
-                      _platesCacheTtl) {
-                final found = _resolvedPlateFile!;
-                nano = NanoStatus(
-                  printing: nano.printing,
-                  paused: nano.paused,
-                  statusMessage: nano.statusMessage,
-                  currentHeight: nano.currentHeight,
-                  layerId: nano.layerId,
-                  layersCount: nano.layersCount,
-                  resinLevel: nano.resinLevel,
-                  temp: nano.temp,
-                  mcuTemp: nano.mcuTemp,
-                  rawJsonStatus: nano.rawJsonStatus,
-                  state: nano.state,
-                  stateCode: nano.stateCode,
-                  progress: nano.progress,
-                  file: found,
-                  z: nano.z,
-                  curing: nano.curing,
-                );
+            // If we previously resolved this plate and the cache is fresh,
+            // reuse it.
+            if (_resolvedPlateId == plateId &&
+                _resolvedPlateFile != null &&
+                _resolvedPlateTime != null &&
+                DateTime.now().difference(_resolvedPlateTime!) <
+                    _platesCacheTtl) {
+              final found = _resolvedPlateFile!;
+              nano = NanoStatus(
+                printing: nano.printing,
+                paused: nano.paused,
+                statusMessage: nano.statusMessage,
+                currentHeight: nano.currentHeight,
+                layerId: nano.layerId,
+                layersCount: nano.layersCount,
+                resinLevel: nano.resinLevel,
+                temp: nano.temp,
+                mcuTemp: nano.mcuTemp,
+                rawJsonStatus: nano.rawJsonStatus,
+                state: nano.state,
+                stateCode: nano.stateCode,
+                progress: nano.progress,
+                file: found,
+                z: nano.z,
+                curing: nano.curing,
+              );
+            } else {
+              // Only attempt to resolve plate metadata when a job is active
+              // (printing). Avoid fetching the plates list while the device
+              // is idle to minimize network traffic at startup.
+              if (!nano.printing) {
+                // Skipping PlateID $plateId resolve because printer is not printing
               } else {
-                // Only attempt to resolve plate metadata when a job is active
-                // (printing). Avoid fetching the plates list while the device
-                // is idle to minimize network traffic at startup.
-                if (!nano.printing) {
-                  // Skipping PlateID $plateId resolve because printer is not printing
+                // Don't block status fetch on plates list resolution. Schedule
+                // a background task to refresh plates and populate the
+                // resolved-plate cache for subsequent polls and thumbnail
+                // lookups. However, avoid doing this immediately at startup
+                // (many installs poll status right away) — only schedule the
+                // async resolve if this client was created more than 2s ago.
+                final age = DateTime.now().difference(_createdAt);
+                if (age < const Duration(seconds: 2)) {
+                  _log.fine(
+                      'Skipping PlateID $plateId resolve during startup (age=${age.inMilliseconds}ms)');
                 } else {
-                  // Don't block status fetch on plates list resolution. Schedule
-                  // a background task to refresh plates and populate the
-                  // resolved-plate cache for subsequent polls and thumbnail
-                  // lookups. However, avoid doing this immediately at startup
-                  // (many installs poll status right away) — only schedule the
-                  // async resolve if this client was created more than 2s ago.
-                  final age = DateTime.now().difference(_createdAt);
-                  if (age < const Duration(seconds: 2)) {
-                    _log.fine(
-                        'Skipping PlateID $plateId resolve during startup (age=${age.inMilliseconds}ms)');
-                  } else {
-                    _log.fine('Scheduling async resolve for PlateID $plateId');
-                    Future(() async {
-                      try {
-                        final plates = await _fetchPlates();
-                        final found = plates.firstWhere(
-                            (p) => p.plateId != null && p.plateId == plateId,
-                            orElse: () => const NanoFile());
-                        if (found.plateId != null) {
-                          // Cache resolved plate for future polls
-                          _log.fine(
-                              'Resolved PlateID $plateId -> ${found.name}');
-                          _resolvedPlateId = plateId;
-                          _resolvedPlateFile = found;
-                          _resolvedPlateTime = DateTime.now();
-                        }
-                      } catch (e, st) {
-                        _log.fine('Async PlateID resolve failed', e, st);
+                  _log.fine('Scheduling async resolve for PlateID $plateId');
+                  Future(() async {
+                    try {
+                      final plates = await _fetchPlates();
+                      final found = plates.firstWhere(
+                          (p) => p.plateId != null && p.plateId == plateId,
+                          orElse: () => const NanoFile());
+                      if (found.plateId != null) {
+                        // Cache resolved plate for future polls
+                        _log.fine('Resolved PlateID $plateId -> ${found.name}');
+                        _resolvedPlateId = plateId;
+                        _resolvedPlateFile = found;
+                        _resolvedPlateTime = DateTime.now();
                       }
-                    });
-                  }
+                    } catch (e, st) {
+                      _log.fine('Async PlateID resolve failed', e, st);
+                    }
+                  });
                 }
               }
-            } catch (e, st) {
-              _log.fine('Failed to resolve PlateID $plateId to plate metadata',
-                  e, st);
             }
+          } catch (e, st) {
+            _log.fine(
+                'Failed to resolve PlateID $plateId to plate metadata', e, st);
           }
         }
-
-        return nanoStatusToOdysseyMap(nano);
-      } catch (e, st) {
-        _log.fine('NanoDLP getStatus attempt #$attempt failed', e, st);
-        // Close client and, if we haven't retried yet, retry once.
-        client.close();
-        if (attempt >= 2) rethrow;
-        _log.info('Retrying NanoDLP /status (attempt ${attempt + 1})');
-        // Small backoff before retry
-        await Future.delayed(const Duration(milliseconds: 200));
-        continue;
       }
+
+      return nanoStatusToOdysseyMap(nano);
+    } catch (e, st) {
+      _log.fine('NanoDLP getStatus failed', e, st);
+      rethrow;
+    } finally {
+      client.close();
     }
   }
 

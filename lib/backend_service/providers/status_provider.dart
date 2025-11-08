@@ -107,6 +107,7 @@ class StatusProvider extends ChangeNotifier {
   }
 
   Timer? _timer;
+  Timer? _backoffTimer;
   bool _polling = false;
   int _pollIntervalSeconds = 1;
   static const int _minPollIntervalSeconds = 1;
@@ -480,7 +481,7 @@ class StatusProvider extends ChangeNotifier {
   /// - updates thumbnails lazily
   /// - adjusts polling interval and backoff on success/failure
   /// - updates transitional flags (pause/cancel)
-  Future<void> refresh() async {
+  Future<void> refresh({bool force = false}) async {
     if (_fetchInFlight) return; // simple re-entrancy guard
     _fetchInFlight = true;
     final startedAt = DateTime.now();
@@ -516,6 +517,15 @@ class StatusProvider extends ChangeNotifier {
     final prevFingerprint = fingerprint(_status);
     bool statusChangedByFingerprint = false;
     try {
+      // If a backoff is active (we've scheduled a delayed reconnect), skip
+      // refresh attempts unless explicitly forced. This prevents concurrent
+      // overlapping retries while a backoff timer is running.
+      if (!force && _backoffTimer != null) {
+        _log.fine(
+            'Skipping refresh because backoff timer is active (nextPollRetryAt=$_nextPollRetryAt)');
+        _fetchInFlight = false;
+        return;
+      }
       final raw = await _client.getStatus();
       // Capture device message if present
       try {
@@ -689,10 +699,27 @@ class StatusProvider extends ChangeNotifier {
           base: _minPollIntervalSeconds, max: maxBackoff);
       _pollIntervalSeconds = backoff;
       _nextPollRetryAt = DateTime.now().add(Duration(seconds: backoff));
-      // Clear timestamp when timer expires
-      Future.delayed(Duration(seconds: backoff), () {
+      _log.fine(
+          'Scheduling poll backoff for ${backoff}s (nextPollRetryAt=$_nextPollRetryAt)');
+
+      // Cancel any existing backoff timer and schedule a single timer that
+      // will restart polling when it expires. Mark backoff active while the
+      // timer is running so other refresh() calls can skip attempting work.
+      try {
+        _backoffTimer?.cancel();
+      } catch (_) {}
+      _backoffTimer = Timer(Duration(seconds: backoff), () {
         _nextPollRetryAt = null;
+        try {
+          _backoffTimer = null;
+        } catch (_) {}
+        _log.fine('Backoff expired; attempting to restart polling');
+        if (!_sseConnected && !_disposed) _startPolling();
       });
+
+      // Immediately stop the current polling loop so backoff is effective
+      // right away.
+      _polling = false;
       final elapsed = DateTime.now().difference(startedAt);
       final millis = elapsed.inMilliseconds;
       final elapsedStr = millis >= 1000
@@ -988,6 +1015,9 @@ class StatusProvider extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _timer?.cancel();
+    try {
+      _backoffTimer?.cancel();
+    } catch (_) {}
     super.dispose();
   }
 }
