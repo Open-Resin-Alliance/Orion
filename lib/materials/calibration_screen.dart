@@ -17,6 +17,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:provider/provider.dart';
@@ -46,10 +47,15 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final resinsProvider =
           Provider.of<ResinsProvider>(context, listen: false);
-      if (_selectedModel == null &&
-          resinsProvider.calibrationModels.isNotEmpty) {
+      // Initialize the screen selection from the provider's selected
+      // calibration model (the provider guarantees one will be selected
+      // when models are available).
+      final providerModel = resinsProvider.selectedCalibrationModel;
+      if (_selectedModel == null && providerModel != null) {
         setState(() {
-          _selectedModel = resinsProvider.calibrationModels.first;
+          _selectedModel = providerModel;
+          // Pre-select a recommended resin profile for this model.
+          _selectedResin = resinsProvider.getRecommendedResin(_selectedModel);
         });
       }
     });
@@ -57,9 +63,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
 
   void _resetValues(ResinsProvider provider) {
     setState(() {
-      _selectedModel = provider.calibrationModels.isNotEmpty
-          ? provider.calibrationModels.first
-          : null;
+      _selectedModel = provider.selectedCalibrationModel;
       _selectedResin = null;
       _startingExposure = 1.0;
       _exposureIncrement = 0.2;
@@ -69,7 +73,9 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   @override
   Widget build(BuildContext context) {
     final resinsProvider = Provider.of<ResinsProvider>(context);
-    final resins = resinsProvider.resins;
+    // Use provider's user-visible resin list so locked/vendor profiles
+    // (e.g. NanoDLP AFP templates) are hidden from calibration flows.
+    final resins = resinsProvider.userResins;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -142,6 +148,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                     flex: 11,
                     child: _buildLargeModelSelectorCard(
                       model: _selectedModel,
+                      imageUrl: _selectedModel != null
+                          ? resinsProvider
+                              .calibrationImageUrl(_selectedModel!.id)
+                          : null,
                       onTap: () => _selectCalibrationModel(
                           resinsProvider.calibrationModels),
                     ),
@@ -283,32 +293,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     }
   }
 
-  Widget _buildChecklistItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 20,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 18),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLargeModelSelectorCard({
     required CalibrationModel? model,
     required VoidCallback onTap,
+    String? imageUrl,
   }) {
     return GlassCard(
       outlined: true,
@@ -323,14 +311,11 @@ class CalibrationScreenState extends State<CalibrationScreen> {
               if (model != null) ...[
                 // Large preview image
                 Expanded(
-                  child: FutureBuilder<String?>(
-                    future: BackendService().getCalibrationImageUrl(model.id),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data != null) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            snapshot.data!,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
@@ -344,19 +329,16 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                                 ),
                               );
                             },
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade800,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                           ),
-                        );
-                      }
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade800,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-                    },
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -587,8 +569,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                       final index = entry.key;
                       final model = entry.value;
                       final isSelected = _selectedModel == model;
-                      final imageUrlFuture =
-                          BackendService().getCalibrationImageUrl(model.id);
+                      final resinsProvider =
+                          Provider.of<ResinsProvider>(context, listen: false);
+                      final imageUrl =
+                          resinsProvider.calibrationImageUrl(model.id);
 
                       return Expanded(
                         child: Padding(
@@ -606,9 +590,18 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                                 : null,
                             child: InkWell(
                               onTap: () {
+                                // Update both the screen state and provider's
+                                // selected calibration model so the choice is
+                                // visible app-wide. Also pre-select the
+                                // recommended resin for the newly selected
+                                // model.
                                 setState(() {
                                   _selectedModel = model;
+                                  _selectedResin =
+                                      resinsProvider.getRecommendedResin(model);
                                 });
+                                resinsProvider
+                                    .setSelectedCalibrationModelId(model.id);
                                 Navigator.of(context).pop();
                               },
                               borderRadius: BorderRadius.circular(16),
@@ -620,13 +613,9 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                                     child: ClipRRect(
                                       borderRadius: const BorderRadius.vertical(
                                           top: Radius.circular(16)),
-                                      child: FutureBuilder<String?>(
-                                        future: imageUrlFuture,
-                                        builder: (context, snapshot) {
-                                          if (snapshot.hasData &&
-                                              snapshot.data != null) {
-                                            return Image.network(
-                                              snapshot.data!,
+                                      child: imageUrl != null
+                                          ? Image.network(
+                                              imageUrl,
                                               fit: BoxFit.contain,
                                               errorBuilder:
                                                   (context, error, stackTrace) {
@@ -637,16 +626,13 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                                                       color: Colors.grey),
                                                 );
                                               },
-                                            );
-                                          }
-                                          return Container(
-                                            color: Colors.grey.shade800,
-                                            child: const Center(
-                                                child:
-                                                    CircularProgressIndicator()),
-                                          );
-                                        },
-                                      ),
+                                            )
+                                          : Container(
+                                              color: Colors.grey.shade800,
+                                              child: const Center(
+                                                  child:
+                                                      CircularProgressIndicator()),
+                                            ),
                                     ),
                                   ),
 
@@ -917,104 +903,26 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       return '${value.toStringAsFixed(1)}s';
     }).join(' → ');
 
-    // Show confirmation dialog with checklist
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final pageNotifier = ValueNotifier<int>(0);
-        return ValueListenableBuilder<int>(
-          valueListenable: pageNotifier,
-          builder: (context, page, _) {
-            if (page == 0) {
-              // Page 1: Confirmation
-              return GlassAlertDialog(
-                title: const Text('Start Calibration'),
-                content: Text(
-                  'Six test pieces will be printed with progressively increasing layer exposure times.\n\n'
-                  'Exposure sequence:\n$exposuresList\n\n'
-                  'After printing completes, you\'ll be guided through measuring and evaluating the results to determine the optimal exposure time.',
-                  style: const TextStyle(fontSize: 20),
-                ),
-                actions: [
-                  GlassButton(
-                    tint: GlassButtonTint.neutral,
-                    onPressed: () => Navigator.of(dialogContext).pop(false),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(120, 60),
-                    ),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 22)),
-                  ),
-                  GlassButton(
-                    tint: GlassButtonTint.positive,
-                    onPressed: () => pageNotifier.value = 1,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(120, 60),
-                    ),
-                    child: const Text('Next', style: TextStyle(fontSize: 22)),
-                  ),
-                ],
-              );
-            } else {
-              // Page 2: Pre-flight checklist
-              return GlassAlertDialog(
-                title: const Text('Pre-Flight Checklist'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Resin Profile:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _selectedResin?.name ?? 'Unknown',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Please verify:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildChecklistItem('Resin filled in vat'),
-                    _buildChecklistItem('Build plate is clean'),
-                    _buildChecklistItem('Vat is clear'),
-                  ],
-                ),
-                actions: [
-                  GlassButton(
-                    tint: GlassButtonTint.neutral,
-                    onPressed: () => pageNotifier.value = 0,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(120, 60),
-                    ),
-                    child: const Text('Back', style: TextStyle(fontSize: 22)),
-                  ),
-                  GlassButton(
-                    tint: GlassButtonTint.positive,
-                    onPressed: () => Navigator.of(dialogContext).pop(true),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(120, 60),
-                    ),
-                    child: const Text('Start', style: TextStyle(fontSize: 22)),
-                  ),
-                ],
-              );
-            }
-          },
-        );
-      },
+    // Show unified pre-calibration overlay with info and checklist
+    final confirmed = await Navigator.of(context).push<bool>(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
+        pageBuilder: (context, _, __) => _PreCalibrationOverlay(
+          calibrationModelName: _selectedModel!.name,
+          resinProfileName: _selectedResin?.name,
+          exposuresList: exposuresList,
+          calibrationModelId: _selectedModel!.id,
+        ),
+      ),
     );
 
     if (confirmed == true) {
@@ -1059,6 +967,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       );
 
       try {
+        // Prefer the provider helper for consistent resolution logic.
+        final resolvedProfileId =
+            ResinsProvider.resolveProfileIdFromMeta(_selectedResin?.meta) ?? 0;
+
         // Store calibration context for post-print evaluation
         if (mounted) {
           context.read<CalibrationContextProvider>().setContext(
@@ -1067,7 +979,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                   resinProfileName: _selectedResin?.name,
                   startExposure: _startingExposure,
                   exposureIncrement: _exposureIncrement,
-                  profileId: _selectedResin?.meta['ProfileID'] ?? 0,
+                  profileId: resolvedProfileId,
                   calibrationModelId: _selectedModel!.id,
                   evaluationGuideUrl: _selectedModel!.evaluationGuideUrl,
                 ),
@@ -1082,7 +994,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         final success = await BackendService().startCalibrationPrint(
           calibrationModelId: _selectedModel!.id,
           exposureTimes: exposureTimes,
-          profileId: _selectedResin?.meta['ProfileID'] ?? 0,
+          profileId: resolvedProfileId,
         );
 
         if (!success) {
@@ -1111,5 +1023,259 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         }
       }
     }
+  }
+}
+
+/// Compact pre-calibration overlay
+/// Shows info and checklist in single screen
+class _PreCalibrationOverlay extends StatelessWidget {
+  final String calibrationModelName;
+  final String? resinProfileName;
+  final String exposuresList;
+  final int calibrationModelId;
+
+  const _PreCalibrationOverlay({
+    required this.calibrationModelName,
+    this.resinProfileName,
+    required this.exposuresList,
+    required this.calibrationModelId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassApp(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                PhosphorIconsFill.flask,
+                size: 32,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                calibrationModelName,
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary),
+              ),
+            ],
+          ),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Resin info
+                if (resinProfileName != null) ...[
+                  Text(
+                    resinProfileName!,
+                    style: TextStyle(
+                      fontSize: 22,
+                      color: Colors.grey.shade300,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                // Two-column layout
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Left box - What's happening
+                      Expanded(
+                        child: GlassCard(
+                          outlined: true,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      PhosphorIconsFill.info,
+                                      size: 20,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'What\'s Happening',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade300,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Six test pieces will be printed with progressively increasing exposure times to help you find the optimal cure time for this resin.',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey.shade400,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Right box - Checklist
+                      Expanded(
+                        child: GlassCard(
+                          outlined: true,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      PhosphorIconsFill.clipboardText,
+                                      size: 20,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Pre-Flight Check',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade300,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                _buildChecklistItem(context,
+                                    'Correct resin is filled into the vat.'),
+                                const SizedBox(height: 10),
+                                _buildChecklistItem(
+                                    context, 'The build plate is clean.'),
+                                const SizedBox(height: 10),
+                                _buildChecklistItem(
+                                    context, 'The vat is clear of any debris.'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+                GlassCard(
+                  outlined: true,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            'Exposure Sequence',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade300,
+                              letterSpacing: 0.5,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            exposuresList,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                              letterSpacing: 0.3,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 85), // Space for FABs
+              ],
+            ),
+          ),
+        ),
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GlassFloatingActionButton.extended(
+                tint: GlassButtonTint.negative,
+                heroTag: 'cancel',
+                onPressed: () => Navigator.of(context).pop(false),
+                label: 'Cancel',
+                icon: Icon(PhosphorIcons.x()),
+                scale: 1.2,
+                iconAfterLabel: false,
+              ),
+              GlassFloatingActionButton.extended(
+                tint: GlassButtonTint.positive,
+                heroTag: 'start',
+                onPressed: () => Navigator.of(context).pop(true),
+                label: 'Start Print',
+                icon: Icon(PhosphorIcons.play()),
+                scale: 1.2,
+                iconAfterLabel: true,
+              ),
+            ],
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      ),
+    );
+  }
+
+  Widget _buildChecklistItem(BuildContext context, String text) {
+    return Row(
+      children: [
+        Icon(
+          PhosphorIcons.checkCircle(),
+          size: 22,
+          color: Colors.green.shade400,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey.shade300,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
