@@ -107,6 +107,8 @@ class StatusScreenState extends State<StatusScreen> {
   int? _resolvedPlateIdForPrefetch;
   String? _resolvedFilePathForPrefetch;
   final Logger _log = Logger('StatusScreen');
+  // null = unknown, true = this finished/canceled print is a calibration print
+  bool? _isCalibrationPrint;
 
   /// Check if current print is a calibration print and show post-calibration overlay
   Future<void> _checkAndShowCalibrationOverlay() async {
@@ -375,6 +377,16 @@ class StatusScreenState extends State<StatusScreen> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             _maybePreloadNextLayers(status);
+          });
+        }
+        // If the job has finished (or canceled) determine whether it's
+        // a calibration print so we can surface a different return label.
+        final isFinished = finishedSnapshot;
+        if ((isFinished || canceledSnapshot) && _isCalibrationPrint == null) {
+          // Defer async metadata check to after build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _detectCalibrationPrint(status);
           });
         }
         final fileName =
@@ -1206,7 +1218,9 @@ class StatusScreenState extends State<StatusScreen> {
             minFontSize: 16,
             maxLines: 1,
             (isCanceled || isFinished)
-                ? 'Return to Home'
+                ? (_isCalibrationPrint == true
+                    ? 'Finalize Calibration'
+                    : 'Return to Home')
                 : isPaused
                     ? 'Resume'
                     : 'Pause',
@@ -1215,5 +1229,24 @@ class StatusScreenState extends State<StatusScreen> {
         ),
       ),
     ]);
+  }
+
+  Future<void> _detectCalibrationPrint(StatusModel? status) async {
+    try {
+      if (status?.printData?.fileData == null) {
+        setState(() => _isCalibrationPrint = false);
+        return;
+      }
+      final fileData = status!.printData!.fileData!;
+      final meta = await BackendService()
+          .getFileMetadata(fileData.locationCategory ?? 'Local', fileData.path);
+      final plateId = meta['plate_id'] as int?;
+      setState(() {
+        _isCalibrationPrint = (plateId == 0);
+      });
+    } catch (e) {
+      _log.fine('Failed to detect calibration print: $e');
+      if (mounted) setState(() => _isCalibrationPrint = false);
+    }
   }
 }
