@@ -5,6 +5,9 @@ part 'nano_profiles.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class NanoProfile {
+  // Logger is kept for future debugging; suppress unused-field analyzer
+  // warning when it's not referenced in some build configurations.
+  // ignore: unused_field
   static final _log = Logger('NanoProfile');
   @JsonKey(name: 'ProfileID')
   final int? profileId;
@@ -248,8 +251,8 @@ class NanoProfile {
         return pd ?? fallback;
       }
 
-      // Normal (per-layer) cure time
-      out['normal_cure_time'] = toInt(
+      // Normal (per-layer) cure time — preserve fractional seconds when present
+      out['normal_cure_time'] = toDouble(
           pick([
             'normal_cure_time',
             'normal_time',
@@ -257,16 +260,16 @@ class NanoProfile {
             'cure_time',
             'Cure',
           ]),
-          8);
+          8.0);
 
-      // Burn-in layer cure time
-      out['burn_in_cure_time'] = toInt(
+      // Burn-in layer cure time — preserve fractional seconds when present
+      out['burn_in_cure_time'] = toDouble(
           pick([
             'burn_in_cure_time',
             'burnin_time',
             'BurnInCureTime',
           ]),
-          10);
+          10.0);
 
       // Lift after print (mm)
       out['lift_after_print'] = toDouble(
@@ -294,34 +297,35 @@ class NanoProfile {
           ]),
           3);
 
-      // Wait after cure (seconds)
-      out['wait_after_cure'] = toInt(
+      // Wait after cure (seconds) — preserve fractional seconds when present
+      out['wait_after_cure'] = toDouble(
           pick([
             'wait_after_cure',
             'wait_after_cure_time',
             'WaitAfterPrint',
             'TopWait',
           ]),
-          2);
+          2.0);
 
       // Wait after lift (seconds) — fall back to WaitAfterPrint if nothing else
-      out['wait_after_life'] = toInt(
+      // Preserve fractional seconds when present
+      out['wait_after_life'] = toDouble(
           pick([
             'wait_after_life',
             'wait_after_life_time',
             'WaitAfterPrint',
             'WaitBeforePrint',
           ]),
-          2);
+          2.0);
     } catch (_) {
       // On any failure return reasonable defaults
       return {
-        'normal_cure_time': 8,
-        'burn_in_cure_time': 10,
+        'normal_cure_time': 8.0,
+        'burn_in_cure_time': 10.0,
         'lift_after_print': 5.0,
         'burn_in_count': 3,
-        'wait_after_cure': 2,
-        'wait_after_life': 2,
+        'wait_after_cure': 2.0,
+        'wait_after_life': 2.0,
       };
     }
     return out;
