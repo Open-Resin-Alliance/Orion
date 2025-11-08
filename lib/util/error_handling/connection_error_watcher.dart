@@ -70,6 +70,13 @@ class ConnectionErrorWatcher {
     try {
       final providerError = _provider.error;
       final hasError = providerError != null;
+      // If we have never successfully connected yet, suppress showing a
+      // connection error dialog. During initial boot/startup the app shows
+      // a branded startup overlay and transient network failures are
+      // expected; showing the modal in that phase is noisy and confusing.
+      // We still record the provider error state but avoid presenting UI
+      // until the provider reports at least one successful status.
+      final hasEverConnected = _provider.hasEverConnected;
 
       // Determine previous state from cached value
       final hadError = _lastProviderError != null;
@@ -108,6 +115,14 @@ class ConnectionErrorWatcher {
       }
 
       if (hasError && !_dialogVisible) {
+        // If we've never successfully connected yet (startup), do not show
+        // the modal dialog — the StartupGate/StartupScreen handles the
+        // initial wait UX. Record the state but return early.
+        if (!hasEverConnected) {
+          log.info(
+              'Suppressing connection error dialog during startup (hasEverConnected=false)');
+          return;
+        }
         _dialogVisible = true;
         // Show the dialog; this Future completes when the dialog is dismissed
         WidgetsBinding.instance.addPostFrameCallback((_) async {
