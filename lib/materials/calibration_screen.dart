@@ -43,20 +43,26 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   @override
   void initState() {
     super.initState();
-    // Set default model after first frame when provider is available
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Refresh data and set default model after first frame when provider is available
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final resinsProvider =
           Provider.of<ResinsProvider>(context, listen: false);
+
+      // Refresh to get latest data from backend
+      await resinsProvider.refresh();
+
       // Initialize the screen selection from the provider's selected
       // calibration model (the provider guarantees one will be selected
       // when models are available).
-      final providerModel = resinsProvider.selectedCalibrationModel;
-      if (_selectedModel == null && providerModel != null) {
-        setState(() {
-          _selectedModel = providerModel;
-          // Pre-select a recommended resin profile for this model.
-          _selectedResin = resinsProvider.getRecommendedResin(_selectedModel);
-        });
+      if (mounted) {
+        final providerModel = resinsProvider.selectedCalibrationModel;
+        if (_selectedModel == null && providerModel != null) {
+          setState(() {
+            _selectedModel = providerModel;
+            // Pre-select a recommended resin profile for this model.
+            _selectedResin = resinsProvider.getRecommendedResin(_selectedModel);
+          });
+        }
       }
     });
   }
@@ -76,6 +82,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     // Use provider's user-visible resin list so locked/vendor profiles
     // (e.g. NanoDLP AFP templates) are hidden from calibration flows.
     final resins = resinsProvider.userResins;
+    final isLoading = resinsProvider.isLoading;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -97,8 +104,12 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                         Expanded(
                           child: _buildCompactCard(
                             title: 'Resin Profile',
-                            value: _selectedResin?.name ?? 'Select Resin',
-                            onTap: () => _selectResinProfile(resins),
+                            value: isLoading
+                                ? 'Loading...'
+                                : (_selectedResin?.name ?? 'Select Resin'),
+                            onTap: isLoading
+                                ? () {}
+                                : () => _selectResinProfile(resins),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -148,12 +159,15 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                     flex: 11,
                     child: _buildLargeModelSelectorCard(
                       model: _selectedModel,
+                      isLoading: isLoading,
                       imageUrl: _selectedModel != null
                           ? resinsProvider
                               .calibrationImageUrl(_selectedModel!.id)
                           : null,
-                      onTap: () => _selectCalibrationModel(
-                          resinsProvider.calibrationModels),
+                      onTap: isLoading
+                          ? () {}
+                          : () => _selectCalibrationModel(
+                              resinsProvider.calibrationModels),
                     ),
                   ),
                 ],
@@ -296,6 +310,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   Widget _buildLargeModelSelectorCard({
     required CalibrationModel? model,
     required VoidCallback onTap,
+    required bool isLoading,
     String? imageUrl,
   }) {
     return GlassCard(
@@ -308,7 +323,32 @@ class CalibrationScreenState extends State<CalibrationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (model != null) ...[
+              if (isLoading) ...[
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade800,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 12),
+                          Text(
+                            'Loading models...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ] else if (model != null) ...[
                 // Large preview image
                 Expanded(
                   child: ClipRRect(
