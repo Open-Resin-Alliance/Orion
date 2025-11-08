@@ -356,6 +356,7 @@ class EditResinScreenState extends State<EditResinScreen> {
 
   Future<void> _editValue({
     required String title,
+    String? description,
     required double currentValue,
     required double min,
     required double max,
@@ -379,15 +380,31 @@ class EditResinScreenState extends State<EditResinScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 24),
+                if (description != null) ...[
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 19,
+                      color: Colors.grey.shade400,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                ] else
+                  const SizedBox(height: 24),
                 Text(
                   decimals == 0
                       ? '${tempValue.round()}$suffix'
                       : '${tempValue.toStringAsFixed(decimals)}$suffix',
-                  style: const TextStyle(
-                      fontSize: 46, fontWeight: FontWeight.w700, height: 1.0),
+                  style: TextStyle(
+                    fontSize: 46,
+                    fontWeight: FontWeight.w700,
+                    height: 1.0,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 12),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: Theme.of(context).colorScheme.primary,
@@ -425,7 +442,10 @@ class EditResinScreenState extends State<EditResinScreen> {
                 minimumSize: const Size(120, 60),
               ),
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(fontSize: 22),
+              ),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -436,7 +456,10 @@ class EditResinScreenState extends State<EditResinScreen> {
                 onSave(tempValue);
                 Navigator.of(context).pop();
               },
-              child: const Text('Save'),
+              child: const Text(
+                'Save',
+                style: TextStyle(fontSize: 22),
+              ),
             ),
           ],
         ),
@@ -468,6 +491,8 @@ class EditResinScreenState extends State<EditResinScreen> {
                               value: '${_burnInTime.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
                                 title: 'Burn-In Layer Cure Time',
+                                description:
+                                    'UV exposure time for the initial layers that adhere the print to the build plate. Longer times improve adhesion.',
                                 currentValue: _burnInTime.toDouble(),
                                 min: 0,
                                 max: 30,
@@ -485,6 +510,8 @@ class EditResinScreenState extends State<EditResinScreen> {
                               value: '$_burnInCount',
                               onTap: () => _editValue(
                                 title: 'Burn-In Layer Count',
+                                description:
+                                    'How many initial layers use the longer burn-in cure time. More layers provide stronger build plate adhesion.',
                                 currentValue: _burnInCount.toDouble(),
                                 min: 0,
                                 max: 20,
@@ -509,6 +536,8 @@ class EditResinScreenState extends State<EditResinScreen> {
                               value: '${_normalTime.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
                                 title: 'Normal Layer Cure Time',
+                                description:
+                                    'UV exposure time for all layers after burn-in. This is the main parameter that affects print quality and detail.',
                                 currentValue: _normalTime.toDouble(),
                                 min: 0,
                                 max: 15,
@@ -526,6 +555,8 @@ class EditResinScreenState extends State<EditResinScreen> {
                               value: '${_waitAfterCure.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
                                 title: 'Wait After Cure',
+                                description:
+                                    'Pause after UV exposure before lifting. Allows the layer to stabilize and helps prevent layer separation.',
                                 currentValue: _waitAfterCure.toDouble(),
                                 min: 0,
                                 max: 20,
@@ -550,6 +581,8 @@ class EditResinScreenState extends State<EditResinScreen> {
                               value: '${_liftAfter.toStringAsFixed(1)} mm',
                               onTap: () => _editValue(
                                 title: 'Lift After Print',
+                                description:
+                                    'How far the build plate lifts between layers. Higher values ensure complete separation but slow down prints.',
                                 currentValue: _liftAfter,
                                 min: 0,
                                 max: 20,
@@ -567,6 +600,8 @@ class EditResinScreenState extends State<EditResinScreen> {
                               value: '${_waitAfterLife.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
                                 title: 'Wait After Lift',
+                                description:
+                                    'Pause after lifting to let resin flow back and settle before the next layer exposure begins.',
                                 currentValue: _waitAfterLife.toDouble(),
                                 min: 0,
                                 max: 20,

@@ -117,15 +117,17 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                         Expanded(
                           child: _buildCompactCard(
                             title: 'Starting Exposure',
-                            value: '${_startingExposure.toStringAsFixed(1)} s',
+                            value: '${_startingExposure.toStringAsFixed(2)} s',
                             onTap: () => _editValue(
                               title: 'Starting Exposure',
+                              description:
+                                  'The exposure time for the first test piece. This should be lower than your expected optimal exposure.',
                               currentValue: _startingExposure,
                               min: 0,
-                              max: 15,
-                              suffix: ' s',
-                              decimals: 1,
-                              step: 0.1,
+                              max: 10,
+                              suffix: ' sec',
+                              decimals: 2,
+                              step: 0.5,
                               onSave: (v) =>
                                   setState(() => _startingExposure = v),
                             ),
@@ -136,15 +138,17 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                         Expanded(
                           child: _buildCompactCard(
                             title: 'Exposure Increment',
-                            value: '${_exposureIncrement.toStringAsFixed(1)} s',
+                            value: '${_exposureIncrement.toStringAsFixed(2)} s',
                             onTap: () => _editValue(
                               title: 'Exposure Increment',
+                              description:
+                                  'How much exposure time increases for each successive test piece. Larger increments cover a wider range faster.',
                               currentValue: _exposureIncrement,
                               min: 0,
-                              max: 5,
+                              max: 2,
                               suffix: ' s',
-                              decimals: 1,
-                              step: 0.1,
+                              decimals: 2,
+                              step: 0.2,
                               onSave: (v) =>
                                   setState(() => _exposureIncrement = v),
                             ),
@@ -437,6 +441,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
 
   Future<void> _editValue({
     required String title,
+    String? description,
     required double currentValue,
     required double min,
     required double max,
@@ -460,15 +465,31 @@ class CalibrationScreenState extends State<CalibrationScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 24),
+                if (description != null) ...[
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 19,
+                      color: Colors.grey.shade400,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                ] else
+                  const SizedBox(height: 24),
                 Text(
                   decimals == 0
                       ? '${tempValue.round()}$suffix'
                       : '${tempValue.toStringAsFixed(decimals)}$suffix',
-                  style: const TextStyle(
-                      fontSize: 46, fontWeight: FontWeight.w700, height: 1.0),
+                  style: TextStyle(
+                    fontSize: 46,
+                    fontWeight: FontWeight.w700,
+                    height: 1.0,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 12),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: Theme.of(context).colorScheme.primary,
@@ -506,7 +527,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                 minimumSize: const Size(120, 60),
               ),
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(fontSize: 22),
+              ),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -517,7 +541,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                 onSave(tempValue);
                 Navigator.of(context).pop();
               },
-              child: const Text('Save'),
+              child: const Text(
+                'Save',
+                style: TextStyle(fontSize: 22),
+              ),
             ),
           ],
         ),
@@ -866,7 +893,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                                       Text(
                                         resin.name,
                                         style: TextStyle(
-                                          fontSize: 20,
+                                          fontSize: 22,
                                           fontWeight: FontWeight.w600,
                                           color: isSelected
                                               ? Theme.of(context)
