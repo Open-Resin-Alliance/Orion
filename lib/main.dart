@@ -181,7 +181,9 @@ class OrionRoot extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => ResinsProvider(),
-          lazy: true,
+          // Prefetch calibration models and images at app startup so
+          // opening the Calibration screen can show thumbnails immediately.
+          lazy: false,
         ),
         ChangeNotifierProvider(
           create: (_) => CalibrationContextProvider(),
