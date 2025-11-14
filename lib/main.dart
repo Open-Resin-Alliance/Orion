@@ -53,6 +53,7 @@ import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/error_handling/connection_error_watcher.dart';
 import 'package:orion/util/error_handling/notification_watcher.dart';
 import 'package:orion/util/providers/orion_update_provider.dart';
+import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -204,6 +205,11 @@ class OrionMainAppState extends State<OrionMainApp> {
   void initState() {
     super.initState();
     _initRouter();
+    // Start Athena periodic polling if applicable
+    try {
+      final mgr = AthenaFeatureManager();
+      mgr.startPeriodicPolling();
+    } catch (_) {}
   }
 
   @override
