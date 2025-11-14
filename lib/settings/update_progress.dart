@@ -147,18 +147,26 @@ class _UpdateProgressOverlayState extends State<UpdateProgressOverlay>
                     height: 14,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(7),
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween<double>(end: p.clamp(0.0, 1.0)),
-                        duration: const Duration(milliseconds: 600),
-                        curve: Curves.easeInOut,
-                        builder: (context, animatedP, _) =>
-                            LinearProgressIndicator(
-                          value: animatedP,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              Theme.of(context).colorScheme.primary),
-                          backgroundColor: Colors.black.withValues(alpha: 0.3),
-                        ),
-                      ),
+                      child: p < 0
+                          ? LinearProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  Theme.of(context).colorScheme.primary),
+                              backgroundColor:
+                                  Colors.black.withValues(alpha: 0.3),
+                            )
+                          : TweenAnimationBuilder<double>(
+                              tween: Tween<double>(end: p.clamp(0.0, 1.0)),
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeInOut,
+                              builder: (context, animatedP, _) =>
+                                  LinearProgressIndicator(
+                                value: animatedP,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Theme.of(context).colorScheme.primary),
+                                backgroundColor:
+                                    Colors.black.withValues(alpha: 0.3),
+                              ),
+                            ),
                     ),
                   ),
                 ),
