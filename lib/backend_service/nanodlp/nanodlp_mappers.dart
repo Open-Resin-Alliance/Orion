@@ -116,6 +116,17 @@ Map<String, dynamic> nanoStatusToOdysseyMap(NanoStatus ns) {
   result['resin'] = ns.resinLevel;
   result['temp'] = ns.temp;
   result['mcu'] = ns.mcuTemp;
+  // Preserve previous-layer timing reported by the device when available.
+  // NanoDLP typically reports this as nanoseconds under 'PrevLayerTime'.
+  // Surface multiple variants so downstream parsers can find it.
+  result['PrevLayerTime'] = ns.prevLayerTimeNs;
+  result['prevLayerTime'] = ns.prevLayerTimeNs;
+  result['prev_layer_time'] = ns.prevLayerTimeNs;
+  // Also expose a normalized seconds field to make it easy for the
+  // Odyssey StatusModel to consume without needing to interpret raw
+  // nanoseconds. When prevLayerTimeNs is null we leave the value null.
+  result['prev_layer_seconds'] =
+      ns.prevLayerTimeNs == null ? null : (ns.prevLayerTimeNs! / 1e9);
 
   return result;
 }
