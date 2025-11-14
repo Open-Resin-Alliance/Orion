@@ -20,7 +20,6 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
@@ -926,29 +925,30 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.2),
+                color: Colors.greenAccent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.green.withOpacity(0.5)),
+                border: Border.all(
+                    color: Colors.greenAccent.withValues(alpha: 0.5)),
               ),
               child: const Text(
                 'UP TO DATE',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: Colors.greenAccent,
                 ),
               ),
             ),
             const SizedBox(height: 12),
             Text(
               'Version ${ap.currentVersion}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 6),
             if (ap.channel.isNotEmpty)
               Text(
                 'Channel: ${ap.channel}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
           ],
         );
@@ -968,7 +968,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
       );
     }
 
-    // Non-Athena backend
+    // Non-Athena backendxw
     return const Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
