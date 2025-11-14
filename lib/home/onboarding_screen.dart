@@ -40,6 +40,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -648,6 +649,13 @@ class OnboardingScreenState extends State<OnboardingScreen>
   void _completeSetup() {
     final printerName = _printerName;
     config.setString('machineName', printerName, category: 'machine');
+    // Fire-and-forget: run initial check but don't block the UI long.
+    try {
+      final mgr = AthenaFeatureManager();
+      mgr.runInitialCheck();
+      mgr.startPeriodicPolling();
+    } catch (_) {}
+
     config.setFlag('firstRun', false, category: 'machine');
 
     Navigator.of(context).push(
