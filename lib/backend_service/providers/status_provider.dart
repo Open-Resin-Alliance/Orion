@@ -827,6 +827,34 @@ class StatusProvider extends ChangeNotifier {
   /// Clear current status so UI shows a neutral/loading state prior to the
   /// next print starting. Polling continues and will repopulate on refresh.
   /// Reset the provider to a neutral/loading state. Optionally provide an
+  /// Clears any error state, allowing the connection error dialog to be
+  /// dismissed. Useful when performing operations (like updates) where
+  /// connection loss is expected.
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  /// Pauses polling and SSE, useful during system updates where connection
+  /// loss is expected and error dialogs should not be shown.
+  void pausePolling() {
+    _polling = false;
+    _timer?.cancel();
+    _timer = null;
+    _sseStreamSub?.cancel();
+    _sseStreamSub = null;
+    _sseConnected = false;
+    _error = null;
+    notifyListeners();
+  }
+
+  /// Resumes polling after being paused.
+  void resumePolling() {
+    if (!_polling && !_disposed) {
+      _startPolling();
+    }
+  }
+
   /// initial thumbnail (bytes) and file path or plate id so the UI can
   /// immediately render a cached preview while the backend populates
   /// active job metadata. This is useful when starting a print from the
