@@ -79,7 +79,56 @@ class OrionConfig {
 
   String getString(String key, {String category = 'general'}) {
     var config = _getConfig();
-    return config[category]?[key] ?? '';
+    try {
+      final categoryMap = config[category];
+      if (categoryMap is Map && categoryMap.containsKey(key)) {
+        final v = categoryMap[key];
+        return v is String ? v : v?.toString() ?? '';
+      }
+
+      // Support dotted keys and nested vendor maps. E.g. 'nanodlp.base_url'
+      // may be represented in config as:
+      // advanced: { 'nanodlp.base_url': 'http://...' }
+      // or
+      // advanced: { 'nanodlp': { 'base_url': 'http://...' } }
+      if (key.contains('.') && categoryMap is Map) {
+        final parts = key.split('.');
+        dynamic node = categoryMap;
+        for (var part in parts) {
+          if (node is Map && node.containsKey(part)) {
+            node = node[part];
+            continue;
+          }
+          // Try snake_case -> camelCase fallback (base_url -> baseUrl)
+          final camel = _snakeToCamel(part);
+          if (node is Map && node.containsKey(camel)) {
+            node = node[camel];
+            continue;
+          }
+          // Try lowercase variant
+          final lower = part.toLowerCase();
+          if (node is Map && node.containsKey(lower)) {
+            node = node[lower];
+            continue;
+          }
+          node = null;
+          break;
+        }
+        if (node != null) return node is String ? node : node?.toString() ?? '';
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  String _snakeToCamel(String s) {
+    if (!s.contains('_')) return s;
+    final parts = s.split('_');
+    return parts.first +
+        parts
+            .skip(1)
+            .map((p) =>
+                p.isEmpty ? '' : '${p[0].toUpperCase()}${p.substring(1)}')
+            .join();
   }
 
   void toggleFlag(String flagName, {String category = 'general'}) {
@@ -165,16 +214,240 @@ class OrionConfig {
     }
 
     try {
-      return Map<String, dynamic>.from(
-          json.decode(vendorFile.readAsStringSync()));
+      final base =
+          Map<String, dynamic>.from(json.decode(vendorFile.readAsStringSync()));
+      // Apply any vendor overrides if present
+      final overrides = _getVendorOverrideConfig();
+      if (overrides.isNotEmpty) {
+        return _mergeConfigs(base, overrides);
+      }
+      return base;
     } catch (e) {
       _logger.warning('Failed to parse vendor.cfg: $e');
       return {};
     }
   }
 
+  Map<String, dynamic> _getVendorOverrideConfig() {
+    var fullPath = path.join(_configPath, 'vendor_overrides.cfg');
+    var file = File(fullPath);
+    if (!file.existsSync() || file.readAsStringSync().isEmpty) return {};
+    try {
+      return Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+    } catch (e) {
+      _logger.warning('Failed to parse vendor_overrides.cfg: $e');
+      return {};
+    }
+  }
+
+  /// Read only the packaged vendor.cfg (do not include runtime vendor overrides).
+  /// This ensures display names and vendor-provided metadata come from the
+  /// vendor's packaged configuration rather than any runtime override file.
+  Map<String, dynamic> _getVendorBaseConfig() {
+    var fullPath = path.join(_configPath, 'vendor.cfg');
+    var vendorFile = File(fullPath);
+
+    if (!vendorFile.existsSync() || vendorFile.readAsStringSync().isEmpty) {
+      return {};
+    }
+
+    try {
+      return Map<String, dynamic>.from(
+          json.decode(vendorFile.readAsStringSync()));
+    } catch (e) {
+      _logger.warning('Failed to parse vendor.cfg (base): $e');
+      return {};
+    }
+  }
+
+  // --- User-managed feature overrides ---
+  /// Set a single user feature flag which takes precedence over Athena and vendor flags.
+  void setUserFeatureFlag(String key, bool value) {
+    var fullPath = path.join(_configPath, 'orion.cfg');
+    var file = File(fullPath);
+    Map<String, dynamic> userConfig = {};
+    if (file.existsSync() && file.readAsStringSync().isNotEmpty) {
+      try {
+        userConfig =
+            Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+      } catch (_) {
+        userConfig = {};
+      }
+    }
+
+    userConfig['userFeatureFlags'] ??= {};
+    final uff = Map<String, dynamic>.from(userConfig['userFeatureFlags']);
+    uff[key] = value;
+    userConfig['userFeatureFlags'] = uff;
+
+    try {
+      final encoder = const JsonEncoder.withIndent('  ');
+      file.writeAsStringSync(encoder.convert(userConfig));
+    } catch (e) {
+      _logger.warning(
+          'Failed to write orion.cfg while setting user feature flag: $e');
+    }
+  }
+
+  /// Set a hardware feature under userFeatureFlags.hardwareFeatures
+  void setUserHardwareFeature(String key, bool value) {
+    var fullPath = path.join(_configPath, 'orion.cfg');
+    var file = File(fullPath);
+    Map<String, dynamic> userConfig = {};
+    if (file.existsSync() && file.readAsStringSync().isNotEmpty) {
+      try {
+        userConfig =
+            Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+      } catch (_) {
+        userConfig = {};
+      }
+    }
+
+    userConfig['userFeatureFlags'] ??= {};
+    final uff = Map<String, dynamic>.from(userConfig['userFeatureFlags']);
+    uff['hardwareFeatures'] ??= {};
+    final hw = Map<String, dynamic>.from(uff['hardwareFeatures']);
+    hw[key] = value;
+    uff['hardwareFeatures'] = hw;
+    userConfig['userFeatureFlags'] = uff;
+
+    try {
+      final encoder = const JsonEncoder.withIndent('  ');
+      file.writeAsStringSync(encoder.convert(userConfig));
+    } catch (e) {
+      _logger.warning(
+          'Failed to write orion.cfg while setting user hardware feature: $e');
+    }
+  }
+
+  /// Clear all user-managed feature overrides
+  void clearUserFeatureOverrides() {
+    var fullPath = path.join(_configPath, 'orion.cfg');
+    var file = File(fullPath);
+    Map<String, dynamic> userConfig = {};
+    if (file.existsSync() && file.readAsStringSync().isNotEmpty) {
+      try {
+        userConfig =
+            Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+      } catch (_) {
+        userConfig = {};
+      }
+    }
+
+    if (userConfig.containsKey('userFeatureFlags')) {
+      userConfig.remove('userFeatureFlags');
+      try {
+        final encoder = const JsonEncoder.withIndent('  ');
+        file.writeAsStringSync(encoder.convert(userConfig));
+      } catch (e) {
+        _logger.warning(
+            'Failed to write orion.cfg while clearing user feature overrides: $e');
+      }
+    }
+  }
+
+  /// Persist vendor overrides which are merged on top of `vendor.cfg` at runtime.
+  /// Persist vendor overrides. Instead of keeping a separate file, merge the
+  /// provided overrides into `orion.cfg` under the `vendor` section.
+  ///
+  /// Passing an empty map will remove any previously-applied vendor override
+  /// keys we manage (featureFlags and vendorMachineName) from `orion.cfg`.
+  void setVendorOverrides(Map<String, dynamic> overrides) {
+    var fullPath = path.join(_configPath, 'orion.cfg');
+    var file = File(fullPath);
+
+    Map<String, dynamic> userConfig = {};
+    if (file.existsSync() && file.readAsStringSync().isNotEmpty) {
+      try {
+        userConfig =
+            Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+      } catch (e) {
+        _logger.warning(
+            'Failed to parse existing orion.cfg while applying overrides: $e');
+        // Fall back to empty config so we don't crash.
+        userConfig = {};
+      }
+    }
+
+    // We no longer write overrides into the `vendor` section. Instead, apply
+    // overrides into the primary (top-level) `featureFlags` block so they are
+    // visible and portable with `orion.cfg`. This keeps vendor.* untouched.
+    if (overrides.isEmpty) {
+      // No-op when empty to avoid accidentally removing user values.
+      _logger.fine(
+          'setVendorOverrides called with empty overrides; no changes made');
+      return;
+    }
+
+    if (overrides.containsKey('featureFlags')) {
+      final newFF = Map<String, dynamic>.from(overrides['featureFlags'] ?? {});
+      final existingTopFF =
+          Map<String, dynamic>.from(userConfig['featureFlags'] ?? {});
+      userConfig['featureFlags'] = _mergeConfigs(existingTopFF, newFF);
+    }
+
+    // We intentionally ignore overrides['vendor'] here; if callers need to
+    // update other vendor-specific keys (like vendorMachineName) they should
+    // use the explicit public helpers (setString / setFlag) so changes are
+    // visible in the main config sections.
+
+    // If overrides contains a 'vendor' section we do NOT create a
+    // vendor_overrides.cfg. Instead, copy vendor-provided display-name
+    // mappings (featureNames) and canonical machineModelName into the
+    // top-level orion.cfg so they are portable and do not require a
+    // separate runtime vendor file.
+    if (overrides.containsKey('vendor')) {
+      try {
+        final newVendor = Map<String, dynamic>.from(overrides['vendor'] ?? {});
+
+        // If vendor provided friendly names for features, merge them into
+        // top-level `featureNames` in orion.cfg so getFeatureDisplayName
+        // will pick them up.
+        if (newVendor.containsKey('featureNames')) {
+          userConfig['featureNames'] ??= {};
+          final existingNames =
+              Map<String, dynamic>.from(userConfig['featureNames'] ?? {});
+          final incomingNames =
+              Map<String, dynamic>.from(newVendor['featureNames'] ?? {});
+          userConfig['featureNames'] =
+              _mergeConfigs(existingNames, incomingNames);
+        }
+
+        // If vendor provided a canonical machine model name, write it into
+        // the canonical `machine.machineModelName` slot of orion.cfg.
+        if (newVendor.containsKey('machineModelName')) {
+          userConfig['machine'] ??= {};
+          userConfig['machine']['machineModelName'] =
+              newVendor['machineModelName'];
+        }
+      } catch (e) {
+        _logger.warning('Failed to merge vendor overrides into orion.cfg: $e');
+      }
+    }
+
+    // Persist the modified orion.cfg (we may have updated featureNames or
+    // machine.machineModelName above).
+    try {
+      final encoder = const JsonEncoder.withIndent('  ');
+      file.writeAsStringSync(encoder.convert(userConfig));
+    } catch (e) {
+      _logger.warning('Failed to write orion.cfg while applying overrides: $e');
+    }
+  }
+
   /// Return the vendor-declared machine model name.
   String getMachineModelName() {
+    // Prefer the canonical machine section in orion.cfg when present
+    try {
+      final cfg = _getConfig();
+      final machine = cfg['machine'];
+      if (machine is Map &&
+          machine['machineModelName'] is String &&
+          (machine['machineModelName'] as String).isNotEmpty) {
+        return machine['machineModelName'] as String;
+      }
+    } catch (_) {}
+
     var vendor = _getVendorConfig();
     return vendor['machineModelName'] ??
         vendor['vendor']?['machineModelName'] ??
@@ -200,6 +473,17 @@ class OrionConfig {
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.
   bool getFeatureFlag(String key, {bool defaultValue = false}) {
+    // Priority: userFeatureFlags (manual overrides) -> top-level featureFlags
+    // (including Athena-applied overrides) -> vendor.featureFlags -> default
+    try {
+      final cfg = _getConfig();
+      final userFF = cfg['userFeatureFlags'];
+      if (userFF is Map && userFF.containsKey(key)) return userFF[key] == true;
+
+      final topFF = cfg['featureFlags'];
+      if (topFF is Map && topFF.containsKey(key)) return topFF[key] == true;
+    } catch (_) {}
+
     var vendor = _getVendorConfig();
     final flags = vendor['featureFlags'];
     if (flags is Map && flags.containsKey(key)) {
@@ -219,12 +503,35 @@ class OrionConfig {
 
   /// Return nested `hardwareFeatures` map (may be empty)
   Map<String, dynamic> getHardwareFeatures() {
+    // Merge priority: userFeatureFlags.hardwareFeatures -> top-level
+    // featureFlags.hardwareFeatures -> vendor.featureFlags.hardwareFeatures
+    final merged = <String, dynamic>{};
+    try {
+      final cfg = _getConfig();
+      final userFF = cfg['userFeatureFlags'];
+      if (userFF is Map && userFF['hardwareFeatures'] is Map) {
+        merged.addAll(Map<String, dynamic>.from(userFF['hardwareFeatures']));
+      }
+      final topFF = cfg['featureFlags'];
+      if (topFF is Map && topFF['hardwareFeatures'] is Map) {
+        // Only add keys not already present from userFF
+        final topHw = Map<String, dynamic>.from(topFF['hardwareFeatures']);
+        topHw.forEach((k, v) {
+          if (!merged.containsKey(k)) merged[k] = v;
+        });
+      }
+    } catch (_) {}
+
     var vendor = _getVendorConfig();
     final flags = vendor['featureFlags'];
     if (flags is Map && flags['hardwareFeatures'] is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(flags['hardwareFeatures']);
+      final vendHw = Map<String, dynamic>.from(flags['hardwareFeatures']);
+      vendHw.forEach((k, v) {
+        if (!merged.containsKey(k)) merged[k] = v;
+      });
     }
-    return {};
+
+    return merged;
   }
 
   /// Generic helper to read a hardware feature boolean from
@@ -244,10 +551,30 @@ class OrionConfig {
 
   /// Return the full featureFlags map (may be empty)
   Map<String, dynamic> getFeatureFlags() {
-    var vendor = _getVendorConfig();
-    final flags = vendor['featureFlags'];
-    if (flags is Map<String, dynamic>) return Map<String, dynamic>.from(flags);
-    return {};
+    // Merge userFeatureFlags (highest) -> top-level featureFlags -> vendor
+    final merged = <String, dynamic>{};
+    try {
+      final cfg = _getConfig();
+      final userFF = cfg['userFeatureFlags'];
+      if (userFF is Map<String, dynamic>)
+        merged.addAll(Map<String, dynamic>.from(userFF));
+      final topFF = cfg['featureFlags'];
+      if (topFF is Map<String, dynamic>) {
+        topFF.forEach((k, v) {
+          if (!merged.containsKey(k)) merged[k] = v;
+        });
+      }
+    } catch (_) {}
+
+    final vendor = _getVendorConfig();
+    final vflags = vendor['featureFlags'];
+    if (vflags is Map<String, dynamic>) {
+      vflags.forEach((k, v) {
+        if (!merged.containsKey(k)) merged[k] = v;
+      });
+    }
+
+    return merged;
   }
 
   /// Read the internalConfig section (vendor-specified internal config)
@@ -264,6 +591,43 @@ class OrionConfig {
   String getInternalConfigString(String key, {String defaultValue = ''}) {
     final internal = getInternalConfig();
     return internal[key]?.toString() ?? defaultValue;
+  }
+
+  /// Return a human-friendly display name for a feature flag.
+  ///
+  /// Resolution order:
+  /// 1. userFeatureNames in `orion.cfg` (allows local user renames)
+  /// 2. top-level featureNames in `orion.cfg` (populated by remote vendor
+  ///    overrides when appropriate)
+  /// 3. vendor-provided featureNames (from `vendor.cfg`)
+  /// 4. the provided [defaultName]
+  String getFeatureDisplayName(String key, {String defaultName = ''}) {
+    try {
+      final cfg = _getConfig();
+      final userNames = cfg['userFeatureNames'];
+      if (userNames is Map &&
+          userNames[key] is String &&
+          (userNames[key] as String).isNotEmpty) {
+        return userNames[key] as String;
+      }
+
+      final topNames = cfg['featureNames'];
+      if (topNames is Map &&
+          topNames[key] is String &&
+          (topNames[key] as String).isNotEmpty) {
+        return topNames[key] as String;
+      }
+    } catch (_) {}
+
+    final vendor = _getVendorBaseConfig();
+    final vnames = vendor['featureNames'] ?? vendor['vendor']?['featureNames'];
+    if (vnames is Map &&
+        vnames[key] is String &&
+        (vnames[key] as String).isNotEmpty) {
+      return vnames[key] as String;
+    }
+
+    return defaultName;
   }
 
   /// Convenience check for whether the app should operate in NanoDLP mode.
