@@ -481,16 +481,12 @@ class StatusProvider extends ChangeNotifier {
                   // completed-layer time so the UI doesn't flash to N/A.
                 }
               }
-              _log.fine(
-                  'SSE PrevLayerTime (raw) parsed (ms): ${_prevLayerDuration?.inMilliseconds}');
               try {
-                _log.fine('SSE PrevLayerTime raw value: $maybePrevRaw');
+                // _log.fine('SSE PrevLayerTime raw value: $maybePrevRaw');
               } catch (_) {}
             } else if (parsed.prevLayerSeconds != null) {
               final micros = (parsed.prevLayerSeconds! * 1e6).round();
               _prevLayerDuration = Duration(microseconds: micros);
-              _log.fine(
-                  'SSE PrevLayerTime from model (ms): ${_prevLayerDuration!.inMilliseconds}');
             } else {
               // Do not clear _prevLayerDuration when the payload omits the
               // PrevLayerTime field; keep the last known value until an
@@ -919,16 +915,12 @@ class StatusProvider extends ChangeNotifier {
               // leave previous value unchanged when parsing fails
             }
           }
-          _log.fine(
-              'Poll PrevLayerTime (raw) parsed (ms): ${_prevLayerDuration?.inMilliseconds}');
           try {
-            _log.fine('Poll PrevLayerTime raw value: $maybePrevRaw');
+            // _log.fine('Poll PrevLayerTime raw value: $maybePrevRaw');
           } catch (_) {}
         } else if (parsed.prevLayerSeconds != null) {
           final micros = (parsed.prevLayerSeconds! * 1e6).round();
           _prevLayerDuration = Duration(microseconds: micros);
-          _log.fine(
-              'Poll PrevLayerTime from model (ms): ${_prevLayerDuration!.inMilliseconds}');
         } else {
           // Do not clear on absence; preserve last known PrevLayerTime.
         }
