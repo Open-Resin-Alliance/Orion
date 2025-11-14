@@ -500,9 +500,6 @@ class OrionConfig {
 
     var vendor = _getVendorConfig();
     final flags = vendor['featureFlags'];
-    // Read merged config so `orion.cfg` can override vendor-provided flags.
-    var merged = _getConfig();
-    final flags = merged['featureFlags'];
     if (flags is Map && flags.containsKey(key)) {
       return flags[key] == true;
     }
@@ -542,8 +539,6 @@ class OrionConfig {
 
     var vendor = _getVendorConfig();
     final flags = vendor['featureFlags'];
-    var merged = _getConfig();
-    final flags = merged['featureFlags'];
     if (flags is Map && flags['hardwareFeatures'] is Map<String, dynamic>) {
       final vendHw = Map<String, dynamic>.from(flags['hardwareFeatures']);
       vendHw.forEach((k, v) {
@@ -595,10 +590,6 @@ class OrionConfig {
     }
 
     return merged;
-    var merged = _getConfig();
-    final flags = merged['featureFlags'];
-    if (flags is Map<String, dynamic>) return Map<String, dynamic>.from(flags);
-    return {};
   }
 
   /// Read the internalConfig section (vendor-specified internal config)
