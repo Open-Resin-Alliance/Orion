@@ -27,12 +27,50 @@ import 'package:orion/util/orion_config.dart';
 /// point where an alternative backend implementation (different API)
 /// can be swapped in without changing providers or UI code.
 class BackendService implements BackendClient {
-  final BackendClient _delegate;
+  BackendClient _delegate;
 
   /// Default constructor: picks the concrete implementation based on
-  /// configuration (or defaults to the HTTP adapter).
+  /// configuration (or defaults to the HTTP adapter). The selected
+  /// delegate may be reloaded later by calling [reloadFromConfig].
   BackendService({BackendClient? delegate})
-      : _delegate = delegate ?? _chooseFromConfig();
+      : _delegate = delegate ?? _chooseFromConfig() {
+    _registerConfigListener();
+  }
+
+  // Automatically reload the delegate when the on-disk config is updated.
+  // We register a listener with OrionConfig so onboarding or settings
+  // flows that call setString()/setFlag() cause the backend to re-evaluate.
+  void _registerConfigListener() {
+    OrionConfig.addChangeListener(_handleConfigChange);
+  }
+
+  void _handleConfigChange() {
+    try {
+      reloadFromConfig();
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  /// Dispose the backend service and remove any registered listeners.
+  void dispose() {
+    try {
+      OrionConfig.removeChangeListener(_handleConfigChange);
+    } catch (_) {}
+  }
+
+  /// Re-read configuration and pick a new backend implementation.
+  ///
+  /// This is useful when configuration (for example `orion.cfg` or
+  /// `vendor.cfg`) has been updated after app startup and you need the
+  /// BackendService to switch between real and simulated adapters.
+  void reloadFromConfig() {
+    try {
+      _delegate = _chooseFromConfig();
+    } catch (_) {
+      // Keep the existing delegate on any error while reloading.
+    }
+  }
 
   static BackendClient _chooseFromConfig() {
     try {
@@ -156,8 +194,99 @@ class BackendService implements BackendClient {
   Future<dynamic> getAnalyticValue(int id) => _delegate.getAnalyticValue(id);
 
   @override
+  Future<Map<String, dynamic>> getMachine() => _delegate.getMachine();
+
+  @override
+  Future<int?> getDefaultProfileId() => _delegate.getDefaultProfileId();
+
+  @override
+  Future<Map<String, dynamic>> editProfile(
+      int id, Map<String, dynamic> fields) async {
+    try {
+      return await _delegate.editProfile(id, fields);
+    } catch (e, _) {
+      // Treat backend-specific errors as empty result so callers don't crash
+      return {};
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProfileJson(int id) async {
+    try {
+      return await _delegate.getProfileJson(id);
+    } catch (e, _) {
+      // Don't let backend-specific fetch failures throw into UI code —
+      // treat as unsupported/empty result.
+      // Note: individual delegates should log details; keep this quiet
+      // at info level to avoid spamming.
+      return {};
+    }
+  }
+
+  @override
+  Future<void> setDefaultProfileId(int id) => _delegate.setDefaultProfileId(id);
+
+  @override
   Future<dynamic> tareForceSensor() => _delegate.tareForceSensor();
 
   @override
   Future<dynamic> updateBackend() => _delegate.updateBackend();
+  
+  @override
+  Future setChamberTemperature(double temperature) =>
+      _delegate.setChamberTemperature(temperature);
+
+  @override
+  Future setVatTemperature(double temperature) =>
+      _delegate.setVatTemperature(temperature);
+
+  @override
+  Future getChamberTemperature() => _delegate.getChamberTemperature();
+
+  @override
+  Future getVatTemperature() => _delegate.getVatTemperature();
+
+  @override
+  Future<bool> isChamberTemperatureControlEnabled() {
+    return _delegate.isChamberTemperatureControlEnabled();
+  }
+
+  @override
+  Future<bool> isVatTemperatureControlEnabled() {
+    return _delegate.isVatTemperatureControlEnabled();
+  }
+
+  @override
+  Future<void> preheatAndMix(double temperature) =>
+      _delegate.preheatAndMix(temperature);
+
+  @override
+  Future<void> preheatAndMixStandalone() => _delegate.preheatAndMixStandalone();
+
+  @override
+  Future<String?> getCalibrationImageUrl(int modelId) =>
+      _delegate.getCalibrationImageUrl(modelId);
+
+  @override
+  Future<List<Map<String, dynamic>>> getCalibrationModels() =>
+      _delegate.getCalibrationModels();
+
+  @override
+  Future<bool> startCalibrationPrint({
+    required int calibrationModelId,
+    required List<double> exposureTimes,
+    required int profileId,
+  }) =>
+      _delegate.startCalibrationPrint(
+        calibrationModelId: calibrationModelId,
+        exposureTimes: exposureTimes,
+        profileId: profileId,
+      );
+
+  @override
+  Future<double?> getSlicerProgress() => _delegate.getSlicerProgress();
+
+  @override
+  Future<bool?> isCalibrationPlateProcessed() =>
+      _delegate.isCalibrationPlateProcessed();
 }

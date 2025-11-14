@@ -27,13 +27,24 @@ class AnalyticsProvider extends ChangeNotifier {
   Object? get error => _error;
 
   static const int _pressureId = 6;
+
   final List<Map<String, dynamic>> _pressureSeries = [];
   List<Map<String, dynamic>> get pressureSeries =>
       List.unmodifiable(_pressureSeries);
 
-  int pollIntervalHertz = 15; // 15 Hz
-  double get pollIntervalMilliseonds => 1000.0 / pollIntervalHertz;
-  int get _maxPressureSamples => (60 * pollIntervalHertz); // 1 minute
+  // Cache for other analytics values (non-pressure)
+  final Map<int, dynamic> _otherAnalyticsCache = {};
+
+  // High-frequency polling for pressure sensor
+  int pressurePollIntervalHertz = 15; // 15 Hz for pressure
+  double get _pressurePollIntervalMs => 1000.0 / pressurePollIntervalHertz;
+  int get _maxPressureSamples => (60 * pressurePollIntervalHertz); // 1 minute
+
+  // Low-frequency polling for other analytics (temperature, etc.)
+  int otherAnalyticsPollIntervalHertz =
+      2; // 2 Hz for temperatures and other metrics
+
+  int _otherAnalyticsCounter = 0;
 
   bool _disposed = false;
   bool _polling = false;
@@ -46,7 +57,7 @@ class AnalyticsProvider extends ChangeNotifier {
         final before = DateTime.now();
         await _pollOnce();
         final took = DateTime.now().difference(before).inMilliseconds;
-        final wait = pollIntervalMilliseonds - took;
+        final wait = _pressurePollIntervalMs - took;
         if (wait > 0) {
           try {
             await Future.delayed(Duration(milliseconds: wait.toInt()));
@@ -69,71 +80,91 @@ class AnalyticsProvider extends ChangeNotifier {
     try {
       final cfg = OrionConfig();
       if (cfg.isNanoDlpMode()) {
-        // Fast path: scalar endpoint
+        // Always fetch pressure at high frequency
+        final Map<int, dynamic> fetchedValues = {};
+
         try {
-          final val = await _client.getAnalyticValue(_pressureId);
-          if (val != null) {
-            final num? v = (val is num) ? val : double.tryParse(val.toString());
-            if (v != null) {
-              final id = DateTime.now().millisecondsSinceEpoch;
-              _pressureSeries.add({'id': id, 'v': v});
-              if (_pressureSeries.length > _maxPressureSamples) {
-                _pressureSeries.removeRange(
-                    0, _pressureSeries.length - _maxPressureSamples);
-              }
-              _analytics = {
-                'nano_analytics': {
-                  _pressureId: List<Map<String, dynamic>>.from(_pressureSeries)
-                }
-              };
-              _error = null;
-              _loading = false;
-              if (!_disposed) notifyListeners();
-              return;
-            }
+          final pressureVal = await _client.getAnalyticValue(_pressureId);
+          if (pressureVal != null) {
+            fetchedValues[_pressureId] = pressureVal;
           }
-        } catch (e, st) {
-          _log.fine('getAnalyticValue failed', e, st);
+        } catch (e) {
+          _log.fine('Failed to fetch pressure value', e);
         }
 
-        // Fallback: batch analytics
-        try {
-          final list = await _client.getAnalytics(20);
-          final newPressure = <Map<String, dynamic>>[];
-          for (final item in list) {
-            final tRaw = item['T'];
-            final tid =
-                tRaw is int ? tRaw : int.tryParse(tRaw?.toString() ?? '');
-            if (tid != _pressureId) continue;
-            final idRaw = item['ID'];
-            final vRaw = item['V'];
-            final id = idRaw is int
-                ? idRaw
-                : int.tryParse(idRaw?.toString() ?? '') ??
-                    DateTime.now().millisecondsSinceEpoch;
-            final num? v =
-                vRaw is num ? vRaw : double.tryParse(vRaw?.toString() ?? '');
-            if (v == null) continue;
-            newPressure.add({'id': id, 'v': v});
-          }
-          if (newPressure.isNotEmpty) {
-            _pressureSeries.clear();
-            _pressureSeries.addAll(newPressure);
-            _analytics = {
-              'nano_analytics': {
-                _pressureId: List<Map<String, dynamic>>.from(_pressureSeries)
+        // Fetch other analytics at lower frequency (every Nth poll)
+        _otherAnalyticsCounter++;
+        final shouldFetchOthers = _otherAnalyticsCounter >=
+            (pressurePollIntervalHertz / otherAnalyticsPollIntervalHertz)
+                .round();
+
+        if (shouldFetchOthers) {
+          _otherAnalyticsCounter = 0;
+
+          // Fetch all available analytics via batch endpoint
+          try {
+            final list = await _client.getAnalytics(20);
+            for (final item in list) {
+              final tRaw = item['T'];
+              final tid =
+                  tRaw is int ? tRaw : int.tryParse(tRaw?.toString() ?? '');
+              if (tid == null || tid == _pressureId) {
+                continue; // Skip pressure, we fetch it separately
               }
-            };
-            _error = null;
-            _loading = false;
-            if (!_disposed) notifyListeners();
-            return;
+
+              final vRaw = item['V'];
+              final num? v =
+                  vRaw is num ? vRaw : double.tryParse(vRaw?.toString() ?? '');
+              if (v != null) {
+                _otherAnalyticsCache[tid] = v; // Cache the value
+              }
+            }
+          } catch (e) {
+            _log.fine('Failed to fetch other analytics', e);
           }
-        } catch (e, st) {
-          _log.fine('getAnalytics fallback failed', e, st);
+        }
+
+        // Process pressure value for series
+        if (fetchedValues.containsKey(_pressureId)) {
+          final val = fetchedValues[_pressureId];
+          final num? v = (val is num) ? val : double.tryParse(val.toString());
+          if (v != null) {
+            final id = DateTime.now().millisecondsSinceEpoch;
+            _pressureSeries.add({'id': id, 'v': v});
+            if (_pressureSeries.length > _maxPressureSamples) {
+              _pressureSeries.removeRange(
+                  0, _pressureSeries.length - _maxPressureSamples);
+            }
+          }
+        }
+
+        // Build analytics map with all fetched values
+        final nanoAnalytics = <int, dynamic>{};
+
+        // Add pressure series (always updated)
+        if (_pressureSeries.isNotEmpty) {
+          nanoAnalytics[_pressureId] =
+              List<Map<String, dynamic>>.from(_pressureSeries);
+        }
+
+        // Add all cached analytics values as single-item arrays for consistency
+        _otherAnalyticsCache.forEach((id, val) {
+          final num? v = (val is num) ? val : double.tryParse(val.toString());
+          if (v != null) {
+            nanoAnalytics[id] = [
+              {'id': DateTime.now().millisecondsSinceEpoch, 'v': v}
+            ];
+          }
+        });
+
+        // Always update analytics if we have any data
+        if (nanoAnalytics.isNotEmpty) {
+          _analytics = {'nano_analytics': nanoAnalytics};
+          _error = null;
         }
 
         _loading = false;
+        if (!_disposed) notifyListeners();
         return;
       } else {
         final raw = await _client.getStatus();

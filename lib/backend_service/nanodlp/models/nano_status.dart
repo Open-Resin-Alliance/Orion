@@ -38,6 +38,10 @@ class NanoStatus {
   final NanoFile? file; // not always present in NanoDLP status
   final double? z; // z position (converted if needed)
   final bool curing;
+  // Previous layer time reported by NanoDLP. NanoDLP provides this as
+  // nanoseconds in some installs (key: PrevLayerTime). Preserve raw
+  // integer nanoseconds when present so mappers/providers can convert.
+  final int? prevLayerTimeNs;
 
   NanoStatus({
     required this.printing,
@@ -56,6 +60,7 @@ class NanoStatus {
     this.file,
     this.z,
     this.curing = false,
+    this.prevLayerTimeNs,
   });
 
   factory NanoStatus.fromJson(Map<String, dynamic> json) {
@@ -185,6 +190,13 @@ class NanoStatus {
       file: nf,
       z: z,
       curing: curing,
+      prevLayerTimeNs: (() {
+        try {
+          final cand = json['PrevLayerTime'];
+          return cand;
+        } catch (_) {}
+        return null;
+      })(),
     );
   }
 
@@ -204,5 +216,6 @@ class NanoStatus {
         'file': file?.toJson(),
         'z': z,
         'curing': curing,
+        'PrevLayerTime': prevLayerTimeNs,
       };
 }

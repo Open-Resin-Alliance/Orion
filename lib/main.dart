@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:window_size/window_size.dart';
@@ -33,12 +34,13 @@ import 'package:orion/files/files_screen.dart';
 import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/home/home_screen.dart';
-import 'package:orion/home/onboarding_screen.dart';
+import 'package:orion/home/startup_gate.dart';
 import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/status/status_screen.dart';
 import 'package:orion/materials/materials_screen.dart';
+import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/files_provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
@@ -50,6 +52,7 @@ import 'package:orion/tools/tools_screen.dart';
 import 'package:orion/util/error_handling/error_handler.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/providers/wifi_provider.dart';
 import 'package:orion/util/error_handling/connection_error_watcher.dart';
 import 'package:orion/util/error_handling/notification_watcher.dart';
 import 'package:orion/util/providers/orion_update_provider.dart';
@@ -147,6 +150,10 @@ class OrionRoot extends StatelessWidget {
           lazy: false,
         ),
         ChangeNotifierProvider(
+          create: (_) => WiFiProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
           create: (_) => StatusProvider(),
           lazy: false,
         ),
@@ -178,6 +185,16 @@ class OrionRoot extends StatelessWidget {
           create: (_) => OrionUpdateProvider(),
           lazy: true,
         ),
+        ChangeNotifierProvider(
+          create: (_) => ResinsProvider(),
+          // Prefetch calibration models and images at app startup so
+          // opening the Calibration screen can show thumbnails immediately.
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CalibrationContextProvider(),
+          lazy: true,
+        )
       ],
       child: const OrionMainApp(),
     );
@@ -226,9 +243,10 @@ class OrionMainAppState extends State<OrionMainApp> {
         GoRoute(
           path: '/',
           builder: (BuildContext context, GoRouterState state) {
-            return initialSetupTrigger()
-                ? const OnboardingScreen()
-                : const HomeScreen();
+            // Let the StartupGate decide whether to show the startup overlay
+            // while the initial backend connection attempt completes. It will
+            // render the onboarding screen or the HomeScreen once connected.
+            return const StartupGate();
           },
           routes: <RouteBase>[
             GoRoute(
@@ -316,8 +334,14 @@ class OrionMainAppState extends State<OrionMainApp> {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               try {
                 final navCtx = _navKey.currentContext;
+                // Startup gating is handled by the root route's StartupGate.
                 if (_connWatcher == null && navCtx != null) {
-                  _connWatcher = ConnectionErrorWatcher.install(navCtx);
+                  _connWatcher =
+                      ConnectionErrorWatcher.install(navCtx, onReconnect: () {
+                    Logger('ConnErrorWatcher').info('Reconnected');
+                  }, onDisconnect: () {
+                    Logger('ConnErrorWatcher').info('Disconnected');
+                  });
                 }
                 if (_notifWatcher == null && navCtx != null) {
                   _notifWatcher = NotificationWatcher.install(navCtx);
@@ -334,8 +358,8 @@ class OrionMainAppState extends State<OrionMainApp> {
                         final active =
                             (s?.isPrinting == true) || (s?.isPaused == true);
                         if (active && !_wasPrinting) {
-                          // Only navigate if not already on /status
-                          // Navigate to status on transition to active print.
+                          // Only navigate if not already on /status. Navigate
+                          // to status on transition to active print.
                           try {
                             final navState = _navKey.currentState;
                             final sModel = statusProv.status;

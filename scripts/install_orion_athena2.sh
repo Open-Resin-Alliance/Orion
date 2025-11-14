@@ -26,7 +26,7 @@ cleanup() {
 trap cleanup EXIT
 
 SCRIPT_NAME="$(basename "$0")"
-ORION_URL="https://github.com/Open-Resin-Alliance/Orion/releases/download/BRANCH_athena_features/orion_armv7.tar.gz"
+ORION_URL="https://github.com/Open-Resin-Alliance/Orion/releases/download/BRANCH_heaters-&-materials/orion_armv7.tar.gz"
 DOWNSAMPLED_RES="210, 210"
 
 uninstall_orion() {
@@ -282,7 +282,7 @@ main() {
   },
   "developer": {
     "releaseOverride": true,
-    "overrideRelease": "BRANCH_nanodlp_basic_support",
+    "overrideRelease": "BRANCH_heaters-&-materials",
     "overrideUpdateCheck": false
   },
   "topsecret": {
@@ -301,12 +301,21 @@ EOF
     "machineModelName": "Athena 2",
     "homePosition": "up",
     "vendorUrl": "https://concepts3d.ca",
+    "themeMode": "glass",
     "vendorThemeSeed": "#FFFFA500",
     "vendorThemeGradient": [
       "#FF221505",
       "#FF3A2605",
       "#FF5B3B05"
-    ]
+    ],
+    "vendorLogo": "c3d",
+    "vendorLogoSecondary": "athena",
+    "vendorLogoScale": "1.0",
+    "vendorLogoColor": "#ffd6c091",
+    "vendorLogoSecondaryScale": "1.4",
+    "vendorLogoSecondaryColor": "#ffd6c091",
+    "vendorLogoOffset": "17",
+    "vendorLogoSecondaryOffset": "0"
   },
   "featureFlags": {
     "enableBetaFeatures": false,
@@ -315,6 +324,7 @@ EOF
     "enableExperimentalFeatures": false,
     "enableResinProfiles": true,
     "enableCustomName": false,
+    "enablePowerControl": false,
     "hardwareFeatures": {
         "hasHeatedChamber": true,
         "hasHeatedVat": true,

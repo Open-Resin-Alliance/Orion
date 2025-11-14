@@ -35,13 +35,24 @@ class ConnectionErrorWatcher {
   Object? _lastProviderError;
   bool? _lastDialogVisible;
 
-  ConnectionErrorWatcher._(this._context) {
+  // Optional callbacks invoked on connection state transitions.
+  final VoidCallback? onReconnect;
+  final VoidCallback? onDisconnect;
+
+  ConnectionErrorWatcher._(this._context,
+      {this.onReconnect, this.onDisconnect}) {
     _provider = Provider.of<StatusProvider>(_context, listen: false);
   }
 
   /// Install the watcher and begin listening immediately.
-  static ConnectionErrorWatcher install(BuildContext context) {
-    final watcher = ConnectionErrorWatcher._(context);
+  ///
+  /// Optional callbacks can be provided to react to reconnect/disconnect
+  /// events. By default the watcher only shows/dismisses the modal dialog
+  /// (no toast/banners are shown).
+  static ConnectionErrorWatcher install(BuildContext context,
+      {VoidCallback? onReconnect, VoidCallback? onDisconnect}) {
+    final watcher = ConnectionErrorWatcher._(context,
+        onReconnect: onReconnect, onDisconnect: onDisconnect);
     watcher._start();
     return watcher;
   }
@@ -57,9 +68,20 @@ class ConnectionErrorWatcher {
   void _onProviderChange() async {
     final log = Logger('ConnErrorWatcher');
     try {
-      final hasError = _provider.error != null;
-      // Only log transitions or when there's something noteworthy to report
       final providerError = _provider.error;
+      final hasError = providerError != null;
+      // If we have never successfully connected yet, suppress showing a
+      // connection error dialog. During initial boot/startup the app shows
+      // a branded startup overlay and transient network failures are
+      // expected; showing the modal in that phase is noisy and confusing.
+      // We still record the provider error state but avoid presenting UI
+      // until the provider reports at least one successful status.
+      final hasEverConnected = _provider.hasEverConnected;
+
+      // Determine previous state from cached value
+      final hadError = _lastProviderError != null;
+
+      // Only log transitions or when there's something noteworthy to report
       final shouldLog = (providerError != _lastProviderError) ||
           (_dialogVisible != _lastDialogVisible) ||
           (providerError != null) ||
@@ -70,7 +92,37 @@ class ConnectionErrorWatcher {
         _lastProviderError = providerError;
         _lastDialogVisible = _dialogVisible;
       }
+
+      // Callbacks for transitions: null->error (disconnect), error->null (reconnect)
+      if (!hadError && hasError) {
+        // Transition: connected -> disconnected
+        if (onDisconnect != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try {
+              onDisconnect!();
+            } catch (_) {}
+          });
+        }
+      } else if (hadError && !hasError) {
+        // Transition: disconnected -> reconnected
+        if (onReconnect != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try {
+              onReconnect!();
+            } catch (_) {}
+          });
+        }
+      }
+
       if (hasError && !_dialogVisible) {
+        // If we've never successfully connected yet (startup), do not show
+        // the modal dialog — the StartupGate/StartupScreen handles the
+        // initial wait UX. Record the state but return early.
+        if (!hasEverConnected) {
+          log.info(
+              'Suppressing connection error dialog during startup (hasEverConnected=false)');
+          return;
+        }
         _dialogVisible = true;
         // Show the dialog; this Future completes when the dialog is dismissed
         WidgetsBinding.instance.addPostFrameCallback((_) async {

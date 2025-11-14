@@ -38,6 +38,8 @@ class StatusModel {
   final bool? finished;
   @JsonKey(name: 'print_data')
   final PrintData? printData;
+  @JsonKey(name: 'prev_layer_seconds')
+  final double? prevLayerSeconds;
   @JsonKey(name: 'physical_state')
   final PhysicalState physicalState;
 
@@ -49,6 +51,7 @@ class StatusModel {
     this.pauseLatched,
     this.finished,
     required this.printData,
+    this.prevLayerSeconds,
     required this.physicalState,
   });
 

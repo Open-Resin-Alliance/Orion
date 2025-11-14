@@ -57,8 +57,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool verboseLogging;
   late bool selfDestructMode;
   late String machineName;
-  bool _isReverting = false;
-  String? _revertOutput;
 
   late String originalRotation;
 
@@ -718,67 +716,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   void dispose() {
     _isLoadingReleases = false;
     super.dispose();
-  }
-
-  Future<void> _runRevertOrion() async {
-    setState(() {
-      _isReverting = true;
-      _revertOutput = null;
-    });
-    try {
-      // Use Process.run to execute the system command. This is intended for
-      // developer machines where the CLI helper `revert_orion` is available.
-      final result = await Process.run('revert_orion', [], runInShell: true);
-      final output = <String>[];
-      if (result.stdout != null && result.stdout.toString().isNotEmpty) {
-        output.add('STDOUT:\n${result.stdout}');
-      }
-      if (result.stderr != null && result.stderr.toString().isNotEmpty) {
-        output.add('STDERR:\n${result.stderr}');
-      }
-      output.add('Exit code: ${result.exitCode}');
-      _revertOutput = output.join('\n\n');
-      // Show the output to the user
-      if (mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (context) => GlassAlertDialog(
-            title: const Text('Revert Orion Result'),
-            content: SingleChildScrollView(
-              child: SelectableText(_revertOutput ?? 'No output'),
-            ),
-            actions: [
-              GlassButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (context) => GlassAlertDialog(
-            title: const Text('Error'),
-            content: Text('Failed to run revert_orion: $e'),
-            actions: [
-              GlassButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isReverting = false;
-        });
-      }
-    }
   }
 
   void _showReleaseDialog() {

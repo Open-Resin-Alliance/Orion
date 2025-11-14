@@ -60,7 +60,12 @@ class _AboutHeader extends StatelessWidget {
                   child: icon != null
                       ? IconTheme(
                           data: Theme.of(context).iconTheme, child: icon!)
-                      : const FlutterLogo(size: 50),
+                      : Image.asset(
+                          'assets/images/open_resin_alliance_logo_darkmode.png',
+                          width: 65,
+                          height: 65,
+                          fit: BoxFit.contain,
+                        ),
                 ),
               ),
               const SizedBox(width: 20),

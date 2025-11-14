@@ -99,6 +99,32 @@ abstract class BackendClient {
   /// Returns the raw value (number or string) or null on failure.
   Future<dynamic> getAnalyticValue(int id);
 
+  /// Fetch backend machine metadata where available (e.g. NanoDLP /json/db/machine.json).
+  /// Returns a map representation of the machine or an empty map when unsupported.
+  Future<Map<String, dynamic>> getMachine();
+
+  /// Fetch the full JSON payload for a profile by id when supported by the
+  /// backend (e.g. NanoDLP's /profile/json/<id> endpoint). Returns an empty
+  /// map when unsupported or on failure.
+  Future<Map<String, dynamic>> getProfileJson(int id);
+
+  /// Edit a profile by posting form fields to the backend's profile edit
+  /// endpoint (e.g. POST /profile/edit/<id>). The `fields` map is encoded
+  /// as multipart/form-data. Implementations should return the parsed JSON
+  /// response when available or an empty map on success/unsupported.
+  Future<Map<String, dynamic>> editProfile(int id, Map<String, dynamic> fields);
+
+  /// Return the backend's notion of the default profile id when available.
+  /// This abstracts parsing machine metadata (e.g. NanoDLP's machine.json)
+  /// so callers don't need to inspect raw maps.
+  Future<int?> getDefaultProfileId();
+
+  /// Set the backend's default profile id. Backends that support a dedicated
+  /// default-profile endpoint (e.g. NanoDLP's /profile/default/<id>) should
+  /// implement this to persist the change on the device. Implementations that
+  /// cannot set a default profile should throw or return a failed future.
+  Future<void> setDefaultProfileId(int id);
+
   /// Tare the force sensor if supported by the backend.
   /// Returns a boolean indicating success or failure.
   Future<dynamic> tareForceSensor();
@@ -106,4 +132,57 @@ abstract class BackendClient {
   /// Update the backend service if supported.
   /// Returns a boolean indicating success or failure.
   Future<dynamic> updateBackend();
+  
+  /// Set and Get vat temperature if supported by the backend.
+  /// Returns a boolean indicating success or failure.
+  Future<dynamic> setVatTemperature(double temperature);
+  Future<dynamic> getVatTemperature();
+
+  /// Check if vat temperature control is enabled.
+  /// Returns a boolean indicating enabled status.
+  Future<bool> isVatTemperatureControlEnabled();
+
+  // Set and Get chamber temperature if supported by the backend.
+  /// Returns a boolean indicating success or failure.
+  Future<dynamic> setChamberTemperature(double temperature);
+  Future<dynamic> getChamberTemperature();
+
+  /// Check if chamber temperature control is enabled.
+  /// Returns a boolean indicating enabled status.
+  Future<bool> isChamberTemperatureControlEnabled();
+
+  /// Trigger preheat and mix operation at the specified temperature.
+  /// This is an Athena-specific feature exposed via /athena-iot/control/preheat_and_mix
+  Future<void> preheatAndMix(double temperature);
+
+  /// Trigger preheat and mix operation without temperature (standalone mode).
+  /// This is an Athena-specific feature exposed via /athena-iot/control/preheat_and_mix_standalone
+  Future<void> preheatAndMixStandalone();
+
+  /// Get the URL for a calibration model preview image by ID.
+  /// Returns the full URL path to the image (e.g. http://host/static/shots/calibration-images/1.png)
+  /// or null if not supported by the backend.
+  Future<String?> getCalibrationImageUrl(int modelId);
+
+  /// Get available calibration models from the backend.
+  /// Returns a list of calibration models with metadata.
+  Future<List<Map<String, dynamic>>> getCalibrationModels();
+
+  /// Start a calibration print job.
+  /// Returns true if the job was successfully submitted.
+  Future<bool> startCalibrationPrint({
+    required int calibrationModelId,
+    required List<double> exposureTimes,
+    required int profileId,
+  });
+
+  /// Get the current slicer progress (0.0 to 1.0).
+  /// Returns null if slicer is not running.
+  Future<double?> getSlicerProgress();
+
+  /// Check if calibration plate (PlateID 0) has been fully processed.
+  /// Used for accurate calibration completion detection since /slicer
+  /// doesn't report calibration progress correctly.
+  /// Returns null if unable to determine.
+  Future<bool?> isCalibrationPlateProcessed();
 }
