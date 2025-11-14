@@ -28,6 +28,7 @@ import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.d
 import 'package:flutter/foundation.dart';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 
 /// NanoDLP adapter (initial implementation)
 ///
@@ -483,11 +484,29 @@ class NanoDlpHttpClient implements BackendClient {
                 decoded['resin_level_mm'],
           };
 
+          // Attempt to enrich the vendor section with optional Athena IoT
+          // payloads when available on Athena-derived NanoDLP installs.
+          final vendor = <String, dynamic>{};
+          try {
+            final athena = AthenaIotClient(baseNoSlash,
+                clientFactory: _clientFactory, requestTimeout: _requestTimeout);
+            final athenaDataModel = await athena.getPrinterDataModel();
+            if (athenaDataModel != null) {
+              vendor['athena_printer_data'] = athenaDataModel.toJson();
+            }
+            final athenaFlagsModel = await athena.getFeatureFlagsModel();
+            if (athenaFlagsModel != null) {
+              vendor['athena_feature_flags'] = athenaFlagsModel.toJson();
+            }
+          } catch (e, st) {
+            _log.fine('Ignoring athena IoT enrichment failure', e, st);
+          }
+
           return {
             'general': general,
             'advanced': advanced,
             'machine': machine,
-            'vendor': <String, dynamic>{},
+            'vendor': vendor,
           };
         } finally {
           client.close();
@@ -536,6 +555,8 @@ class NanoDlpHttpClient implements BackendClient {
       client.close();
     }
   }
+
+  // Athena IoT integration moved to athena_iot client implementation.
 
   @override
   Future<Map<String, dynamic>> listItems(
@@ -1294,6 +1315,16 @@ class NanoDlpHttpClient implements BackendClient {
       manualCommand('[[PressureWrite 1]]');
     } catch (e, st) {
       _log.warning('NanoDLP tareForceSensor error', e, st);
+      rethrow;
+    }
+  }
+
+  @override
+  Future updateBackend() async {
+    try {
+      manualCommand('[[Exec /home/pi/athena-start-update.sh]]');
+    } catch (e, st) {
+      _log.warning('NanoDLP updateBackend error', e, st);
       rethrow;
     }
   }

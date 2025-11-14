@@ -157,4 +157,7 @@ class BackendService implements BackendClient {
 
   @override
   Future<dynamic> tareForceSensor() => _delegate.tareForceSensor();
+
+  @override
+  Future<dynamic> updateBackend() => _delegate.updateBackend();
 }

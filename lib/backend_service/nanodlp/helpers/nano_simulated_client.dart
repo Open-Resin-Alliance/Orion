@@ -1,10 +1,18 @@
 /*
-* Orion - NanoDLP Simulated Client
-* Provides a simple in-memory simulated NanoDLP backend for development
-* without a physical printer. Behavior is intentionally simple: it
-* simulates a print job advancing layers over time and responds to
-* control commands (start/pause/resume/cancel). This implementation
-* implements the BackendClient interface used by the app.
+* Orion - NanoDLP Simulated Backend Client
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
 */
 
 import 'dart:async';
@@ -289,6 +297,12 @@ class NanoDlpSimulatedClient implements BackendClient {
   @override
   Future tareForceSensor() {
     // TODO: implement tareForceSensor
+    throw UnimplementedError();
+  }
+
+  @override
+  Future updateBackend() {
+    // TODO: implement updateBackend
     throw UnimplementedError();
   }
 }

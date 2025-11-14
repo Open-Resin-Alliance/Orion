@@ -365,6 +365,12 @@ class OdysseyHttpClient implements BackendClient {
     // TODO: implement tareForceSensor
     throw UnimplementedError();
   }
+
+  @override
+  Future updateBackend() {
+    // TODO: implement updateBackend
+    throw UnimplementedError();
+  }
 }
 
 class _TimeoutHttpClient extends http.BaseClient {

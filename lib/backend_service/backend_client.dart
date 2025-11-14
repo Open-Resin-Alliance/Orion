@@ -102,4 +102,8 @@ abstract class BackendClient {
   /// Tare the force sensor if supported by the backend.
   /// Returns a boolean indicating success or failure.
   Future<dynamic> tareForceSensor();
+
+  /// Update the backend service if supported.
+  /// Returns a boolean indicating success or failure.
+  Future<dynamic> updateBackend();
 }
