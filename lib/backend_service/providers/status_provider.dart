@@ -28,6 +28,7 @@ import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
+import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 
 /// Polls the backend `/status` endpoint and exposes a typed [StatusModel].
@@ -40,10 +41,32 @@ import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 class StatusProvider extends ChangeNotifier {
   final BackendClient _client;
   final _log = Logger('StatusProvider');
+  // Optional analytics provider used to expose convenience getters for
+  // time-series metrics (e.g. MCU / outside temperature). This is an
+  // optional, non-critical dependency — callers may prefer to read
+  // AnalyticsProvider directly from the widget tree. Keep this nullable
+  // to avoid hard coupling during construction in tests.
+  AnalyticsProvider? _analyticsProvider;
 
   StatusModel? _status;
   String? _deviceStatusMessage;
   int? _resinTemperature;
+  double? _cpuTemperature;
+  Duration? _prevLayerDuration;
+
+  /// When printing, we may surface the live current-layer time reported via
+  /// NanoDLP analytics (key: 'LayerTime'). When available, we prefer this
+  /// value for UI responsiveness during an active print. This is stored
+  /// separately for clarity but may be applied to `_prevLayerDuration` as a
+  /// proxy while printing so existing UI bindings continue to work.
+  Duration? _currentLayerDuration;
+
+  // Track observed layer numbers and timestamps so we can compute a
+  // previous-layer duration when the backend does not provide PrevLayerTime
+  // reliably on every snapshot. When we detect the layer number increase we
+  // compute the elapsed time since the previous layer observation.
+  int? _lastObservedLayer;
+  DateTime? _lastObservedLayerTime;
 
   /// Optional raw device-provided status message (e.g. NanoDLP "Status"
   /// field). When present this may be used to override the app bar title
@@ -54,6 +77,34 @@ class StatusProvider extends ChangeNotifier {
 
   /// Current resin temperature reported by the backend (degrees Celsius).
   int? get resinTemperature => _resinTemperature;
+
+  /// CPU temperature reported by the backend `temp` field (degrees Celsius).
+  /// May be fractional so exposed as a double. Null when unavailable.
+  double? get cpuTemperature => _cpuTemperature;
+
+  /// Duration of the previous layer as reported by the backend. The backend
+  /// reports `PrevLayerTime` in nanoseconds; we convert it to [Duration].
+  Duration? get prevLayerDuration => _prevLayerDuration;
+
+  /// Current (ongoing) layer duration while printing, if available from
+  /// analytics (key: 'LayerTime'). This differs from `prevLayerDuration`
+  /// which represents the previous completed layer; however, we may proxy
+  /// `LayerTime` into `prevLayerDuration` while printing to simplify UI.
+  Duration? get currentLayerDuration => _currentLayerDuration;
+
+  /// Previous layer time in seconds as a double (null when unavailable).
+  double? get prevLayerSeconds => _prevLayerDuration == null
+      ? null
+      : _prevLayerDuration!.inMilliseconds / 1000.0;
+
+  double? get currentLayerSeconds => _currentLayerDuration == null
+      ? null
+      : _currentLayerDuration!.inMilliseconds / 1000.0;
+
+  // Note: MCU and UV/outside temperatures are provided via the NanoDLP
+  // analytics time-series. Consumers should use `AnalyticsProvider` and
+  // request `getLatestForKey('TemperatureMCU')` or
+  // `getLatestForKey('TemperatureOutside')` as appropriate.
 
   bool _loading = true;
   bool get isLoading => _loading;
@@ -172,12 +223,45 @@ class StatusProvider extends ChangeNotifier {
 
   bool? get sseSupported => _sseSupported;
 
-  StatusProvider({BackendClient? client})
+  StatusProvider({BackendClient? client, AnalyticsProvider? analytics})
       : _client = client ?? BackendService() {
+    _analyticsProvider = analytics;
     // Prefer an SSE subscription when the backend supports it. If the
     // connection fails we fall back to the existing polling loop. See
     // comments in _tryStartSse for detailed reconnect / fallback behavior.
     _tryStartSse();
+  }
+
+  /// Attach or replace the AnalyticsProvider after construction. This is
+  /// useful when the provider is created via DI and the AnalyticsProvider
+  /// becomes available afterwards (or in tests).
+  void setAnalyticsProvider(AnalyticsProvider? analytics) {
+    _analyticsProvider = analytics;
+  }
+
+  /// Convenience getter: latest MCU temperature from analytics (degrees C).
+  /// Returns null if analytics aren't available or the value is missing.
+  double? get mcuTemperature {
+    try {
+      final v = _analyticsProvider?.getLatestForKey('TemperatureMCU');
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Convenience getter: latest outside/UV temperature from analytics.
+  double? get uvTemperature {
+    try {
+      final v = _analyticsProvider?.getLatestForKey('TemperatureOutside');
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    } catch (_) {
+      return null;
+    }
   }
 
   void _startPolling() {
@@ -289,7 +373,159 @@ class StatusProvider extends ChangeNotifier {
           } catch (_) {
             // ignore parsing errors and leave _resinTemperature unchanged
           }
+          // Capture CPU temperature from `temp` field if present. Exposed as
+          // a double since some backends report fractional CPU temps.
+          try {
+            final maybeCpu = raw['temp'] ?? raw['Temp'] ?? raw['cpu_temp'];
+            double? parsedCpu;
+            if (maybeCpu == null) {
+              parsedCpu = null;
+            } else if (maybeCpu is num) {
+              parsedCpu = maybeCpu.toDouble();
+            } else {
+              final s = maybeCpu
+                  .toString()
+                  .trim()
+                  .toLowerCase()
+                  .replaceAll('°', '')
+                  .replaceAll('c', '')
+                  .trim();
+              final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+              parsedCpu = double.tryParse(numStr);
+            }
+            _cpuTemperature = parsedCpu;
+          } catch (_) {
+            // ignore
+          }
+          // PrevLayerTime parsing deferred until after we parse the StatusModel
+          // so the provider can prefer a normalized model field when present.
+          // MCU and UV/outside temperatures are provided by NanoDLP analytics
+          // time-series. Consumers should use AnalyticsProvider.getLatestForKey
+          // to read `TemperatureMCU` and `TemperatureOutside`.
           final parsed = StatusModel.fromJson(raw);
+
+          // Compute prev-layer time from observed layer changes when the
+          // backend does not include PrevLayerTime frequently. This is a
+          // best-effort heuristic: when we observe the layer number change
+          // (increment), record the time delta as the previous-layer duration.
+          try {
+            final now = DateTime.now();
+            final observedLayer = parsed.layer;
+            if (observedLayer != null) {
+              if (_lastObservedLayer == null) {
+                _lastObservedLayer = observedLayer;
+                _lastObservedLayerTime = now;
+              } else if (observedLayer != _lastObservedLayer) {
+                // If layer increased, compute delta; if it decreased or reset
+                // (e.g. new job), just re-seed the timestamp.
+                if (observedLayer > (_lastObservedLayer ?? -999999)) {
+                  final prevTime = _lastObservedLayerTime ?? now;
+                  final delta = now.difference(prevTime);
+                  // Only accept reasonable durations (e.g., >0s and <24h)
+                  if (delta.inSeconds > 0 && delta.inHours < 24) {
+                    _prevLayerDuration = delta;
+                    _log.fine(
+                        'Computed PrevLayerTime from layer change (ms): ${_prevLayerDuration!.inMilliseconds}');
+                  }
+                }
+                _lastObservedLayer = observedLayer;
+                _lastObservedLayerTime = now;
+              }
+            }
+          } catch (e, st) {
+            _log.fine(
+                'Failed to compute PrevLayerTime from layer change: $e', e, st);
+          }
+          // Prefer the raw NanoDLP `PrevLayerTime` when present. Some adapters
+          // expose this field with differing units/format, so parse it first
+          // and fall back to the model-normalized `prev_layer_seconds` when
+          // the raw key is absent.
+          try {
+            final maybePrevRaw =
+                raw['PrevLayerTime'] ?? raw['prev_layer_seconds'];
+            if (maybePrevRaw != null) {
+              if (maybePrevRaw is num) {
+                final n = maybePrevRaw.toDouble();
+                if (n >= 1e9) {
+                  // nanoseconds -> microseconds
+                  final micros = (n / 1000).round();
+                  _prevLayerDuration = Duration(microseconds: micros);
+                } else if (n >= 1e3) {
+                  // already microseconds
+                  _prevLayerDuration = Duration(microseconds: n.round());
+                } else {
+                  // seconds -> microseconds
+                  _prevLayerDuration =
+                      Duration(microseconds: (n * 1e6).round());
+                }
+              } else {
+                final s = maybePrevRaw
+                    .toString()
+                    .trim()
+                    .replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+                final asDouble = double.tryParse(s);
+                if (asDouble != null) {
+                  if (asDouble >= 1e9) {
+                    final micros = (asDouble / 1000).round();
+                    _prevLayerDuration = Duration(microseconds: micros);
+                  } else if (asDouble >= 1e3) {
+                    _prevLayerDuration =
+                        Duration(microseconds: asDouble.round());
+                  } else {
+                    _prevLayerDuration =
+                        Duration(microseconds: (asDouble * 1e6).round());
+                  }
+                } else {
+                  // leave previous _prevLayerDuration unchanged when the raw
+                  // value can't be parsed — prefer retaining the last-seen
+                  // completed-layer time so the UI doesn't flash to N/A.
+                }
+              }
+              _log.fine(
+                  'SSE PrevLayerTime (raw) parsed (ms): ${_prevLayerDuration?.inMilliseconds}');
+              try {
+                _log.fine('SSE PrevLayerTime raw value: $maybePrevRaw');
+              } catch (_) {}
+            } else if (parsed.prevLayerSeconds != null) {
+              final micros = (parsed.prevLayerSeconds! * 1e6).round();
+              _prevLayerDuration = Duration(microseconds: micros);
+              _log.fine(
+                  'SSE PrevLayerTime from model (ms): ${_prevLayerDuration!.inMilliseconds}');
+            } else {
+              // Do not clear _prevLayerDuration when the payload omits the
+              // PrevLayerTime field; keep the last known value until an
+              // explicit reset occurs. This prevents flicker when some
+              // NanoDLP snapshots omit the key intermittently.
+            }
+          } catch (e, st) {
+            _log.warning('Error parsing PrevLayerTime (SSE)', e, st);
+          }
+          // While printing, prefer live LayerTime from analytics (if available)
+          // as it represents the ongoing layer duration. If present, apply it
+          // as the current layer duration and proxy it into _prevLayerDuration
+          // so existing UI bindings continue to work.
+          try {
+            if (parsed.isPrinting && _analyticsProvider != null) {
+              final lv = _analyticsProvider!.getLatestForKey('LayerTime');
+              if (lv != null) {
+                double? secs;
+                if (lv is num) secs = lv.toDouble();
+                if (secs == null) secs = double.tryParse(lv.toString());
+                if (secs != null) {
+                  final micros = (secs * 1e6).round();
+                  _currentLayerDuration = Duration(microseconds: micros);
+                  // Proxy into prev-layer for UI simplicity during active print
+                  _prevLayerDuration = _currentLayerDuration;
+                  _log.finer(
+                      'SSE LayerTime from analytics (ms): ${_currentLayerDuration!.inMilliseconds}');
+                }
+              }
+            } else {
+              _currentLayerDuration = null;
+            }
+          } catch (e, st) {
+            _log.fine('Failed to read LayerTime from analytics', e, st);
+          }
           // (previous snapshot removed) transitional clears now rely on the
           // parsed payload directly.
 
@@ -561,7 +797,167 @@ class StatusProvider extends ChangeNotifier {
       } catch (_) {
         // ignore
       }
+      // Capture CPU temperature from `temp` field if present.
+      try {
+        final maybeCpu = raw['temp'] ?? raw['Temp'] ?? raw['cpu_temp'];
+        double? parsedCpu;
+        if (maybeCpu == null) {
+          parsedCpu = null;
+        } else if (maybeCpu is num) {
+          parsedCpu = maybeCpu.toDouble();
+        } else {
+          final s = maybeCpu
+              .toString()
+              .trim()
+              .toLowerCase()
+              .replaceAll('°', '')
+              .replaceAll('c', '')
+              .trim();
+          final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+          parsedCpu = double.tryParse(numStr);
+        }
+        _cpuTemperature = parsedCpu;
+      } catch (_) {
+        // ignore
+      }
+      // PrevLayerTime parsing will be handled after parsing StatusModel so
+      // we can prefer the model's normalized 'prev_layer_seconds' when present.
+      // Capture CPU temperature from `temp` field if present.
+      try {
+        final maybeCpu = raw['temp'] ?? raw['Temp'] ?? raw['cpu_temp'];
+        double? parsedCpu;
+        if (maybeCpu == null) {
+          parsedCpu = null;
+        } else if (maybeCpu is num) {
+          parsedCpu = maybeCpu.toDouble();
+        } else {
+          final s = maybeCpu
+              .toString()
+              .trim()
+              .toLowerCase()
+              .replaceAll('°', '')
+              .replaceAll('c', '')
+              .trim();
+          final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+          parsedCpu = double.tryParse(numStr);
+        }
+        _cpuTemperature = parsedCpu;
+      } catch (_) {
+        // ignore
+      }
+      // UV / outside temperature is sourced from NanoDLP analytics.
+      // Consumers should query AnalyticsProvider.getLatestForKey('TemperatureOutside').
       final parsed = StatusModel.fromJson(raw);
+
+      // Compute prev-layer time from observed layer changes when the
+      // backend does not include PrevLayerTime frequently. This is a
+      // best-effort heuristic: when we observe the layer number change
+      // (increment), record the time delta as the previous-layer duration.
+      try {
+        final now = DateTime.now();
+        final observedLayer = parsed.layer;
+        if (observedLayer != null) {
+          if (_lastObservedLayer == null) {
+            _lastObservedLayer = observedLayer;
+            _lastObservedLayerTime = now;
+          } else if (observedLayer != _lastObservedLayer) {
+            // If layer increased, compute delta; if it decreased or reset
+            // (e.g. new job), just re-seed the timestamp.
+            if (observedLayer > (_lastObservedLayer ?? -999999)) {
+              final prevTime = _lastObservedLayerTime ?? now;
+              final delta = now.difference(prevTime);
+              // Only accept reasonable durations (e.g., >0s and <24h)
+              if (delta.inSeconds > 0 && delta.inHours < 24) {
+                _prevLayerDuration = delta;
+                _log.fine(
+                    'Computed PrevLayerTime from layer change (ms): ${_prevLayerDuration!.inMilliseconds}');
+              }
+            }
+            _lastObservedLayer = observedLayer;
+            _lastObservedLayerTime = now;
+          }
+        }
+      } catch (e, st) {
+        _log.fine(
+            'Failed to compute PrevLayerTime from layer change: $e', e, st);
+      }
+      // Prefer model-level prev-layer seconds when available. Fallback to
+      // raw keys otherwise (supports nanoseconds, microseconds, seconds).
+      try {
+        final maybePrevRaw = raw['PrevLayerTime'] ?? raw['prev_layer_seconds'];
+        if (maybePrevRaw != null) {
+          if (maybePrevRaw is num) {
+            final n = maybePrevRaw.toDouble();
+            if (n >= 1e9) {
+              // nanoseconds -> microseconds
+              final micros = (n / 1000).round();
+              _prevLayerDuration = Duration(microseconds: micros);
+            } else if (n >= 1e3) {
+              // already microseconds
+              _prevLayerDuration = Duration(microseconds: n.round());
+            } else {
+              // seconds -> microseconds
+              _prevLayerDuration = Duration(microseconds: (n * 1e6).round());
+            }
+          } else {
+            final s = maybePrevRaw
+                .toString()
+                .trim()
+                .replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+            final asDouble = double.tryParse(s);
+            if (asDouble != null) {
+              if (asDouble >= 1e9) {
+                final micros = (asDouble / 1000).round();
+                _prevLayerDuration = Duration(microseconds: micros);
+              } else if (asDouble >= 1e3) {
+                _prevLayerDuration = Duration(microseconds: asDouble.round());
+              } else {
+                _prevLayerDuration =
+                    Duration(microseconds: (asDouble * 1e6).round());
+              }
+            } else {
+              // leave previous value unchanged when parsing fails
+            }
+          }
+          _log.fine(
+              'Poll PrevLayerTime (raw) parsed (ms): ${_prevLayerDuration?.inMilliseconds}');
+          try {
+            _log.fine('Poll PrevLayerTime raw value: $maybePrevRaw');
+          } catch (_) {}
+        } else if (parsed.prevLayerSeconds != null) {
+          final micros = (parsed.prevLayerSeconds! * 1e6).round();
+          _prevLayerDuration = Duration(microseconds: micros);
+          _log.fine(
+              'Poll PrevLayerTime from model (ms): ${_prevLayerDuration!.inMilliseconds}');
+        } else {
+          // Do not clear on absence; preserve last known PrevLayerTime.
+        }
+      } catch (e, st) {
+        _log.warning('Error parsing PrevLayerTime (poll)', e, st);
+      }
+      // Prefer live LayerTime from analytics when printing
+      try {
+        if (parsed.isPrinting && _analyticsProvider != null) {
+          final lv = _analyticsProvider!.getLatestForKey('LayerTime');
+          if (lv != null) {
+            double? secs;
+            if (lv is num) secs = lv.toDouble();
+            if (secs == null) secs = double.tryParse(lv.toString());
+            if (secs != null) {
+              final micros = (secs * 1e6).round();
+              _currentLayerDuration = Duration(microseconds: micros);
+              _prevLayerDuration =
+                  _currentLayerDuration; // proxy for UI during active print
+              _log.fine(
+                  'Poll LayerTime from analytics (ms): ${_currentLayerDuration!.inMilliseconds}');
+            }
+          }
+        } else {
+          _currentLayerDuration = null;
+        }
+      } catch (e, st) {
+        _log.fine('Failed to read LayerTime from analytics (poll)', e, st);
+      }
       // Compute fingerprint difference to detect meaningful changes that
       // should update the UI (z/layer/progress/etc.). This allows the
       // UI to update every poll while printing without requiring full JSON
@@ -573,6 +969,8 @@ class StatusProvider extends ChangeNotifier {
       // NanoDLP installs report minimal numeric changes that may be lost
       // by strict comparisons; forcing updates during active prints keeps
       // the UI responsive and in sync with the device.
+      // PrevLayerTime parsing deferred until after we've parsed the model
+      // so we can prefer the model's normalized value when available.
       if (parsed.isPrinting || parsed.isPaused) {
         statusChangedByFingerprint = true;
       }
@@ -903,6 +1301,12 @@ class StatusProvider extends ChangeNotifier {
     _awaitingSince = DateTime.now();
     // Clear thumbnail retry counters for fresh session
     _thumbnailRetries.clear();
+    // Clear any previously-observed layer timing so we don't show stale values
+    // when starting a fresh print session.
+    _prevLayerDuration = null;
+    _currentLayerDuration = null;
+    _lastObservedLayer = null;
+    _lastObservedLayerTime = null;
     // Ensure the UI shows a minimum spinner duration so the user perceives
     // a loading phase even if the backend responds very quickly.
     _minSpinnerUntil = DateTime.now().add(const Duration(seconds: 2));
