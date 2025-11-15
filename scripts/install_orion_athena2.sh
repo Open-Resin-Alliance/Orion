@@ -282,7 +282,7 @@ main() {
   },
   "developer": {
     "releaseOverride": true,
-    "overrideRelease": "BRANCH_athena_public_beta,
+    "overrideRelease": "BRANCH_athena_public_beta",
     "overrideUpdateCheck": false
   },
   "topsecret": {
