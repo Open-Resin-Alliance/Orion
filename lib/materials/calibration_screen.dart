@@ -22,6 +22,8 @@ import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 
@@ -1110,11 +1112,18 @@ class _PreCalibrationOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isGlass =
+        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+
     return GlassApp(
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: isGlass
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.surface,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: isGlass
+              ? Colors.transparent
+              : Theme.of(context).colorScheme.surface,
           elevation: 0,
           automaticallyImplyLeading: false,
           title: Row(
@@ -1138,159 +1147,172 @@ class _PreCalibrationOverlay extends StatelessWidget {
           centerTitle: true,
         ),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Resin info
-                if (resinProfileName != null) ...[
-                  Text(
-                    resinProfileName!,
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: Colors.grey.shade300,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                // Two-column layout
-                IntrinsicHeight(
-                  child: Row(
+          child: LayoutBuilder(builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Left box - What's happening
-                      Expanded(
-                        child: GlassCard(
-                          outlined: true,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      PhosphorIconsFill.info,
-                                      size: 20,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'What\'s Happening',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey.shade300,
+                      // Resin info
+                      if (resinProfileName != null) ...[
+                        Text(
+                          resinProfileName!,
+                          style: TextStyle(
+                            fontSize: 22,
+                            color: Colors.grey.shade300,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      // Two-column layout
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Left box - What's happening
+                            Expanded(
+                              child: GlassCard(
+                                outlined: true,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            PhosphorIconsFill.info,
+                                            size: 20,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'What\'s Happening',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade300,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Six test pieces will be printed with progressively increasing exposure times to help you find the optimal cure time for this resin.',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey.shade400,
-                                    height: 1.4,
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'Six test pieces will be printed with progressively increasing exposure times to help you find the optimal cure time for this resin.',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color: Colors.grey.shade400,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
+                            const SizedBox(width: 8),
 
-                      // Right box - Checklist
-                      Expanded(
-                        child: GlassCard(
-                          outlined: true,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      PhosphorIconsFill.clipboardText,
-                                      size: 20,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Pre-Flight Check',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey.shade300,
+                            // Right box - Checklist
+                            Expanded(
+                              child: GlassCard(
+                                outlined: true,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            PhosphorIconsFill.clipboardText,
+                                            size: 20,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Pre-Flight Check',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade300,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 12),
+                                      _buildChecklistItem(context,
+                                          'Correct resin is filled into the vat.'),
+                                      const SizedBox(height: 10),
+                                      _buildChecklistItem(
+                                          context, 'The build plate is clean.'),
+                                      const SizedBox(height: 10),
+                                      _buildChecklistItem(context,
+                                          'The vat is clear of any debris.'),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(height: 12),
-                                _buildChecklistItem(context,
-                                    'Correct resin is filled into the vat.'),
-                                const SizedBox(height: 10),
-                                _buildChecklistItem(
-                                    context, 'The build plate is clean.'),
-                                const SizedBox(height: 10),
-                                _buildChecklistItem(
-                                    context, 'The vat is clear of any debris.'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+                      GlassCard(
+                        outlined: true,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Exposure Sequence',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade300,
+                                    letterSpacing: 0.5,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  exposuresList,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    letterSpacing: 0.3,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
                               ],
                             ),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 85), // Space for FABs
                     ],
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-                GlassCard(
-                  outlined: true,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            'Exposure Sequence',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade300,
-                              letterSpacing: 0.5,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            exposuresList,
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                              letterSpacing: 0.3,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 85), // Space for FABs
-              ],
-            ),
-          ),
+                  ), // end Column
+                ), // end Padding
+              ), // end ConstrainedBox
+            ); // end SingleChildScrollView
+          }), // end LayoutBuilder
         ),
         floatingActionButton: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -20,6 +20,8 @@ import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
@@ -83,9 +85,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final isGlass =
+        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+
     return GlassApp(
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: isGlass
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.surface,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,

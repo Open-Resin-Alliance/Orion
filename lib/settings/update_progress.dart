@@ -19,6 +19,8 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 /// A full-screen modal overlay that displays update progress and messages.
 /// Designed to be shown during system updates to inform the user of progress
@@ -66,9 +68,14 @@ class _UpdateProgressOverlayState extends State<UpdateProgressOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final isGlass =
+        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+
     return GlassApp(
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: isGlass
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.surface,
         body: SafeArea(
           child: Stack(
             fit: StackFit.expand,
