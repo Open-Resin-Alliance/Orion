@@ -20,6 +20,7 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/materials/post_calibration_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
@@ -1217,6 +1218,29 @@ class StatusScreenState extends State<StatusScreen> {
                                   },
                                   child: const Text(
                                     'Cancel Print',
+                                    style: TextStyle(fontSize: 24),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: SizedBox(
+                                height: 65,
+                                width: 450,
+                                child: HoldButton(
+                                  tint: GlassButtonTint.negative,
+                                  style: buttonStyle,
+                                  duration: const Duration(seconds: 2),
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    final manualProvider = ManualProvider();
+                                    await manualProvider.emergencyStop();
+                                  },
+                                  child: const Text(
+                                    'Force Stop',
                                     style: TextStyle(fontSize: 24),
                                   ),
                                 ),
