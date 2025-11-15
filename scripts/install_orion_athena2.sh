@@ -246,22 +246,6 @@ main() {
     vts=$(date +%s)
     cp "$VENDOR_CONFIG_PATH" "${VENDOR_CONFIG_PATH}.bak.${vts}"
   fi
-  HOSTNAME_VALUE=$(hostname)
-  # Attempt to read a hardware serial from the device tree. Some systems
-  # expose a serial at /sys/firmware/devicetree/base/serial-number.
-  # The file may contain a trailing NUL; strip it. If unavailable, fall
-  # back to a safe default to keep the config valid.
-  if [[ -r "/sys/firmware/devicetree/base/serial-number" ]]; then
-    MACHINE_SERIAL=$(tr -d '\0' </sys/firmware/devicetree/base/serial-number 2>/dev/null || true)
-    # Remove newlines/carriage returns and any remaining non-printables.
-    MACHINE_SERIAL=$(printf '%s' "$MACHINE_SERIAL" | tr -d '\r\n' | sed 's/[^[:print:]]//g')
-    # Escape any double quotes to keep the JSON valid.
-    MACHINE_SERIAL=$(printf '%s' "$MACHINE_SERIAL" | sed 's/"/\\\"/g')
-    MACHINE_SERIAL=${MACHINE_SERIAL:-ATHENA2-0001}
-    printf '[%s] Detected machine serial: %s\n' "$SCRIPT_NAME" "$MACHINE_SERIAL"
-  else
-    MACHINE_SERIAL="ATHENA2-0001"
-  fi
   printf '\n[%s] Writing default Orion configuration to %s...\n' "$SCRIPT_NAME" "$CONFIG_PATH"
   cat >"$CONFIG_PATH" <<EOF
 {
@@ -274,11 +258,6 @@ main() {
     "screenRotation": "0",
     "developerMode": true,
     "backend": "nanodlp"
-  },
-  "machine": {
-    "machineName": "${HOSTNAME_VALUE}",
-    "machineSerial": "${MACHINE_SERIAL}",
-    "firstRun": true
   },
   "developer": {
     "releaseOverride": true,
