@@ -164,6 +164,23 @@ class OnboardingScreenState extends State<OnboardingScreen>
     if (timezone != null) {
       config.setString('timezone', timezone, category: 'machine');
     }
+
+    // Fetch printer name and serial from Athena as soon as onboarding loads
+    if (config.isNanoDlpMode()) {
+      try {
+        final mgr = AthenaFeatureManager();
+        await mgr.fetchAndApplyFeatureFlags();
+        // Reload printer name from config in case it was updated
+        final name = config.getString('machineName', category: 'machine');
+        if (name.isNotEmpty && mounted) {
+          setState(() {
+            _printerName = name;
+          });
+        }
+      } catch (e) {
+        _logger.fine('Failed to fetch initial printer data: $e');
+      }
+    }
   }
 
   void _initializeAnimations() {

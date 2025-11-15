@@ -45,6 +45,32 @@ class AthenaFeatureManager {
       if (!_config.isNanoDlpMode()) return;
       final base = _resolveBaseUrl();
       final athena = AthenaIotClient(base);
+
+      // Fetch printer data for hostname and serial
+      final printerData = await athena.getPrinterDataModel();
+      if (printerData != null) {
+        _log.fine(
+            'Received printer_data: printerName=${printerData.printerName}, printerSerial=${printerData.printerSerial}, cpuSerial=${printerData.cpuSerial}');
+        if (printerData.printerName != null &&
+            printerData.printerName!.isNotEmpty) {
+          _config.setString('machineName', printerData.printerName!,
+              category: 'machine');
+          _log.info(
+              'Set machine name from printer_data: ${printerData.printerName}');
+        }
+        // Use printerSerial if available, otherwise fall back to cpuSerial
+        final serial = (printerData.printerSerial != null &&
+                printerData.printerSerial!.isNotEmpty)
+            ? printerData.printerSerial
+            : printerData.cpuSerial;
+        if (serial != null && serial.isNotEmpty) {
+          _config.setString('machineSerial', serial, category: 'machine');
+          _log.info('Set machine serial from printer_data: $serial');
+        }
+      } else {
+        _log.fine('printer_data returned null');
+      }
+
       final flags = await athena.getFeatureFlagsModel();
       if (flags == null) {
         _log.fine('No Athena feature_flags present');
