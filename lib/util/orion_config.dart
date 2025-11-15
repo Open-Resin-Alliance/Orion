@@ -711,9 +711,57 @@ class OrionConfig {
     var userConfig =
         Map<String, dynamic>.from(json.decode(configFile.readAsStringSync()));
 
-    // Return merged view for reading
-    return _mergeConfigs(
-        _mergeConfigs(defaultConfig, vendorConfig), userConfig);
+    // Build merged view for reading
+    var merged =
+        _mergeConfigs(_mergeConfigs(defaultConfig, vendorConfig), userConfig);
+
+    // If the user did not explicitly set theme/color preferences but the
+    // vendor provides them (for example 'glass' and a vendorThemeSeed),
+    // prefer the vendor values in the runtime merged view so the UI
+    // reflects the packaged vendor theme. Do not persist this change to
+    // disk here; it's only a runtime preference override unless the user
+    // writes settings.
+    try {
+      final vendorBlock = vendorConfig['vendor'];
+      if (vendorBlock is Map<String, dynamic>) {
+        final vThemeMode = vendorBlock['themeMode'];
+        final vSeed = vendorBlock['vendorThemeSeed'];
+
+        final userHasTheme = userConfig['general'] is Map &&
+            userConfig['general'].containsKey('themeMode') &&
+            (userConfig['general']['themeMode'] as String).isNotEmpty;
+
+        final userHasSeed = userConfig['general'] is Map &&
+            userConfig['general'].containsKey('colorSeed') &&
+            (userConfig['general']['colorSeed'] as String).isNotEmpty;
+
+        // Apply themeMode only when the user hasn't set one and vendor
+        // provides a non-empty value. We also guard to only override the
+        // default 'dark' so we don't accidentally clobber intentional
+        // merged values.
+        if (!userHasTheme && vThemeMode is String && vThemeMode.isNotEmpty) {
+          if ((merged['general']?['themeMode'] as String?) == 'dark') {
+            merged['general'] ??= {};
+            merged['general']['themeMode'] = vThemeMode;
+          }
+        }
+
+        // If user hasn't selected a colorSeed but vendor provided a
+        // vendorThemeSeed, set the runtime colorSeed to the special value
+        // 'vendor' so ThemeProvider will pick up the vendor color.
+        if (!userHasSeed && vSeed is String && vSeed.isNotEmpty) {
+          final currentSeed = merged['general']?['colorSeed'] as String?;
+          if (currentSeed == null || currentSeed.isEmpty) {
+            merged['general'] ??= {};
+            merged['general']['colorSeed'] = 'vendor';
+          }
+        }
+      }
+    } catch (e) {
+      _logger.fine('Failed to apply vendor theme/color to merged view: $e');
+    }
+
+    return merged;
   }
 
   void _writeConfig(Map<String, dynamic> config) {
@@ -774,6 +822,28 @@ class OrionConfig {
 
     var fullPath = path.join(_configPath, 'orion.cfg');
     var configFile = File(fullPath);
+    final isNewConfigFile = !configFile.existsSync();
+
+    // If we're creating the initial orion.cfg (file didn't exist), allow
+    // vendor themeMode to be applied even when a default is present. This
+    // ensures packaged vendor preferences (like 'glass') are respected on
+    // first-run instead of being masked by the hard-coded app default.
+    if (isNewConfigFile) {
+      try {
+        final vendorBlock = vendor['vendor'];
+        if (vendorBlock is Map<String, dynamic>) {
+          final vThemeMode = vendorBlock['themeMode'];
+          if (vThemeMode is String && vThemeMode.isNotEmpty) {
+            configToWrite['general'] ??= {};
+            configToWrite['general']['themeMode'] = vThemeMode;
+          }
+        }
+      } catch (e) {
+        _logger
+            .fine('Failed to copy vendor theme defaults on initial write: $e');
+      }
+    }
+
     var encoder = const JsonEncoder.withIndent('  ');
     configFile.writeAsStringSync(encoder.convert(configToWrite));
     // Notify any registered listeners that the on-disk config has changed.
