@@ -694,7 +694,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                 child: Text(
                   'Rate Limit Exceeded',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -704,7 +704,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
           const SizedBox(height: 8),
           const Text(
             'GitHub API rate limit reached. Please try again later.',
-            style: TextStyle(fontSize: 13),
+            style: TextStyle(fontSize: 16),
           ),
         ],
       );
@@ -732,7 +732,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                   ? (_preRelease ? 'BLEEDING EDGE' : 'ROLLBACK')
                   : 'UPDATE AVAILABLE',
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.orangeAccent,
               ),
@@ -747,7 +747,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                 : (_latestVersion.contains('+')
                     ? 'Version ${_latestVersion.split('+')[0]}'
                     : 'Version $_latestVersion'),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 6),
           Text(
@@ -758,7 +758,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                 : (_releaseDate.contains('T')
                     ? 'Released ${_releaseDate.split('T')[0]}'
                     : 'Released $_releaseDate'),
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
+            style: const TextStyle(fontSize: 18, color: Colors.grey),
           ),
 
           const Spacer(),
@@ -810,16 +810,17 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.2),
+            color: Colors.greenAccent.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.green.withOpacity(0.5)),
+            border:
+                Border.all(color: Colors.greenAccent.withValues(alpha: 0.5)),
           ),
           child: const Text(
             'UP TO DATE',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.green,
+              color: Colors.greenAccent,
             ),
           ),
         ),
@@ -828,14 +829,14 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
           _betaUpdatesOverride
               ? '$_currentVersion ($_release)'
               : 'Version ${_currentVersion.split('+')[0]}',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 6),
         Text(
           _betaUpdatesOverride
               ? 'Running latest bleeding edge build'
               : 'Running latest stable release',
-          style: const TextStyle(fontSize: 16, color: Colors.grey),
+          style: const TextStyle(fontSize: 18, color: Colors.grey),
         ),
       ],
     );
@@ -876,7 +877,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
               child: const Text(
                 'UPDATE AVAILABLE',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.orangeAccent,
                 ),
@@ -885,13 +886,13 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
             const SizedBox(height: 12),
             Text(
               'Version ${ap.latestVersion}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 6),
             if (ap.channel.isNotEmpty)
               Text(
                 'Channel: ${ap.channel}',
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                style: const TextStyle(fontSize: 18, color: Colors.grey),
               ),
             const Spacer(),
             SizedBox(
@@ -933,7 +934,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
               child: const Text(
                 'UP TO DATE',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.greenAccent,
                 ),
@@ -942,13 +943,13 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
             const SizedBox(height: 12),
             Text(
               'Version ${ap.currentVersion}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 6),
             if (ap.channel.isNotEmpty)
               Text(
                 'Channel: ${ap.channel}',
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                style: const TextStyle(fontSize: 18, color: Colors.grey),
               ),
           ],
         );
@@ -961,7 +962,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
           SizedBox(height: 12),
           Text(
             'No version information available',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
+            style: TextStyle(fontSize: 14, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
         ],
