@@ -268,6 +268,7 @@ class NanoProfile {
             'burn_in_cure_time',
             'burnin_time',
             'BurnInCureTime',
+            'SupportCureTime',
           ]),
           10.0);
 

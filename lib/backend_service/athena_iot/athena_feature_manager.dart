@@ -51,21 +51,32 @@ class AthenaFeatureManager {
       if (printerData != null) {
         _log.fine(
             'Received printer_data: printerName=${printerData.printerName}, printerSerial=${printerData.printerSerial}, cpuSerial=${printerData.cpuSerial}');
+
+        // Only update machine name if it's different from current config
         if (printerData.printerName != null &&
             printerData.printerName!.isNotEmpty) {
-          _config.setString('machineName', printerData.printerName!,
-              category: 'machine');
-          _log.info(
-              'Set machine name from printer_data: ${printerData.printerName}');
+          final currentName =
+              _config.getString('machineName', category: 'machine');
+          if (currentName != printerData.printerName) {
+            _config.setString('machineName', printerData.printerName!,
+                category: 'machine');
+            _log.info(
+                'Set machine name from printer_data: ${printerData.printerName}');
+          }
         }
+
         // Use printerSerial if available, otherwise fall back to cpuSerial
         final serial = (printerData.printerSerial != null &&
                 printerData.printerSerial!.isNotEmpty)
             ? printerData.printerSerial
             : printerData.cpuSerial;
         if (serial != null && serial.isNotEmpty) {
-          _config.setString('machineSerial', serial, category: 'machine');
-          _log.info('Set machine serial from printer_data: $serial');
+          final currentSerial =
+              _config.getString('machineSerial', category: 'machine');
+          if (currentSerial != serial) {
+            _config.setString('machineSerial', serial, category: 'machine');
+            _log.info('Set machine serial from printer_data: $serial');
+          }
         }
       } else {
         _log.fine('printer_data returned null');
@@ -120,7 +131,11 @@ class AthenaFeatureManager {
         overrides['vendor'] = {'machineModelName': trimmed};
         // Also persist into the canonical `machine` section so it's visible
         // in orion.cfg (user-visible) as machine.machineModelName.
-        _config.setString('machineModelName', trimmed, category: 'machine');
+        final currentModelName =
+            _config.getString('machineModelName', category: 'machine');
+        if (currentModelName != trimmed) {
+          _config.setString('machineModelName', trimmed, category: 'machine');
+        }
       }
       _config.setVendorOverrides(overrides);
       _log.info('Applied Athena feature flags overrides from $base');
