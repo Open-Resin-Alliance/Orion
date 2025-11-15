@@ -81,11 +81,6 @@ class AthenaFeatureManager {
       final Map<String, dynamic> featureFlags = {};
       if (hw.isNotEmpty) featureFlags['hardwareFeatures'] = hw;
 
-      // Athena's hasSmartpower maps to Orion's enablePowerControl top-level flag
-      if (flags.hasSmartpower != null) {
-        featureFlags['enablePowerControl'] = flags.hasSmartpower;
-      }
-
       final Map<String, dynamic> overrides = {'featureFlags': featureFlags};
 
       // Persist the featureFlags into the main `orion.cfg` featureFlags
