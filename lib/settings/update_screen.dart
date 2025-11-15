@@ -580,8 +580,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
                                         ),
                                       ],
                                     )
-                                  : PhosphorIcon(
-                                      PhosphorIcons.arrowCounterClockwise(),
+                                  : PhosphorIcon(PhosphorIconsFill.info,
                                       color:
                                           Theme.of(context).colorScheme.primary,
                                       size: 24)
