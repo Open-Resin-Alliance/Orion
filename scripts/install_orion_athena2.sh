@@ -26,7 +26,7 @@ cleanup() {
 trap cleanup EXIT
 
 SCRIPT_NAME="$(basename "$0")"
-ORION_URL="https://github.com/Open-Resin-Alliance/Orion/releases/download/BRANCH_heaters-&-materials/orion_armv7.tar.gz"
+ORION_URL="https://github.com/Open-Resin-Alliance/Orion/releases/download/BRANCH_athena_public_beta/orion_armv7.tar.gz"
 DOWNSAMPLED_RES="210, 210"
 
 uninstall_orion() {
@@ -282,7 +282,7 @@ main() {
   },
   "developer": {
     "releaseOverride": true,
-    "overrideRelease": "BRANCH_heaters-&-materials",
+    "overrideRelease": "BRANCH_athena_public_beta,
     "overrideUpdateCheck": false
   },
   "topsecret": {
@@ -326,12 +326,17 @@ EOF
     "enableCustomName": false,
     "enablePowerControl": false,
     "hardwareFeatures": {
-        "hasHeatedChamber": true,
-        "hasHeatedVat": true,
-        "hasCamera": true,
-        "hasAirFilter": true,
-        "hasForceSensor": true
+      "hasHeatedChamber": true,
+      "hasHeatedVat": true,
+      "hasCamera": true,
+      "hasAirFilter": false,
+      "hasForceSensor": true,
+      "hasCameraFlash": true,
+      "hasSmartpower": true
     }
+  },
+  "featureNames": {
+    "hasAirFilter": "AEGIS Air Filtration"
   },
   "advanced": {
     "backend": "nanodlp",
