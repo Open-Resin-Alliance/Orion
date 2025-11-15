@@ -366,6 +366,12 @@ class OdysseyHttpClient implements BackendClient {
   }
 
   @override
+  Future updateBackend() {
+    // TODO: implement updateBackend
+    throw UnimplementedError();
+  }
+  
+  @override
   Future setChamberTemperature(double temperature) {
     // TODO: implement setChamberTemperature
     throw UnimplementedError();

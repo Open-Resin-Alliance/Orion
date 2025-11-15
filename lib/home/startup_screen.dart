@@ -425,7 +425,7 @@ class _StartupScreenState extends State<StartupScreen>
                                                                             null
                                                                         ? ColorFilter
                                                                             .mode(
-                                                                            _logoColor!,
+                                                                            _logoColor,
                                                                             BlendMode.srcIn,
                                                                           )
                                                                         : null,
@@ -470,11 +470,11 @@ class _StartupScreenState extends State<StartupScreen>
                                                         padding:
                                                             const EdgeInsets
                                                                 .all(8),
-                                                        child: _secondaryLogoAssetPath!
+                                                        child: _secondaryLogoAssetPath
                                                                 .endsWith(
                                                                     '.svg')
                                                             ? SvgPicture.asset(
-                                                                _secondaryLogoAssetPath!,
+                                                                _secondaryLogoAssetPath,
                                                                 width: 220,
                                                                 height: 220,
                                                                 colorFilter:
@@ -482,13 +482,13 @@ class _StartupScreenState extends State<StartupScreen>
                                                                             null
                                                                         ? ColorFilter
                                                                             .mode(
-                                                                            _secondaryLogoColor!,
+                                                                            _secondaryLogoColor,
                                                                             BlendMode.srcIn,
                                                                           )
                                                                         : null,
                                                               )
                                                             : Image.asset(
-                                                                _secondaryLogoAssetPath!,
+                                                                _secondaryLogoAssetPath,
                                                                 width: 220,
                                                                 height: 220,
                                                                 color:
@@ -527,7 +527,7 @@ class _StartupScreenState extends State<StartupScreen>
                                                     colorFilter:
                                                         _logoColor != null
                                                             ? ColorFilter.mode(
-                                                                _logoColor!,
+                                                                _logoColor,
                                                                 BlendMode.srcIn,
                                                               )
                                                             : null,
@@ -580,7 +580,7 @@ class _StartupScreenState extends State<StartupScreen>
                                               Opacity(
                                                 opacity: secondaryOpacity,
                                                 child: _buildLogo(
-                                                  _secondaryLogoAssetPath!,
+                                                  _secondaryLogoAssetPath,
                                                   matrix,
                                                   scale: _secondaryLogoScale,
                                                   color: _secondaryLogoColor,

@@ -129,6 +129,10 @@ abstract class BackendClient {
   /// Returns a boolean indicating success or failure.
   Future<dynamic> tareForceSensor();
 
+  /// Update the backend service if supported.
+  /// Returns a boolean indicating success or failure.
+  Future<dynamic> updateBackend();
+  
   /// Set and Get vat temperature if supported by the backend.
   /// Returns a boolean indicating success or failure.
   Future<dynamic> setVatTemperature(double temperature);

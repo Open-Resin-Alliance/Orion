@@ -478,12 +478,9 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     try {
       final profileJson =
           await _backendService.getProfileJson(widget.profileId);
-      if (profileJson != null) {
-        final normalized = NanoProfile.normalizeForEdit(profileJson);
-        previousExposure =
-            (normalized['normal_cure_time'] as num?)?.toDouble() ??
-                widget.startExposure;
-      }
+      final normalized = NanoProfile.normalizeForEdit(profileJson);
+      previousExposure = (normalized['normal_cure_time'] as num?)?.toDouble() ??
+          widget.startExposure;
     } catch (e) {
       _logger.warning('Failed to fetch current profile for comparison: $e');
       // Continue with widget.startExposure as fallback
@@ -680,14 +677,11 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   try {
                     final profileJson =
                         await _backendService.getProfileJson(widget.profileId);
-                    if (profileJson != null) {
-                      final normalized =
-                          NanoProfile.normalizeForEdit(profileJson);
-                      previousExposure =
-                          (normalized['normal_cure_time'] as num?)
-                                  ?.toDouble() ??
-                              widget.startExposure;
-                    }
+                    final normalized =
+                        NanoProfile.normalizeForEdit(profileJson);
+                    previousExposure =
+                        (normalized['normal_cure_time'] as num?)?.toDouble() ??
+                            widget.startExposure;
                   } catch (e) {
                     _logger.warning(
                         'Failed to fetch current profile for comparison: $e');

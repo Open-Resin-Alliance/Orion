@@ -288,4 +288,16 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
   Future tareForceSensor() {
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> preheatAndMixStandalone() {
+    // TODO: implement preheatAndMixStandalone
+    throw UnimplementedError();
+  }
+
+  @override
+  Future updateBackend() {
+    // TODO: implement updateBackend
+    throw UnimplementedError();
+  }
 }

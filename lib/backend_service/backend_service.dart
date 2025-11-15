@@ -230,6 +230,9 @@ class BackendService implements BackendClient {
   Future<dynamic> tareForceSensor() => _delegate.tareForceSensor();
 
   @override
+  Future<dynamic> updateBackend() => _delegate.updateBackend();
+  
+  @override
   Future setChamberTemperature(double temperature) =>
       _delegate.setChamberTemperature(temperature);
 

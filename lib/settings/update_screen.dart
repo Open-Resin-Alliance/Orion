@@ -18,20 +18,24 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/util/providers/orion_update_provider.dart';
+import 'package:orion/util/providers/athena_update_provider.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/settings/update_progress.dart';
 import 'package:orion/pubspec.dart';
 import 'package:orion/util/markdown_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/safe_set_state_mixin.dart';
+import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -55,22 +59,36 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   String _currentVersion = '';
   String _release = 'BRANCH_dev';
   String _assetUrl = '';
+  String _repo = 'Open-Resin-Alliance';
 
   final Logger _logger = Logger('UpdateScreen');
   final OrionConfig _config = OrionConfig();
+  final AthenaUpdateProvider _athenaUpdateProvider = AthenaUpdateProvider();
+  // Update dialog state is handled by OrionUpdateProvider
 
   @override
   void initState() {
     super.initState();
     _initUpdateCheck();
+    // Start Athena update provider checks if applicable
+    _athenaUpdateProvider.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _athenaUpdateProvider.checkForUpdates();
     _isFirmwareSpoofingEnabled =
         _config.getFlag('overrideUpdateCheck', category: 'developer');
     _betaUpdatesOverride =
         _config.getFlag('releaseOverride', category: 'developer');
     _release = _config.getString('overrideRelease', category: 'developer');
+    final repoOverride =
+        _config.getString('overrideRepo', category: 'developer');
+    _repo = repoOverride.trim().isNotEmpty
+        ? repoOverride.trim()
+        : 'Open-Resin-Alliance';
     _logger.info('Firmware spoofing enabled: $_isFirmwareSpoofingEnabled');
     _logger.info('Beta updates override enabled: $_betaUpdatesOverride');
     _logger.info('Release channel override: $_release');
+    _logger.info('Repo: $_repo');
   }
 
   Future<void> _initUpdateCheck() async {
@@ -90,11 +108,56 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   }
 
   Future<void> _checkForUpdates(String release) async {
+    if (_isFirmwareSpoofingEnabled) {
+      // Force update: always allow install, skip version check
+      // Respect branch override: fetch releases for the selected branch
+      if (release.isNotEmpty && release != 'BRANCH_dev') {
+        await _checkForBERUpdates(release);
+        return;
+      }
+      final String url =
+          'https://api.github.com/repos/$_repo/orion/releases/latest';
+      try {
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          final jsonResponse = json.decode(response.body);
+          final String latestVersion =
+              jsonResponse['tag_name'].replaceAll('v', '');
+          final String releaseNotes = jsonResponse['body'];
+          final String releaseDate = jsonResponse['published_at'];
+          // Find the asset URL for orion_armv7.tar.gz
+          final asset = jsonResponse['assets'].firstWhere(
+              (asset) => asset['name'] == 'orion_armv7.tar.gz',
+              orElse: () => null);
+          final String assetUrl =
+              asset != null ? asset['browser_download_url'] : '';
+          safeSetState(() {
+            _latestVersion = latestVersion;
+            _releaseNotes = releaseNotes;
+            _releaseDate = releaseDate;
+            _isLoading = false;
+            _isUpdateAvailable = true;
+            _assetUrl = assetUrl;
+          });
+        } else {
+          safeSetState(() {
+            _logger.warning('Failed to fetch updates');
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        _logger.warning(e.toString());
+        safeSetState(() {
+          _isLoading = false;
+        });
+      }
+      return;
+    }
     if (_betaUpdatesOverride) {
       await _checkForBERUpdates(release);
     } else {
-      const String url =
-          'https://api.github.com/repos/thecontrappostoshop/orion/releases/latest';
+      final String url =
+          'https://api.github.com/repos/$_repo/orion/releases/latest';
       int retryCount = 0;
       const int maxRetries = 3;
       const int initialDelay = 750;
@@ -158,10 +221,12 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
   }
 
   bool isCurrentCommitUpToDate(String commitSha) {
-    _logger.info('Current commit SHA: ${_currentVersion.split('+')[1]}');
+    final parts = _currentVersion.split('+');
+    final currentCommit = parts.length > 1 ? parts[1] : '';
+    _logger.info('Current commit SHA: $currentCommit');
     _logger.info('Latest commit SHA: $commitSha');
     if (_isFirmwareSpoofingEnabled) return false;
-    return commitSha == _currentVersion.split('+')[1];
+    return commitSha == currentCommit;
   }
 
   Future<void> _checkForBERUpdates(String release) async {
@@ -169,8 +234,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
       _logger.warning('release name is empty');
       release = 'BRANCH_dev';
     }
-    String url =
-        'https://api.github.com/repos/thecontrappostoshop/orion/releases';
+    String url = 'https://api.github.com/repos/$_repo/orion/releases';
     int retryCount = 0;
     const int maxRetries = 3;
     const int initialDelay = 750; // Initial delay in milliseconds
@@ -187,7 +251,7 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
             final String latestVersion = releaseItem['tag_name'];
             final String commitSha = releaseItem['target_commitish'];
             final commitUrl =
-                'https://api.github.com/repos/thecontrappostoshop/orion/commits/$commitSha';
+                'https://api.github.com/repos/$_repo/orion/commits/$commitSha';
             final commitResponse = await http.get(Uri.parse(commitUrl));
             if (commitResponse.statusCode == 200) {
               final commitJson = json.decode(commitResponse.body);
@@ -197,7 +261,10 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
               final String commitDate = commitJson['commit']['committer']
                   ['date']; // Fetch commit date
 
-              if (isCurrentCommitUpToDate(shortCommitSha)) {
+              if (_isFirmwareSpoofingEnabled) {
+                // Force update: always allow install, skip version check
+                _logger.info('Force update enabled, skipping version check.');
+              } else if (isCurrentCommitUpToDate(shortCommitSha)) {
                 _logger.info(
                     'Current version is up-to-date with the latest pre-release.');
                 safeSetState(() {
@@ -325,429 +392,602 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
     );
   }
 
+  Future<void> launchUpdateDialog() async {
+    bool shouldUpdate = await showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return GlassAlertDialog(
+          title: Row(
+            children: [
+              PhosphorIcon(
+                PhosphorIcons.download(),
+                color: Theme.of(context).colorScheme.primary,
+                size: 32,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Update Orion',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+              'Do you want to update the Orion HMI?\nThis will download the latest version from GitHub.'),
+          actions: [
+            GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
+              child: const Text(
+                'Dismiss',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+            GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
+              child: const Text(
+                'Update Now',
+                style: TextStyle(fontSize: 20),
+              ),
+            )
+          ],
+        );
+      },
+    );
+
+    if (shouldUpdate) {
+      final provider = Provider.of<OrionUpdateProvider>(context, listen: false);
+      await provider.performUpdate(context, _assetUrl);
+    }
+  }
+
+  Future<void> _triggerAthenaUpdate(BuildContext ctx) async {
+    // Confirm again with the user
+    final confirmed = await showDialog<bool>(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (dctx) => GlassAlertDialog(
+            title: Row(
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.download(),
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Update AthenaOS',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+                'Do you want to update AthenaOS?\nThis will trigger an update on the connected Athena printer.'),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.negative,
+                onPressed: () => Navigator.of(dctx).pop(false),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: const Text('Dismiss', style: TextStyle(fontSize: 20)),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () => Navigator.of(dctx).pop(true),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: const Text('Update Now', style: TextStyle(fontSize: 20)),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    // Pause polling to prevent connection error dialogs during update/reboot
+    final statusProvider = Provider.of<StatusProvider>(ctx, listen: false);
+    statusProvider.pausePolling();
+
+    // Create notifiers for the progress overlay (indeterminate progress)
+    final progressNotifier = ValueNotifier<double>(-1.0); // -1 = indeterminate
+    final messageNotifier =
+        ValueNotifier<String>('Triggering AthenaOS update...');
+
+    // Navigate to the update progress overlay
+    Navigator.of(ctx).push(
+      MaterialPageRoute(
+        builder: (context) => UpdateProgressOverlay(
+          progress: progressNotifier,
+          message: messageNotifier,
+          icon: PhosphorIcons.warningDiamond(),
+        ),
+      ),
+    );
+
+    // Trigger the update in the background
+    // The system will reboot, so we don't need to dismiss the overlay
+    try {
+      final nano = NanoDlpHttpClient();
+      await nano.updateBackend();
+      messageNotifier.value = 'AthenaOS Update intitiated!';
+    } catch (e) {
+      _logger.warning('AthenaOS update error: $e');
+      messageNotifier.value = 'AthenaOS Update initiated. System will reboot!';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView(
-        padding: const EdgeInsets.only(
-            left: 16.0, right: 16.0, bottom: 16.0, top: 5.0),
-        children: [
-          GlassCard(
-            outlined: true,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_rateLimitExceeded) ...[
-                    const Row(
-                      children: [
-                        Icon(Icons.error, color: Colors.red, size: 30),
-                        SizedBox(width: 10),
-                        Text('Rate Limit Exceeded!',
-                            style: TextStyle(
-                                fontSize: 26, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const Divider(),
-                    const Text('Please try again later.',
-                        style: TextStyle(fontSize: 20)),
-                  ] else if (_isLoading) ...[
-                    const Center(child: CircularProgressIndicator()),
-                  ] else if (_isUpdateAvailable) ...[
-                    Row(
-                      children: [
-                        _betaUpdatesOverride
-                            ? _preRelease
-                                ? Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      PhosphorIcon(
-                                        PhosphorIcons.knife(),
-                                        color: Colors.transparent,
-                                        size: 30,
-                                      ),
-                                      const Positioned(
-                                        top: 0,
-                                        right: 0,
-                                        child: PhosphorIcon(
-                                          PhosphorIconsDuotone.knife,
-                                          color: Colors.redAccent,
-                                          size: 24,
-                                        ),
-                                      ),
-                                      const Positioned(
-                                        bottom: 0,
-                                        left: 3,
-                                        child: PhosphorIcon(
-                                          PhosphorIconsFill.dropSimple,
-                                          color: Colors.redAccent,
-                                          size: 10,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : PhosphorIcon(
-                                    PhosphorIcons.arrowCounterClockwise(),
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                    size: 30)
-                            : Icon(Icons.system_update,
-                                color: Theme.of(context).colorScheme.primary,
-                                size: 30),
-                        const SizedBox(width: 10),
-                        Text(
+      body: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Orion HMI Updater Card
+            Expanded(
+              child: GlassCard(
+                outlined: true,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
                           _betaUpdatesOverride
                               ? _preRelease
-                                  ? 'Bleeding Edge Available!'
-                                  : 'Rollback Available!'
-                              : 'UI Update Available!',
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(),
-                    Text(
-                        _betaUpdatesOverride
-                            ? _preRelease
-                                ? 'Latest Commit: $_latestVersion'
-                                : 'Rollback to: ${_latestVersion.split('(')[1].split(')')[0]}'
-                            : 'Latest Version: ${_latestVersion.split('+')[0]}',
-                        style: const TextStyle(fontSize: 22)),
-                    const SizedBox(height: 10),
-                    Text(
-                      _betaUpdatesOverride
-                          ? 'Commit Date: ${_commitDate.split('T')[0]}' // Display commit date if beta updates are enabled
-                          : 'Release Date: ${_releaseDate.split('T')[0]}',
-                      style: const TextStyle(fontSize: 20, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: GlassButton(
-                            onPressed: _viewChangelog,
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(65),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.article, size: 30),
-                                const Expanded(
-                                  child: AutoSizeText(
-                                    'View Changelog',
-                                    style: TextStyle(fontSize: 22),
-                                    minFontSize: 22,
-                                    maxLines: 1,
-                                    overflowReplacement: Padding(
-                                      padding: EdgeInsets.only(right: 20.0),
-                                      child: Center(
-                                        child: AutoSizeText(
-                                          'Changes',
-                                          style: TextStyle(fontSize: 22),
-                                          maxLines: 1,
+                                  ? Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        PhosphorIcon(
+                                          PhosphorIcons.knife(),
+                                          color: Colors.transparent,
+                                          size: 24,
                                         ),
-                                      ),
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                            width: 12), // Add some space between the buttons
-                        Expanded(
-                          child: GlassButton(
-                            onPressed: () async {
-                              _performUpdate(context);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(65),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.download, size: 30),
-                                const Expanded(
-                                  child: AutoSizeText(
-                                    'Download Update',
-                                    style: TextStyle(fontSize: 24),
-                                    minFontSize: 22,
-                                    maxLines: 1,
-                                    overflowReplacement: Padding(
-                                      padding: EdgeInsets.only(right: 20.0),
-                                      child: Center(
-                                        child: Text(
-                                          'Update',
-                                          style: TextStyle(fontSize: 22),
+                                        const Positioned(
+                                          top: 0,
+                                          right: 0,
+                                          child: PhosphorIcon(
+                                            PhosphorIconsDuotone.knife,
+                                            color: Colors.redAccent,
+                                            size: 20,
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
+                                        const Positioned(
+                                          bottom: 0,
+                                          left: 3,
+                                          child: PhosphorIcon(
+                                            PhosphorIconsFill.dropSimple,
+                                            color: Colors.redAccent,
+                                            size: 8,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : PhosphorIcon(
+                                      PhosphorIcons.arrowCounterClockwise(),
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      size: 24)
+                              : PhosphorIcon(PhosphorIconsFill.info,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 24),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Orion HMI',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    Row(
-                      children: [
-                        const Icon(Icons.check_circle,
-                            color: Colors.green, size: 30),
-                        const SizedBox(width: 10),
-                        Text(
-                            _betaUpdatesOverride
-                                ? 'Bleeding Edge is up to date!'
-                                : 'Orion is up to date!',
-                            style: const TextStyle(
-                                fontSize: 26, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const Divider(),
-                    Text(
-                        _betaUpdatesOverride
-                            ? 'Current Version: $_currentVersion ($_release)'
-                            : 'Current Version: ${_currentVersion.split('+')[0]}',
-                        style: const TextStyle(fontSize: 20)),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          // TODO: Placeholder for Odyssey updater - pending API changes
-          GlassCard(
-            outlined: true,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      PhosphorIcon(PhosphorIconsFill.info,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 30),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Odyssey Updater',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+
+                      // Status content
+                      Expanded(
+                        child: _buildOrionContent(),
                       ),
                     ],
                   ),
-                  const Divider(),
-                  // Dummy content, replace with actual data when available
-                  const Text('Coming Soon!', style: TextStyle(fontSize: 20)),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+
+            // Backend/AthenaOS Updater Card
+            Expanded(
+              child: GlassCard(
+                outlined: true,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header
+                      Builder(builder: (ctx) {
+                        final cfg = _config;
+                        final isNano = cfg.isNanoDlpMode();
+                        final model = cfg.getMachineModelName().toLowerCase();
+                        final isAthena = model.contains('athena');
+
+                        String headerText;
+                        if (isNano && isAthena) {
+                          headerText = 'AthenaOS';
+                        } else {
+                          headerText = 'Backend';
+                        }
+
+                        return Row(
+                          children: [
+                            PhosphorIcon(
+                              isNano && isAthena
+                                  ? PhosphorIconsFill.info
+                                  : PhosphorIconsFill.info,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                headerText,
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+
+                      // Status content
+                      Expanded(
+                        child: _buildBackendContent(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _performUpdate(BuildContext context) async {
-    final String localUser = Platform.environment['USER'] ?? 'pi';
-    final String upgradeFolder = '/home/$localUser/orion_upgrade/';
-    final String downloadPath = '$upgradeFolder/orion_armv7.tar.gz';
-    final String orionFolder = '/home/$localUser/orion/';
-    final String newOrionFolder = '/home/$localUser/orion_new/';
-    final String backupFolder = '/home/$localUser/orion_backup/';
-    final String scriptPath = '$upgradeFolder/update_orion.sh';
-
-    if (_assetUrl.isEmpty) {
-      _logger.warning('Asset URL is empty');
-      return;
+  Widget _buildOrionContent() {
+    if (_rateLimitExceeded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.error, color: Colors.red, size: 20),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Rate Limit Exceeded',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'GitHub API rate limit reached. Please try again later.',
+            style: TextStyle(fontSize: 16),
+          ),
+        ],
+      );
     }
 
-    _logger.info('Downloading from $_assetUrl');
-
-    // Show the update dialog
-    _showUpdateDialog(context, 'Starting update...');
-
-    try {
-      // Purge and recreate the upgrade folder
-      final upgradeDir = Directory(upgradeFolder);
-      if (await upgradeDir.exists()) {
-        try {
-          await upgradeDir.delete(recursive: true);
-        } catch (e) {
-          _logger.warning('Could not purge upgrade directory');
-        }
-      }
-      await upgradeDir.create(recursive: true);
-
-      final newDir = Directory(newOrionFolder);
-      if (await newDir.exists()) {
-        try {
-          await newDir.delete(recursive: true);
-        } catch (e) {
-          _logger.warning('Could not purge new Orion directory');
-        }
-      }
-      await newDir.create(recursive: true);
-
-      // Update dialog text
-      _updateDialogText(context, 'Downloading update file...');
-
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Download the update file
-      final response = await http.get(Uri.parse(_assetUrl));
-      if (response.statusCode == 200) {
-        final file = File(downloadPath);
-        await file.writeAsBytes(response.bodyBytes);
-
-        // Update dialog text
-        _updateDialogText(context, 'Extracting update file...');
-
-        await Future.delayed(const Duration(seconds: 1));
-
-        // Extract the update to the new directory
-        final extractResult = await Process.run('sudo',
-            ['tar', '--overwrite', '-xzf', downloadPath, '-C', newOrionFolder]);
-        if (extractResult.exitCode != 0) {
-          _logger.warning(
-              'Failed to extract update file: ${extractResult.stderr}');
-          _dismissUpdateDialog(context);
-          return;
-        }
-
-        // Create the update script
-        final scriptContent = '''
-#!/bin/bash
-
-# Variables
-local_user=$localUser
-orion_folder=$orionFolder
-new_orion_folder=$newOrionFolder
-upgrade_folder=$upgradeFolder
-backup_folder=$backupFolder
-
-# If previous backup exists, delete it
-if [ -d \$backup_folder ]; then
-  sudo rm -R \$backup_folder
-fi
-
-# Backup the current Orion directory
-sudo cp -R \$orion_folder \$backup_folder
-
-# Remove the old Orion directory
-sudo rm -R \$orion_folder
-
-# Restore config file
-sudo cp \$backup_folder/orion.cfg \$new_orion_folder
-
-# Move the new Orion directory to the original location
-sudo mv \$new_orion_folder \$orion_folder
-
-# Delete the upgrade and new folder
-sudo rm -R \$upgrade_folder
-
-# Fix permissions
-sudo chown -R \$local_user:\$local_user \$orion_folder
-
-# Restart the Orion service
-sudo systemctl restart orion.service
-''';
-
-        final scriptFile = File(scriptPath);
-        await scriptFile.writeAsString(scriptContent);
-        await Process.run('chmod', ['+x', scriptPath]);
-
-        // Update dialog text
-        _updateDialogText(context, 'Executing update script...');
-
-        await Future.delayed(const Duration(seconds: 2));
-
-        // Execute the update script
-        final result = await Process.run('nohup', ['sudo', scriptPath]);
-        if (result.exitCode == 0) {
-          _logger.info('Update script executed successfully');
-        } else {
-          _logger.warning('Failed to execute update script: ${result.stderr}');
-        }
-      } else {
-        _logger.warning('Failed to download update file');
-      }
-    } catch (e) {
-      _logger.warning('Update failed: $e');
-    } finally {
-      // Dismiss the update dialog
-      _dismissUpdateDialog(context);
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
     }
-  }
 
-  Future<void> _showUpdateDialog(BuildContext context, String message) {
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: EdgeInsets.zero,
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height,
-              color: Theme.of(context).colorScheme.surface,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const SizedBox(
-                    height: 75,
-                    width: 75,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 6,
-                    ),
-                  ),
-                  const SizedBox(height: 60),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 32),
-                  ),
-                ],
+    if (_isUpdateAvailable) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.orangeAccent.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(6),
+              border:
+                  Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
+            ),
+            child: Text(
+              _betaUpdatesOverride
+                  ? (_preRelease ? 'BLEEDING EDGE' : 'ROLLBACK')
+                  : 'UPDATE AVAILABLE',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.orangeAccent,
               ),
             ),
           ),
-        );
-      },
+          const SizedBox(height: 12),
+
+          // Version info
+          Text(
+            _betaUpdatesOverride
+                ? 'Latest: $_latestVersion'
+                : (_latestVersion.contains('+')
+                    ? 'Version ${_latestVersion.split('+')[0]}'
+                    : 'Version $_latestVersion'),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _betaUpdatesOverride
+                ? (_commitDate.contains('T')
+                    ? 'Committed ${_commitDate.split('T')[0]}'
+                    : 'Committed $_commitDate')
+                : (_releaseDate.contains('T')
+                    ? 'Released ${_releaseDate.split('T')[0]}'
+                    : 'Released $_releaseDate'),
+            style: const TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+
+          const Spacer(),
+
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                flex: 1,
+                child: GlassButton(
+                  tint: GlassButtonTint.neutral,
+                  onPressed: _viewChangelog,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(65),
+                  ),
+                  child: const Icon(Icons.article, size: 20),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 4,
+                child: GlassButton(
+                  tint: GlassButtonTint.positive,
+                  onPressed: launchUpdateDialog,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(65),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.download, size: 24),
+                      SizedBox(width: 20),
+                      Text('Download & Install',
+                          style: TextStyle(fontSize: 20)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Up to date
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.greenAccent.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(6),
+            border:
+                Border.all(color: Colors.greenAccent.withValues(alpha: 0.5)),
+          ),
+          child: const Text(
+            'UP TO DATE',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.greenAccent,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _betaUpdatesOverride
+              ? '$_currentVersion ($_release)'
+              : 'Version ${_currentVersion.split('+')[0]}',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _betaUpdatesOverride
+              ? 'Running latest bleeding edge build'
+              : 'Running latest stable release',
+          style: const TextStyle(fontSize: 18, color: Colors.grey),
+        ),
+      ],
     );
   }
 
-  void _updateDialogText(BuildContext context, String message) {
-    if (Navigator.of(context).canPop()) {
-      // Show the new dialog first
-      _showUpdateDialog(context, message).then((_) {
-        // Pop the old dialog after the new one has been rendered
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
-      });
-    } else {
-      // If there's no dialog to pop, just show the new one
-      _showUpdateDialog(context, message);
-    }
-  }
+  Widget _buildBackendContent() {
+    final cfg = _config;
+    final isNano = cfg.isNanoDlpMode();
+    final model = cfg.getMachineModelName().toLowerCase();
+    final isAthena = model.contains('athena');
 
-  void _dismissUpdateDialog(BuildContext context) {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
+    if (isNano && isAthena) {
+      final ap = _athenaUpdateProvider;
+
+      if (ap.isChecking) {
+        return const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 12),
+            Text('Checking for updates...', style: TextStyle(fontSize: 13)),
+          ],
+        );
+      }
+
+      if (ap.updateAvailable) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.orangeAccent.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                    color: Colors.orangeAccent.withValues(alpha: 0.5)),
+              ),
+              child: const Text(
+                'UPDATE AVAILABLE',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orangeAccent,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Version ${ap.latestVersion}',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            if (ap.channel.isNotEmpty)
+              Text(
+                'Channel: ${ap.channel}',
+                style: const TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () async {
+                  await _triggerAthenaUpdate(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(65),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.system_update_alt, size: 24),
+                    SizedBox(width: 20),
+                    Text('Update AthenaOS', style: TextStyle(fontSize: 20)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+
+      if (ap.currentVersion.isNotEmpty) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                    color: Colors.greenAccent.withValues(alpha: 0.5)),
+              ),
+              child: const Text(
+                'UP TO DATE',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.greenAccent,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Version ${ap.currentVersion}',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            if (ap.channel.isNotEmpty)
+              Text(
+                'Channel: ${ap.channel}',
+                style: const TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+          ],
+        );
+      }
+
+      return const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.info_outline, size: 40, color: Colors.grey),
+          SizedBox(height: 12),
+          Text(
+            'No version information available',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
     }
+
+    // Non-Athena backendxw
+    return const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.construction, size: 40, color: Colors.grey),
+        SizedBox(height: 12),
+        Text(
+          'Coming Soon!',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        SizedBox(height: 6),
+        Text(
+          'Backend updater will be available in a future release',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
   }
 }
+  // Update flow is handled by OrionUpdateProvider via
+  // `Provider.of<OrionUpdateProvider>(context, listen: false).performUpdate(...)`.

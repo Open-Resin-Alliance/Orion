@@ -22,6 +22,7 @@ import 'dart:math';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:orion/settings/machine_settings_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -268,6 +269,31 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         'Advanced',
                         style: TextStyle(
                           fontSize: 28.0,
+                        ),
+                      ),
+                      const SizedBox(height: 20.0),
+                      GlassCard(
+                        outlined: true,
+                        elevation: 1,
+                        child: ListTile(
+                          leading: Icon(Icons.engineering),
+                          title: const Text('Machine Settings',
+                              style: TextStyle(fontSize: 20)),
+                          subtitle: const Text('Configure machine features',
+                              style: TextStyle(fontSize: 16)),
+                          trailing: Icon(Icons.arrow_forward_ios,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6)),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const MachineSettingsScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ),
                       if (Platform.isLinux) const SizedBox(height: 20.0),
