@@ -23,6 +23,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:orion/util/install_locator.dart';
 
 class OrionConfig {
   final _logger = Logger('OrionConfig');
@@ -61,7 +62,7 @@ class OrionConfig {
     // typically place the engine and packaged vendor files next to each
     // other.
     try {
-      final engineDir = _findEngineDir();
+      final engineDir = findEngineDir();
       if (engineDir != null && engineDir.isNotEmpty) {
         // If the engine dir looks promising, prefer it, but only return
         // immediately when we can confirm a config file is located either
@@ -1112,68 +1113,4 @@ class OrionConfig {
     return result;
   }
 
-  /// Attempt to locate the directory containing the packaged application
-  /// shared-object or binary (for example `app.so`, `libapp.so`, `orion` or
-  /// `orion.so`). This improves reliability on systems where the runtime
-  /// process CWD differs from the install directory (common with service
-  /// wrappers and launcher scripts).
-  String? _findEngineDir() {
-    try {
-      final exec = Platform.resolvedExecutable;
-      if (exec.isNotEmpty) {
-        final execDir = path.dirname(exec);
-
-        final probeNames = [
-          'app.so',
-          'libapp.so',
-          'orion',
-          'orion.so',
-          'libflutter_engine.so'
-        ];
-
-        for (final name in probeNames) {
-          final p = path.join(execDir, name);
-          if (File(p).existsSync()) return execDir;
-        }
-
-        // Try one level up as installers sometimes install under a parent
-        // directory and the resolvedExecutable might point into a subfolder.
-        final parent = path.dirname(execDir);
-        for (final name in probeNames) {
-          final p = path.join(parent, name);
-          if (File(p).existsSync()) return parent;
-        }
-      }
-    } catch (e) {
-      // ignore and continue to other probes
-      _logger.fine('engine-dir probe from resolvedExecutable failed: $e');
-    }
-
-    // On Linux, inspect /proc/self/maps for an absolute path to a loaded
-    // shared object that looks like our app/engine. This can reveal the
-    // actual path of the bundled app.so even when the executable path is
-    // indirect.
-    try {
-      if (Platform.isLinux) {
-        final maps = File('/proc/self/maps');
-        if (maps.existsSync()) {
-          final lines = maps.readAsLinesSync();
-          final re = RegExp(r'(/\S+\.(so|bin)(?:\.[0-9]+)?)');
-          for (final l in lines) {
-            final m = re.firstMatch(l);
-            if (m != null) {
-              final p = m.group(1) ?? '';
-              if (p.contains('app') || p.contains('orion')) {
-                return path.dirname(p);
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      _logger.fine('engine-dir probe via /proc/self/maps failed: $e');
-    }
-
-    return null;
-  }
-}
+  

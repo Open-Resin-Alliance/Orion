@@ -23,6 +23,7 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/settings/update_progress.dart';
+import 'package:orion/util/install_locator.dart';
 
 /// Provider that encapsulates the Orion update flow.
 ///
@@ -64,7 +65,10 @@ class OrionUpdateProvider extends ChangeNotifier {
   String findOrionRoot() {
     final String localUser = Platform.environment['USER'] ?? 'pi';
     final String envRoot = Platform.environment['ORION_ROOT'] ?? '';
-    if (envRoot.isNotEmpty) return envRoot;
+    if (envRoot.isNotEmpty) {
+      _logger.info('ORION_ROOT environment variable set -> $envRoot');
+      return envRoot;
+    }
 
     // Check current working directory and its ancestors first (pwd)
     try {
@@ -74,6 +78,8 @@ class OrionUpdateProvider extends ChangeNotifier {
         if (File('$candidate/orion.cfg').existsSync() ||
             Directory('$candidate/orion').existsSync() ||
             candidate.endsWith('/orion')) {
+          _logger
+              .fine('Found orion root candidate in CWD ancestors: $candidate');
           return candidate;
         }
         if (dir.parent.path == dir.path) break;
@@ -91,6 +97,8 @@ class OrionUpdateProvider extends ChangeNotifier {
         if (File('$candidate/orion.cfg').existsSync() ||
             Directory('$candidate/orion').existsSync() ||
             candidate.endsWith('/orion')) {
+          _logger.fine(
+              'Found orion root candidate in executable ancestors: $candidate');
           return candidate;
         }
         if (dir.parent.path == dir.path) break; // reached root
@@ -99,6 +107,47 @@ class OrionUpdateProvider extends ChangeNotifier {
     } catch (_) {
       // ignore
     }
+
+    // Attempt to locate the engine/install directory using the same
+    // heuristics we recently added to OrionConfig: look for packaged
+    // engine binaries (app.so, libapp.so, orion, etc.) in the resolved
+    // executable directory and its parent, and probe /proc/self/maps on
+    // Linux for loaded shared objects. If we find an engine dir, prefer
+    // configs adjacent to it (engineDir/orion.cfg, parent/orion.cfg,
+    // /opt/orion.cfg) as the install root.
+    try {
+      final engineDir = findEngineDir();
+      if (engineDir != null && engineDir.isNotEmpty) {
+        final engineConfig = '$engineDir/orion.cfg';
+        final engineVendor = '$engineDir/vendor.cfg';
+        final parentDir = Directory(engineDir).parent.path;
+        final parentConfig = '$parentDir/orion.cfg';
+        final parentVendor = '$parentDir/vendor.cfg';
+        final optConfig = '/opt/orion.cfg';
+        final optVendor = '/opt/vendor.cfg';
+
+        if (File(engineConfig).existsSync() ||
+            File(engineVendor).existsSync()) {
+          _logger.info('Found config inside engine dir -> $engineDir');
+          return engineDir;
+        }
+        if (File(parentConfig).existsSync() ||
+            File(parentVendor).existsSync()) {
+          _logger.info('Found config adjacent to engine dir -> $parentDir');
+          return parentDir;
+        }
+        if (File(optConfig).existsSync() || File(optVendor).existsSync()) {
+          _logger.info('Found /opt config file; using /opt');
+          return '/opt';
+        }
+        // If no config was found, fall through to other heuristics but
+        // include engineDir as a candidate by returning it; callers that
+        // expect a proper orion subdir should still validate later.
+        _logger
+            .fine('Engine dir probe found $engineDir; returning as candidate');
+        return engineDir;
+      }
+    } catch (_) {}
 
     // Check a few common locations without preferring any single one
     final candidates = [
@@ -111,13 +160,18 @@ class OrionUpdateProvider extends ChangeNotifier {
     for (final c in candidates) {
       try {
         if (Directory(c).existsSync() || File('$c/orion.cfg').existsSync()) {
+          _logger.fine(
+              'Found orion install candidate in well-known locations: $c');
           return c;
         }
       } catch (_) {}
     }
 
     // Last resort: user's home
-    return '${Platform.environment['HOME'] ?? '/home/$localUser'}/orion';
+    final fallback =
+        '${Platform.environment['HOME'] ?? '/home/$localUser'}/orion';
+    _logger.fine('No install root discovered; falling back to $fallback');
+    return fallback;
   }
 
   void _dismissUpdateDialog(BuildContext context) {
@@ -140,6 +194,7 @@ class OrionUpdateProvider extends ChangeNotifier {
     final String localUser = Platform.environment['USER'] ?? 'pi';
 
     final String orionRoot = findOrionRoot();
+    _logger.info('Detected Orion root: $orionRoot');
 
     // Use a temp upgrade workspace to download & extract; this avoids
     // writing into system install directories directly and is safer when
@@ -152,6 +207,12 @@ class OrionUpdateProvider extends ChangeNotifier {
     final String newOrionFolder = '${upgradeFolder}orion_new/';
     final String backupFolder = '${upgradeFolder}orion_backup/';
     final String scriptPath = '$upgradeFolder/update_orion.sh';
+
+    _logger.info('Upgrade temporary workspace: $upgradeFolder');
+    _logger.info('Download target path: $downloadPath');
+    _logger.fine('New Orion staging folder: $newOrionFolder');
+    _logger.fine('Backup folder: $backupFolder');
+    _logger.fine('Update script path: $scriptPath');
 
     if (assetUrl.isEmpty) {
       _logger.warning('Asset URL is empty');
