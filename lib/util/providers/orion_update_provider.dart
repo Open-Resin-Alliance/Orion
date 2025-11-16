@@ -70,16 +70,61 @@ class OrionUpdateProvider extends ChangeNotifier {
       return envRoot;
     }
 
-    // Check current working directory and its ancestors first (pwd)
+    // Attempt to locate the engine/install directory first. Prefer configs
+    // adjacent to the detected engine dir (engineDir/orion.cfg,
+    // parent/orion.cfg, or /opt/orion.cfg). Doing this before walking the
+    // current working directory ancestors avoids false positives when the
+    // process CWD is `/` or other non-install roots.
+    try {
+      final engineDir = findEngineDir();
+      if (engineDir != null && engineDir.isNotEmpty) {
+        final engineConfig = '$engineDir/orion.cfg';
+        final engineVendor = '$engineDir/vendor.cfg';
+        final parentDir = Directory(engineDir).parent.path;
+        final parentConfig = '$parentDir/orion.cfg';
+        final parentVendor = '$parentDir/vendor.cfg';
+        final optConfig = '/opt/orion.cfg';
+        final optVendor = '/opt/vendor.cfg';
+
+        if (File(engineConfig).existsSync() ||
+            File(engineVendor).existsSync()) {
+          _logger.info('Found config inside engine dir -> $engineDir');
+          return engineDir;
+        }
+        if (File(parentConfig).existsSync() ||
+            File(parentVendor).existsSync()) {
+          _logger.info('Found config adjacent to engine dir -> $parentDir');
+          return parentDir;
+        }
+        if (File(optConfig).existsSync() || File(optVendor).existsSync()) {
+          _logger.info('Found /opt config file; using /opt');
+          return '/opt';
+        }
+
+        // If no config was found adjacent to the engine dir, don't return
+        // immediately — continue with other heuristics but prefer engineDir
+        // later by adding it to well-known candidate checks (handled below).
+        _logger.fine(
+            'Engine dir probe found $engineDir; no adjacent config, will continue heuristics');
+      }
+    } catch (_) {}
+
+    // Check current working directory and its ancestors (pwd)
     try {
       Directory dir = Directory.current;
       while (true) {
         final candidate = dir.path;
-        if (File('$candidate/orion.cfg').existsSync() ||
-            Directory('$candidate/orion').existsSync() ||
-            candidate.endsWith('/orion')) {
-          _logger
-              .fine('Found orion root candidate in CWD ancestors: $candidate');
+        final hasCfg = File('$candidate/orion.cfg').existsSync();
+        final hasOrionDir = Directory('$candidate/orion').existsSync();
+        final endsWithOrion = candidate.endsWith('/orion');
+        if (hasCfg || hasOrionDir || endsWithOrion) {
+          final reason = hasCfg
+              ? 'orion.cfg present'
+              : hasOrionDir
+                  ? 'orion subdirectory present'
+                  : 'path ends with /orion';
+          _logger.fine(
+              'Found orion root candidate in CWD ancestors: $candidate ($reason)');
           return candidate;
         }
         if (dir.parent.path == dir.path) break;
@@ -108,46 +153,7 @@ class OrionUpdateProvider extends ChangeNotifier {
       // ignore
     }
 
-    // Attempt to locate the engine/install directory using the same
-    // heuristics we recently added to OrionConfig: look for packaged
-    // engine binaries (app.so, libapp.so, orion, etc.) in the resolved
-    // executable directory and its parent, and probe /proc/self/maps on
-    // Linux for loaded shared objects. If we find an engine dir, prefer
-    // configs adjacent to it (engineDir/orion.cfg, parent/orion.cfg,
-    // /opt/orion.cfg) as the install root.
-    try {
-      final engineDir = findEngineDir();
-      if (engineDir != null && engineDir.isNotEmpty) {
-        final engineConfig = '$engineDir/orion.cfg';
-        final engineVendor = '$engineDir/vendor.cfg';
-        final parentDir = Directory(engineDir).parent.path;
-        final parentConfig = '$parentDir/orion.cfg';
-        final parentVendor = '$parentDir/vendor.cfg';
-        final optConfig = '/opt/orion.cfg';
-        final optVendor = '/opt/vendor.cfg';
-
-        if (File(engineConfig).existsSync() ||
-            File(engineVendor).existsSync()) {
-          _logger.info('Found config inside engine dir -> $engineDir');
-          return engineDir;
-        }
-        if (File(parentConfig).existsSync() ||
-            File(parentVendor).existsSync()) {
-          _logger.info('Found config adjacent to engine dir -> $parentDir');
-          return parentDir;
-        }
-        if (File(optConfig).existsSync() || File(optVendor).existsSync()) {
-          _logger.info('Found /opt config file; using /opt');
-          return '/opt';
-        }
-        // If no config was found, fall through to other heuristics but
-        // include engineDir as a candidate by returning it; callers that
-        // expect a proper orion subdir should still validate later.
-        _logger
-            .fine('Engine dir probe found $engineDir; returning as candidate');
-        return engineDir;
-      }
-    } catch (_) {}
+    // (engine dir probe handled earlier)
 
     // Check a few common locations without preferring any single one
     final candidates = [
