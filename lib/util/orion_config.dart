@@ -43,7 +43,132 @@ class OrionConfig {
   }
 
   OrionConfig() {
-    _configPath = Platform.environment['ORION_CFG'] ?? '.';
+    // Try a more deterministic approach first: locate the directory that
+    // contains the application shared-object / engine binary (e.g. app.so,
+    // libapp.so, or the packaged `orion` binary). This is more reliable
+    // than relying solely on the flutter-pi runtime CWD because installers
+    // typically place the engine and packaged vendor files next to each
+    // other.
+    try {
+      final engineDir = _findEngineDir();
+      if (engineDir != null && engineDir.isNotEmpty) {
+        _configPath = engineDir;
+        _logger.fine('OrionConfig: located engine dir -> $_configPath');
+        return;
+      }
+    } catch (e) {
+      _logger.fine('OrionConfig: engine dir probe failed: $e');
+    }
+    // Attempt to determine the correct on-disk location for orion.cfg/vendor.cfg
+    // Priority:
+    // 1. ORION_CFG env var (can be a directory or a full path to a .cfg file)
+    // 2. Look for common install/config locations relative to the executable,
+    //    script, HOME, and known install prefixes like /opt and /home/pi
+    // 3. Fallback to current working directory
+    String? envPath = Platform.environment['ORION_CFG'];
+    if (envPath != null && envPath.isNotEmpty) {
+      try {
+        // If user provided a full path to a config file, use its directory
+        if (envPath.endsWith('.cfg') && File(envPath).existsSync()) {
+          _configPath = path.dirname(envPath);
+          return;
+        }
+        // Otherwise assume it's a directory
+        _configPath = envPath;
+        return;
+      } catch (_) {
+        // Ignore and fall through to autodetection
+      }
+    }
+
+    // Candidate directories to search for orion.cfg
+    final candidates = <String>[];
+
+    // If engine dir probe produced nothing earlier, we still want to add a
+    // second-chance engine-dir candidate using resolvedExecutable's parent
+    // so later vendor.cfg/orion.cfg checks can find packaged files.
+    try {
+      final execDir = path.dirname(Platform.resolvedExecutable);
+      if (execDir.isNotEmpty && !candidates.contains(execDir))
+        candidates.add(execDir);
+    } catch (_) {}
+
+    try {
+      // Current working directory
+      candidates.add(Directory.current.path);
+    } catch (_) {}
+
+    try {
+      // Directory containing the running executable (useful for packaged installs)
+      final execDir = path.dirname(Platform.resolvedExecutable);
+      if (execDir.isNotEmpty) candidates.add(execDir);
+    } catch (_) {}
+
+    try {
+      // Directory containing the script (Dart VM)
+      final scriptDir = path.dirname(Platform.script.toFilePath());
+      if (scriptDir.isNotEmpty) candidates.add(scriptDir);
+    } catch (_) {}
+
+    // Common system locations
+    candidates.add('/opt');
+    final home = Platform.environment['HOME'];
+    if (home != null && home.isNotEmpty) candidates.add(home);
+    candidates.add('/home/pi');
+
+    // Also consider some absolute config file locations that are commonly used
+    final candidateFiles = <String>[];
+    for (final d in candidates) {
+      candidateFiles.add(path.join(d, 'orion.cfg'));
+    }
+    // Also check root-level installer locations like /opt/orion.cfg and /home/pi/orion.cfg
+    candidateFiles.add('/opt/orion.cfg');
+    if (home != null && home.isNotEmpty)
+      candidateFiles.add(path.join(home, 'orion.cfg'));
+    candidateFiles.add('/home/pi/orion.cfg');
+
+    for (final f in candidateFiles) {
+      try {
+        if (File(f).existsSync()) {
+          _configPath = path.dirname(f);
+          _logger
+              .fine('OrionConfig: found orion.cfg at $f; using $_configPath');
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // If we didn't find an orion.cfg, try to locate a vendor.cfg and use
+    // its directory. Some installations ship only vendor.cfg alongside the
+    // runtime and expect the app to pick it up (e.g. /opt/vendor.cfg).
+    final vendorCandidateFiles = <String>[];
+    for (final d in candidates) {
+      vendorCandidateFiles.add(path.join(d, 'vendor.cfg'));
+    }
+    vendorCandidateFiles.add('/opt/vendor.cfg');
+    if (home != null && home.isNotEmpty)
+      vendorCandidateFiles.add(path.join(home, 'vendor.cfg'));
+    vendorCandidateFiles.add('/home/pi/vendor.cfg');
+
+    for (final f in vendorCandidateFiles) {
+      try {
+        if (File(f).existsSync()) {
+          _configPath = path.dirname(f);
+          _logger
+              .fine('OrionConfig: found vendor.cfg at $f; using $_configPath');
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // Fallback to current working directory if nothing found
+    try {
+      _configPath = Directory.current.path;
+      _logger.fine(
+          'OrionConfig: no config found; falling back to CWD=$_configPath');
+    } catch (_) {
+      _configPath = '.';
+    }
   }
 
   ThemeMode getThemeMode() {
@@ -922,5 +1047,70 @@ class OrionConfig {
     });
 
     return result;
+  }
+
+  /// Attempt to locate the directory containing the packaged application
+  /// shared-object or binary (for example `app.so`, `libapp.so`, `orion` or
+  /// `orion.so`). This improves reliability on systems where the runtime
+  /// process CWD differs from the install directory (common with service
+  /// wrappers and launcher scripts).
+  String? _findEngineDir() {
+    try {
+      final exec = Platform.resolvedExecutable;
+      if (exec.isNotEmpty) {
+        final execDir = path.dirname(exec);
+
+        final probeNames = [
+          'app.so',
+          'libapp.so',
+          'orion',
+          'orion.so',
+          'libflutter_engine.so'
+        ];
+
+        for (final name in probeNames) {
+          final p = path.join(execDir, name);
+          if (File(p).existsSync()) return execDir;
+        }
+
+        // Try one level up as installers sometimes install under a parent
+        // directory and the resolvedExecutable might point into a subfolder.
+        final parent = path.dirname(execDir);
+        for (final name in probeNames) {
+          final p = path.join(parent, name);
+          if (File(p).existsSync()) return parent;
+        }
+      }
+    } catch (e) {
+      // ignore and continue to other probes
+      _logger.fine('engine-dir probe from resolvedExecutable failed: $e');
+    }
+
+    // On Linux, inspect /proc/self/maps for an absolute path to a loaded
+    // shared object that looks like our app/engine. This can reveal the
+    // actual path of the bundled app.so even when the executable path is
+    // indirect.
+    try {
+      if (Platform.isLinux) {
+        final maps = File('/proc/self/maps');
+        if (maps.existsSync()) {
+          final lines = maps.readAsLinesSync();
+          final re = RegExp(r'(/\S+\.(so|bin)(?:\.[0-9]+)?)');
+          for (final l in lines) {
+            final m = re.firstMatch(l);
+            if (m != null) {
+              final p = m.group(1) ?? '';
+              if (p.contains('app') || p.contains('orion')) {
+                return path.dirname(p);
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      _logger.fine('engine-dir probe via /proc/self/maps failed: $e');
+    }
+
+    return null;
   }
 }
