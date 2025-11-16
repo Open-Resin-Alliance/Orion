@@ -27,6 +27,11 @@ import 'package:path/path.dart' as path;
 class OrionConfig {
   final _logger = Logger('OrionConfig');
   late final String _configPath;
+  // Cache the detected config path so repeated instantiations (common in
+  // providers during app startup) don't repeatedly probe the filesystem and
+  // spam the logs. This is safe because config path is global for a running
+  // runtime instance and is inexpensive to validate if needed.
+  static String? _cachedConfigPath;
   // Simple change listener registry so other services can react when
   // `orion.cfg` is updated via _writeConfig(). Listeners should be
   // lightweight and avoid throwing.
@@ -43,6 +48,12 @@ class OrionConfig {
   }
 
   OrionConfig() {
+    // If we've already detected the config path in a previous instance,
+    // reuse it to avoid repeated filesystem probes and logging spam.
+    if (_cachedConfigPath != null) {
+      _configPath = _cachedConfigPath!;
+      return;
+    }
     // Try a more deterministic approach first: locate the directory that
     // contains the application shared-object / engine binary (e.g. app.so,
     // libapp.so, or the packaged `orion` binary). This is more reliable
@@ -52,9 +63,55 @@ class OrionConfig {
     try {
       final engineDir = _findEngineDir();
       if (engineDir != null && engineDir.isNotEmpty) {
-        _configPath = engineDir;
-        _logger.fine('OrionConfig: located engine dir -> $_configPath');
-        return;
+        // If the engine dir looks promising, prefer it, but only return
+        // immediately when we can confirm a config file is located either
+        // in that directory or adjacent (one level up) or as a root-level
+        // file like /opt/orion.cfg. Many installers place shared files in
+        // the parent of the engine dir (for example engineDir=="/opt/orion"
+        // while config is "/opt/orion.cfg"). Attempt those checks first
+        // to avoid prematurely returning a directory that doesn't contain
+        // our config files.
+        final engineConfig = path.join(engineDir, 'orion.cfg');
+        final engineVendor = path.join(engineDir, 'vendor.cfg');
+        final parentDir = path.dirname(engineDir);
+        final parentConfig = path.join(parentDir, 'orion.cfg');
+        final parentVendor = path.join(parentDir, 'vendor.cfg');
+        final rootCandidateConfig = path.join('/opt', 'orion.cfg');
+        final rootCandidateVendor = path.join('/opt', 'vendor.cfg');
+
+        if (File(engineConfig).existsSync() ||
+            File(engineVendor).existsSync()) {
+          _configPath = engineDir;
+          _cachedConfigPath = _configPath;
+          _logger.fine('OrionConfig: located engine dir -> $_configPath');
+          return;
+        }
+
+        if (File(parentConfig).existsSync() ||
+            File(parentVendor).existsSync()) {
+          _configPath = parentDir;
+          _cachedConfigPath = _configPath;
+          _logger.fine(
+              'OrionConfig: found config adjacent to engine -> $_configPath');
+          return;
+        }
+
+        if (File(rootCandidateConfig).existsSync() ||
+            File(rootCandidateVendor).existsSync()) {
+          _configPath = '/opt';
+          _cachedConfigPath = _configPath;
+          _logger.fine('OrionConfig: found /opt config file; using /opt');
+          return;
+        }
+
+        // If none of the above config files exist, fall through to the
+        // autodetection logic below but keep the engineDir as a candidate
+        // to be searched later.
+        _logger.fine('OrionConfig: engine dir probe found $engineDir; '
+            'no adjacent config file, will continue autodetection');
+        // add engineDir as a candidate by setting a temporary variable that
+        // will be used below when building candidates list
+        // (we'll re-call _findEngineDir indirectly by using execDir below).
       }
     } catch (e) {
       _logger.fine('OrionConfig: engine dir probe failed: $e');
@@ -71,6 +128,7 @@ class OrionConfig {
         // If user provided a full path to a config file, use its directory
         if (envPath.endsWith('.cfg') && File(envPath).existsSync()) {
           _configPath = path.dirname(envPath);
+          _cachedConfigPath = _configPath;
           return;
         }
         // Otherwise assume it's a directory
@@ -131,6 +189,7 @@ class OrionConfig {
       try {
         if (File(f).existsSync()) {
           _configPath = path.dirname(f);
+          _cachedConfigPath = _configPath;
           _logger
               .fine('OrionConfig: found orion.cfg at $f; using $_configPath');
           return;
@@ -154,6 +213,7 @@ class OrionConfig {
       try {
         if (File(f).existsSync()) {
           _configPath = path.dirname(f);
+          _cachedConfigPath = _configPath;
           _logger
               .fine('OrionConfig: found vendor.cfg at $f; using $_configPath');
           return;
@@ -164,10 +224,13 @@ class OrionConfig {
     // Fallback to current working directory if nothing found
     try {
       _configPath = Directory.current.path;
+      _configPath = Directory.current.path;
+      _cachedConfigPath = _configPath;
       _logger.fine(
           'OrionConfig: no config found; falling back to CWD=$_configPath');
     } catch (_) {
       _configPath = '.';
+      _cachedConfigPath = _configPath;
     }
   }
 
