@@ -433,6 +433,8 @@ fi
 # Restart the Orion service if available
 if command -v systemctl >/dev/null 2>&1; then
   sudo systemctl restart orion.service || true
+  # Try nanodlp-dsi as an alternative
+  sudo systemctl restart nanodlp-dsi.service || true
 fi
 ''';
 
