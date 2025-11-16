@@ -1112,5 +1112,4 @@ class OrionConfig {
 
     return result;
   }
-
-  
+}
