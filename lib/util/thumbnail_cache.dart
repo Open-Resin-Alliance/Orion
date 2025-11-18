@@ -293,32 +293,43 @@ class ThumbnailCache {
   Future<Directory> _ensureDiskCacheDir() async {
     if (_diskCacheDir != null) return _diskCacheDir!;
     try {
-      // Prefer native per-user cache directories.
+      // Prefer an app-specific persistent directory when available. This is
+      // more robust than relying on environment variables (HOME/XDG) which
+      // may not be set in some runtime environments and can cause the cache
+      // to be created under a transient tmp directory that doesn't survive
+      // reboots.
       Directory dir;
-      if (Platform.isLinux) {
-        final xdg = Platform.environment['XDG_CACHE_HOME'] ??
-            (Platform.environment['HOME'] != null
-                ? p.join(Platform.environment['HOME']!, '.cache')
-                : null);
-        if (xdg != null && xdg.isNotEmpty) {
-          dir = Directory(p.join(xdg, 'orion_thumbnail_cache'));
+      try {
+        final appSupport = await getApplicationSupportDirectory();
+        dir = Directory(p.join(appSupport.path, 'orion_thumbnail_cache'));
+      } catch (_) {
+        // Fall back to platform-specific heuristics if application support
+        // directory is not available for some reason.
+        if (Platform.isLinux) {
+          final xdg = Platform.environment['XDG_CACHE_HOME'] ??
+              (Platform.environment['HOME'] != null
+                  ? p.join(Platform.environment['HOME']!, '.cache')
+                  : null);
+          if (xdg != null && xdg.isNotEmpty) {
+            dir = Directory(p.join(xdg, 'orion_thumbnail_cache'));
+          } else {
+            final tmp = await getTemporaryDirectory();
+            dir = Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
+          }
+        } else if (Platform.isMacOS) {
+          final home = Platform.environment['HOME'] ?? '.';
+          dir = Directory(
+              p.join(home, 'Library', 'Caches', 'orion_thumbnail_cache'));
+        } else if (Platform.isWindows) {
+          final local = Platform.environment['LOCALAPPDATA'] ??
+              Platform.environment['USERPROFILE'] ??
+              '.';
+          dir = Directory(p.join(local, 'orion_thumbnail_cache'));
         } else {
+          // Unknown platform: use temporary directory
           final tmp = await getTemporaryDirectory();
           dir = Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
         }
-      } else if (Platform.isMacOS) {
-        final home = Platform.environment['HOME'] ?? '.';
-        dir = Directory(
-            p.join(home, 'Library', 'Caches', 'orion_thumbnail_cache'));
-      } else if (Platform.isWindows) {
-        final local = Platform.environment['LOCALAPPDATA'] ??
-            Platform.environment['USERPROFILE'] ??
-            '.';
-        dir = Directory(p.join(local, 'orion_thumbnail_cache'));
-      } else {
-        // Unknown platform: use temporary directory
-        final tmp = await getTemporaryDirectory();
-        dir = Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
       }
 
       if (!await dir.exists()) await dir.create(recursive: true);
