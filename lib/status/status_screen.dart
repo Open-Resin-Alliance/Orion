@@ -40,6 +40,8 @@ import 'package:orion/util/layer_preview_cache.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/backend_service/providers/analytics_provider.dart';
+import 'package:orion/home/home_screen.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
 
@@ -438,11 +440,102 @@ class StatusScreenState extends State<StatusScreen> {
 
         return GlassApp(
           child: Scaffold(
-            appBar: AppBar(
+            appBar: OrionAppBar(
               automaticallyImplyLeading: false,
-              centerTitle: true,
+              toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+              // Use the live clock on the simple/main view, but when the
+              // advanced (analytics) view is active show the overall print
+              // percentage in the same leading slot so the top-left remains
+              // informative.
+              leadingWidget: Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 24),
+                  child: SizedBox(
+                    // Ensure the leading slot keeps consistent size by
+                    // rendering the clock (possibly hidden) and overlaying
+                    // the percentage when analytics view is active.
+                    height: 36,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Keep both the clock and percentage in the tree to
+                        // preserve layout; toggle visibility via Opacity to
+                        // avoid any shift when switching views.
+                        Opacity(
+                          opacity: _showAnalytics ? 0.0 : 1.0,
+                          // Use Baseline alignment so the clock and percent
+                          // share the same alphabetic baseline even though
+                          // they are rendered in a Stack. This avoids tiny
+                          // vertical shifts introduced by differing text
+                          // metrics while preserving the overlay behavior.
+                          child: const Baseline(
+                            baseline: 22.0,
+                            baselineType: TextBaseline.alphabetic,
+                            child: LiveClock(),
+                          ),
+                        ),
+                        // Percentage is always built but its opacity is toggled.
+                        Opacity(
+                          opacity: _showAnalytics ? 1.0 : 0.0,
+                          child: Builder(builder: (ctx) {
+                            final pct =
+                                (provider.progress * 100).clamp(0.0, 100.0);
+                            final pctInt = pct.toInt().clamp(0, 100);
+                            final pctIntStr = pctInt.toString();
+                            final pctStr = pctIntStr.padLeft(3, '0');
+                            final greyCount =
+                                (3 - pctIntStr.length).clamp(0, 3);
+                            final greyPart = pctStr.substring(0, greyCount);
+                            final normalPart = pctStr.substring(greyCount);
+                            final baseStyle = Theme.of(ctx)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                    fontSize: 28, fontWeight: FontWeight.bold);
+                            final lowOpacityColor =
+                                baseStyle?.color?.withValues(alpha: 0.45) ??
+                                    Theme.of(ctx)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.45);
+                            final normalColor = baseStyle?.color ??
+                                Theme.of(ctx).colorScheme.onSurface;
+
+                            return Baseline(
+                              baseline: 22.0,
+                              baselineType: TextBaseline.alphabetic,
+                              child: RichText(
+                                text: TextSpan(
+                                  style: baseStyle,
+                                  children: [
+                                    if (greyPart.isNotEmpty)
+                                      TextSpan(
+                                        text: greyPart,
+                                        style: baseStyle?.copyWith(
+                                            color: lowOpacityColor),
+                                      ),
+                                    TextSpan(
+                                      text: '${normalPart}%',
+                                      style: baseStyle?.copyWith(
+                                          color: normalColor),
+                                    ),
+                                  ],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               actions: const [SystemStatusWidget()],
-              title: Builder(builder: (context) {
+              // Center the main status/title column using centerWidget so the
+              // visual balance matches other screens (e.g. Details screen).
+              title: const Text(''),
+              centerWidget: Builder(builder: (context) {
                 final deviceMsg = provider.deviceStatusMessage;
                 final statusText =
                     (deviceMsg != null && deviceMsg.trim().isNotEmpty)
@@ -1577,14 +1670,46 @@ class StatusScreenState extends State<StatusScreen> {
             flex: 1,
             child: Column(children: [
               Spacer(),
-              _buildInfoCard(
-                'Last Wait Time',
-                'N/A', // TODO: Connect to actual data
-              ),
-              _buildInfoCard(
-                'Last Lift Height',
-                'N/A', // TODO: Connect to actual temperature data
-              ),
+              Builder(builder: (ctx) {
+                final analyticsProv =
+                    Provider.of<AnalyticsProvider>(ctx, listen: false);
+                final dynamic waitRaw =
+                    analyticsProv.getLatestForKey('DynamicWait');
+                String waitText;
+                if (waitRaw == null) {
+                  waitText = 'N/A';
+                } else if (waitRaw is num) {
+                  waitText = '${waitRaw.toStringAsFixed(2)} s';
+                } else {
+                  final parsed = double.tryParse(waitRaw.toString());
+                  if (parsed != null) {
+                    waitText = '${parsed.toStringAsFixed(2)} s';
+                  } else {
+                    waitText = waitRaw.toString();
+                  }
+                }
+                return _buildInfoCard('Last Wait Time', waitText);
+              }),
+              Builder(builder: (ctx) {
+                final analyticsProv =
+                    Provider.of<AnalyticsProvider>(ctx, listen: false);
+                final dynamic liftRaw =
+                    analyticsProv.getLatestForKey('LiftHeight');
+                String liftText;
+                if (liftRaw == null) {
+                  liftText = 'N/A';
+                } else if (liftRaw is num) {
+                  liftText = '${liftRaw.toStringAsFixed(2)} mm';
+                } else {
+                  final parsed = double.tryParse(liftRaw.toString());
+                  if (parsed != null) {
+                    liftText = '${parsed.toStringAsFixed(2)} mm';
+                  } else {
+                    liftText = liftRaw.toString();
+                  }
+                }
+                return _buildInfoCard('Last Lift Height', liftText);
+              }),
               Builder(builder: (ctx) {
                 final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
                 final dynamic mcuRaw =
@@ -2194,7 +2319,18 @@ class _ForceSensorMiniChartState extends State<_ForceSensorMiniChart> {
       duration: Duration.zero,
       LineChartData(
         borderData: FlBorderData(border: Border.all(color: Colors.transparent)),
-        gridData: FlGridData(show: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: true,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
+            strokeWidth: 0.5,
+          ),
+          getDrawingVerticalLine: (value) => FlLine(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
+            strokeWidth: 0.5,
+          ),
+        ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
