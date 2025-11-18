@@ -21,11 +21,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
+import 'dart:collection';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:path/path.dart' as path;
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -44,6 +46,18 @@ import 'package:orion/util/thumbnail_cache.dart';
 import 'dart:typed_data';
 
 ScrollController _scrollController = ScrollController();
+
+class _QueuedThumb {
+  _QueuedThumb({
+    required this.key,
+    required this.task,
+    required this.completer,
+  });
+
+  final String key;
+  final FutureOr<void> Function() task;
+  final Completer<Uint8List?> completer;
+}
 
 class GridFilesScreen extends StatefulWidget {
   const GridFilesScreen({super.key});
@@ -71,6 +85,16 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   bool _isLoading = false;
   bool _isNavigating = false;
   bool _isNanoDlp = false;
+
+  // Thumbnail fetch concurrency control to avoid starting too many
+  // simultaneous ThumbnailCache requests which can lag the app on low-end
+  // devices. We queue requests and allow only [_maxConcurrentThumbnails]
+  // active at a time. ThumbnailCache itself dedupes identical keys so this
+  // is just a client-side throttle.
+  final int _maxConcurrentThumbnails = 4;
+  int _activeThumbnailFetches = 0;
+  final Queue<_QueuedThumb> _thumbQueue = Queue<_QueuedThumb>();
+  final Map<String, Future<Uint8List?>> _queuedInFlight = {};
 
   @override
   void initState() {
@@ -105,6 +129,82 @@ class GridFilesScreenState extends State<GridFilesScreen> {
           _directory = _defaultDirectory;
         }
       }
+    });
+  }
+
+  @override
+  void dispose() {
+    _thumbQueue.clear();
+    _queuedInFlight.clear();
+    super.dispose();
+  }
+
+  // Build a cache key similar to ThumbnailCache._cacheKey so we can
+  // de-duplicate requests at this layer too.
+  String _thumbCacheKey(String location, OrionApiFile file, String size) {
+    final lastModified = file.lastModified ?? 0;
+    // Match the format used by ThumbnailCache._cacheKey so we can
+    // de-duplicate identical requests at this layer.
+    return '$location|${file.path}|$lastModified|$size';
+  }
+
+  Future<Uint8List?> _queuedGetThumbnail({
+    required String location,
+    required String subdirectory,
+    required String fileName,
+    required OrionApiFile file,
+    String size = 'Small',
+  }) {
+    final key = _thumbCacheKey(location, file, size);
+
+    // If we already started or queued this request, return the existing future
+    final existing = _queuedInFlight[key];
+    if (existing != null) return existing;
+
+    final completer = Completer<Uint8List?>();
+    _queuedInFlight[key] = completer.future;
+
+    final queued = _QueuedThumb(
+      key: key,
+      task: () async {
+        try {
+          final bytes = await ThumbnailCache.instance.getThumbnail(
+            location: location,
+            subdirectory: subdirectory,
+            fileName: fileName,
+            file: file,
+            size: size,
+          );
+          if (!completer.isCompleted) completer.complete(bytes);
+        } catch (e, st) {
+          if (!completer.isCompleted) completer.completeError(e, st);
+        }
+      },
+      completer: completer,
+    );
+
+    // Enqueue and process
+    _thumbQueue.add(queued);
+    scheduleMicrotask(_processThumbnailQueue);
+
+    return completer.future;
+  }
+
+  void _processThumbnailQueue() {
+    if (_activeThumbnailFetches >= _maxConcurrentThumbnails) return;
+    if (_thumbQueue.isEmpty) return;
+
+    final item = _thumbQueue.removeFirst();
+    _activeThumbnailFetches++;
+
+    // Run the task and ensure bookkeeping when complete.
+    final Future<void> runFuture = Future<void>.sync(() => item.task());
+    runFuture.whenComplete(() {
+      _activeThumbnailFetches--;
+      // remove from in-flight once finished
+      _queuedInFlight.remove(item.key);
+      // schedule next
+      scheduleMicrotask(_processThumbnailQueue);
     });
   }
 
@@ -219,9 +319,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   Widget build(BuildContext context) {
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
+        appBar: OrionAppBar(
           title: Text(_getDisplayNameForDirectory(_directory)),
-          centerTitle: false,
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: <Widget>[SystemStatusWidget()],
         ),
         body: Consumer<FilesProvider>(
@@ -454,7 +554,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                     : Padding(
                         padding: const EdgeInsets.all(4.5),
                         child: FutureBuilder<Uint8List?>(
-                          future: ThumbnailCache.instance.getThumbnail(
+                          future: _queuedGetThumbnail(
                             location: provider.location,
                             subdirectory: fileSubdirectory,
                             fileName: fileName,

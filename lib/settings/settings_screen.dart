@@ -23,6 +23,7 @@ import 'package:flutter/services.dart';
 
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
@@ -253,8 +254,9 @@ class SettingsScreenState extends State<SettingsScreen> {
       },
       child: GlassApp(
         child: Scaffold(
-          appBar: AppBar(
+          appBar: OrionAppBar(
             title: const Text('Settings'),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
             actions: <Widget>[
               SystemStatusWidget(),
             ],

@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -50,8 +51,9 @@ class ToolsScreenState extends State<ToolsScreen> {
   Widget build(BuildContext context) {
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
+        appBar: OrionAppBar(
           title: const Text('Tools'),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: const [SystemStatusWidget()],
         ),
         body: _selectedIndex == 0

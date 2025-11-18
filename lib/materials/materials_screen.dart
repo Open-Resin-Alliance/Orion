@@ -23,6 +23,7 @@ import 'package:orion/materials/resins_screen.dart';
 import 'package:orion/materials/calibration_screen.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class MaterialsScreen extends StatefulWidget {
@@ -93,8 +94,9 @@ class MaterialsScreenState extends State<MaterialsScreen> {
 
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
+        appBar: OrionAppBar(
           title: const Text('Materials'),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: const [SystemStatusWidget()],
         ),
         body: screens[_selectedIndex],

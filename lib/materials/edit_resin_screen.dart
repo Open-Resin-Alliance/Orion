@@ -22,6 +22,8 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 
 /// Edit screen showing 6 cards (2x3 grid) displaying current resin parameter
 /// values. Tapping any card opens a dialog with a slider to adjust the value.
@@ -473,7 +475,11 @@ class EditResinScreenState extends State<EditResinScreen> {
 
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(title: Text(title)),
+        appBar: OrionAppBar(
+          title: Text(title),
+          actions: const [SystemStatusWidget()],
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+        ),
         body: Padding(
           padding: const EdgeInsets.only(
               left: 16.0, right: 16.0, bottom: 20.0, top: 8.0),
