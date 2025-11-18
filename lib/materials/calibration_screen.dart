@@ -22,7 +22,6 @@ import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/glasser/glasser.dart';
-import 'package:provider/provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
