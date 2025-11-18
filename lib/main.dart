@@ -27,6 +27,8 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:orion/util/install_locator.dart';
 import 'package:provider/provider.dart';
 import 'package:window_size/window_size.dart';
 
@@ -99,18 +101,21 @@ void main() {
   logStreamController.stream.listen((record) async {
     await writeMutex.acquire();
     try {
-      Directory logDir = await getApplicationSupportDirectory();
-      File logFile = File('${logDir.path}/app.log');
+      // Resolve the log file location once (prefer env override, then
+      // application support dir, then packaged engine locations, exec dir,
+      // and fallback to app support). This mirrors the discovery used by
+      // other parts of the app (Debug screen / OrionConfig).
+      File logFile = await _resolveLogFile();
 
       // Check if log file needs rotation
       if (await logFile.exists() && await logFile.length() > maxLogFileSize) {
         // Rotate the log file
-        final rotatedLogFile = File('${logDir.path}/app.log.1');
+        final rotatedLogFile = File(p.join(logFile.parent.path, 'app.log.1'));
         if (await rotatedLogFile.exists()) {
           await rotatedLogFile.delete();
         }
         await logFile.rename(rotatedLogFile.path);
-        logFile = File('${logDir.path}/app.log');
+        logFile = File(p.join(logFile.parent.path, 'app.log'));
       }
 
       final logMessage =
@@ -132,6 +137,55 @@ void main() {
   });
 
   runApp(const OrionRoot());
+}
+
+/// Resolve the most likely log file location for this runtime.
+/// Priority: ORION_LOG_FILE env override -> application support dir ->
+/// engine dir (and parent) -> exec dir -> CWD -> application support fallback
+Future<File> _resolveLogFile() async {
+  try {
+    final env = Platform.environment['ORION_LOG_FILE'];
+    if (env != null && env.isNotEmpty) return File(env);
+  } catch (_) {}
+
+  try {
+    final appSupport = await getApplicationSupportDirectory();
+    final f = File(p.join(appSupport.path, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  try {
+    final engineDir = findEngineDir();
+    if (engineDir != null && engineDir.isNotEmpty) {
+      final f = File(p.join(engineDir, 'app.log'));
+      if (await f.exists()) return f;
+      final parent = Directory(engineDir).parent.path;
+      final fp = File(p.join(parent, 'app.log'));
+      if (await fp.exists()) return fp;
+      final opt = File('/opt/app.log');
+      if (await opt.exists()) return opt;
+    }
+  } catch (_) {}
+
+  try {
+    final execDir = Directory(Platform.resolvedExecutable).parent.path;
+    final f = File(p.join(execDir, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  try {
+    final f = File(p.join(Directory.current.path, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  // Fallback to application support path even if file doesn't exist yet.
+  try {
+    final appSupport = await getApplicationSupportDirectory();
+    return File(p.join(appSupport.path, 'app.log'));
+  } catch (_) {}
+
+  // As a final fallback, return a file in CWD
+  return File(p.join(Directory.current.path, 'app.log'));
 }
 
 class OrionRoot extends StatelessWidget {
