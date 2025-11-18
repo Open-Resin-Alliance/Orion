@@ -161,7 +161,11 @@ class NanoStatus {
 
     double? progress;
     if (layerId != null && layersCount != null && layersCount > 0) {
-      progress = (layerId / layersCount).clamp(0.0, 1.0).toDouble();
+      // Treat the reported layerId as the layer currently being printed;
+      // compute progress based on completed layers (layerId - 1) so the
+      // in-progress layer is not counted as finished.
+      final completed = (layerId - 1).clamp(0, layersCount);
+      progress = (completed / layersCount).clamp(0.0, 1.0).toDouble();
     }
 
     double? z;
