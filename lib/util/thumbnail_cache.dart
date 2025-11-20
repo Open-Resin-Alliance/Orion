@@ -39,6 +39,7 @@ class ThumbnailCache {
   Directory? _diskCacheDir;
   Duration?
       _diskEntryTtl; // null = disabled, otherwise time-based expiry for disk entries
+  bool _startupNeedsPrefetch = false;
   bool _pruning = false;
   static const int _diskCacheMaxBytes =
       512 * 1024 * 1024; // 512 MiB rolling cache
@@ -54,6 +55,13 @@ class ThumbnailCache {
     bool forceRefresh = false,
   }) async {
     _pruneExpired();
+
+    // If the disk cache was empty on startup, prefer fetching fresh bytes
+    // for the first set of thumbnails so the UI can repopulate the cache
+    // without waiting for user interaction to individually refresh items.
+    if (_startupNeedsPrefetch) {
+      forceRefresh = true;
+    }
 
     if (forceRefresh) {
       // Bypass memory/disk caches and fetch fresh bytes. Still dedupe in-flight
@@ -280,6 +288,9 @@ class ThumbnailCache {
     // Persist to disk asynchronously (best-effort).
     if (bytes != null) {
       _writeToDiskSafe(key, bytes);
+      // If we were in a startup-prefetch state, consider the cache
+      // repopulated after successfully storing at least one thumbnail.
+      if (_startupNeedsPrefetch) _startupNeedsPrefetch = false;
     }
   }
 
@@ -299,136 +310,11 @@ class ThumbnailCache {
   Future<Directory> _ensureDiskCacheDir() async {
     if (_diskCacheDir != null) return _diskCacheDir!;
     try {
-      // Prefer an app-specific persistent directory when available. This is
-      // more robust than relying on environment variables (HOME/XDG) which
-      // may not be set in some runtime environments and can cause the cache
-      // to be created under a transient tmp directory that doesn't survive
-      // reboots.
-      Directory dir;
-      try {
-        final appSupport = await getApplicationSupportDirectory();
-        dir = Directory(p.join(appSupport.path, 'orion_thumbnail_cache'));
-      } catch (_) {
-        // Fall back to platform-specific heuristics if application support
-        // directory is not available for some reason.
-        if (Platform.isLinux) {
-          // Prefer a persistent data directory: XDG_DATA_HOME or
-          // ~/.local/share. Using a data directory avoids placing the
-          // cache in /tmp (which may be cleared on reboot) and keeps cache
-          // files available across restarts.
-          final dataHome = Platform.environment['XDG_DATA_HOME'] ??
-              (Platform.environment['HOME'] != null
-                  ? p.join(Platform.environment['HOME']!, '.local', 'share')
-                  : null);
-          if (dataHome != null && dataHome.isNotEmpty) {
-            dir = Directory(p.join(dataHome, 'orion', 'thumbnail_cache'));
-          } else {
-            // Fall back to XDG_CACHE_HOME or ~/.cache. Cache directories are
-            // persistent across reboots on most desktop systems, but may be
-            // pruned by system cleaners; prefer dataHome when available.
-            final xdg = Platform.environment['XDG_CACHE_HOME'] ??
-                (Platform.environment['HOME'] != null
-                    ? p.join(Platform.environment['HOME']!, '.cache')
-                    : null);
-            if (xdg != null && xdg.isNotEmpty) {
-              dir = Directory(p.join(xdg, 'orion_thumbnail_cache'));
-            } else {
-              final tmp = await getTemporaryDirectory();
-              dir = Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
-            }
-          }
-        } else if (Platform.isMacOS) {
-          final home = Platform.environment['HOME'] ?? '.';
-          dir = Directory(
-              p.join(home, 'Library', 'Caches', 'orion_thumbnail_cache'));
-        } else if (Platform.isWindows) {
-          final local = Platform.environment['LOCALAPPDATA'] ??
-              Platform.environment['USERPROFILE'] ??
-              '.';
-          dir = Directory(p.join(local, 'orion_thumbnail_cache'));
-        } else {
-          // Unknown platform: use temporary directory
-          final tmp = await getTemporaryDirectory();
-          dir = Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
-        }
-      }
-
-      if (!await dir.exists()) await dir.create(recursive: true);
-      // Attempt to migrate any existing cache from legacy locations into
-      // the chosen persistent directory. This helps when the app previously
-      // wrote to XDG_CACHE_HOME or /tmp and the install was updated.
-      try {
-        if (Platform.isLinux) {
-          final home = Platform.environment['HOME'];
-          final legacyXdg = Platform.environment['XDG_CACHE_HOME'] ??
-              (home != null ? p.join(home, '.cache') : null);
-          final legacyTmp = (await getTemporaryDirectory()).path;
-          final legacyCandidates = <String>[];
-          if (legacyXdg != null && legacyXdg.isNotEmpty) {
-            legacyCandidates.add(p.join(legacyXdg, 'orion_thumbnail_cache'));
-          }
-          legacyCandidates.add(p.join(legacyTmp, 'orion_thumbnail_cache'));
-
-          for (final cand in legacyCandidates) {
-            try {
-              final oldDir = Directory(cand);
-              if (await oldDir.exists()) {
-                final files = oldDir.listSync().whereType<File>().toList();
-                for (final f in files) {
-                  try {
-                    final dest = File(p.join(dir.path, p.basename(f.path)));
-                    if (!await dest.exists()) {
-                      await f.rename(dest.path);
-                    } else {
-                      // If destination exists, remove the older file to
-                      // prefer existing cache.
-                      try {
-                        await f.delete();
-                      } catch (_) {}
-                    }
-                  } catch (e) {
-                    // ignore individual file migration errors
-                  }
-                }
-                // Try to remove legacy directory if empty
-                try {
-                  if (oldDir.listSync().isEmpty) await oldDir.delete();
-                } catch (_) {}
-              }
-            } catch (_) {
-              // ignore candidate errors
-            }
-          }
-        }
-      } catch (_) {
-        // ignore migration errors
-      }
+      final dir = await _findWritableCacheDir();
+      await _migrateLegacyCaches(dir);
+      _updateStartupPrefetchState(dir);
       _diskCacheDir = dir;
-      // Suppress disk cache directory log to avoid noisy startup logs.
-      // Read TTL from OrionConfig (category: 'cache', key: 'thumbnailDiskTtlDays')
-      // If the config key is missing or empty, default to 7 days. If the
-      // config value parses to 0 or a negative number, TTL is disabled.
-      try {
-        final cfg = OrionConfig();
-        final ttlStr = cfg.getString('thumbnailDiskTtlDays', category: 'cache');
-        if (ttlStr.isEmpty) {
-          _diskEntryTtl = Duration(days: 7);
-        } else {
-          final days = int.tryParse(ttlStr);
-          if (days == null) {
-            _diskEntryTtl = Duration(days: 7);
-          } else if (days <= 0) {
-            _diskEntryTtl = null; // disabled
-          } else {
-            _diskEntryTtl = Duration(days: days);
-          }
-        }
-        // TTL configuration read; suppressing output for cleanliness.
-      } catch (e) {
-        // Failed to read config; fall back to default silently.
-        _diskEntryTtl = Duration(days: 7);
-      }
-      // Ensure disk size constraints on startup (best-effort).
+      _loadDiskEntryTtl();
       scheduleMicrotask(() => _enforceDiskCacheSizeLimit());
       return dir;
     } catch (e, st) {
@@ -436,11 +322,155 @@ class ThumbnailCache {
           'Failed to ensure disk cache dir, falling back to system temp: $e',
           e,
           st);
-      // fallback to system temp directory
       final dir = Directory.systemTemp;
       _diskCacheDir = dir;
       return dir;
     }
+  }
+
+  Future<Directory> _findWritableCacheDir() async {
+    final resolvers = <Future<Directory?> Function()>[
+      _tryConfigAdjacentDir,
+      _tryAppSupportDir,
+      _platformFallbackDir,
+    ];
+
+    for (final resolver in resolvers) {
+      final candidate = await resolver();
+      if (candidate == null) continue;
+      try {
+        if (!await candidate.exists()) {
+          await candidate.create(recursive: true);
+        }
+        return candidate;
+      } catch (_) {
+        // If we cannot materialize this directory, continue to the next resolver.
+      }
+    }
+
+    throw StateError('Unable to create a writable thumbnail cache directory');
+  }
+
+  Future<Directory?> _tryConfigAdjacentDir() async {
+    if (!Platform.isLinux) return null;
+    try {
+      final cfg = OrionConfig();
+      final cfgPath = cfg.getConfigPath();
+      if (cfgPath.isEmpty) return null;
+      return Directory(p.join(cfgPath, 'thumbnail_cache'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Directory?> _tryAppSupportDir() async {
+    try {
+      final appSupport = await getApplicationSupportDirectory();
+      return Directory(p.join(appSupport.path, 'orion_thumbnail_cache'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Directory> _platformFallbackDir() async {
+    if (Platform.isLinux) {
+      final dataHome = Platform.environment['XDG_DATA_HOME'] ??
+          (Platform.environment['HOME'] != null
+              ? p.join(Platform.environment['HOME']!, '.local', 'share')
+              : null);
+      if (dataHome?.isNotEmpty == true) {
+        return Directory(p.join(dataHome!, 'orion', 'thumbnail_cache'));
+      }
+      final xdg = Platform.environment['XDG_CACHE_HOME'] ??
+          (Platform.environment['HOME'] != null
+              ? p.join(Platform.environment['HOME']!, '.cache')
+              : null);
+      if (xdg?.isNotEmpty == true) {
+        return Directory(p.join(xdg!, 'orion_thumbnail_cache'));
+      }
+      final tmp = await getTemporaryDirectory();
+      return Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
+    } else if (Platform.isMacOS) {
+      final home = Platform.environment['HOME'] ?? '.';
+      return Directory(
+          p.join(home, 'Library', 'Caches', 'orion_thumbnail_cache'));
+    } else if (Platform.isWindows) {
+      final local = Platform.environment['LOCALAPPDATA'] ??
+          Platform.environment['USERPROFILE'] ??
+          '.';
+      return Directory(p.join(local, 'orion_thumbnail_cache'));
+    }
+    final tmp = await getTemporaryDirectory();
+    return Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
+  }
+
+  Future<void> _migrateLegacyCaches(Directory dir) async {
+    if (!Platform.isLinux) return;
+    final legacyCandidates = <String>[];
+    final home = Platform.environment['HOME'];
+    final legacyXdg = Platform.environment['XDG_CACHE_HOME'] ??
+        (home != null ? p.join(home, '.cache') : null);
+    if (legacyXdg?.isNotEmpty == true) {
+      legacyCandidates.add(p.join(legacyXdg!, 'orion_thumbnail_cache'));
+    }
+    final legacyTmp = (await getTemporaryDirectory()).path;
+    legacyCandidates.add(p.join(legacyTmp, 'orion_thumbnail_cache'));
+
+    for (final cand in legacyCandidates) {
+      try {
+        final oldDir = Directory(cand);
+        if (!await oldDir.exists()) continue;
+        final files = oldDir.listSync().whereType<File>().toList();
+        for (final f in files) {
+          try {
+            final dest = File(p.join(dir.path, p.basename(f.path)));
+            if (!await dest.exists()) {
+              await f.rename(dest.path);
+            } else {
+              try {
+                await f.delete();
+              } catch (_) {}
+            }
+          } catch (_) {
+            // ignore individual file migration errors
+          }
+        }
+        try {
+          if (oldDir.listSync().isEmpty) await oldDir.delete();
+        } catch (_) {}
+      } catch (_) {
+        // ignore candidate errors
+      }
+    }
+  }
+
+  void _updateStartupPrefetchState(Directory dir) {
+    try {
+      final files = dir.listSync().whereType<File>();
+      if (files.isEmpty) {
+        _startupNeedsPrefetch = true;
+      }
+    } catch (_) {
+      // ignore listing errors
+    }
+  }
+
+  void _loadDiskEntryTtl() {
+    try {
+      final cfg = OrionConfig();
+      final ttlStr = cfg.getString('thumbnailDiskTtlDays', category: 'cache');
+      _diskEntryTtl = _parseTtl(ttlStr);
+    } catch (_) {
+      _diskEntryTtl = Duration(days: 7);
+    }
+  }
+
+  Duration? _parseTtl(String value) {
+    if (value.isEmpty) return Duration(days: 7);
+    final days = int.tryParse(value);
+    if (days == null) return Duration(days: 7);
+    if (days <= 0) return null;
+    return Duration(days: days);
   }
 
   String _diskFileNameForKey(String key) {

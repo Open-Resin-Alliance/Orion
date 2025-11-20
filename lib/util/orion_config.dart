@@ -235,6 +235,12 @@ class OrionConfig {
     }
   }
 
+  /// Return the resolved configuration directory path used by this
+  /// OrionConfig instance. This is a stable, runtime-detected directory
+  /// where packaged config files (orion.cfg/vendor.cfg) are located and
+  /// can be useful for locating other install-adjacent resources.
+  String getConfigPath() => _configPath;
+
   ThemeMode getThemeMode() {
     var config = _getConfig();
     var themeMode = config['general']?['themeMode'] ?? 'light';
