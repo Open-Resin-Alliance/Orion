@@ -83,8 +83,8 @@ class MaterialsScreenState extends State<MaterialsScreen> {
 
     screens.add(const CalibrationScreen());
     items.add(BottomNavigationBarItem(
-      icon: PhosphorIcon(PhosphorIcons.scales()),
-      activeIcon: PhosphorIcon(PhosphorIconsFill.scales,
+      icon: PhosphorIcon(PhosphorIcons.hourglassHigh()),
+      activeIcon: PhosphorIcon(PhosphorIconsFill.hourglassLow,
           color: Theme.of(context).colorScheme.primary),
       label: 'Calibration',
     ));
