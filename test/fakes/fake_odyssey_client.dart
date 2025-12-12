@@ -293,4 +293,10 @@ class FakeBackendClient implements BackendClient {
     // TODO: implement updateBackend
     throw UnimplementedError();
   }
+
+  @override
+  Future<Map<String, dynamic>?> getKinematicStatus() {
+    // TODO: implement getKinematicStatus
+    throw UnimplementedError();
+  }
 }

@@ -25,6 +25,7 @@ import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_kinematic_status.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
@@ -49,6 +50,7 @@ class StatusProvider extends ChangeNotifier {
   AnalyticsProvider? _analyticsProvider;
 
   StatusModel? _status;
+  AthenaKinematicStatus? _kinematicStatus;
   String? _deviceStatusMessage;
   int? _resinTemperature;
   double? _cpuTemperature;
@@ -74,6 +76,7 @@ class StatusProvider extends ChangeNotifier {
   /// "Peel Detection Started" are surfaced directly.
   String? get deviceStatusMessage => _deviceStatusMessage;
   StatusModel? get status => _status;
+  AthenaKinematicStatus? get kinematicStatus => _kinematicStatus;
 
   /// Current resin temperature reported by the backend (degrees Celsius).
   int? get resinTemperature => _resinTemperature;
@@ -1006,6 +1009,39 @@ class StatusProvider extends ChangeNotifier {
       // still forces a clean spinner until the job restarts.
 
       _status = parsed;
+      // Opportunistically fetch kinematic status via the BackendClient.
+      // This keeps the provider backend-agnostic: adapters that support a
+      // kinematic endpoint may return a Map payload; others return null.
+      Future(() async {
+        try {
+          final kinMap = await _client.getKinematicStatus();
+          if (!_disposed) {
+            if (kinMap == null) {
+              if (_kinematicStatus != null) {
+                _kinematicStatus = null;
+                notifyListeners();
+              }
+            } else {
+              try {
+                final kin = AthenaKinematicStatus.fromJson(
+                    Map<String, dynamic>.from(kinMap));
+                if (_kinematicStatus == null ||
+                    _kinematicStatus!.homed != kin.homed ||
+                    (_kinematicStatus!.position - kin.position).abs() > 0.001) {
+                  _kinematicStatus = kin;
+                  notifyListeners();
+                }
+              } catch (e, st) {
+                _log.fine(
+                    'Failed to parse kinematic status from backend', e, st);
+              }
+            }
+          }
+        } catch (e, st) {
+          _log.fine(
+              'Failed to fetch kinematic status via BackendClient', e, st);
+        }
+      });
       _error = null;
       _loading = false;
       _everHadSuccessfulStatus = true;

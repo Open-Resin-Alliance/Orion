@@ -277,6 +277,13 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>?> getKinematicStatus() async {
+    // Simulated backend has no kinematic status; return null to indicate
+    // unsupported.
+    return null;
+  }
+
+  @override
   Stream<Map<String, dynamic>> getStatusStream() => _statusController.stream;
 
   @override
@@ -398,7 +405,7 @@ class NanoDlpSimulatedClient implements BackendClient {
     // TODO: implement updateBackend
     throw UnimplementedError();
   }
-  
+
   @override
   Future setChamberTemperature(double temperature) {
     // TODO: implement setChamberTemperature

@@ -212,7 +212,7 @@ class ManualProvider extends ChangeNotifier {
 
   Future<bool> emergencyStop() async {
     _log.info('emergencyStop');
-    if (_busy) return false;
+    // Emergency stop should override busy state
     _busy = true;
     _error = null;
     notifyListeners();
