@@ -24,6 +24,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/move_z_screen.dart';
 import 'package:orion/tools/exposure_screen.dart';
 import 'package:orion/tools/force_screen.dart';
+import 'package:orion/tools/leveling_screen.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 
 class ToolsScreen extends StatefulWidget {
@@ -59,10 +60,12 @@ class ToolsScreenState extends State<ToolsScreen> {
         body: _selectedIndex == 0
             ? const MoveZScreen()
             : _selectedIndex == 1
-                ? const ExposureScreen()
+                ? const LevelingScreen()
                 : _selectedIndex == 2
-                    ? const ForceSensorScreen()
-                    : const MoveZScreen(),
+                    ? const ExposureScreen()
+                    : _selectedIndex == 3
+                        ? const ForceSensorScreen()
+                        : const MoveZScreen(),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           items: <BottomNavigationBarItem>[
@@ -73,6 +76,14 @@ class ToolsScreenState extends State<ToolsScreen> {
                 color: Theme.of(context).colorScheme.primary,
               ),
               label: 'Move Z',
+            ),
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.scales()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.scales,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              label: 'Leveling',
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),
