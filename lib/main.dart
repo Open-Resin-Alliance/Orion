@@ -30,6 +30,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:orion/util/install_locator.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'package:window_size/window_size.dart';
 
 import 'package:orion/files/files_screen.dart';
@@ -70,6 +71,11 @@ void main() {
       setWindowMaxSize(const Size(800, 800));
     }
   }
+
+  VideoPlayerMediaKit.ensureInitialized(
+    macOS: true,
+    linux: true,
+  );
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
