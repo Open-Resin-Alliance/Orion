@@ -30,7 +30,9 @@ jobs:
 
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: gtk+-3.0
+          packages: |
+            gtk+-3.0
+            libasound2-dev
 
       - run: flutter pub global activate flutterpi_tool
 
