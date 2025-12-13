@@ -1891,6 +1891,20 @@ class NanoDlpHttpClient implements BackendClient {
       return null;
     }
   }
+
+  @override
+  Future<bool> resetZOffset() {
+    manualCommand('CLEAR_Z_OFFSET');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool> setZOffset(double offset) {
+    manualCommand(
+      'APPLY_AND_SAVE_Z_OFFSET OFFSET=${offset.toStringAsFixed(2)}',
+    );
+    return Future.value(true);
+  }
 }
 
 class _TimeoutHttpClient extends http.BaseClient {

@@ -56,6 +56,13 @@ class StatusProvider extends ChangeNotifier {
   double? _cpuTemperature;
   Duration? _prevLayerDuration;
 
+  // When true, kinematic status is polled continuously (useful for wizard
+  // screens that need to detect when homing/moving completes). When false,
+  // kinematic status is only fetched on-demand via refreshKinematicStatus().
+  bool _continuousKinematicPolling = false;
+  Timer? _kinematicPollTimer;
+  static const Duration _kinematicPollInterval = Duration(milliseconds: 500);
+
   /// When printing, we may surface the live current-layer time reported via
   /// NanoDLP analytics (key: 'LayerTime'). When available, we prefer this
   /// value for UI responsiveness during an active print. This is stored
@@ -712,6 +719,70 @@ class StatusProvider extends ChangeNotifier {
 
   bool _kinematicFetchInFlight = false;
 
+  /// Enable or disable continuous kinematic polling.
+  ///
+  /// When enabled, kinematic status is polled every 500ms automatically.
+  /// Use this for wizard screens that need to detect when homing/moving
+  /// completes. When disabled (default), use [refreshKinematicStatus] to
+  /// fetch status on-demand (e.g., after button presses).
+  void setContinuousKinematicPolling(bool enabled) {
+    if (_continuousKinematicPolling == enabled) return;
+    _continuousKinematicPolling = enabled;
+    _log.fine('Continuous kinematic polling: $enabled');
+    if (enabled) {
+      _startKinematicPolling();
+    } else {
+      _stopKinematicPolling();
+    }
+  }
+
+  /// Whether continuous kinematic polling is currently enabled.
+  bool get isContinuousKinematicPollingEnabled => _continuousKinematicPolling;
+
+  void _startKinematicPolling() {
+    if (_kinematicPollTimer != null || _disposed) return;
+    _log.fine('Starting kinematic polling timer');
+    // Fetch immediately, then on interval
+    refreshKinematicStatus();
+    _kinematicPollTimer =
+        Timer.periodic(_kinematicPollInterval, (_) => refreshKinematicStatus());
+  }
+
+  void _stopKinematicPolling() {
+    _kinematicPollTimer?.cancel();
+    _kinematicPollTimer = null;
+    _log.fine('Stopped kinematic polling timer');
+  }
+
+  /// Explicitly refresh kinematic status (Z position, offset, homed state).
+  /// Call this after button presses that affect Z position instead of relying
+  /// on continuous polling. Returns the updated status or null on error.
+  Future<AthenaKinematicStatus?> refreshKinematicStatus() async {
+    if (_kinematicFetchInFlight || _disposed) return _kinematicStatus;
+    _kinematicFetchInFlight = true;
+    try {
+      final kinMap = await _client.getKinematicStatus();
+      if (_disposed) return _kinematicStatus;
+      if (kinMap == null) {
+        if (_kinematicStatus != null) {
+          _kinematicStatus = null;
+          notifyListeners();
+        }
+        return null;
+      }
+      final kin =
+          AthenaKinematicStatus.fromJson(Map<String, dynamic>.from(kinMap));
+      _kinematicStatus = kin;
+      notifyListeners();
+      return kin;
+    } catch (e, st) {
+      _log.fine('Failed to refresh kinematic status', e, st);
+      return _kinematicStatus;
+    } finally {
+      _kinematicFetchInFlight = false;
+    }
+  }
+
   /// Fetch the latest status snapshot from the backend. This method is
   /// re-entrancy guarded and performs the following at a high level:
   /// - parses the payload into `StatusModel`
@@ -1011,45 +1082,9 @@ class StatusProvider extends ChangeNotifier {
       // still forces a clean spinner until the job restarts.
 
       _status = parsed;
-      // Opportunistically fetch kinematic status via the BackendClient.
-      // This keeps the provider backend-agnostic: adapters that support a
-      // kinematic endpoint may return a Map payload; others return null.
-      if (!_kinematicFetchInFlight) {
-        _kinematicFetchInFlight = true;
-        Future(() async {
-          try {
-            final kinMap = await _client.getKinematicStatus();
-            if (!_disposed) {
-              if (kinMap == null) {
-                if (_kinematicStatus != null) {
-                  _kinematicStatus = null;
-                  notifyListeners();
-                }
-              } else {
-                try {
-                  final kin = AthenaKinematicStatus.fromJson(
-                      Map<String, dynamic>.from(kinMap));
-                  if (_kinematicStatus == null ||
-                      _kinematicStatus!.homed != kin.homed ||
-                      (_kinematicStatus!.position - kin.position).abs() >
-                          0.001) {
-                    _kinematicStatus = kin;
-                    notifyListeners();
-                  }
-                } catch (e, st) {
-                  _log.fine(
-                      'Failed to parse kinematic status from backend', e, st);
-                }
-              }
-            }
-          } catch (e, st) {
-            _log.fine(
-                'Failed to fetch kinematic status via BackendClient', e, st);
-          } finally {
-            _kinematicFetchInFlight = false;
-          }
-        });
-      }
+      // Kinematic status (Z position, offset, homed) is not polled
+      // continuously to reduce backend load. Screens that need it should call
+      // refreshKinematicStatus() explicitly (e.g. after button presses).
       _error = null;
       _loading = false;
       _everHadSuccessfulStatus = true;
@@ -1486,6 +1521,7 @@ class StatusProvider extends ChangeNotifier {
     try {
       _backoffTimer?.cancel();
     } catch (_) {}
+    _stopKinematicPolling();
     super.dispose();
   }
 }

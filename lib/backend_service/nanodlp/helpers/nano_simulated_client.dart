@@ -504,4 +504,16 @@ class NanoDlpSimulatedClient implements BackendClient {
     startPrint('', '');
     return false;
   }
+
+  @override
+  Future<bool> resetZOffset() {
+    // TODO: implement resetZOffset
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> setZOffset(double offset) {
+    // TODO: implement setZOffset
+    throw UnimplementedError();
+  }
 }

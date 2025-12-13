@@ -191,4 +191,12 @@ abstract class BackendClient {
   /// doesn't report calibration progress correctly.
   /// Returns null if unable to determine.
   Future<bool?> isCalibrationPlateProcessed();
+
+  /// Set Z offset if supported by the backend.
+  /// Returns a boolean indicating success or failure.
+  Future<bool> setZOffset(double offset);
+
+  /// Reset Z offset to default if supported by the backend.
+  /// Returns a boolean indicating success or failure.
+  Future<bool> resetZOffset();
 }

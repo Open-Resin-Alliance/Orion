@@ -293,4 +293,10 @@ class BackendService implements BackendClient {
   @override
   Future<bool?> isCalibrationPlateProcessed() =>
       _delegate.isCalibrationPlateProcessed();
+
+  @override
+  Future<bool> resetZOffset() => _delegate.resetZOffset();
+
+  @override
+  Future<bool> setZOffset(double offset) => _delegate.setZOffset(offset);
 }
