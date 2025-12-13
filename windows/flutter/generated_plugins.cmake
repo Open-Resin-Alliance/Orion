@@ -3,8 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  media_kit_libs_windows_video
-  media_kit_video
+  fvp
   permission_handler_windows
   url_launcher_windows
   window_size

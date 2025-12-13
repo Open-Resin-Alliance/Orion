@@ -23,6 +23,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
@@ -30,7 +31,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:orion/util/install_locator.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'package:window_size/window_size.dart';
 
 import 'package:orion/files/files_screen.dart';
@@ -72,10 +72,9 @@ void main() {
     }
   }
 
-  VideoPlayerMediaKit.ensureInitialized(
-    macOS: true,
-    linux: true,
-  );
+  fvp.registerWith(options: {
+    'platforms': ['windows', 'linux']
+  });
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
