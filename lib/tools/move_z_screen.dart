@@ -200,7 +200,7 @@ class MoveZScreenState extends State<MoveZScreen> {
   }
 
   Widget buildChoiceCards(BuildContext context) {
-    final values = [0.025, 0.1, 1.0, 50.0];
+    final values = [0.1, 1.0, 10.0, 100.0];
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: List.generate(values.length, (index) {
@@ -334,117 +334,6 @@ class MoveZScreenState extends State<MoveZScreen> {
         Expanded(
           child: Consumer<ManualProvider>(
             builder: (context, manual, _) {
-              return FutureBuilder<bool>(
-                future: manual.canMoveToTop(),
-                builder: (ctx, snap) {
-                  final supportsTop = snap.data == true;
-                  final enabled = !_apiErrorState &&
-                      !manual.busy &&
-                      (maxZ > 0.0 || supportsTop);
-                  // Primary button: automatically chooses between Move to Floor
-                  // and Move to Top based on vendor config (isHomePositionUp)
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: GlassButton(
-                          onPressed: !enabled
-                              ? null
-                              : () async {
-                                  try {
-                                    final cfg = OrionConfig();
-                                    if (cfg.isHomePositionUp()) {
-                                      _logger.info(
-                                          'Moving to Floor via moveToFloor()');
-                                      final ok = await manual.moveToFloor();
-                                      if (!ok) _safeShowError('GOLDEN-APE');
-                                    } else if (supportsTop) {
-                                      _logger.info(
-                                          'Moving to device Top via moveToTop()');
-                                      final ok = await manual.moveToTop();
-                                      if (!ok) _safeShowError('GOLDEN-APE');
-                                    } else {
-                                      _logger
-                                          .info('Moving to ZMAX (maxZ=$maxZ)');
-                                      final ok = await manual.move(maxZ);
-                                      if (!ok) _safeShowError('GOLDEN-APE');
-                                    }
-                                  } catch (e) {
-                                    if (!mounted) return;
-                                    _safeShowError('GOLDEN-APE');
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            minimumSize:
-                                const Size(double.infinity, double.infinity),
-                          ),
-                          child: Builder(builder: (ctx) {
-                            final cfg = OrionConfig();
-                            final topLabel =
-                                cfg.isHomePositionUp() ? 'Floor' : 'Top';
-                            final icon = cfg.isHomePositionUp()
-                                ? PhosphorIcon(PhosphorIcons.arrowDown(),
-                                    size: 26)
-                                : PhosphorIcon(PhosphorIcons.arrowUp(),
-                                    size: 26);
-                            return Row(
-                              children: [
-                                const SizedBox(width: 12),
-                                icon,
-                                Expanded(
-                                  child: AutoSizeText(
-                                    topLabel,
-                                    style: const TextStyle(fontSize: 24),
-                                    minFontSize: 16,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            );
-                          }),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: GlassButton(
-                          onPressed: !_apiErrorState && !manual.busy
-                              ? () async {
-                                  // TODO: add temporary command
-                                  manual.manualCommand('');
-                                }
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            minimumSize:
-                                const Size(double.infinity, double.infinity),
-                          ),
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 12),
-                              PhosphorIcon(PhosphorIcons.wrench(), size: 26),
-                              const Expanded(
-                                child: AutoSizeText(
-                                  'Z = 0',
-                                  style: TextStyle(fontSize: 24),
-                                  minFontSize: 16,
-                                  maxLines: 1,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 25),
-        Expanded(
-          child: Consumer<ManualProvider>(
-            builder: (context, manual, _) {
               return GlassButton(
                 onPressed: _apiErrorState || manual.busy
                     ? null
@@ -496,6 +385,100 @@ class MoveZScreenState extends State<MoveZScreen> {
                     ),
                   ],
                 ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 25),
+        Expanded(
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return FutureBuilder<bool>(
+                future: manual.canMoveToTop(),
+                builder: (ctx, snap) {
+                  final supportsTop = snap.data == true;
+                  final enabled = !_apiErrorState &&
+                      !manual.busy &&
+                      (maxZ > 0.0 || supportsTop);
+                  // Primary button: automatically chooses between Move to Floor
+                  // and Move to Top based on vendor config (isHomePositionUp)
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: GlassButton(
+                          onPressed: !enabled
+                              ? null
+                              : () async {
+                                  try {
+                                    final cfg = OrionConfig();
+                                    if (cfg.isHomePositionUp()) {
+                                      _logger.info(
+                                          'Moving to Floor via moveToFloor()');
+                                      final ok = await manual.moveToFloor();
+                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                    } else if (supportsTop) {
+                                      _logger.info(
+                                          'Moving to device Top via moveToTop()');
+                                      final ok = await manual.moveToTop();
+                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                    } else {
+                                      _logger
+                                          .info('Moving to ZMAX (maxZ=$maxZ)');
+                                      final ok = await manual.move(maxZ);
+                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                    }
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    _safeShowError('GOLDEN-APE');
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            minimumSize:
+                                const Size(double.infinity, double.infinity),
+                          ),
+                          child: Builder(builder: (ctx) {
+                            final cfg = OrionConfig();
+                            final topLabel = cfg.isHomePositionUp()
+                                ? 'Move to Floor'
+                                : 'Move to Top';
+                            final icon = cfg.isHomePositionUp()
+                                ? PhosphorIcon(PhosphorIcons.arrowDown(),
+                                    size: 26)
+                                : PhosphorIcon(PhosphorIcons.arrowUp(),
+                                    size: 26);
+                            return Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                icon,
+                                Expanded(
+                                  child: AutoSizeText(
+                                    topLabel,
+                                    style: const TextStyle(fontSize: 24),
+                                    minFontSize: 20,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                    overflowReplacement: Padding(
+                                      padding:
+                                          const EdgeInsets.only(right: 20.0),
+                                      child: Center(
+                                        child: Text(
+                                          topLabel == 'Move to Floor'
+                                              ? 'Floor'
+                                              : 'Top',
+                                          style: const TextStyle(fontSize: 24),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               );
             },
           ),

@@ -23,6 +23,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
@@ -70,6 +71,10 @@ void main() {
       setWindowMaxSize(const Size(800, 800));
     }
   }
+
+  fvp.registerWith(options: {
+    'platforms': ['windows', 'linux']
+  });
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);

@@ -134,6 +134,10 @@ class BackendService implements BackendClient {
       _delegate.getNotifications();
 
   @override
+  Future<Map<String, dynamic>?> getKinematicStatus() =>
+      _delegate.getKinematicStatus();
+
+  @override
   Future<void> disableNotification(int timestamp) =>
       _delegate.disableNotification(timestamp);
 
@@ -231,7 +235,7 @@ class BackendService implements BackendClient {
 
   @override
   Future<dynamic> updateBackend() => _delegate.updateBackend();
-  
+
   @override
   Future setChamberTemperature(double temperature) =>
       _delegate.setChamberTemperature(temperature);
@@ -289,4 +293,10 @@ class BackendService implements BackendClient {
   @override
   Future<bool?> isCalibrationPlateProcessed() =>
       _delegate.isCalibrationPlateProcessed();
+
+  @override
+  Future<bool> resetZOffset() => _delegate.resetZOffset();
+
+  @override
+  Future<bool> setZOffset(double offset) => _delegate.setZOffset(offset);
 }

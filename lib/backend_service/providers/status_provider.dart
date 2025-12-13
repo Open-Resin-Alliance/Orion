@@ -25,6 +25,7 @@ import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_kinematic_status.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
@@ -49,10 +50,18 @@ class StatusProvider extends ChangeNotifier {
   AnalyticsProvider? _analyticsProvider;
 
   StatusModel? _status;
+  AthenaKinematicStatus? _kinematicStatus;
   String? _deviceStatusMessage;
   int? _resinTemperature;
   double? _cpuTemperature;
   Duration? _prevLayerDuration;
+
+  // When true, kinematic status is polled continuously (useful for wizard
+  // screens that need to detect when homing/moving completes). When false,
+  // kinematic status is only fetched on-demand via refreshKinematicStatus().
+  bool _continuousKinematicPolling = false;
+  Timer? _kinematicPollTimer;
+  static const Duration _kinematicPollInterval = Duration(milliseconds: 500);
 
   /// When printing, we may surface the live current-layer time reported via
   /// NanoDLP analytics (key: 'LayerTime'). When available, we prefer this
@@ -74,6 +83,7 @@ class StatusProvider extends ChangeNotifier {
   /// "Peel Detection Started" are surfaced directly.
   String? get deviceStatusMessage => _deviceStatusMessage;
   StatusModel? get status => _status;
+  AthenaKinematicStatus? get kinematicStatus => _kinematicStatus;
 
   /// Current resin temperature reported by the backend (degrees Celsius).
   int? get resinTemperature => _resinTemperature;
@@ -707,6 +717,105 @@ class StatusProvider extends ChangeNotifier {
     // Event buffer removed; nothing to clear here.
   }
 
+  bool _kinematicFetchInFlight = false;
+
+  /// Enable or disable continuous kinematic polling.
+  ///
+  /// When enabled, kinematic status is polled every 500ms automatically.
+  /// Use this for wizard screens that need to detect when homing/moving
+  /// completes. When disabled (default), use [refreshKinematicStatus] to
+  /// fetch status on-demand (e.g., after button presses).
+  void setContinuousKinematicPolling(bool enabled) {
+    if (_continuousKinematicPolling == enabled) return;
+    _continuousKinematicPolling = enabled;
+    _log.fine('Continuous kinematic polling: $enabled');
+    if (enabled) {
+      _startKinematicPolling();
+    } else {
+      _stopKinematicPolling();
+    }
+  }
+
+  /// Whether continuous kinematic polling is currently enabled.
+  bool get isContinuousKinematicPollingEnabled => _continuousKinematicPolling;
+
+  void _startKinematicPolling() {
+    if (_kinematicPollTimer != null || _disposed) return;
+    _log.fine('Starting kinematic polling timer');
+    // Fetch immediately, then on interval
+    refreshKinematicStatus();
+    _kinematicPollTimer =
+        Timer.periodic(_kinematicPollInterval, (_) => refreshKinematicStatus());
+  }
+
+  void _stopKinematicPolling() {
+    _kinematicPollTimer?.cancel();
+    _kinematicPollTimer = null;
+    _log.fine('Stopped kinematic polling timer');
+  }
+
+  /// Manually clears the homed status. This is useful when an emergency stop
+  /// or other event is known to invalidate the homed state, even if the
+  /// backend hasn't reported it yet.
+  void clearHomedStatus() {
+    if (_kinematicStatus != null) {
+      _kinematicStatus = AthenaKinematicStatus(
+        homed: false,
+        offset: _kinematicStatus!.offset,
+        position: _kinematicStatus!.position,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      notifyListeners();
+    }
+  }
+
+  /// Explicitly refresh kinematic status (Z position, offset, homed state).
+  /// Call this after button presses that affect Z position instead of relying
+  /// on continuous polling. Returns the updated status or null on error.
+  Future<AthenaKinematicStatus?> refreshKinematicStatus(
+      {int maxAttempts = 3}) async {
+    if (_kinematicFetchInFlight || _disposed) return _kinematicStatus;
+    _kinematicFetchInFlight = true;
+
+    int attempts = 0;
+
+    try {
+      while (attempts < maxAttempts) {
+        attempts++;
+        try {
+          final kinMap = await _client.getKinematicStatus();
+          if (_disposed) return _kinematicStatus;
+
+          if (kinMap != null) {
+            final kin = AthenaKinematicStatus.fromJson(
+                Map<String, dynamic>.from(kinMap));
+            _kinematicStatus = kin;
+            notifyListeners();
+            return kin;
+          }
+          _log.warning(
+              'Kinematic status fetch attempt $attempts/$maxAttempts returned null');
+        } catch (e, st) {
+          _log.warning(
+              'Kinematic status fetch attempt $attempts/$maxAttempts failed',
+              e,
+              st);
+        }
+
+        if (attempts < maxAttempts) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (_disposed) return _kinematicStatus;
+        }
+      }
+
+      _log.warning(
+          'All $maxAttempts kinematic status fetch attempts failed; keeping last known status.');
+      return _kinematicStatus;
+    } finally {
+      _kinematicFetchInFlight = false;
+    }
+  }
+
   /// Fetch the latest status snapshot from the backend. This method is
   /// re-entrancy guarded and performs the following at a high level:
   /// - parses the payload into `StatusModel`
@@ -1006,6 +1115,9 @@ class StatusProvider extends ChangeNotifier {
       // still forces a clean spinner until the job restarts.
 
       _status = parsed;
+      // Kinematic status (Z position, offset, homed) is not polled
+      // continuously to reduce backend load. Screens that need it should call
+      // refreshKinematicStatus() explicitly (e.g. after button presses).
       _error = null;
       _loading = false;
       _everHadSuccessfulStatus = true;
@@ -1442,6 +1554,7 @@ class StatusProvider extends ChangeNotifier {
     try {
       _backoffTimer?.cancel();
     } catch (_) {}
+    _stopKinematicPolling();
     super.dispose();
   }
 }

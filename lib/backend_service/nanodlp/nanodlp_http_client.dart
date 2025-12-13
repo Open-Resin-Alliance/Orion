@@ -58,6 +58,13 @@ class NanoDlpHttpClient implements BackendClient {
   static const Duration _thumbnailPlaceholderCacheTtl = Duration(seconds: 5);
   final Map<String, _ThumbnailCacheEntry> _thumbnailCache = {};
   final Map<String, Future<_ThumbnailCacheEntry>> _thumbnailInFlight = {};
+  // Cache for opportunistic Athena kinematic status to avoid hammering the
+  // Athena endpoint when StatusProvider polls frequently. TTL is small so
+  // UI sees near-real-time values but the Athena client isn't called every
+  // single poll.
+  Map<String, dynamic>? _kinematicCache;
+  DateTime? _kinematicCacheTime;
+  static const Duration _kinematicCacheTtl = Duration(seconds: 2);
 
   NanoDlpHttpClient(
       {http.Client Function()? clientFactory, Duration? requestTimeout})
@@ -255,6 +262,38 @@ class NanoDlpHttpClient implements BackendClient {
         // ignore and continue
       }
       await Future.delayed(pollInterval);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getKinematicStatus() async {
+    // Return cached value when recent to avoid calling Athena every poll.
+    try {
+      if (_kinematicCache != null && _kinematicCacheTime != null) {
+        final age = DateTime.now().difference(_kinematicCacheTime!);
+        if (age <= _kinematicCacheTtl) {
+          return _kinematicCache;
+        }
+      }
+
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      // Use a longer timeout (10s) for kinematic status as the endpoint can be slow
+      final athena = AthenaIotClient(baseNoSlash,
+          clientFactory: _clientFactory,
+          requestTimeout: const Duration(seconds: 10));
+      final kin = await athena.getKinematicStatusModel();
+      if (kin == null) {
+        _kinematicCache = null;
+        _kinematicCacheTime = DateTime.now();
+        return null;
+      }
+      final map = kin.toJson();
+      _kinematicCache = map;
+      _kinematicCacheTime = DateTime.now();
+      return map;
+    } catch (e) {
+      // Silent failure: avoid logging to keep polling quiet.
+      return null;
     }
   }
 
@@ -490,6 +529,14 @@ class NanoDlpHttpClient implements BackendClient {
             final athenaFlagsModel = await athena.getFeatureFlagsModel();
             if (athenaFlagsModel != null) {
               vendor['athena_feature_flags'] = athenaFlagsModel.toJson();
+            }
+            try {
+              final athenaKinematic = await athena.getKinematicStatusModel();
+              if (athenaKinematic != null) {
+                vendor['athena_kinematic_status'] = athenaKinematic.toJson();
+              }
+            } catch (e, st) {
+              _log.fine('Ignoring athena kinematic fetch failure', e, st);
             }
           } catch (e, st) {
             _log.fine('Ignoring athena IoT enrichment failure', e, st);
@@ -1374,7 +1421,7 @@ class NanoDlpHttpClient implements BackendClient {
       rethrow;
     }
   }
-  
+
   @override
   Future setChamberTemperature(double temperature) async {
     try {
@@ -1845,6 +1892,20 @@ class NanoDlpHttpClient implements BackendClient {
       _log.warning('Error checking calibration plate status: $e');
       return null;
     }
+  }
+
+  @override
+  Future<bool> resetZOffset() {
+    manualCommand('CLEAR_Z_OFFSET');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool> setZOffset(double offset) {
+    manualCommand(
+      'APPLY_AND_SAVE_Z_OFFSET OFFSET=${offset.toStringAsFixed(2)}',
+    );
+    return Future.value(true);
   }
 }
 

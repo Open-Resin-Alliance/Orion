@@ -236,12 +236,12 @@ class _StartupScreenState extends State<StartupScreen>
   String _resolveLogoAsset(String vendorLogo) {
     switch (vendorLogo) {
       case 'c3d':
-        return 'assets/images/c3d.svg';
+        return 'assets/images/concepts_3d/c3d.svg';
       case 'athena':
-        return 'assets/images/athena_logo.svg';
+        return 'assets/images/concepts_3d/athena_logo.svg';
       case 'ora':
       default:
-        return 'assets/images/open_resin_alliance_logo_darkmode.png';
+        return 'assets/images/ora/open_resin_alliance_logo_darkmode.png';
     }
   }
 

@@ -22,6 +22,7 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'models/athena_printer_data.dart';
 import 'models/athena_feature_flags.dart';
+import 'models/athena_kinematic_status.dart';
 
 class AthenaIotClient {
   AthenaIotClient(this.baseUrl,
@@ -104,6 +105,41 @@ class AthenaIotClient {
       return AthenaFeatureFlags.fromJson(raw);
     } catch (e, st) {
       _log.fine('Failed to parse Athena feature_flags into model', e, st);
+      return null;
+    }
+  }
+
+  /// Raw fetch of kinematic status endpoint.
+  Future<Map<String, dynamic>> getKinematicStatus() async {
+    try {
+      final baseNoSlash = baseUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/athena-iot/status/kinematic');
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) return <String, dynamic>{};
+        final decoded = json.decode(resp.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+        return <String, dynamic>{};
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      // Silent failure: return empty map on any error to keep callers simple
+      // without emitting logs during frequent polling.
+      return <String, dynamic>{};
+    }
+  }
+
+  /// Typed parser for kinematic status returning an [AthenaKinematicStatus].
+  Future<AthenaKinematicStatus?> getKinematicStatusModel() async {
+    final raw = await getKinematicStatus();
+    try {
+      if (raw.isEmpty) return null;
+      return AthenaKinematicStatus.fromJson(raw);
+    } catch (e) {
+      // Silent parse failure: return null.
       return null;
     }
   }
