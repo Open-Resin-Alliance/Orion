@@ -710,6 +710,8 @@ class StatusProvider extends ChangeNotifier {
     // Event buffer removed; nothing to clear here.
   }
 
+  bool _kinematicFetchInFlight = false;
+
   /// Fetch the latest status snapshot from the backend. This method is
   /// re-entrancy guarded and performs the following at a high level:
   /// - parses the payload into `StatusModel`
@@ -1012,36 +1014,42 @@ class StatusProvider extends ChangeNotifier {
       // Opportunistically fetch kinematic status via the BackendClient.
       // This keeps the provider backend-agnostic: adapters that support a
       // kinematic endpoint may return a Map payload; others return null.
-      Future(() async {
-        try {
-          final kinMap = await _client.getKinematicStatus();
-          if (!_disposed) {
-            if (kinMap == null) {
-              if (_kinematicStatus != null) {
-                _kinematicStatus = null;
-                notifyListeners();
-              }
-            } else {
-              try {
-                final kin = AthenaKinematicStatus.fromJson(
-                    Map<String, dynamic>.from(kinMap));
-                if (_kinematicStatus == null ||
-                    _kinematicStatus!.homed != kin.homed ||
-                    (_kinematicStatus!.position - kin.position).abs() > 0.001) {
-                  _kinematicStatus = kin;
+      if (!_kinematicFetchInFlight) {
+        _kinematicFetchInFlight = true;
+        Future(() async {
+          try {
+            final kinMap = await _client.getKinematicStatus();
+            if (!_disposed) {
+              if (kinMap == null) {
+                if (_kinematicStatus != null) {
+                  _kinematicStatus = null;
                   notifyListeners();
                 }
-              } catch (e, st) {
-                _log.fine(
-                    'Failed to parse kinematic status from backend', e, st);
+              } else {
+                try {
+                  final kin = AthenaKinematicStatus.fromJson(
+                      Map<String, dynamic>.from(kinMap));
+                  if (_kinematicStatus == null ||
+                      _kinematicStatus!.homed != kin.homed ||
+                      (_kinematicStatus!.position - kin.position).abs() >
+                          0.001) {
+                    _kinematicStatus = kin;
+                    notifyListeners();
+                  }
+                } catch (e, st) {
+                  _log.fine(
+                      'Failed to parse kinematic status from backend', e, st);
+                }
               }
             }
+          } catch (e, st) {
+            _log.fine(
+                'Failed to fetch kinematic status via BackendClient', e, st);
+          } finally {
+            _kinematicFetchInFlight = false;
           }
-        } catch (e, st) {
-          _log.fine(
-              'Failed to fetch kinematic status via BackendClient', e, st);
-        }
-      });
+        });
+      }
       _error = null;
       _loading = false;
       _everHadSuccessfulStatus = true;
