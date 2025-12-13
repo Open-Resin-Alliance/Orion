@@ -28,6 +28,7 @@ import 'package:logging/logging.dart';
 import 'package:orion/tools/leveling_configs.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:video_player/video_player.dart';
+import 'package:orion/tools/manual_leveling_screen.dart';
 
 class LevelingScreen extends StatelessWidget {
   const LevelingScreen({super.key});
@@ -230,6 +231,7 @@ class LevelingScreen extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(
               child: GlassCard(
+                accentColor: accent,
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
@@ -239,7 +241,7 @@ class LevelingScreen extends StatelessWidget {
                         children: [
                           Icon(
                             PhosphorIconsFill.wrench,
-                            color: Colors.grey,
+                            color: accent,
                             size: 28,
                           ),
                           const SizedBox(width: 16),
@@ -250,7 +252,6 @@ class LevelingScreen extends StatelessWidget {
                                   .textTheme
                                   .headlineMedium
                                   ?.copyWith(
-                                    color: Colors.grey,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 24,
                                   ),
@@ -266,7 +267,6 @@ class LevelingScreen extends StatelessWidget {
                               .textTheme
                               .headlineSmall
                               ?.copyWith(
-                                color: Colors.grey.shade500,
                                 height: 1.4,
                                 fontSize: 20,
                               ),
@@ -280,8 +280,12 @@ class LevelingScreen extends StatelessWidget {
                           scale: 1.3,
                           icon: const Icon(PhosphorIconsFill.wrench),
                           label: 'Manual Mode',
-                          tint: GlassButtonTint.neutral,
-                          onPressed: null,
+                          tint: GlassButtonTint.positive,
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              _buildOverlayRoute(const ManualLevelingScreen()),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -469,7 +473,7 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
               activeColor: Colors.greenAccent,
               value: _haveRemovedResin,
               onChanged: (v) => setState(() => _haveRemovedResin = v ?? false),
-              title: Text('Remove the resin vat and safely set it aside safely',
+              title: Text('Remove the resin vat and safely set it aside',
                   style: textStyle),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
