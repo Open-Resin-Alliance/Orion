@@ -35,6 +35,7 @@ jobs:
             mpv
             libasound2-dev
             libmpv-dev
+            libblas-dev
 
       - run: flutter pub global activate flutterpi_tool
 
