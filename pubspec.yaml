@@ -73,9 +73,9 @@ dependencies:
   fl_chart: ^1.1.1
   video_player: ^2.10.1
   media_kit: ^1.2.5 # Primary package.
-  media_kit_video: ^1.3.1 # For video rendering.
+  media_kit_video: ^2.0.1 # For video rendering.
   media_kit_libs_video: ^1.0.7 # Native video dependencie
-  video_player_media_kit: ^1.0.7
+  video_player_media_kit: ^2.0.0
   media_kit_libs_macos_video: any
   media_kit_libs_linux: any
 
