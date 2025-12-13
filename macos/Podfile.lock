@@ -5,12 +5,6 @@ PODS:
     - FlutterMacOS
     - mdk (~> 0.35.0)
   - mdk (0.35.0)
-  - media_kit_libs_macos_video (1.0.4):
-    - FlutterMacOS
-  - media_kit_video (0.0.1):
-    - FlutterMacOS
-  - package_info_plus (0.0.1):
-    - FlutterMacOS
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -19,8 +13,6 @@ PODS:
   - video_player_avfoundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - wakelock_plus (0.0.1):
-    - FlutterMacOS
   - window_size (0.0.2):
     - FlutterMacOS
 
@@ -28,13 +20,9 @@ DEPENDENCIES:
   - FlutterMacOS (from `Flutter/ephemeral`)
   - fvp (from `Flutter/ephemeral/.symlinks/plugins/fvp/darwin`)
   - mdk (from `LocalPods/mdk/mdk.podspec`)
-  - media_kit_libs_macos_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_libs_macos_video/macos`)
-  - media_kit_video (from `Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos`)
-  - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
   - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
   - video_player_avfoundation (from `Flutter/ephemeral/.symlinks/plugins/video_player_avfoundation/darwin`)
-  - wakelock_plus (from `Flutter/ephemeral/.symlinks/plugins/wakelock_plus/macos`)
   - window_size (from `Flutter/ephemeral/.symlinks/plugins/window_size/macos`)
 
 EXTERNAL SOURCES:
@@ -44,20 +32,12 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/fvp/darwin
   mdk:
     :podspec: LocalPods/mdk/mdk.podspec
-  media_kit_libs_macos_video:
-    :path: Flutter/ephemeral/.symlinks/plugins/media_kit_libs_macos_video/macos
-  media_kit_video:
-    :path: Flutter/ephemeral/.symlinks/plugins/media_kit_video/macos
-  package_info_plus:
-    :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   path_provider_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
   url_launcher_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
   video_player_avfoundation:
     :path: Flutter/ephemeral/.symlinks/plugins/video_player_avfoundation/darwin
-  wakelock_plus:
-    :path: Flutter/ephemeral/.symlinks/plugins/wakelock_plus/macos
   window_size:
     :path: Flutter/ephemeral/.symlinks/plugins/window_size/macos
 
@@ -65,13 +45,9 @@ SPEC CHECKSUMS:
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   fvp: 5a47a325ffa8d63e70a276a6436416ae703206a5
   mdk: 2fc33606b1a0a61eff999de7133532d28cabb8ab
-  media_kit_libs_macos_video: 85a23e549b5f480e72cae3e5634b5514bc692f65
-  media_kit_video: fa6564e3799a0a28bff39442334817088b7ca758
-  package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
   video_player_avfoundation: dd410b52df6d2466a42d28550e33e4146928280a
-  wakelock_plus: 917609be14d812ddd9e9528876538b2263aaa03b
   window_size: 4bd15034e6e3d0720fd77928a7c42e5492cfece9
 
 PODFILE CHECKSUM: 4c888e3cbb8c72d1c46af6ec3a629eba42b82138

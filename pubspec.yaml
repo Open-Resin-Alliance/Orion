@@ -71,7 +71,7 @@ dependencies:
   marquee: ^2.3.0
   json_annotation: ^4.9.0
   fl_chart: ^1.1.1
-  video_player: ^2.10.1
+  # video_player: ^2.10.1
   fvp: ^0.35.1
 
 dev_dependencies:
