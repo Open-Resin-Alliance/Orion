@@ -765,10 +765,12 @@ class StatusProvider extends ChangeNotifier {
       if (_disposed) return _kinematicStatus;
       if (kinMap == null) {
         if (_kinematicStatus != null) {
-          _kinematicStatus = null;
-          notifyListeners();
+          // Don't clear the status on a single failure; just log it and keep the old one.
+          // This prevents the UI from flashing "0/Not Homed" on a timeout.
+          _log.warning(
+              'Kinematic status fetch returned null; keeping last known status.');
         }
-        return null;
+        return _kinematicStatus;
       }
       final kin =
           AthenaKinematicStatus.fromJson(Map<String, dynamic>.from(kinMap));
@@ -776,7 +778,10 @@ class StatusProvider extends ChangeNotifier {
       notifyListeners();
       return kin;
     } catch (e, st) {
-      _log.fine('Failed to refresh kinematic status', e, st);
+      _log.warning(
+          'Failed to refresh kinematic status; keeping last known status.',
+          e,
+          st);
       return _kinematicStatus;
     } finally {
       _kinematicFetchInFlight = false;
