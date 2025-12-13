@@ -32,7 +32,9 @@ jobs:
         with:
           packages: |
             gtk+-3.0
+            mpv
             libasound2-dev
+            libmpv-dev
 
       - run: flutter pub global activate flutterpi_tool
 
