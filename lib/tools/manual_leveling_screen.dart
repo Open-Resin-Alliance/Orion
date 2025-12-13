@@ -48,42 +48,6 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
   bool _apiErrorState = false;
   Map<String, dynamic>? status;
 
-  // Optimistic UI: track expected values locally so UI updates immediately
-  // even when the backend is slow to respond.
-  double? _optimisticZ;
-  double? _optimisticOffset;
-  bool? _optimisticHomed;
-
-  /// Update internal tracking with optimistic values.
-  /// Call this immediately when a button is pressed.
-  void _setOptimisticValues({double? z, double? offset, bool? homed}) {
-    setState(() {
-      if (z != null) _optimisticZ = z;
-      if (offset != null) _optimisticOffset = offset;
-      if (homed != null) _optimisticHomed = homed;
-    });
-  }
-
-  /// Check if a value matches within tolerance (for floating point comparison).
-  bool _valuesMatch(double? optimistic, double? backend,
-      {double tolerance = 0.01}) {
-    if (optimistic == null || backend == null)
-      return true; // No mismatch if either is null
-    return (optimistic - backend).abs() < tolerance;
-  }
-
-  /// Sync optimistic values from backend kinematic status.
-  void _syncFromBackend(StatusProvider statusProvider) {
-    final kin = statusProvider.kinematicStatus;
-    if (kin != null) {
-      setState(() {
-        _optimisticZ = kin.position;
-        _optimisticOffset = kin.offset;
-        _optimisticHomed = kin.homed;
-      });
-    }
-  }
-
   // Safe helper to show error dialogs without using a stale BuildContext.
   // If a BuildContext is provided (usually from a builder), verify the
   // Element is still mounted before showing the dialog. If omitted, use
@@ -179,8 +143,6 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
       final statusProvider =
           Provider.of<StatusProvider>(context, listen: false);
       await statusProvider.refreshKinematicStatus();
-      if (!mounted) return;
-      _syncFromBackend(statusProvider);
     });
   }
 
@@ -364,13 +326,13 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                 onPressed: _apiErrorState || manual.busy
                     ? null
                     : () async {
-                        // Optimistically update Z position immediately
-                        final currentZ = _optimisticZ ?? 0.0;
-                        _setOptimisticValues(z: currentZ + step);
-
                         final manual =
                             Provider.of<ManualProvider>(context, listen: false);
                         await manual.moveDelta(step);
+                        if (!mounted) return;
+                        final statusProvider =
+                            Provider.of<StatusProvider>(context, listen: false);
+                        await statusProvider.refreshKinematicStatus();
                       },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, double.infinity),
@@ -388,13 +350,13 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                 onPressed: _apiErrorState || manual.busy
                     ? null
                     : () async {
-                        // Optimistically update Z position immediately
-                        final currentZ = _optimisticZ ?? 0.0;
-                        _setOptimisticValues(z: currentZ - step);
-
                         final manual =
                             Provider.of<ManualProvider>(context, listen: false);
                         await manual.moveDelta(-step);
+                        if (!mounted) return;
+                        final statusProvider =
+                            Provider.of<StatusProvider>(context, listen: false);
+                        await statusProvider.refreshKinematicStatus();
                       },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, double.infinity),
@@ -411,25 +373,17 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
   Widget _buildStatusCard(BuildContext context) {
     return Consumer<StatusProvider>(
       builder: (context, statusProvider, _) {
-        // Use optimistic values if available, otherwise fall back to backend
-        final z = _optimisticZ ?? 0.0;
-        final offset = _optimisticOffset ?? 0.0;
-        final isHomed = _optimisticHomed ?? false;
+        // Prefer the regular status 'physicalState.z' (currentHeight) for
+        // the displayed Z value because it's the most reliable source for
+        // the device-reported current height. Fall back to kinematic
+        // position if physicalState is unavailable.
+        final backendZ = statusProvider.status?.physicalState.z;
+        final z = backendZ ?? statusProvider.kinematicStatus?.position ?? 0.0;
+        final offset = statusProvider.kinematicStatus?.offset ?? 0.0;
+        final isHomed = statusProvider.kinematicStatus?.homed ?? false;
 
-        // Get backend values for comparison
-        final backendZ = statusProvider.kinematicStatus?.position;
-        final backendOffset = statusProvider.kinematicStatus?.offset;
-
-        // Detect mismatch: backend has a stale value that differs from our optimistic value
-        final zMismatch = !_valuesMatch(_optimisticZ, backendZ);
-        final offsetMismatch = !_valuesMatch(_optimisticOffset, backendOffset);
-
-        // Mismatched values shown in pale red/coral
-        final mismatchColor = Colors.red.shade200;
         final normalColor =
             Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
-        final zColor = zMismatch ? mismatchColor : normalColor;
-        final offsetColor = offsetMismatch ? mismatchColor : normalColor;
 
         return GlassCard(
           child: Padding(
@@ -446,17 +400,14 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Icon(PhosphorIcons.ruler(),
-                        size: 24,
-                        color: zMismatch
-                            ? mismatchColor.withValues(alpha: 0.7)
-                            : Colors.grey.shade400),
+                        size: 24, color: Colors.grey.shade400),
                     const SizedBox(width: 12),
                     Text(
                       '${z.toStringAsFixed(2)} mm',
                       style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: zColor),
+                          color: normalColor),
                     ),
                   ],
                 ),
@@ -471,17 +422,14 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Icon(PhosphorIcons.arrowsVertical(),
-                        size: 24,
-                        color: offsetMismatch
-                            ? mismatchColor.withValues(alpha: 0.7)
-                            : Colors.grey.shade400),
+                        size: 24, color: Colors.grey.shade400),
                     const SizedBox(width: 12),
                     Text(
                       '${offset.toStringAsFixed(2)} mm',
                       style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: offsetColor),
+                          color: normalColor),
                     ),
                   ],
                 ),
@@ -547,21 +495,13 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                               ? null
                               : () async {
                                   _logger.info('Moving to home position');
-                                  // Clear optimistic Z - we don't know the exact home position
-                                  // Keep homed=true as optimistic since homing should succeed
-                                  _setOptimisticValues(homed: true);
-                                  setState(() => _optimisticZ = null);
-
                                   final ok = await manual.manualHome();
                                   if (!ok) _safeShowError('GOLDEN-APE');
                                   if (!mounted) return;
-                                  // Fetch actual position from backend after homing
                                   final statusProvider =
                                       Provider.of<StatusProvider>(context,
                                           listen: false);
                                   await statusProvider.refreshKinematicStatus();
-                                  if (!mounted) return;
-                                  _syncFromBackend(statusProvider);
                                 },
                           style: ElevatedButton.styleFrom(
                             minimumSize:
@@ -593,8 +533,6 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                               : () async {
                                   try {
                                     final cfg = OrionConfig();
-                                    // Clear optimistic Z - we don't know the exact floor/top position
-                                    setState(() => _optimisticZ = null);
                                     if (cfg.isHomePositionUp()) {
                                       _logger.info(
                                           'Moving to Floor via moveToFloor()');
@@ -612,14 +550,11 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                                       if (!ok) _safeShowError('GOLDEN-APE');
                                     }
                                     if (!mounted) return;
-                                    // Fetch actual position from backend
                                     final statusProvider =
                                         Provider.of<StatusProvider>(context,
                                             listen: false);
                                     await statusProvider
                                         .refreshKinematicStatus();
-                                    if (!mounted) return;
-                                    _syncFromBackend(statusProvider);
                                   } catch (e) {
                                     if (!mounted) return;
                                     _safeShowError('GOLDEN-APE');
@@ -668,8 +603,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
         Expanded(
           child: Consumer2<ManualProvider, StatusProvider>(
             builder: (context, manual, status, _) {
-              final currentZ =
-                  _optimisticZ ?? status.kinematicStatus?.position ?? 0.0;
+              final currentZ = status.kinematicStatus?.position ?? 0.0;
               return Row(
                 children: [
                   // Reset button
@@ -679,11 +613,13 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           ? null
                           : () async {
                               _logger.info('Reset Z offset button pressed');
-                              // Optimistically reset offset to 0
-                              _setOptimisticValues(offset: 0.0);
-
                               final ok = await manual.resetZOffset();
                               if (!ok) _safeShowError('GOLDEN-APE');
+                              if (!mounted) return;
+                              final statusProvider =
+                                  Provider.of<StatusProvider>(context,
+                                      listen: false);
+                              await statusProvider.refreshKinematicStatus();
                             },
                       style: ElevatedButton.styleFrom(
                         minimumSize:
@@ -716,11 +652,13 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           : () async {
                               _logger.info(
                                   'Set Z offset button pressed (Z=$currentZ)');
-                              // Optimistically set offset to current Z
-                              _setOptimisticValues(offset: currentZ);
-
                               final ok = await manual.setZOffset(currentZ);
                               if (!ok) _safeShowError('GOLDEN-APE');
+                              if (!mounted) return;
+                              final statusProvider =
+                                  Provider.of<StatusProvider>(context,
+                                      listen: false);
+                              await statusProvider.refreshKinematicStatus();
                             },
                       style: ElevatedButton.styleFrom(
                         minimumSize:
@@ -758,21 +696,12 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                     ? null
                     : () async {
                         _logger.severe('EMERGENCY STOP');
-                        // Clear optimistic values - we don't know where we stopped
-                        setState(() {
-                          _optimisticZ = null;
-                          _optimisticOffset = null;
-                          _optimisticHomed = null;
-                        });
-
                         final ok = await manual.emergencyStop();
                         if (!ok) _safeShowError('CRITICAL');
                         if (!mounted) return;
                         final statusProvider =
                             Provider.of<StatusProvider>(context, listen: false);
                         await statusProvider.refreshKinematicStatus();
-                        if (!mounted) return;
-                        _syncFromBackend(statusProvider);
                       },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, double.infinity),
