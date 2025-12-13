@@ -754,34 +754,62 @@ class StatusProvider extends ChangeNotifier {
     _log.fine('Stopped kinematic polling timer');
   }
 
+  /// Manually clears the homed status. This is useful when an emergency stop
+  /// or other event is known to invalidate the homed state, even if the
+  /// backend hasn't reported it yet.
+  void clearHomedStatus() {
+    if (_kinematicStatus != null) {
+      _kinematicStatus = AthenaKinematicStatus(
+        homed: false,
+        offset: _kinematicStatus!.offset,
+        position: _kinematicStatus!.position,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      notifyListeners();
+    }
+  }
+
   /// Explicitly refresh kinematic status (Z position, offset, homed state).
   /// Call this after button presses that affect Z position instead of relying
   /// on continuous polling. Returns the updated status or null on error.
-  Future<AthenaKinematicStatus?> refreshKinematicStatus() async {
+  Future<AthenaKinematicStatus?> refreshKinematicStatus(
+      {int maxAttempts = 3}) async {
     if (_kinematicFetchInFlight || _disposed) return _kinematicStatus;
     _kinematicFetchInFlight = true;
+
+    int attempts = 0;
+
     try {
-      final kinMap = await _client.getKinematicStatus();
-      if (_disposed) return _kinematicStatus;
-      if (kinMap == null) {
-        if (_kinematicStatus != null) {
-          // Don't clear the status on a single failure; just log it and keep the old one.
-          // This prevents the UI from flashing "0/Not Homed" on a timeout.
+      while (attempts < maxAttempts) {
+        attempts++;
+        try {
+          final kinMap = await _client.getKinematicStatus();
+          if (_disposed) return _kinematicStatus;
+
+          if (kinMap != null) {
+            final kin = AthenaKinematicStatus.fromJson(
+                Map<String, dynamic>.from(kinMap));
+            _kinematicStatus = kin;
+            notifyListeners();
+            return kin;
+          }
           _log.warning(
-              'Kinematic status fetch returned null; keeping last known status.');
+              'Kinematic status fetch attempt $attempts/$maxAttempts returned null');
+        } catch (e, st) {
+          _log.warning(
+              'Kinematic status fetch attempt $attempts/$maxAttempts failed',
+              e,
+              st);
         }
-        return _kinematicStatus;
+
+        if (attempts < maxAttempts) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (_disposed) return _kinematicStatus;
+        }
       }
-      final kin =
-          AthenaKinematicStatus.fromJson(Map<String, dynamic>.from(kinMap));
-      _kinematicStatus = kin;
-      notifyListeners();
-      return kin;
-    } catch (e, st) {
+
       _log.warning(
-          'Failed to refresh kinematic status; keeping last known status.',
-          e,
-          st);
+          'All $maxAttempts kinematic status fetch attempts failed; keeping last known status.');
       return _kinematicStatus;
     } finally {
       _kinematicFetchInFlight = false;

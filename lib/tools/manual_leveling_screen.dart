@@ -517,7 +517,8 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                                   final statusProvider =
                                       Provider.of<StatusProvider>(context,
                                           listen: false);
-                                  await statusProvider.refreshKinematicStatus();
+                                  await statusProvider.refreshKinematicStatus(
+                                      maxAttempts: 10);
                                 },
                           style: ElevatedButton.styleFrom(
                             minimumSize:
@@ -738,6 +739,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                         if (!mounted) return;
                         final statusProvider =
                             Provider.of<StatusProvider>(context, listen: false);
+                        statusProvider.clearHomedStatus();
                         await statusProvider.refreshKinematicStatus();
                       },
                 style: ElevatedButton.styleFrom(

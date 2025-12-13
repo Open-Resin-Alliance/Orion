@@ -277,8 +277,10 @@ class NanoDlpHttpClient implements BackendClient {
       }
 
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      // Use a longer timeout (10s) for kinematic status as the endpoint can be slow
       final athena = AthenaIotClient(baseNoSlash,
-          clientFactory: _clientFactory, requestTimeout: _requestTimeout);
+          clientFactory: _clientFactory,
+          requestTimeout: const Duration(seconds: 10));
       final kin = await athena.getKinematicStatusModel();
       if (kin == null) {
         _kinematicCache = null;
