@@ -170,7 +170,7 @@ class LevelingScreen extends StatelessWidget {
           children: [
             Expanded(
               child: GlassCard(
-                accentColor: accent,
+                accentColor: null, //accent,
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
@@ -215,13 +215,14 @@ class LevelingScreen extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerRight,
                         child: GlassFloatingActionButton.extended(
-                          heroTag: 'start-assisted',
-                          scale: 1.3,
-                          icon: const Icon(Icons.play_arrow),
-                          label: 'Start Wizard',
-                          tint: GlassButtonTint.positive,
-                          onPressed: () => _showLevelingDialog(context),
-                        ),
+                            heroTag: 'start-assisted',
+                            scale: 1.3,
+                            // icon: const Icon(Icons.play_arrow),
+                            label: 'Coming Soon!',
+                            tint: GlassButtonTint.none,
+                            onPressed: () =>
+                                null //_showLevelingDialog(context),
+                            ),
                       ),
                     ],
                   ),
