@@ -553,6 +553,16 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
+
+    // Enable continuous kinematic polling so we can detect when homing/moving
+    // completes. This will be disabled in dispose().
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      statusProvider.setContinuousKinematicPolling(true);
+    });
+
     // Start the homing command when this screen is presented. Use a
     // post-frame callback so the widget tree is fully built and providers
     // can be read from the context safely.
@@ -652,6 +662,14 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
     _stabilityTimer?.cancel();
     _noUpdateTimer?.cancel();
     _pulseController.dispose();
+    // Disable continuous kinematic polling when leaving this screen
+    try {
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      statusProvider.setContinuousKinematicPolling(false);
+    } catch (_) {
+      // Context may not be valid during dispose
+    }
     super.dispose();
   }
 
