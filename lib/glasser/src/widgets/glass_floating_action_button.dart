@@ -53,6 +53,7 @@ class GlassFloatingActionButton extends StatelessWidget {
   // If true and extended, places the icon after the text (e.g. "Next ->").
   final bool iconAfterLabel;
   final GlassButtonTint tint;
+  final bool doForceBlur;
 
   const GlassFloatingActionButton({
     super.key,
@@ -61,6 +62,7 @@ class GlassFloatingActionButton extends StatelessWidget {
     this.heroTag,
     this.scale = 1.0,
     this.iconAfterLabel = false,
+    this.doForceBlur = false,
     this.tint = GlassButtonTint.none,
   })  : label = null,
         icon = null,
@@ -73,6 +75,7 @@ class GlassFloatingActionButton extends StatelessWidget {
     this.heroTag,
     this.scale = 1.0,
     this.iconAfterLabel = false,
+    this.doForceBlur = false,
     this.tint = GlassButtonTint.none,
   })  : label = null,
         icon = null,
@@ -86,6 +89,7 @@ class GlassFloatingActionButton extends StatelessWidget {
     this.heroTag,
     this.scale = 1.0,
     this.iconAfterLabel = false,
+    this.doForceBlur = false,
     this.tint = GlassButtonTint.none,
   })  : child = null,
         extended = true;
@@ -98,6 +102,7 @@ class GlassFloatingActionButton extends StatelessWidget {
     this.heroTag,
     this.scale = 1.0,
     this.iconAfterLabel = false,
+    this.doForceBlur = false,
     this.tint = GlassButtonTint.none,
   })  : child = null,
         extended = true;
@@ -199,6 +204,7 @@ class GlassFloatingActionButton extends StatelessWidget {
     if (extended) {
       final borderRadius = BorderRadius.circular(glassCornerRadius);
       final isEnabled = onPressed != null;
+      final forceBlur = doForceBlur;
       final shadow = GlassPlatformConfig.interactiveShadow(
         enabled: isEnabled,
         blurRadius: 24,
@@ -226,7 +232,7 @@ class GlassFloatingActionButton extends StatelessWidget {
           opacity: fillOpacity,
           color: blendedFillColor,
           floatingSurface: true,
-          interactiveSurface: true,
+          interactiveSurface: forceBlur ? false : true,
           borderWidth: 1.6,
           emphasizeBorder: true,
           borderColor: borderColor,
