@@ -22,6 +22,9 @@ import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 ThemeData createLightTheme(Color seedColor) {
   return ThemeData(
     fontFamily: 'AtkinsonHyperlegible',
+    // Use NotoSansCJK as a fallback for CJK characters so Linux displays
+    // Chinese/Japanese/Korean glyphs correctly when the primary font lacks them.
+    fontFamilyFallback: const ['NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.light,
@@ -69,6 +72,7 @@ ThemeData createLightTheme(Color seedColor) {
 ThemeData createDarkTheme(Color seedColor) {
   return ThemeData(
     fontFamily: 'AtkinsonHyperlegible',
+    fontFamilyFallback: const ['NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.dark,
@@ -116,6 +120,7 @@ ThemeData createDarkTheme(Color seedColor) {
 ThemeData createGlassTheme(Color seedColor) {
   return ThemeData(
     fontFamily: 'AtkinsonHyperlegible',
+    fontFamilyFallback: const ['NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.dark,

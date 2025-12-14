@@ -127,6 +127,14 @@ flutter:
           weight: 700
           style: italic
 
+    # Noto CJK fallback fonts (not checked into the repo due to size).
+    # Run `scripts/download_cjk_fonts.sh` to fetch these into assets/fonts/.
+    - family: NotoSansCJK
+      fonts:
+        - asset: assets/fonts/NotoSansSC-VariableFont_wght.ttf
+        - asset: assets/fonts/NotoSansJP-VariableFont_wght.ttf
+        - asset: assets/fonts/NotoSansKR-VariableFont_wght.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
 
