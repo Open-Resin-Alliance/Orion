@@ -967,6 +967,8 @@ class _GlassBubbleState extends State<_GlassBubble>
                     child: Text(
                       widget.bubble.message,
                       style: TextStyle(
+                        fontFamily: 'AtkinsonHyperlegible',
+                        fontFamilyFallback: ['NotoSansCJK'],
                         fontSize: widget.bubble.size * 0.82,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                         shadows: [

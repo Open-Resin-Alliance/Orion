@@ -33,6 +33,7 @@ ThemeData createLightTheme(Color seedColor) {
     appBarTheme: const AppBarTheme(
       titleTextStyle: TextStyle(
         fontFamily: 'AtkinsonHyperlegible',
+        fontFamilyFallback: ['NotoSansCJK'],
         fontSize: 30,
         color: Colors.black,
       ),
@@ -41,16 +42,21 @@ ThemeData createLightTheme(Color seedColor) {
       toolbarHeight: 65,
       iconTheme: IconThemeData(size: 30),
     ),
-    textTheme: const TextTheme(
+    // Ensure the TextTheme entries include the CJK fallback
+    textTheme: _withCjkFallback(const TextTheme(
       bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
       titleLarge: TextStyle(
           fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
-    ),
+    )),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      selectedLabelStyle:
-          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-      unselectedLabelStyle:
-          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
+      selectedLabelStyle: TextStyle(
+          fontFamily: 'AtkinsonHyperlegible',
+          fontFamilyFallback: ['NotoSansCJK'],
+          fontSize: 18),
+      unselectedLabelStyle: TextStyle(
+          fontFamily: 'AtkinsonHyperlegible',
+          fontFamilyFallback: ['NotoSansCJK'],
+          fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
     ),
@@ -81,6 +87,7 @@ ThemeData createDarkTheme(Color seedColor) {
     appBarTheme: const AppBarTheme(
       titleTextStyle: TextStyle(
         fontFamily: 'AtkinsonHyperlegible',
+        fontFamilyFallback: ['NotoSansCJK'],
         fontSize: 30,
         color: Colors.white,
       ),
@@ -89,16 +96,20 @@ ThemeData createDarkTheme(Color seedColor) {
       toolbarHeight: 65,
       iconTheme: IconThemeData(size: 30, color: Colors.white),
     ),
-    textTheme: const TextTheme(
+    textTheme: _withCjkFallback(const TextTheme(
       bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
       titleLarge: TextStyle(
           fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
-    ),
+    )),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      selectedLabelStyle:
-          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-      unselectedLabelStyle:
-          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
+      selectedLabelStyle: TextStyle(
+          fontFamily: 'AtkinsonHyperlegible',
+          fontFamilyFallback: ['NotoSansCJK'],
+          fontSize: 18),
+      unselectedLabelStyle: TextStyle(
+          fontFamily: 'AtkinsonHyperlegible',
+          fontFamilyFallback: ['NotoSansCJK'],
+          fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
     ),
@@ -142,6 +153,7 @@ ThemeData createGlassTheme(Color seedColor) {
       elevation: 0,
       titleTextStyle: TextStyle(
         fontFamily: 'AtkinsonHyperlegible',
+        fontFamilyFallback: ['NotoSansCJK'],
         fontSize: 30,
         color: Colors.white,
       ),
@@ -151,7 +163,7 @@ ThemeData createGlassTheme(Color seedColor) {
       iconTheme: IconThemeData(size: 30, color: Colors.white),
       foregroundColor: Colors.white,
     ),
-    textTheme: const TextTheme(
+    textTheme: _withCjkFallback(const TextTheme(
       bodyMedium: TextStyle(
         fontFamily: 'AtkinsonHyperlegible',
         fontSize: 20,
@@ -162,7 +174,7 @@ ThemeData createGlassTheme(Color seedColor) {
         fontSize: 20,
         color: Colors.white,
       ),
-    ),
+    )),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Colors.transparent,
       selectedLabelStyle: TextStyle(
@@ -197,6 +209,35 @@ ThemeData createGlassTheme(Color seedColor) {
       elevation: 0,
     ),
     useMaterial3: true,
+  );
+}
+
+// Helper to inject CJK fallback into every non-null TextStyle of a TextTheme.
+TextTheme _withCjkFallback(TextTheme t) {
+  TextStyle? applyFallback(TextStyle? s) {
+    if (s == null) return null;
+    // If already has fallback, keep it; otherwise add NotoSansCJK.
+    final existing = s.fontFamilyFallback ?? const <String>[];
+    if (existing.contains('NotoSansCJK')) return s;
+    return s.copyWith(fontFamilyFallback: [...existing, 'NotoSansCJK']);
+  }
+
+  return TextTheme(
+    displayLarge: applyFallback(t.displayLarge),
+    displayMedium: applyFallback(t.displayMedium),
+    displaySmall: applyFallback(t.displaySmall),
+    headlineLarge: applyFallback(t.headlineLarge),
+    headlineMedium: applyFallback(t.headlineMedium),
+    headlineSmall: applyFallback(t.headlineSmall),
+    titleLarge: applyFallback(t.titleLarge),
+    titleMedium: applyFallback(t.titleMedium),
+    titleSmall: applyFallback(t.titleSmall),
+    bodyLarge: applyFallback(t.bodyLarge),
+    bodyMedium: applyFallback(t.bodyMedium),
+    bodySmall: applyFallback(t.bodySmall),
+    labelLarge: applyFallback(t.labelLarge),
+    labelMedium: applyFallback(t.labelMedium),
+    labelSmall: applyFallback(t.labelSmall),
   );
 }
 
