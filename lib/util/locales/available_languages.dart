@@ -29,7 +29,7 @@ const List<Map<String, String>> availableLanguages = [
   // CJK Languages
   {'name': 'Japanese', 'nativeName': '日本語', 'code': 'ja_JP', 'flag': 'JP'},
   {'name': 'Korean', 'nativeName': '한국어', 'code': 'ko_KR', 'flag': 'KR'},
-  {
+  /*{
     'name': 'Chinese (Simplified)',
     'nativeName': '中文 (简体)',
     'code': 'zh_CN',
@@ -40,7 +40,7 @@ const List<Map<String, String>> availableLanguages = [
     'nativeName': '中文 (繁體)',
     'code': 'zh_TW',
     'flag': 'TW'
-  },
+  },*/
 ];
 
 const Map<String, List<Map<String, String>>> languageCountrySuggestions = {
