@@ -548,6 +548,230 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
               /// Developer Section for build overrides.
               if (developerMode) _buildDeveloperSection(),
+              const SizedBox(height: 12.0),
+              // Danger Zone - critical actions
+              GlassCard(
+                accentColor: Colors.redAccent.shade100,
+                outlined: true,
+                elevation: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Danger Zone',
+                        style:
+                            TextStyle(fontSize: 28.0, color: Colors.redAccent),
+                      ),
+                      const SizedBox(height: 12.0),
+                      Text(
+                        'Critical actions that may remove user data or change the device state. Use with caution.',
+                        style: TextStyle(
+                            fontSize: 16, color: Colors.redAccent.shade100),
+                      ),
+                      const SizedBox(height: 20.0),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GlassButton(
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(0, 60),
+                              ),
+                              tint: GlassButtonTint.negative,
+                              onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => GlassAlertDialog(
+                                        title: const Text('Reset User Config'),
+                                        content: const Text(
+                                            'Restore settings to factory defaults? If a factory preset is available it will be used. Otherwise your custom settings will be cleared. The device will restart immediately. Continue?',
+                                            style: TextStyle(fontSize: 18.0)),
+                                        actions: [
+                                          GlassButton(
+                                              style: ElevatedButton.styleFrom(
+                                                minimumSize: const Size(0, 60),
+                                              ),
+                                              tint: GlassButtonTint.warn,
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(false),
+                                              child: const Text('Cancel',
+                                                  style: TextStyle(
+                                                      fontSize: 22.0))),
+                                          GlassButton(
+                                              tint: GlassButtonTint.negative,
+                                              style: ElevatedButton.styleFrom(
+                                                minimumSize: const Size(0, 60),
+                                              ),
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(true),
+                                              child: const Text('Reset',
+                                                  style: TextStyle(
+                                                      fontSize: 22.0))),
+                                        ],
+                                      ),
+                                    ) ??
+                                    false;
+
+                                if (confirmed) {
+                                  try {
+                                    final cfgPath = config.getConfigPath();
+                                    final defaultFile =
+                                        File('$cfgPath/orion.default.cfg');
+                                    final targetFile =
+                                        File('$cfgPath/orion.cfg');
+
+                                    if (defaultFile.existsSync()) {
+                                      // Overwrite orion.cfg with the default
+                                      final contents =
+                                          defaultFile.readAsStringSync();
+                                      targetFile.writeAsStringSync(contents);
+                                    } else {
+                                      // No default provided: remove orion.cfg
+                                      if (targetFile.existsSync()) {
+                                        targetFile.deleteSync();
+                                      }
+                                    }
+
+                                    // Decide a message based on whether a default exists
+                                    final defaultFileExists =
+                                        defaultFile.existsSync();
+                                    final rebootMessage = defaultFileExists
+                                        ? 'Restoring settings to factory defaults and restarting now.'
+                                        : 'Clearing custom settings and restarting now.';
+
+                                    // Show rebooting message then reboot
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (ctx) => GlassAlertDialog(
+                                        title: const Text('Rebooting'),
+                                        content: Text(rebootMessage),
+                                      ),
+                                    );
+
+                                    // Flush and reboot
+                                    await Process.run(
+                                        'sudo', ['reboot', 'now']);
+                                  } catch (e) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => GlassAlertDialog(
+                                        title: const Text('Error'),
+                                        content: const Text(
+                                            'Unable to reset settings. Please try again.'),
+                                        actions: [
+                                          GlassButton(
+                                            onPressed: () =>
+                                                Navigator.of(ctx).pop(),
+                                            child: const Text('OK'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: const Text('Reset User Config'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (developerMode) const SizedBox(height: 12.0),
+                      if (developerMode)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GlassButton(
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(0, 60),
+                                ),
+                                tint: GlassButtonTint.warn,
+                                onPressed: () async {
+                                  final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => GlassAlertDialog(
+                                          title: const Text(
+                                              'Prepare for Delivery'),
+                                          content: const Text(
+                                              'Prepare this device for shipping? The device will shut down now. On next start you will run the initial setup wizard. Use only when shipping the device. Continue?',
+                                              style: TextStyle(fontSize: 18.0)),
+                                          actions: [
+                                            GlassButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  minimumSize:
+                                                      const Size(0, 60),
+                                                ),
+                                                tint: GlassButtonTint.warn,
+                                                onPressed: () =>
+                                                    Navigator.of(ctx)
+                                                        .pop(false),
+                                                child: const Text('Cancel',
+                                                    style: TextStyle(
+                                                        fontSize: 22.0))),
+                                            GlassButton(
+                                                tint: GlassButtonTint.negative,
+                                                style: ElevatedButton.styleFrom(
+                                                  minimumSize:
+                                                      const Size(0, 60),
+                                                ),
+                                                onPressed: () =>
+                                                    Navigator.of(ctx).pop(true),
+                                                child: const Text('Prepare',
+                                                    style: TextStyle(
+                                                        fontSize: 22.0))),
+                                          ],
+                                        ),
+                                      ) ??
+                                      false;
+
+                                  if (confirmed) {
+                                    try {
+                                      // Mark firstRun so onboarding will run on next boot
+                                      config.setFlag('firstRun', true,
+                                          category: 'machine');
+
+                                      // Show immediate shutdown dialog then power off
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (ctx) => GlassAlertDialog(
+                                          title: const Text('Shutting down'),
+                                          content: const Text(
+                                              'Shutting down now. On next start you will be guided through setup.'),
+                                        ),
+                                      );
+
+                                      await Process.run(
+                                          'sudo', ['shutdown', 'now']);
+                                    } catch (e) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => GlassAlertDialog(
+                                          title: const Text('Error'),
+                                          content: const Text(
+                                              'Unable to prepare the device. Please try again.'),
+                                          actions: [
+                                            GlassButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(),
+                                              child: const Text('OK'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: const Text('Prepare for Delivery'),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
