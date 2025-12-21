@@ -23,7 +23,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'package:logging/logging.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
@@ -41,7 +40,6 @@ import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
-import 'package:orion/util/providers/wifi_provider.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
