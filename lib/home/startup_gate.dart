@@ -16,13 +16,16 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 import 'package:orion/home/onboarding_screen.dart';
 import 'package:orion/home/home_screen.dart';
 import 'package:orion/home/startup_screen.dart';
+import 'package:orion/home/update_available_screen.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/update_manager.dart';
 
 /// Blocks initial app content until the backend reports a successful
 /// initial connection. While waiting, shows the branded [StartupScreen].
@@ -39,6 +42,23 @@ class _StartupGateState extends State<StartupGate> {
   bool _athenaReady = false;
   bool _checkingAthena = false;
 
+  // Startup sequence state
+  bool _animationsComplete = false;
+  bool _checkForUpdatesComplete = false;
+  bool _dismissUpdateScreen = false;
+  bool _startupExitComplete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Trigger update check immediately and suppress notifications during startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final updateManager = Provider.of<UpdateManager>(context, listen: false);
+      updateManager.suppressNotifications = true;
+      _checkForUpdates();
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -52,6 +72,21 @@ class _StartupGateState extends State<StartupGate> {
           cfg.getMachineModelName().toLowerCase().contains('athena');
     } catch (_) {
       _isAthena = false;
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    try {
+      final updateManager = Provider.of<UpdateManager>(context, listen: false);
+      await updateManager.checkForUpdates();
+    } catch (_) {
+      // Ignore errors, proceed without update
+    } finally {
+      if (mounted) {
+        setState(() {
+          _checkForUpdatesComplete = true;
+        });
+      }
     }
   }
 
@@ -109,6 +144,9 @@ class _StartupGateState extends State<StartupGate> {
   void dispose() {
     try {
       _statusProv.removeListener(_onStatusChange);
+      // Ensure notifications are unsuppressed when leaving startup
+      Provider.of<UpdateManager>(context, listen: false).suppressNotifications =
+          false;
     } catch (_) {}
     super.dispose();
   }
@@ -116,16 +154,66 @@ class _StartupGateState extends State<StartupGate> {
   @override
   Widget build(BuildContext context) {
     final prov = Provider.of<StatusProvider>(context, listen: false);
-    // Choose the child widget depending on whether we've ever connected.
-    // We use keys so AnimatedSwitcher can correctly cross-fade between
-    // the startup overlay and the main app content.
+    final updateManager = Provider.of<UpdateManager>(context, listen: false);
+
+    final backendReady = prov.hasEverConnected && (!_isAthena || _athenaReady);
+    final isReadyToProceed =
+        _animationsComplete && backendReady && _checkForUpdatesComplete;
+
+    // Choose the child widget depending on state
     final Widget child;
-    if (!prov.hasEverConnected || (_isAthena && !_athenaReady)) {
-      // If this is an Athena machine, wait for Athena IoT readiness in
-      // addition to the backend connection before dismissing the startup
-      // overlay.
-      child = const StartupScreen(key: ValueKey('startup'));
+    final showUpdate =
+        updateManager.hasPendingUpdateNotification && !_dismissUpdateScreen;
+
+    if (!isReadyToProceed) {
+      child = StartupScreen(
+        key: const ValueKey('startup'),
+        onAnimationsComplete: () {
+          if (mounted) {
+            setState(() {
+              _animationsComplete = true;
+            });
+          }
+        },
+      );
+    } else if (showUpdate && !_startupExitComplete) {
+      // Ready to show update, but need to animate out startup screen first
+      child = StartupScreen(
+        key: const ValueKey('startup'),
+        shouldAnimateOut: true,
+        onExitComplete: () {
+          if (mounted) {
+            setState(() {
+              _startupExitComplete = true;
+            });
+          }
+        },
+      );
+    } else if (showUpdate && _startupExitComplete) {
+      child = UpdateAvailableScreen(
+        key: const ValueKey('update_available'),
+        onRemindLater: () {
+          updateManager.remindLater();
+          setState(() {
+            _dismissUpdateScreen = true;
+          });
+        },
+        onUpdateNow: () {
+          setState(() {
+            _dismissUpdateScreen = true;
+          });
+          // Navigate after frame to ensure HomeScreen is mounted
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.go('/settings/updates');
+          });
+        },
+      );
     } else {
+      // We are proceeding to the main app, so unsuppress notifications
+      if (updateManager.suppressNotifications) {
+        Future.microtask(() => updateManager.suppressNotifications = false);
+      }
+
       final cfg = OrionConfig();
       final showOnboarding = cfg.getFlag('firstRun', category: 'machine');
       child = showOnboarding
@@ -133,15 +221,36 @@ class _StartupGateState extends State<StartupGate> {
           : const HomeScreen(key: ValueKey('home'));
     }
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 600),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      transitionBuilder: (widget, animation) => FadeTransition(
-        opacity: animation,
-        child: widget,
+    return Container(
+      color: Colors.black,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 600),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (widget, animation) {
+          // The StartupScreen handles its own internal exit animation (fading out content).
+          // We keep the widget itself (the background) fully opaque during the switch
+          // to prevent a brightness dip when the next screen (Update/Home) fades in on top.
+          if (widget.key == const ValueKey('startup')) {
+            return widget;
+          }
+          return FadeTransition(
+            opacity: animation,
+            child: widget,
+          );
+        },
+        layoutBuilder: (currentChild, previousChildren) {
+          // Ensure the new child is stacked on top of the previous ones
+          return Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              ...previousChildren,
+              if (currentChild != null) currentChild,
+            ],
+          );
+        },
+        child: child,
       ),
-      child: child,
     );
   }
 }
