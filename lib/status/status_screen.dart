@@ -1335,7 +1335,7 @@ class StatusScreenState extends State<StatusScreen> {
             onPressed: () async {
               try {
                 final manual = ManualProvider();
-                await manual.moveToTop();
+                await manual.moveDelta(25.0);
               } catch (_) {}
             },
             style: ElevatedButton.styleFrom(
