@@ -568,7 +568,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       Text(
                         'Critical actions that may remove user data or change the device state. Use with caution.',
                         style: TextStyle(
-                            fontSize: 16, color: Colors.redAccent.shade100),
+                            fontSize: 20, color: Colors.redAccent.shade100),
                       ),
                       const SizedBox(height: 20.0),
                       Row(
@@ -672,7 +672,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   }
                                 }
                               },
-                              child: const Text('Reset User Config'),
+                              child: const Text(
+                                'Reset User Config',
+                                style: TextStyle(fontSize: 22),
+                              ),
                             ),
                           ),
                         ],
@@ -763,7 +766,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     }
                                   }
                                 },
-                                child: const Text('Prepare for Delivery'),
+                                child: const Text(
+                                  'Prepare for Delivery',
+                                  style: TextStyle(fontSize: 22),
+                                ),
                               ),
                             ),
                           ],
