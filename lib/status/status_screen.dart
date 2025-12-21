@@ -1324,6 +1324,63 @@ class StatusScreenState extends State<StatusScreen> {
         !provider.isCanceling &&
         !(provider.isPausing && !isPaused);
 
+    // If the print has finished successfully, present two equal-width
+    // actions: Raise Plate (left) and Finish/Return (right).
+    if (isFinished && !isCanceled) {
+      return Row(children: [
+        Expanded(
+          flex: 1,
+          child: GlassButton(
+            tint: GlassButtonTint.positive,
+            onPressed: () async {
+              try {
+                final manual = ManualProvider();
+                await manual.moveToTop();
+              } catch (_) {}
+            },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(120, 65),
+              maximumSize: const Size(120, 65),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            child: const Text('Raise Plate', style: TextStyle(fontSize: 24)),
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          flex: 1,
+          child: GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () {
+              // Keep original return behavior but use a clearer label
+              if (widget.onReturnHome != null) {
+                widget.onReturnHome!();
+                return;
+              }
+              _checkAndShowCalibrationOverlay();
+            },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(120, 65),
+              maximumSize: const Size(120, 65),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            child: AutoSizeText(
+              minFontSize: 16,
+              maxLines: 1,
+              _isCalibrationPrint == true
+                  ? 'Finalize Calibration'
+                  : 'Return to Menu',
+              style: const TextStyle(fontSize: 24),
+            ),
+          ),
+        ),
+      ]);
+    }
+
     return Row(children: [
       Expanded(
         flex: 1,
