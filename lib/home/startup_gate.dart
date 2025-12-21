@@ -76,17 +76,27 @@ class _StartupGateState extends State<StartupGate> {
   }
 
   Future<void> _checkForUpdates() async {
-    try {
-      final updateManager = Provider.of<UpdateManager>(context, listen: false);
-      await updateManager.checkForUpdates();
-    } catch (_) {
-      // Ignore errors, proceed without update
-    } finally {
-      if (mounted) {
-        setState(() {
-          _checkForUpdatesComplete = true;
-        });
+    final updateManager = Provider.of<UpdateManager>(context, listen: false);
+    // Retry logic: try up to 5 times with increasing backoff
+    // (1s, 2s, 4s, 8s, 16s) = ~31s total wait time max
+    const maxAttempts = 5;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        await updateManager.checkForUpdates();
+        // If we successfully checked (even if no update found), break
+        break;
+      } catch (_) {
+        // If it failed (e.g. no network), wait and retry
+        if (attempt < maxAttempts - 1) {
+          await Future.delayed(Duration(seconds: 1 << attempt));
+        }
       }
+    }
+
+    if (mounted) {
+      setState(() {
+        _checkForUpdatesComplete = true;
+      });
     }
   }
 
