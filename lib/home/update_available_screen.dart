@@ -16,9 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/glasser/src/gradient_utils.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/update_manager.dart';
 import 'package:orion/widgets/version_comparison.dart';
