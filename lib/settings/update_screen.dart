@@ -862,23 +862,37 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
       }
 
       if (ap.updateAvailable) {
+        final bool isBetaChannel =
+            ap.channel.isNotEmpty && ap.channel != 'stable';
+        final bool isSameVersion = ap.latestVersion.isNotEmpty &&
+            ap.currentVersion.isNotEmpty &&
+            ap.latestVersion == ap.currentVersion;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.orangeAccent.withValues(alpha: 0.2),
+                color: isBetaChannel && isSameVersion
+                    ? Colors.redAccent.withValues(alpha: 0.12)
+                    : Colors.orangeAccent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                    color: Colors.orangeAccent.withValues(alpha: 0.5)),
+                    color: isBetaChannel && isSameVersion
+                        ? Colors.redAccent.withValues(alpha: 0.5)
+                        : Colors.orangeAccent.withValues(alpha: 0.5)),
               ),
-              child: const Text(
-                'UPDATE AVAILABLE',
+              child: Text(
+                isBetaChannel && isSameVersion
+                    ? 'BETA VERSION'
+                    : 'UPDATE AVAILABLE',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orangeAccent,
+                  color: isBetaChannel && isSameVersion
+                      ? Colors.redAccent
+                      : Colors.orangeAccent,
                 ),
               ),
             ),
@@ -897,19 +911,28 @@ class UpdateScreenState extends State<UpdateScreen> with SafeSetStateMixin {
             SizedBox(
               width: double.infinity,
               child: GlassButton(
-                tint: GlassButtonTint.positive,
+                tint: isBetaChannel && isSameVersion
+                    ? GlassButtonTint.negative
+                    : GlassButtonTint.positive,
                 onPressed: () async {
+                  // For beta channels where the latest == current we label this
+                  // a "Force Update" to make it clear this isn't a normal update.
                   await _triggerAthenaUpdate(context);
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(65),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.system_update_alt, size: 24),
-                    SizedBox(width: 20),
-                    Text('Update AthenaOS', style: TextStyle(fontSize: 20)),
+                    const Icon(Icons.system_update_alt, size: 24),
+                    const SizedBox(width: 20),
+                    Text(
+                      isBetaChannel && isSameVersion
+                          ? 'Force Update'
+                          : 'Update AthenaOS',
+                      style: const TextStyle(fontSize: 20),
+                    ),
                   ],
                 ),
               ),
