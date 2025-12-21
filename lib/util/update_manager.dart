@@ -10,10 +10,12 @@ class UpdateManager extends ChangeNotifier {
   final AthenaUpdateProvider athenaProvider;
   final OrionConfig _config = OrionConfig();
   Timer? _timer;
+  Timer? _debounceTimer;
   bool _suppressNotifications = false;
 
   UpdateManager(this.orionProvider, this.athenaProvider) {
     _startTimer();
+    OrionConfig.addChangeListener(_onConfigChanged);
   }
 
   set suppressNotifications(bool value) {
@@ -34,9 +36,19 @@ class UpdateManager extends ChangeNotifier {
         Timer.periodic(const Duration(minutes: 20), (_) => checkForUpdates());
   }
 
+  void _onConfigChanged() {
+    // Debounce config changes to avoid rapid re-checks or loops
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(seconds: 2), () {
+      checkForUpdates();
+    });
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _debounceTimer?.cancel();
+    OrionConfig.removeChangeListener(_onConfigChanged);
     super.dispose();
   }
 
