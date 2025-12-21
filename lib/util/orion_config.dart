@@ -258,6 +258,10 @@ class OrionConfig {
   void setFlag(String flagName, bool value, {String category = 'general'}) {
     var config = _getConfig();
     config[category] ??= {};
+
+    // Optimization: Only write if value actually changed
+    if (config[category][flagName] == value) return;
+
     config[category][flagName] = value;
     _logger.config('setFlag: $flagName to $value');
 
@@ -267,6 +271,10 @@ class OrionConfig {
   void setString(String key, String value, {String category = 'general'}) {
     var config = _getConfig();
     config[category] ??= {};
+
+    // Optimization: Only write if value actually changed
+    if (config[category][key] == value) return;
+
     config[category][key] = value;
 
     if (value == '') {
