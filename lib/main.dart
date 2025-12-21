@@ -27,6 +27,7 @@ import 'package:fvp/fvp.dart' as fvp;
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
+import 'package:orion/util/update_notification_watcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:orion/util/install_locator.dart';
@@ -59,6 +60,8 @@ import 'package:orion/util/providers/wifi_provider.dart';
 import 'package:orion/util/error_handling/connection_error_watcher.dart';
 import 'package:orion/util/error_handling/notification_watcher.dart';
 import 'package:orion/util/providers/orion_update_provider.dart';
+import 'package:orion/util/providers/athena_update_provider.dart';
+import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 
 void main() {
@@ -245,6 +248,20 @@ class OrionRoot extends StatelessWidget {
           lazy: true,
         ),
         ChangeNotifierProvider(
+          create: (_) => AthenaUpdateProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProxyProvider2<OrionUpdateProvider, AthenaUpdateProvider,
+            UpdateManager>(
+          create: (context) => UpdateManager(
+            Provider.of<OrionUpdateProvider>(context, listen: false),
+            Provider.of<AthenaUpdateProvider>(context, listen: false),
+          ),
+          update: (context, orion, athena, previous) =>
+              previous ?? UpdateManager(orion, athena),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
           create: (_) => ResinsProvider(),
           // Prefetch calibration models and images at app startup so
           // opening the Calibration screen can show thumbnails immediately.
@@ -271,6 +288,7 @@ class OrionMainAppState extends State<OrionMainApp> {
   late final GoRouter _router;
   ConnectionErrorWatcher? _connWatcher;
   NotificationWatcher? _notifWatcher;
+  UpdateNotificationWatcher? _updateWatcher;
   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
   bool _statusListenerAttached = false;
   bool _wasPrinting = false;
@@ -291,6 +309,7 @@ class OrionMainAppState extends State<OrionMainApp> {
   @override
   void dispose() {
     _connWatcher?.dispose();
+    _updateWatcher?.dispose();
     _notifWatcher?.dispose();
     super.dispose();
   }
@@ -342,6 +361,12 @@ class OrionMainAppState extends State<OrionMainApp> {
                   path: 'about',
                   builder: (BuildContext context, GoRouterState state) {
                     return const AboutScreen();
+                  },
+                ),
+                GoRoute(
+                  path: 'updates',
+                  builder: (BuildContext context, GoRouterState state) {
+                    return const SettingsScreen(initialIndex: 3);
                   },
                 ),
               ],
@@ -404,6 +429,9 @@ class OrionMainAppState extends State<OrionMainApp> {
                 }
                 if (_notifWatcher == null && navCtx != null) {
                   _notifWatcher = NotificationWatcher.install(navCtx);
+                }
+                if (_updateWatcher == null && navCtx != null) {
+                  _updateWatcher = UpdateNotificationWatcher.install(navCtx);
                 }
                 // Attach a listener to StatusProvider so we can auto-open
                 // the StatusScreen when a print becomes active (remote start).

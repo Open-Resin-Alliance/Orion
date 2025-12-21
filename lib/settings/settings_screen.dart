@@ -39,7 +39,8 @@ import 'package:orion/util/providers/wifi_provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final int initialIndex;
+  const SettingsScreen({super.key, this.initialIndex = 0});
 
   @override
   SettingsScreenState createState() => SettingsScreenState();
@@ -59,6 +60,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
     needsRestart = config.getFlag('needsRestart', category: 'internal');
     _wifiScreenFuture = _initializeWifiScreen();
   }
