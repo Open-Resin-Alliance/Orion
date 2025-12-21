@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -24,6 +25,8 @@ import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/settings/update_progress.dart';
 import 'package:orion/util/install_locator.dart';
+import 'package:orion/util/orion_config.dart';
+import 'package:orion/pubspec.dart';
 
 /// Provider that encapsulates the Orion update flow.
 ///
@@ -33,10 +36,251 @@ import 'package:orion/util/install_locator.dart';
 
 class OrionUpdateProvider extends ChangeNotifier {
   final Logger _logger = Logger('OrionUpdateProvider');
+  final OrionConfig _config = OrionConfig();
 
   final ValueNotifier<double> progress = ValueNotifier<double>(0.0);
   final ValueNotifier<String> message = ValueNotifier<String>('');
   bool _isDialogOpen = false;
+
+  // Update check state
+  bool isChecking = false;
+  bool isUpdateAvailable = false;
+  bool rateLimitExceeded = false;
+  bool preRelease = false;
+  bool betaUpdatesOverride = false;
+  String latestVersion = '';
+  String currentVersion = '';
+  String releaseNotes = '';
+  String releaseDate = '';
+  String commitDate = '';
+  String assetUrl = '';
+  String releaseChannel = 'BRANCH_dev';
+
+  bool get isLoading => isChecking;
+  String get release => releaseChannel;
+
+  OrionUpdateProvider() {
+    _loadPersistedState();
+  }
+
+  void _loadPersistedState() {
+    if (_config.getFlag('available', category: 'updates')) {
+      final current = _config.getString('orion.current', category: 'updates');
+      final latest = _config.getString('orion.latest', category: 'updates');
+      final rel = _config.getString('orion.release', category: 'updates');
+
+      if (current.isNotEmpty && latest.isNotEmpty) {
+        currentVersion = current;
+        latestVersion = latest;
+        releaseChannel = rel.isNotEmpty ? rel : 'BRANCH_dev';
+        isUpdateAvailable = true;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> checkForUpdates() async {
+    isChecking = true;
+    notifyListeners();
+
+    try {
+      currentVersion = Pubspec.versionFull;
+      _logger.info('Current version: $currentVersion');
+
+      final isFirmwareSpoofingEnabled =
+          _config.getFlag('overrideUpdateCheck', category: 'developer');
+      betaUpdatesOverride =
+          _config.getFlag('releaseOverride', category: 'developer');
+      releaseChannel =
+          _config.getString('overrideRelease', category: 'developer');
+      final repoOverride =
+          _config.getString('overrideRepo', category: 'developer');
+      final repo = repoOverride.trim().isNotEmpty
+          ? repoOverride.trim()
+          : 'Open-Resin-Alliance';
+
+      if (isFirmwareSpoofingEnabled) {
+        if (releaseChannel.isNotEmpty && releaseChannel != 'BRANCH_dev') {
+          await _checkForBERUpdates(repo, releaseChannel, force: true);
+        } else {
+          // Default latest release check with force
+          await _checkGitHubLatest(repo, force: true);
+        }
+      } else if (betaUpdatesOverride) {
+        await _checkForBERUpdates(repo, releaseChannel);
+      } else {
+        await _checkGitHubLatest(repo);
+      }
+    } catch (e) {
+      _logger.warning('Update check failed: $e');
+      isUpdateAvailable = false;
+    } finally {
+      isChecking = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _checkGitHubLatest(String repo, {bool force = false}) async {
+    final String url =
+        'https://api.github.com/repos/$repo/orion/releases/latest';
+    int retryCount = 0;
+    const int maxRetries = 3;
+    const int initialDelay = 750;
+
+    while (retryCount < maxRetries) {
+      try {
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          final jsonResponse = json.decode(response.body);
+          final String tag = jsonResponse['tag_name'].replaceAll('v', '');
+
+          if (force || _isNewerVersion(tag, currentVersion)) {
+            final asset = jsonResponse['assets'].firstWhere(
+                (asset) => asset['name'] == 'orion_armv7.tar.gz',
+                orElse: () => null);
+
+            latestVersion = tag;
+            releaseNotes = jsonResponse['body'];
+            releaseDate = jsonResponse['published_at'];
+            assetUrl = asset != null ? asset['browser_download_url'] : '';
+            isUpdateAvailable = true;
+            rateLimitExceeded = false;
+          } else {
+            isUpdateAvailable = false;
+          }
+          return;
+        } else if (response.statusCode == 403 &&
+            response.headers['x-ratelimit-remaining'] == '0') {
+          _logger.warning('Rate limit exceeded, retrying...');
+          rateLimitExceeded = true;
+          notifyListeners();
+          await Future.delayed(Duration(
+              milliseconds: initialDelay * pow(2, retryCount).toInt()));
+          retryCount++;
+        } else {
+          _logger.warning('Failed to fetch updates: ${response.statusCode}');
+          return;
+        }
+      } catch (e) {
+        _logger.warning(e.toString());
+        return;
+      }
+    }
+  }
+
+  Future<void> _checkForBERUpdates(String repo, String release,
+      {bool force = false}) async {
+    if (release.isEmpty) release = 'BRANCH_dev';
+    String url = 'https://api.github.com/repos/$repo/orion/releases';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body) as List;
+        final releaseItem = jsonResponse.firstWhere(
+            (item) => item['tag_name'] == release,
+            orElse: () => null);
+
+        if (releaseItem != null) {
+          final String commitSha = releaseItem['target_commitish'];
+          final commitUrl =
+              'https://api.github.com/repos/$repo/orion/commits/$commitSha';
+          final commitResponse = await http.get(Uri.parse(commitUrl));
+
+          if (commitResponse.statusCode == 200) {
+            final commitJson = json.decode(commitResponse.body);
+            final String shortSha = commitJson['sha'].substring(0, 7);
+            final String msg = commitJson['commit']['message'];
+            final String date = commitJson['commit']['committer']['date'];
+
+            if (!force && _isCurrentCommitUpToDate(shortSha)) {
+              isUpdateAvailable = false;
+              return;
+            }
+
+            // Try to fetch pubspec.yaml to get the actual version
+            String version = '';
+            try {
+              final pubspecUrl =
+                  'https://raw.githubusercontent.com/$repo/orion/$commitSha/pubspec.yaml';
+              final pubspecResp = await http.get(Uri.parse(pubspecUrl));
+              if (pubspecResp.statusCode == 200) {
+                final content = pubspecResp.body;
+                final match =
+                    RegExp(r'version:\s*([^\s]+)').firstMatch(content);
+                if (match != null) {
+                  version = match.group(1) ?? '';
+                  // Remove any existing build metadata from the fetched version
+                  // so we can append the commit SHA cleanly
+                  if (version.contains('+')) {
+                    version = version.split('+')[0];
+                  }
+                }
+              }
+            } catch (e) {
+              _logger.warning('Failed to fetch pubspec version: $e');
+            }
+
+            final asset = releaseItem['assets'].firstWhere(
+                (asset) => asset['name'] == 'orion_armv7.tar.gz',
+                orElse: () => null);
+
+            latestVersion = version.isNotEmpty
+                ? '$version+$shortSha'
+                : '$shortSha ($release)';
+            releaseNotes =
+                releaseItem['prerelease'] ? msg : releaseItem['body'];
+            commitDate = date;
+            assetUrl = asset != null ? asset['browser_download_url'] : '';
+            preRelease = releaseItem['prerelease'];
+            isUpdateAvailable = true;
+            rateLimitExceeded = false;
+          }
+        }
+      }
+    } catch (e) {
+      _logger.warning('BER update check failed: $e');
+    }
+  }
+
+  bool _isCurrentCommitUpToDate(String commitSha) {
+    final parts = currentVersion.split('+');
+    final currentCommit = parts.length > 1 ? parts[1] : '';
+    return commitSha == currentCommit;
+  }
+
+  bool _isNewerVersion(String latest, String current) {
+    // Split the version and build numbers
+    List<String> latestVersionParts = latest.split('+')[0].split('.');
+    List<String> currentVersionParts = current.split('+')[0].split('.');
+
+    // Convert version parts to integers for comparison
+    List<int> latestNumbers = latestVersionParts.map(int.parse).toList();
+    List<int> currentNumbers = currentVersionParts.map(int.parse).toList();
+
+    // Compare major, minor, and patch numbers
+    for (int i = 0; i < min(latestNumbers.length, currentNumbers.length); i++) {
+      if (latestNumbers[i] > currentNumbers[i]) {
+        return true;
+      } else if (latestNumbers[i] < currentNumbers[i]) {
+        return false;
+      }
+    }
+
+    if (latest.contains('+') && current.contains('+')) {
+      String latestBuild = latest;
+      String currentBuild = current.split('+')[1];
+      try {
+        int latestBuildNumber = int.parse(latestBuild);
+        int currentBuildNumber = int.parse(currentBuild);
+        return latestBuildNumber > currentBuildNumber;
+      } catch (e) {
+        return latestBuild.compareTo(currentBuild) > 0;
+      }
+    }
+
+    return false;
+  }
 
   void _openUpdateDialog(BuildContext context, String initialMessage) {
     message.value = initialMessage;

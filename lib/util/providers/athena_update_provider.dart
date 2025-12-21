@@ -33,6 +33,27 @@ class AthenaUpdateProvider extends ChangeNotifier {
   String channel = 'stable';
   String printerType = '';
 
+  AthenaUpdateProvider() {
+    _loadPersistedState();
+  }
+
+  void _loadPersistedState() {
+    final cfg = OrionConfig();
+    if (cfg.getFlag('available', category: 'updates')) {
+      final current = cfg.getString('athena.current', category: 'updates');
+      final latest = cfg.getString('athena.latest', category: 'updates');
+      final ch = cfg.getString('athena.channel', category: 'updates');
+
+      if (current.isNotEmpty && latest.isNotEmpty) {
+        currentVersion = current;
+        latestVersion = latest;
+        channel = ch.isNotEmpty ? ch : 'stable';
+        updateAvailable = true;
+        notifyListeners();
+      }
+    }
+  }
+
   /// Check for updates using the Athena printer_data payload.
   ///
   /// This will call the configured olymp endpoint and set [updateAvailable]
