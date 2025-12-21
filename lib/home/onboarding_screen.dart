@@ -361,12 +361,22 @@ class OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _handlePageChange(int index) {
-    if (index >= 0 && index <= 7) {
+    int targetPage = index;
+    // Skip Machine Name page (4) if custom name is disabled
+    if (targetPage == 4 && !config.enableCustomName()) {
+      if (targetPage > _currentPage) {
+        targetPage = 5;
+      } else {
+        targetPage = 3;
+      }
+    }
+
+    if (targetPage >= 0 && targetPage <= 7) {
       // Store previous page before updating current
       _previousPage = _currentPage;
 
       // Reset the text field key when moving to or from the name page
-      if (_currentPage == 4 || index == 4) {
+      if (_currentPage == 4 || targetPage == 4) {
         _nameTextFieldKey = GlobalKey<SpawnOrionTextFieldState>();
       }
 
@@ -374,16 +384,16 @@ class OnboardingScreenState extends State<OnboardingScreen>
       // focused on updating page state.
 
       // Initialize WiFi when needed
-      if (index == 6 && !_wifiInitialized) {
+      if (targetPage == 6 && !_wifiInitialized) {
         _initializeWifiScreen();
       }
 
       setState(() {
-        _currentPage = index;
+        _currentPage = targetPage;
       });
 
       // Fade FAB back in on the Region selection page (page 2)
-      if (index == 2 && !_fabVisible) {
+      if (targetPage == 2 && !_fabVisible) {
         // slight delay so the page content settles before the FAB appears
         Future.delayed(const Duration(milliseconds: 120), () {
           if (mounted) {
@@ -491,15 +501,15 @@ class OnboardingScreenState extends State<OnboardingScreen>
   void _handleCountrySelection(String name) {
     setState(() {
       _selectedCountry = name;
-      _currentPage++;
     });
+    _handlePageChange(_currentPage + 1);
   }
 
   void _handleTimezoneSelection(String timezone) async {
     // Store timezone before advancing
     config.setString('timezone', timezone, category: 'machine');
     await OnboardingUtils.setSystemTimezone(timezone);
-    setState(() => _currentPage++);
+    _handlePageChange(_currentPage + 1);
   }
 
   void _handleNameChange(String name) {
@@ -563,21 +573,6 @@ class OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _buildAppBarActions(AppLocalizations l10n) {
-    if (_currentPage == 6) {
-      return ValueListenableBuilder<bool>(
-        valueListenable: isConnected,
-        builder: (context, value, child) {
-          return value
-              ? IconButton(
-                  onPressed: () {
-                    launchDisconnectDialog();
-                  },
-                  icon: PhosphorIcon(PhosphorIcons.xCircle(), size: 40),
-                )
-              : const SizedBox.shrink();
-        },
-      );
-    }
     return const SizedBox.shrink();
   }
 
@@ -756,41 +751,5 @@ class OnboardingScreenState extends State<OnboardingScreen>
         builder: (context) => const HomeScreen(),
       ),
     );
-  }
-
-  Future<void> launchDisconnectDialog() async {
-    final l10n = AppLocalizations.of(context);
-    bool shouldDisconnect = await showDialog(
-      barrierDismissible: false,
-      context: context,
-      builder: (BuildContext context) {
-        return GlassAlertDialog(
-          title: Text(l10n!.wifiDisconnectTitle),
-          content: Text(l10n.wifiDisconnectMessage),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-              child: Text(l10n.wifiStayConnected),
-            ),
-            const SizedBox(width: 20),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: Text(l10n.wifiDisconnect),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldDisconnect && mounted) {
-      await context.read<WiFiProvider>().disconnect();
-      setState(() {
-        isConnected.value = false;
-      });
-    }
   }
 }
