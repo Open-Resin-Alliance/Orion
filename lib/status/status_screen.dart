@@ -117,6 +117,77 @@ class StatusScreenState extends State<StatusScreen> {
         // Analytics provider not available
       }
     });
+
+    // Listen for status provider changes so we can detect when a finished
+    // print is replaced by a new print without leaving the StatusScreen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        final sp = context.read<StatusProvider>();
+        _statusProviderListener = () {
+          if (!mounted) return;
+          final provider = context.read<StatusProvider>();
+          final status = provider.status;
+          final currentPath = status?.printData?.fileData?.path;
+          final currentFinished =
+              status?.isIdle == true && status?.layer != null;
+
+          // If we were previously showing a finished snapshot (final state)
+          // mark the status screen as stale so that subsequent starts will
+          // either reset the UI or respawn the screen entirely.
+          if (currentFinished) {
+            _statusScreenStale = true;
+          }
+
+          // If a new active job begins (printing/paused) after a finished
+          // snapshot we should present a fresh StatusScreen experience.
+          if (_wasFinishedSnapshot &&
+              (status?.isPrinting == true || status?.isPaused == true)) {
+            if (_statusScreenStale) {
+              // Respawn the StatusScreen route so the entire UI is rebuilt
+              // just like when opening a new print from elsewhere. Use a
+              // post-frame callback to avoid navigating during provider
+              // notifications.
+              _statusScreenStale = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                try {
+                  final initialThumb = provider.thumbnailBytes;
+                  final initialPath =
+                      provider.status?.printData?.fileData?.path;
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (ctx) => StatusScreen(
+                        newPrint: true,
+                        initialThumbnailBytes: initialThumb,
+                        initialFilePath: initialPath,
+                        initialPlateId: null,
+                      ),
+                    ),
+                  );
+                } catch (_) {}
+              });
+            } else {
+              provider.resetStatus();
+              setState(() {
+                _frozenFileName = null;
+                _showLayer2D = false;
+                _layer2DBytes = null;
+                _layer2DImageProvider = null;
+                _prefetched = false;
+                _lastPrefetchedLayer = null;
+                _resolvedFilePathForPrefetch = null;
+                _resolvedPlateIdForPrefetch = null;
+              });
+            }
+          }
+
+          _wasFinishedSnapshot = currentFinished;
+          _lastSeenFilePath = currentPath ?? _lastSeenFilePath;
+        };
+        sp.addListener(_statusProviderListener!);
+      } catch (_) {}
+    });
   }
 
   @override
@@ -127,6 +198,11 @@ class StatusScreenState extends State<StatusScreen> {
       } catch (_) {
         // Provider already disposed
       }
+    }
+    if (_statusProviderListener != null) {
+      try {
+        context.read<StatusProvider>().removeListener(_statusProviderListener!);
+      } catch (_) {}
     }
     super.dispose();
   }
@@ -141,6 +217,12 @@ class StatusScreenState extends State<StatusScreen> {
   int? _lastPrefetchedLayer;
   int? _resolvedPlateIdForPrefetch;
   String? _resolvedFilePathForPrefetch;
+  // Track last observed file path and finished state to detect new-print
+  // transitions while the StatusScreen is still mounted.
+  String? _lastSeenFilePath;
+  bool _wasFinishedSnapshot = false;
+  bool _statusScreenStale = false;
+  VoidCallback? _statusProviderListener;
   final Logger _log = Logger('StatusScreen');
   // null = unknown, true = this finished/canceled print is a calibration print
   bool? _isCalibrationPrint;
@@ -1022,15 +1104,17 @@ class StatusScreenState extends State<StatusScreen> {
     }
     if (plateId == null) return;
 
-    final cached = LayerPreviewCache.instance.get(plateId, layerIndex);
+    final filePath = status.printData?.fileData?.path ?? widget.initialFilePath;
+    final cached =
+        LayerPreviewCache.instance.get(plateId, layerIndex, filePath: filePath);
     if (cached != null) {
       setState(() {
         _layer2DBytes = cached;
         _layer2DImageProvider = MemoryImage(cached);
         _showLayer2D = true;
       });
-      LayerPreviewCache.instance
-          .preload(BackendService(), plateId, layerIndex, count: 2);
+      LayerPreviewCache.instance.preload(BackendService(), plateId, layerIndex,
+          count: 2, filePath: filePath);
       return;
     }
 
@@ -1038,8 +1122,9 @@ class StatusScreenState extends State<StatusScreen> {
       _layer2DLoading = true;
     });
     try {
-      final bytes = await LayerPreviewCache.instance
-          .fetchAndCache(BackendService(), plateId, layerIndex);
+      final bytes = await LayerPreviewCache.instance.fetchAndCache(
+          BackendService(), plateId, layerIndex,
+          filePath: filePath);
       if (bytes.isNotEmpty) {
         final imgProv = MemoryImage(bytes);
         // Start precaching but don't await it — decoding can be expensive
@@ -1050,8 +1135,9 @@ class StatusScreenState extends State<StatusScreen> {
           _layer2DImageProvider = imgProv;
           _showLayer2D = true;
         });
-        LayerPreviewCache.instance
-            .preload(BackendService(), plateId, layerIndex, count: 2);
+        LayerPreviewCache.instance.preload(
+            BackendService(), plateId, layerIndex,
+            count: 2, filePath: filePath);
       }
     } catch (_) {
       // ignore
@@ -1111,8 +1197,11 @@ class StatusScreenState extends State<StatusScreen> {
 
       // Use fetchAndCache to dedupe concurrent fetches.
       try {
-        final bytes = await LayerPreviewCache.instance
-            .fetchAndCache(BackendService(), plateId, layerIndex);
+        final filePath =
+            status.printData?.fileData?.path ?? widget.initialFilePath;
+        final bytes = await LayerPreviewCache.instance.fetchAndCache(
+            BackendService(), plateId, layerIndex,
+            filePath: filePath);
         if (bytes.isNotEmpty) {
           // If user already enabled 2D preview, immediately display the
           // prefetched current layer so the preview reflects the active
@@ -1131,7 +1220,8 @@ class StatusScreenState extends State<StatusScreen> {
           for (int i = 1; i <= 2; i++) {
             final target = layerIndex + i;
             LayerPreviewCache.instance
-                .fetchAndCache(BackendService(), plateId, target)
+                .fetchAndCache(BackendService(), plateId, target,
+                    filePath: filePath)
                 .then((nextBytes) {
               if (nextBytes.isNotEmpty) {
                 precacheImage(MemoryImage(nextBytes), context)
@@ -1176,7 +1266,8 @@ class StatusScreenState extends State<StatusScreen> {
       // Ensure current layer is cached (deduped) then fetch+precache next two.
       // Fetch current layer (deduped) but don't block on any decoding.
       LayerPreviewCache.instance
-          .fetchAndCache(BackendService(), plateId, layerIndex)
+          .fetchAndCache(BackendService(), plateId, layerIndex,
+              filePath: _resolvedFilePathForPrefetch)
           .then((curBytes) {
         if (curBytes.isNotEmpty) {
           // Precache decoded image for faster rendering (fire-and-forget).
@@ -1200,7 +1291,8 @@ class StatusScreenState extends State<StatusScreen> {
       for (int i = 1; i <= 2; i++) {
         final target = layerIndex + i;
         LayerPreviewCache.instance
-            .fetchAndCache(BackendService(), plateId, target)
+            .fetchAndCache(BackendService(), plateId, target,
+                filePath: _resolvedFilePathForPrefetch)
             .then((nextBytes) {
           if (nextBytes.isNotEmpty) {
             precacheImage(MemoryImage(nextBytes), context).catchError((_) {});
