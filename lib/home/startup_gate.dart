@@ -172,8 +172,8 @@ class _StartupGateState extends State<StartupGate> {
 
     // Choose the child widget depending on state
     final Widget child;
-    final showUpdate =
-        updateManager.hasPendingUpdateNotification && !_dismissUpdateScreen;
+    // On startup, ignore the "remind later" flag and always show if an update is available.
+    final showUpdate = updateManager.isUpdateAvailable && !_dismissUpdateScreen;
 
     if (!isReadyToProceed) {
       child = StartupScreen(
