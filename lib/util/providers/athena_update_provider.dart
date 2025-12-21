@@ -105,8 +105,7 @@ class AthenaUpdateProvider extends ChangeNotifier {
       final resp = await http.get(uri);
       if (resp.statusCode != 200) {
         _log.warning('Olymp lookup failed: ${resp.statusCode} ${resp.body}');
-        updateAvailable = false;
-        latestVersion = '';
+        // Do not clear state on temporary network/server failure
         isChecking = false;
         notifyListeners();
         return;
@@ -129,8 +128,7 @@ class AthenaUpdateProvider extends ChangeNotifier {
       }
     } catch (e, st) {
       _log.warning('checkForUpdates failed', e, st);
-      updateAvailable = false;
-      latestVersion = '';
+      // Do not clear state on error; preserve persisted state
     } finally {
       isChecking = false;
       notifyListeners();

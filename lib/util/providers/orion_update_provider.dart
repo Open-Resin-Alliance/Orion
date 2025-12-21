@@ -70,11 +70,15 @@ class OrionUpdateProvider extends ChangeNotifier {
       final rel = _config.getString('orion.release', category: 'updates');
 
       if (current.isNotEmpty && latest.isNotEmpty) {
-        currentVersion = current;
-        latestVersion = latest;
-        releaseChannel = rel.isNotEmpty ? rel : 'BRANCH_dev';
-        isUpdateAvailable = true;
-        notifyListeners();
+        // Check if we've already updated since the last check
+        final actualCurrent = Pubspec.versionFull;
+        if (_isNewerVersion(latest, actualCurrent)) {
+          currentVersion = actualCurrent;
+          latestVersion = latest;
+          releaseChannel = rel.isNotEmpty ? rel : 'BRANCH_dev';
+          isUpdateAvailable = true;
+          notifyListeners();
+        }
       }
     }
   }
@@ -113,7 +117,7 @@ class OrionUpdateProvider extends ChangeNotifier {
       }
     } catch (e) {
       _logger.warning('Update check failed: $e');
-      isUpdateAvailable = false;
+      // Do not clear isUpdateAvailable on error; preserve persisted state
     } finally {
       isChecking = false;
       notifyListeners();
