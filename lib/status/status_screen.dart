@@ -1110,11 +1110,11 @@ class StatusScreenState extends State<StatusScreen> {
     if (cached != null) {
       setState(() {
         _layer2DBytes = cached;
-        _layer2DImageProvider = MemoryImage(cached);
+        _layer2DImageProvider = ResizeImage(MemoryImage(cached), width: 800);
         _showLayer2D = true;
       });
       LayerPreviewCache.instance.preload(BackendService(), plateId, layerIndex,
-          count: 2, filePath: filePath);
+          count: 1, filePath: filePath);
       return;
     }
 
@@ -1126,7 +1126,7 @@ class StatusScreenState extends State<StatusScreen> {
           BackendService(), plateId, layerIndex,
           filePath: filePath);
       if (bytes.isNotEmpty) {
-        final imgProv = MemoryImage(bytes);
+        final imgProv = ResizeImage(MemoryImage(bytes), width: 800);
         // Start precaching but don't await it — decoding can be expensive
         // and awaiting here can cause UI jank. Fire-and-forget instead.
         precacheImage(imgProv, context).catchError((_) {});
@@ -1137,7 +1137,7 @@ class StatusScreenState extends State<StatusScreen> {
         });
         LayerPreviewCache.instance.preload(
             BackendService(), plateId, layerIndex,
-            count: 2, filePath: filePath);
+            count: 1, filePath: filePath);
       }
     } catch (_) {
       // ignore
@@ -1173,6 +1173,9 @@ class StatusScreenState extends State<StatusScreen> {
     } catch (_) {
       // ignore
     }
+
+    // If 2D preview is not shown, skip fetching layer images to save CPU/Network
+    if (!_showLayer2D) return;
 
     // Prefetch current layer via LayerPreviewCache.fetchAndCache and
     // then preload n+1/n+2 layers.
@@ -1211,20 +1214,22 @@ class StatusScreenState extends State<StatusScreen> {
                 _bytesEqual(_layer2DBytes!, bytes))) {
               setState(() {
                 _layer2DBytes = bytes;
-                _layer2DImageProvider = MemoryImage(bytes);
+                _layer2DImageProvider =
+                    ResizeImage(MemoryImage(bytes), width: 800);
               });
             }
           }
-          // Fire off preloads for the next two layers in parallel; do not
+          // Fire off preloads for the next layer in parallel; do not
           // await to avoid blocking the UI thread.
-          for (int i = 1; i <= 2; i++) {
+          for (int i = 1; i <= 1; i++) {
             final target = layerIndex + i;
             LayerPreviewCache.instance
                 .fetchAndCache(BackendService(), plateId, target,
                     filePath: filePath)
                 .then((nextBytes) {
               if (nextBytes.isNotEmpty) {
-                precacheImage(MemoryImage(nextBytes), context)
+                precacheImage(ResizeImage(MemoryImage(nextBytes), width: 800),
+                        context)
                     .catchError((_) {});
               }
             }).catchError((_) {});
@@ -1239,6 +1244,9 @@ class StatusScreenState extends State<StatusScreen> {
   }
 
   Future<void> _maybePreloadNextLayers(StatusModel status) async {
+    // If the 2D preview is hidden, don't waste resources fetching/decoding layers
+    if (!_showLayer2D) return;
+
     final layerIndex = status.layer;
     if (layerIndex == null) return;
 
@@ -1271,7 +1279,8 @@ class StatusScreenState extends State<StatusScreen> {
           .then((curBytes) {
         if (curBytes.isNotEmpty) {
           // Precache decoded image for faster rendering (fire-and-forget).
-          precacheImage(MemoryImage(curBytes), context).catchError((_) {});
+          precacheImage(ResizeImage(MemoryImage(curBytes), width: 800), context)
+              .catchError((_) {});
           // If the user currently has the 2D preview visible, immediately
           // update the displayed image so the preview follows the layer.
           if (mounted && _showLayer2D) {
@@ -1280,22 +1289,25 @@ class StatusScreenState extends State<StatusScreen> {
                 _bytesEqual(_layer2DBytes!, curBytes))) {
               setState(() {
                 _layer2DBytes = curBytes;
-                _layer2DImageProvider = MemoryImage(curBytes);
+                _layer2DImageProvider =
+                    ResizeImage(MemoryImage(curBytes), width: 800);
               });
             }
           }
         }
       }).catchError((_) {});
 
-      // Launch preloads for the next two layers in parallel.
-      for (int i = 1; i <= 2; i++) {
+      // Launch preloads for the next layer in parallel.
+      for (int i = 1; i <= 1; i++) {
         final target = layerIndex + i;
         LayerPreviewCache.instance
             .fetchAndCache(BackendService(), plateId, target,
                 filePath: _resolvedFilePathForPrefetch)
             .then((nextBytes) {
           if (nextBytes.isNotEmpty) {
-            precacheImage(MemoryImage(nextBytes), context).catchError((_) {});
+            precacheImage(
+                    ResizeImage(MemoryImage(nextBytes), width: 800), context)
+                .catchError((_) {});
           }
         }).catchError((_) {});
       }

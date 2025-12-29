@@ -1250,18 +1250,9 @@ class NanoDlpHttpClient implements BackendClient {
     final uri = Uri.parse('$baseNoSlash/static/plates/$plateId/$layer.png');
     final entry = await _downloadThumbnail(uri, 'plate $plateId layer $layer');
     if (entry.bytes.isNotEmpty) {
-      try {
-        // Resize on a background isolate to avoid blocking the UI thread.
-        try {
-          return await compute(resizeLayer2DCompute, entry.bytes);
-        } catch (_) {
-          // If compute fails (e.g., in test environment), fall back to
-          // synchronous resize.
-          return NanoDlpThumbnailGenerator.resizeLayer2D(entry.bytes);
-        }
-      } catch (_) {
-        // fall through to placeholder
-      }
+      // Return raw bytes; let the UI handle resizing via ResizeImage to avoid
+      // expensive Dart-based image decoding/resizing on the CPU.
+      return entry.bytes;
     }
     return NanoDlpThumbnailGenerator.generatePlaceholder(
         NanoDlpThumbnailGenerator.largeWidth,
