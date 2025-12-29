@@ -15,6 +15,8 @@ abstract class OdysseyClient {
 
   Future<Map<String, dynamic>> getConfig();
 
+  Future<String> getBackendVersion();
+
   Future<Uint8List> getFileThumbnail(
       String location, String filePath, String size);
 
@@ -37,8 +39,22 @@ abstract class OdysseyClient {
 
   // Manual controls and hardware commands
   Future<Map<String, dynamic>> move(double height);
+
+  /// Send a relative Z move in millimeters (positive = up, negative = down).
+  /// This maps directly to the device's relative move endpoints when
+  /// available (e.g. NanoDLP /z-axis/move/.../micron/...).
+  Future<Map<String, dynamic>> moveDelta(double deltaMm);
+
+  /// Whether the client supports a direct "move to top limit" command.
+  Future<bool> canMoveToTop();
+  Future<bool> canMoveToFloor();
+
+  /// Move the Z axis directly to the device's top limit if supported.
+  Future<Map<String, dynamic>> moveToTop();
+  Future<Map<String, dynamic>> moveToFloor();
   Future<Map<String, dynamic>> manualCure(bool cure);
   Future<Map<String, dynamic>> manualHome();
   Future<Map<String, dynamic>> manualCommand(String command);
+  Future<Map<String, dynamic>> emergencyStop();
   Future<void> displayTest(String test);
 }

@@ -90,4 +90,22 @@ final Map<String, ErrorDetails> errorLookupTable = {
         'Please check the printer sensors.\n\n'
         'Error Code: WHITE-WOLF',
   ),
+  'GRAY-GOOSE': ErrorDetails(
+    'Power Error',
+    'There was a power issue with the printer.\n'
+        'Please ensure the printer is properly connected.\n\n'
+        'Error Code: GRAY-GOOSE',
+  ),
+  'GOLDEN-APE': ErrorDetails(
+    'Movement Error',
+    'The movement command has failed.\n'
+        'Please check the Z-axis and try again.\n\n'
+        'Error Code: GOLDEN-APE',
+  ),
+  'CRITICAL': ErrorDetails(
+    'CRITICAL ERROR',
+    'A critical error has occured!\n'
+        'Please contact support immediately.\n\n'
+        'Error Code: CRITICAL',
+  )
 };

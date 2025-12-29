@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
-//import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
+import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// BackendService is a small façade that selects a concrete
@@ -24,8 +24,7 @@ class BackendService implements OdysseyClient {
         // Return the NanoDLP adapter when explicitly requested in config.
         // Add a small log to aid debugging in cases where config isn't applied.
         // Note: avoid bringing logging package into this file if not used
-        //return NanoDlpHttpClient();
-        return OdysseyHttpClient(); // Until NanoDLP support is ready
+        return NanoDlpHttpClient();
       }
     } catch (_) {
       // ignore config errors and fall back
@@ -49,6 +48,9 @@ class BackendService implements OdysseyClient {
 
   @override
   Future<Map<String, dynamic>> getConfig() => _delegate.getConfig();
+
+  @override
+  Future<String> getBackendVersion() => _delegate.getBackendVersion();
 
   @override
   Future<Uint8List> getFileThumbnail(
@@ -82,6 +84,22 @@ class BackendService implements OdysseyClient {
   Future<Map<String, dynamic>> move(double height) => _delegate.move(height);
 
   @override
+  Future<Map<String, dynamic>> moveDelta(double deltaMm) =>
+      _delegate.moveDelta(deltaMm);
+
+  @override
+  Future<bool> canMoveToTop() => _delegate.canMoveToTop();
+
+  @override
+  Future<Map<String, dynamic>> moveToTop() => _delegate.moveToTop();
+
+  @override
+  Future<bool> canMoveToFloor() => _delegate.canMoveToFloor();
+
+  @override
+  Future<Map<String, dynamic>> moveToFloor() => _delegate.moveToFloor();
+
+  @override
   Future<Map<String, dynamic>> manualCure(bool cure) =>
       _delegate.manualCure(cure);
 
@@ -91,6 +109,9 @@ class BackendService implements OdysseyClient {
   @override
   Future<Map<String, dynamic>> manualCommand(String command) =>
       _delegate.manualCommand(command);
+
+  @override
+  Future<Map<String, dynamic>> emergencyStop() => _delegate.emergencyStop();
 
   @override
   Future<void> displayTest(String test) => _delegate.displayTest(test);

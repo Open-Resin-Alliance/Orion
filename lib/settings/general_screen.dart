@@ -55,6 +55,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool verboseLogging;
   late bool selfDestructMode;
   late String machineName;
+  bool _isReverting = false;
+  String? _revertOutput;
 
   late String originalRotation;
 
@@ -98,6 +100,77 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     config.setString('screenRotation', screenRotation, category: 'advanced');
     originalRotation = screenRotation;
     machineName = config.getString('machineName', category: 'machine');
+  }
+
+  GlassCard _buildBetaTestingSection() {
+    return GlassCard(
+      outlined: true,
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Beta Testing',
+              style: TextStyle(
+                fontSize: 28.0,
+              ),
+            ),
+            const SizedBox(height: 12.0),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: SizedBox(
+                height: 48,
+                child: GlassButton(
+                  style: ElevatedButton.styleFrom(elevation: 2),
+                  onPressed: _isReverting
+                      ? null
+                      : () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => GlassAlertDialog(
+                              title: const Text('Confirm NanoDLP Revert'),
+                              content: const Text(
+                                  'This will revert from the Orion Beta to the NanoDLP HMI. Do you want to continue?\n\nRe-activating Orion later will require SSH access.\nRun "activate_orion" to re-enable Orion.'),
+                              actions: [
+                                GlassButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                GlassButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
+                                  child: const Text('Run'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm != true) return;
+                          _runRevertOrion();
+                        },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.restore, size: 20),
+                      const SizedBox(width: 8),
+                      _isReverting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Revert to NanoDLP HMI'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -329,7 +402,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         ),
                       const SizedBox(height: 20.0),
                       OrionListTile(
-                        title: 'Use Custom Odyssey URL',
+                        title: 'Use Custom Backend URL',
                         icon: PhosphorIcons.network,
                         value: useCustomUrl,
                         onChanged: (bool value) {
@@ -519,6 +592,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
               /// Developer Section for build overrides.
               if (developerMode) _buildDeveloperSection(),
+              if (developerMode) const SizedBox(height: 12.0),
+              if (developerMode) _buildBetaTestingSection(),
             ],
           ),
         ),
@@ -673,6 +748,67 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   void dispose() {
     _isLoadingReleases = false;
     super.dispose();
+  }
+
+  Future<void> _runRevertOrion() async {
+    setState(() {
+      _isReverting = true;
+      _revertOutput = null;
+    });
+    try {
+      // Use Process.run to execute the system command. This is intended for
+      // developer machines where the CLI helper `revert_orion` is available.
+      final result = await Process.run('revert_orion', [], runInShell: true);
+      final output = <String>[];
+      if (result.stdout != null && result.stdout.toString().isNotEmpty) {
+        output.add('STDOUT:\n${result.stdout}');
+      }
+      if (result.stderr != null && result.stderr.toString().isNotEmpty) {
+        output.add('STDERR:\n${result.stderr}');
+      }
+      output.add('Exit code: ${result.exitCode}');
+      _revertOutput = output.join('\n\n');
+      // Show the output to the user
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => GlassAlertDialog(
+            title: const Text('Revert Orion Result'),
+            content: SingleChildScrollView(
+              child: SelectableText(_revertOutput ?? 'No output'),
+            ),
+            actions: [
+              GlassButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => GlassAlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to run revert_orion: $e'),
+            actions: [
+              GlassButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isReverting = false;
+        });
+      }
+    }
   }
 
   void _showReleaseDialog() {

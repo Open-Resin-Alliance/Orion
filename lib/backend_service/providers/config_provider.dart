@@ -20,7 +20,13 @@ class ConfigProvider extends ChangeNotifier {
 
   ConfigProvider({OdysseyClient? client})
       : _client = client ?? BackendService() {
-    refresh();
+    // Don't call refresh synchronously during construction — when the
+    // provider is created inside widget build (e.g. `create: (_) =>
+    // ConfigProvider()`), calling `notifyListeners()` can trigger the
+    // 'setState() or markNeedsBuild() called during build' assertion. Use
+    // a post-frame callback so the initial fetch runs after the first frame
+    // has been rendered and the framework is no longer building widgets.
+    WidgetsBinding.instance.addPostFrameCallback((_) => refresh());
   }
 
   Future<void> refresh() async {
@@ -38,6 +44,9 @@ class ConfigProvider extends ChangeNotifier {
       _log.severe('Failed to fetch config', e, st);
       _error = e;
       _loading = false;
+      // Rethrow so callers can decide how to surface the error. Avoids
+      // coupling the provider to UI dialog presentation during build.
+      rethrow;
     } finally {
       notifyListeners();
     }

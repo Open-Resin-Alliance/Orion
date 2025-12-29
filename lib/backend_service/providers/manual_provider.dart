@@ -1,6 +1,22 @@
+/*
+* Orion - Manual Hardware Control Provider
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 
@@ -33,6 +49,26 @@ class ManualProvider extends ChangeNotifier {
       return true;
     } catch (e, st) {
       _log.severe('move failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> moveDelta(double deltaMm) async {
+    _log.info('moveDelta: $deltaMm');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.moveDelta(deltaMm);
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('moveDelta failed', e, st);
       _error = e;
       _busy = false;
       notifyListeners();
@@ -97,6 +133,84 @@ class ManualProvider extends ChangeNotifier {
       _busy = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Whether the backend supports a direct move-to-top operation.
+  Future<bool> canMoveToTop() async {
+    try {
+      return await _client.canMoveToTop();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Whether the backend supports a direct move-to-floor operation.
+  Future<bool> canMoveToFloor() async {
+    try {
+      return await _client.canMoveToFloor();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> moveToTop() async {
+    _log.info('moveToTop');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.moveToTop();
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('moveToTop failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> moveToFloor() async {
+    _log.info('moveToFloor');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.moveToFloor();
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('moveToFloor failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> emergencyStop() async {
+    _log.info('emergencyStop');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.emergencyStop();
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('emergencyStop failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return true; // Return true even on error to avoid blocking UI
     }
   }
 

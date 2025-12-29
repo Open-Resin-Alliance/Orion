@@ -74,7 +74,7 @@ class StatusCardState extends State<StatusCard> {
     }
 
     // Show full circle when canceled or canceling from paused
-    if (s?.layer == null) {
+    if (s?.layer == null || s?.finished == true) {
       showFullCircle = true; // Already canceled
     } else if (widget.isCanceling && widget.isPausing) {
       showFullCircle =

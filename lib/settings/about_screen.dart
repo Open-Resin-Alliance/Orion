@@ -17,6 +17,7 @@
 
 import 'dart:io';
 
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -30,9 +31,11 @@ import 'package:orion/themes/themes.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
+import 'package:orion/backend_service/backend_service.dart';
 
 Logger _logger = Logger('AboutScreen');
 OrionConfig config = OrionConfig();
+BackendService backend = BackendService();
 
 Future<String> executeCommand(String command, List<String> arguments) async {
   final result = await Process.run(command, arguments);
@@ -68,9 +71,14 @@ Future<String> getDeviceModel() async {
   }
 }
 
-// TODO: Implement Odyssey version fetching, awaiting API
 Future<String> getVersionNumber() async {
-  return 'Orion ${Pubspec.version}' ' - Odyssey 1.0.0';
+  try {
+    final backendVersion = await backend.getBackendVersion();
+    return 'Orion ${Pubspec.version} - $backendVersion';
+  } catch (e) {
+    _logger.warning('Failed to get backend version: $e');
+    return 'Orion ${Pubspec.version} - N/A';
+  }
 }
 
 class AboutScreen extends StatefulWidget {
@@ -174,7 +182,11 @@ class AboutScreenState extends State<AboutScreen> {
         subtitle: FutureBuilder<String>(
           future: getVersionNumber(),
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
-            return Text(snapshot.data ?? 'N/A');
+            return AutoSizeText(
+              snapshot.data ?? 'N/A',
+              maxLines: 1,
+              minFontSize: 12,
+            );
           },
         ),
       ),

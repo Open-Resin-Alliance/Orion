@@ -47,6 +47,7 @@ import 'package:orion/tools/tools_screen.dart';
 import 'package:orion/util/error_handling/error_handler.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/error_handling/connection_error_watcher.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -174,6 +175,12 @@ class OrionMainApp extends StatefulWidget {
 
 class OrionMainAppState extends State<OrionMainApp> {
   late final GoRouter _router;
+  ConnectionErrorWatcher? _connWatcher;
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
+  bool _statusListenerAttached = false;
+  bool _wasPrinting = false;
+  bool _isStatusShown = false;
+  // navigatorKey removed; using MaterialApp.router builder context instead
 
   @override
   void initState() {
@@ -181,8 +188,15 @@ class OrionMainAppState extends State<OrionMainApp> {
     _initRouter();
   }
 
+  @override
+  void dispose() {
+    _connWatcher?.dispose();
+    super.dispose();
+  }
+
   void _initRouter() {
     _router = GoRouter(
+      navigatorKey: _navKey,
       routes: <RouteBase>[
         GoRoute(
           path: '/',
@@ -248,28 +262,117 @@ class OrionMainAppState extends State<OrionMainApp> {
     return Consumer2<LocaleProvider, ThemeProvider>(
       builder: (context, localeProvider, themeProvider, child) {
         return Provider<Function>.value(
-          value:
-              themeProvider.setThemeMode, // Use ThemeProvider's method directly
-          child: GlassApp(
-            child: MaterialApp.router(
-              title: 'Orion',
-              debugShowCheckedModeBanner: false,
-              routerConfig: _router,
-              theme: themeProvider.lightTheme,
-              darkTheme: themeProvider.darkTheme,
-              themeMode: themeProvider.themeMode,
-              locale: localeProvider.locale,
-              localizationsDelegates: const [
-                AppLocalizations.delegate,
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
-              supportedLocales: AppLocalizations.supportedLocales,
-            ),
-          ),
+          value: themeProvider.setThemeMode,
+          child: _buildAppShell(localeProvider, themeProvider),
         );
       },
+    );
+  }
+
+  Widget _buildAppShell(
+      LocaleProvider localeProvider, ThemeProvider themeProvider) {
+    return GlassApp(
+      child: Builder(builder: (innerCtx) {
+        // Use MaterialApp.router's builder to get a context that has
+        // MaterialLocalizations and a Navigator. Install the watcher
+        // after the first frame using that context.
+        return MaterialApp.router(
+          title: 'Orion',
+          debugShowCheckedModeBanner: false,
+          routerConfig: _router,
+          theme: themeProvider.lightTheme,
+          builder: (ctx, child) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              try {
+                final navCtx = _navKey.currentContext;
+                if (_connWatcher == null && navCtx != null) {
+                  _connWatcher = ConnectionErrorWatcher.install(navCtx);
+                }
+                // Attach a listener to StatusProvider so we can auto-open
+                // the StatusScreen when a print becomes active (remote start).
+                try {
+                  if (!_statusListenerAttached && navCtx != null) {
+                    final statusProv =
+                        Provider.of<StatusProvider>(navCtx, listen: false);
+                    statusProv.addListener(() {
+                      try {
+                        final s = statusProv.status;
+                        final active =
+                            (s?.isPrinting == true) || (s?.isPaused == true);
+                        if (active && !_wasPrinting) {
+                          // Only navigate if not already on /status
+                          // Navigate to status on transition to active print.
+                          try {
+                            final navState = _navKey.currentState;
+                            final sModel = statusProv.status;
+                            final initialThumb = statusProv.thumbnailBytes;
+                            final initialPath =
+                                sModel?.printData?.fileData?.path;
+                            // Avoid pushing if we're already showing the
+                            // Status screen or we've already pushed it.
+                            try {
+                              if (_isStatusShown) {
+                                // nothing to do
+                              } else if (navState != null) {
+                                _isStatusShown = true;
+                                navState
+                                    .push(MaterialPageRoute(
+                                  builder: (ctx) => StatusScreen(
+                                    newPrint: false,
+                                    initialThumbnailBytes: initialThumb,
+                                    initialFilePath: initialPath,
+                                  ),
+                                ))
+                                    .then((_) {
+                                  // cleared when the pushed route is popped
+                                  _isStatusShown = false;
+                                });
+                              } else {
+                                _isStatusShown = true;
+                                _router.go('/status');
+                                // best-effort: we can't await router navigation
+                                // easily here, so keep the flag set briefly
+                                Future.delayed(const Duration(seconds: 1), () {
+                                  _isStatusShown = false;
+                                });
+                              }
+                            } catch (_) {
+                              // Fallback to router navigation if push fails
+                              if (!_isStatusShown) {
+                                _isStatusShown = true;
+                                _router.go('/status');
+                                Future.delayed(const Duration(seconds: 1), () {
+                                  _isStatusShown = false;
+                                });
+                              }
+                            }
+                          } catch (_) {
+                            // Fallback to router navigation if push fails
+                            _router.go('/status');
+                          }
+                        }
+                        _wasPrinting = active;
+                      } catch (_) {}
+                    });
+                    _statusListenerAttached = true;
+                  }
+                } catch (_) {}
+              } catch (_) {}
+            });
+            return child ?? const SizedBox.shrink();
+          },
+          darkTheme: themeProvider.darkTheme,
+          themeMode: themeProvider.themeMode,
+          locale: localeProvider.locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+        );
+      }),
     );
   }
 }

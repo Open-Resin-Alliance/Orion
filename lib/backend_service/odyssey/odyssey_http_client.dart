@@ -1,14 +1,38 @@
+/*
+* Orion - NanoDLP HTTP Client
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'dart:typed_data';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:logging/logging.dart';
 import 'package:orion/backend_service/odyssey/odyssey_client.dart';
 import 'package:orion/util/orion_config.dart';
 
 class OdysseyHttpClient implements OdysseyClient {
   late final String apiUrl;
+  final _log = Logger('OdysseyHttpClient');
+  final http.Client Function() _clientFactory;
+  final Duration _requestTimeout;
 
-  OdysseyHttpClient() {
+  OdysseyHttpClient(
+      {http.Client Function()? clientFactory, Duration? requestTimeout})
+      : _clientFactory = clientFactory ?? http.Client.new,
+        _requestTimeout = requestTimeout ?? const Duration(seconds: 2) {
     try {
       OrionConfig config = OrionConfig();
       final customUrl = config.getString('customUrl', category: 'advanced');
@@ -17,6 +41,11 @@ class OdysseyHttpClient implements OdysseyClient {
     } catch (e) {
       throw Exception('Failed to load orion.cfg: $e');
     }
+  }
+
+  http.Client _createClient() {
+    final inner = _clientFactory();
+    return _TimeoutHttpClient(inner, _requestTimeout, _log, 'Odyssey');
   }
 
   @override
@@ -63,6 +92,11 @@ class OdysseyHttpClient implements OdysseyClient {
   }
 
   @override
+  Future<String> getBackendVersion() async {
+    return 'Odyssey ?.?.?'; //(await _odysseyGet('/version', {})).body;
+  }
+
+  @override
   Future<Map<String, dynamic>> getStatus() async {
     final resp = await _odysseyGet('/status', {});
     return json.decode(resp.body) as Map<String, dynamic>;
@@ -73,7 +107,7 @@ class OdysseyHttpClient implements OdysseyClient {
     final uri = _dynUri(apiUrl, '/status/stream', {});
     final request = http.Request('GET', uri);
 
-    final client = http.Client();
+    final client = _createClient();
     try {
       final streamed = await client.send(request);
       final stream = streamed.stream
@@ -120,6 +154,27 @@ class OdysseyHttpClient implements OdysseyClient {
   }
 
   @override
+  Future<Map<String, dynamic>> moveDelta(double deltaMm) async {
+    final resp = await _odysseyPost('/manual', {'dz': deltaMm.toString()});
+    return json.decode(resp.body == '' ? '{}' : resp.body)
+        as Map<String, dynamic>;
+  }
+
+  @override
+  Future<bool> canMoveToTop() async => true;
+
+  @override
+  Future<bool> canMoveToFloor() async => true;
+
+  @override
+  Future<Map<String, dynamic>> moveToTop() async =>
+      throw UnimplementedError('moveToTop not supported by Odyssey backend');
+
+  @override
+  Future<Map<String, dynamic>> moveToFloor() async =>
+      throw UnimplementedError('moveToFloor not supported by Odyssey backend');
+
+  @override
   Future<Map<String, dynamic>> manualCure(bool cure) async {
     final resp = await _odysseyPost('/manual', {'cure': cure.toString()});
     return json.decode(resp.body == '' ? '{}' : resp.body)
@@ -144,6 +199,11 @@ class OdysseyHttpClient implements OdysseyClient {
   @override
   Future<void> displayTest(String test) async {
     await _odysseyPost('/manual/display_test', {'test': test});
+  }
+
+  @override
+  Future<Map<String, dynamic>> emergencyStop() async {
+    return await manualCommand('M112');
   }
 
   @override
@@ -191,7 +251,7 @@ class OdysseyHttpClient implements OdysseyClient {
   Future<http.Response> _odysseyGet(
       String endpoint, Map<String, dynamic> queryParams) async {
     final uri = _dynUri(apiUrl, endpoint, queryParams);
-    final client = http.Client();
+    final client = _createClient();
     try {
       final response = await client.get(uri);
       if (response.statusCode == 200) return response;
@@ -205,7 +265,7 @@ class OdysseyHttpClient implements OdysseyClient {
   Future<http.Response> _odysseyPost(
       String endpoint, Map<String, dynamic> queryParams) async {
     final uri = _dynUri(apiUrl, endpoint, queryParams);
-    final client = http.Client();
+    final client = _createClient();
     try {
       final response = await client.post(uri);
       if (response.statusCode == 200) return response;
@@ -219,7 +279,7 @@ class OdysseyHttpClient implements OdysseyClient {
   Future<http.Response> _odysseyDelete(
       String endpoint, Map<String, dynamic> queryParams) async {
     final uri = _dynUri(apiUrl, endpoint, queryParams);
-    final client = http.Client();
+    final client = _createClient();
     try {
       final response = await client.delete(uri);
       if (response.statusCode == 200) return response;
@@ -228,5 +288,30 @@ class OdysseyHttpClient implements OdysseyClient {
     } finally {
       client.close();
     }
+  }
+}
+
+class _TimeoutHttpClient extends http.BaseClient {
+  _TimeoutHttpClient(this._inner, this._timeout, this._log, this._label);
+
+  final http.Client _inner;
+  final Duration _timeout;
+  final Logger _log;
+  final String _label;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    final future = _inner.send(request);
+    return future.timeout(_timeout, onTimeout: () {
+      final msg =
+          '$_label ${request.method} ${request.url} timed out after ${_timeout.inSeconds}s';
+      _log.warning(msg);
+      throw TimeoutException(msg);
+    });
+  }
+
+  @override
+  void close() {
+    _inner.close();
   }
 }
