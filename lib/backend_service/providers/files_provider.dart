@@ -8,7 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/odyssey/models/files_models.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
@@ -22,7 +22,7 @@ import 'package:orion/util/orion_api_filesystem/orion_api_item.dart';
 /// * Expose current directory, loading and error state
 /// * Perform file actions: delete, start print, refresh
 class FilesProvider extends ChangeNotifier {
-  final OdysseyClient _client;
+  final BackendClient _client;
   final _log = Logger('FilesProvider');
 
   FilesListModel? _listing;
@@ -43,7 +43,7 @@ class FilesProvider extends ChangeNotifier {
   String _subdirectory = '';
   String get subdirectory => _subdirectory;
 
-  FilesProvider({OdysseyClient? client}) : _client = client ?? BackendService();
+  FilesProvider({BackendClient? client}) : _client = client ?? BackendService();
 
   /// Load items into provider state (convenience wrapper around listItemsAsOrionApiItems)
   Future<void> loadItems(String location, String subdirectory,
@@ -109,7 +109,7 @@ class FilesProvider extends ChangeNotifier {
       const ttl = Duration(seconds: 30);
       if (_usbAvailableCache != null && _usbAvailableCachedAt != null) {
         if (now.difference(_usbAvailableCachedAt!) < ttl) {
-          _log.fine('usbAvailable: returning cached=${_usbAvailableCache}');
+          _log.fine('usbAvailable: returning cached=$_usbAvailableCache');
           return _usbAvailableCache!;
         }
       }

@@ -51,6 +51,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool developerMode;
   late bool releaseOverride;
   late bool overrideUpdateCheck;
+  late bool overrideRawForceSensorValues;
   late String overrideRelease;
   late bool verboseLogging;
   late bool selfDestructMode;
@@ -91,6 +92,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     releaseOverride = config.getFlag('releaseOverride', category: 'developer');
     overrideUpdateCheck =
         config.getFlag('overrideUpdateCheck', category: 'developer');
+    overrideRawForceSensorValues =
+        config.getFlag('overrideRawForceSensorValues', category: 'developer');
     overrideRelease =
         config.getString('overrideRelease', category: 'developer');
     verboseLogging = config.getFlag('verboseLogging', category: 'developer');
@@ -100,77 +103,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     config.setString('screenRotation', screenRotation, category: 'advanced');
     originalRotation = screenRotation;
     machineName = config.getString('machineName', category: 'machine');
-  }
-
-  GlassCard _buildBetaTestingSection() {
-    return GlassCard(
-      outlined: true,
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Beta Testing',
-              style: TextStyle(
-                fontSize: 28.0,
-              ),
-            ),
-            const SizedBox(height: 12.0),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: SizedBox(
-                height: 48,
-                child: GlassButton(
-                  style: ElevatedButton.styleFrom(elevation: 2),
-                  onPressed: _isReverting
-                      ? null
-                      : () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => GlassAlertDialog(
-                              title: const Text('Confirm NanoDLP Revert'),
-                              content: const Text(
-                                  'This will revert from the Orion Beta to the NanoDLP HMI. Do you want to continue?\n\nRe-activating Orion later will require SSH access.\nRun "activate_orion" to re-enable Orion.'),
-                              actions: [
-                                GlassButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                GlassButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                  child: const Text('Run'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm != true) return;
-                          _runRevertOrion();
-                        },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.restore, size: 20),
-                      const SizedBox(width: 8),
-                      _isReverting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Revert to NanoDLP HMI'),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -592,8 +524,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
               /// Developer Section for build overrides.
               if (developerMode) _buildDeveloperSection(),
-              if (developerMode) const SizedBox(height: 12.0),
-              if (developerMode) _buildBetaTestingSection(),
             ],
           ),
         ),
@@ -734,6 +664,20 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                 setState(() {
                   overrideUpdateCheck = value;
                   config.setFlag('overrideUpdateCheck', overrideUpdateCheck,
+                      category: 'developer');
+                });
+              },
+            ),
+            const SizedBox(height: 20.0),
+            OrionListTile(
+              title: 'Raw Force Sensor Values',
+              icon: PhosphorIcons.scales(),
+              value: overrideRawForceSensorValues,
+              onChanged: (bool value) {
+                setState(() {
+                  overrideRawForceSensorValues = value;
+                  config.setFlag('overrideRawForceSensorValues',
+                      overrideRawForceSensorValues,
                       category: 'developer');
                 });
               },

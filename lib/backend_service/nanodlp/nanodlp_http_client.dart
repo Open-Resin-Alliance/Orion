@@ -16,7 +16,6 @@
 */
 
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -25,16 +24,17 @@ import 'package:orion/backend_service/nanodlp/models/nano_file.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_manual.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
+import 'package:flutter/foundation.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// NanoDLP adapter (initial implementation)
 ///
-/// Implements a small subset of the `OdysseyClient` contract needed for
+/// Implements a small subset of the `BackendClient` contract needed for
 /// StatusProvider and thumbnail fetching. Other methods remain unimplemented
 /// and should be added as needed.
-class NanoDlpHttpClient implements OdysseyClient {
+class NanoDlpHttpClient implements BackendClient {
   late final String apiUrl;
   final _log = Logger('NanoDlpHttpClient');
   final http.Client Function() _clientFactory;
@@ -77,7 +77,7 @@ class NanoDlpHttpClient implements OdysseyClient {
     } catch (e) {
       apiUrl = 'http://localhost';
     }
-    _log.info('constructed NanoDlpHttpClient apiUrl=$apiUrl');
+    // _log.info('constructed NanoDlpHttpClient apiUrl=$apiUrl'); // commented out to reduce noise
   }
 
   http.Client _createClient() {
@@ -222,6 +222,29 @@ class NanoDlpHttpClient implements OdysseyClient {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/notification');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) return [];
+      final decoded = json.decode(resp.body);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+      }
+      return [];
+    } catch (e, st) {
+      _log.fine('NanoDLP getNotifications failed', e, st);
+      return [];
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
   Future<bool> usbAvailable() async {
     // NanoDLP runs on a networked device, USB availability is not applicable.
     return false;
@@ -238,6 +261,56 @@ class NanoDlpHttpClient implements OdysseyClient {
         // ignore and continue
       }
       await Future.delayed(pollInterval);
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/analytic/data/$n');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) return [];
+      final decoded = json.decode(resp.body);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+      }
+      return [];
+    } catch (e, st) {
+      _log.fine('NanoDLP getAnalytics failed', e, st);
+      return [];
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
+  Future<dynamic> getAnalyticValue(int id) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/analytic/value/$id');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) return null;
+      final body = resp.body.trim();
+      // NanoDLP returns a plain numeric value like "-3.719..." so try parsing
+      final v = double.tryParse(body);
+      if (v != null) return v;
+      // Fallback: try JSON decode (in case the server returns JSON)
+      try {
+        final decoded = json.decode(body);
+        return decoded;
+      } catch (_) {
+        return body;
+      }
+    } catch (e, st) {
+      _log.fine('NanoDLP getAnalyticValue failed', e, st);
+      return null;
+    } finally {
+      client.close();
     }
   }
 
@@ -683,12 +756,68 @@ class NanoDlpHttpClient implements OdysseyClient {
   }
 
   @override
-  Future<Map<String, dynamic>> manualCommand(String command) async =>
-      throw UnimplementedError('NanoDLP manualCommand not implemented');
+  Future<Map<String, dynamic>> manualCommand(String command) async {
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/gcode');
+      _log.info('NanoDLP manualCommand($command) request -> POST /gcode: $uri');
+      final client = _createClient();
+      try {
+        final resp = await client.post(uri, body: {'gcode': command});
+        if (resp.statusCode != 200) {
+          _log.warning(
+              'NanoDLP manualCommand($command) failed: ${resp.statusCode} ${resp.body}');
+          throw Exception(
+              'NanoDLP manualCommand($command) failed: ${resp.statusCode}');
+        }
+        try {
+          final decoded = json.decode(resp.body);
+          final nm = NanoManualResult.fromDynamic(decoded);
+          return nm.toMap();
+        } catch (_) {
+          return NanoManualResult(ok: true).toMap();
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.warning('NanoDLP manualCommand($command) error', e, st);
+      throw Exception('NanoDLP manualCommand($command) failed: $e');
+    }
+  }
 
   @override
-  Future<Map<String, dynamic>> manualCure(bool cure) async =>
-      throw UnimplementedError('NanoDLP manualCure not implemented');
+  Future<Map<String, dynamic>> manualCure(bool cure) async {
+    try {
+      final action = cure ? 'on' : 'blank';
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/projector/$action');
+      _log.info(
+          'NanoDLP manualCure($cure) request -> /projector/$action: $uri');
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) {
+          _log.warning(
+              'NanoDLP manualCure($cure) failed: ${resp.statusCode} ${resp.body}');
+          throw Exception(
+              'NanoDLP manualCure($cure) failed: ${resp.statusCode}');
+        }
+        try {
+          final decoded = json.decode(resp.body);
+          final nm = NanoManualResult.fromDynamic(decoded);
+          return nm.toMap();
+        } catch (_) {
+          return NanoManualResult(ok: true).toMap();
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.warning('NanoDLP manualCure($cure) error', e, st);
+      throw Exception('NanoDLP manualCure($cure) failed: $e');
+    }
+  }
 
   @override
   Future<Map<String, dynamic>> emergencyStop() async {
@@ -742,6 +871,31 @@ class NanoDlpHttpClient implements OdysseyClient {
           client.close();
         }
       }();
+
+  @override
+  Future<void> disableNotification(int timestamp) async {
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/notification/disable/$timestamp');
+      _log.info('NanoDLP disableNotification: $uri');
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) {
+          _log.warning(
+              'NanoDLP disableNotification returned ${resp.statusCode}: ${resp.body}');
+          throw Exception(
+              'NanoDLP disableNotification failed: ${resp.statusCode}');
+        }
+        return;
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.warning('NanoDLP disableNotification error', e, st);
+      rethrow;
+    }
+  }
 
   @override
   Future<void> pausePrint() async {
@@ -871,8 +1025,43 @@ class NanoDlpHttpClient implements OdysseyClient {
   }
 
   @override
-  Future<void> displayTest(String test) async =>
-      throw UnimplementedError('NanoDLP displayTest not implemented');
+  Future<void> displayTest(String test) async {
+    // Map test names to real NanoDLP test endpoints.
+    const Map<String, String> testMappings = {
+      'Grid': '/projector/generate/calibration',
+      // So far Athena is the only printer with NanoDLP that we support
+      'Logo': '/projector/display/general***athena.png',
+      'Measure': '/projector/generate/boundaries',
+      'White': '/projector/generate/white',
+    };
+
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      // Resolve mapped command; fall back to legacy /display/test/<test> if unknown.
+      final mapped = testMappings[test];
+      final command = mapped ?? '/display/test/$test';
+      final cmdWithSlash = command.startsWith('/') ? command : '/$command';
+      final uri = Uri.parse('$baseNoSlash$cmdWithSlash');
+
+      _log.info('NanoDLP displayTest request for "$test": $uri');
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200) {
+          _log.warning(
+              'NanoDLP displayTest failed: ${resp.statusCode} ${resp.body}');
+          throw Exception('NanoDLP displayTest failed: ${resp.statusCode}');
+        }
+        // Some installs return JSON or plain text; ignore body and treat 200 as success
+        return;
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.warning('NanoDLP displayTest error', e, st);
+      rethrow;
+    }
+  }
 
   bool _matchesPath(String? lhs, String rhs) {
     if (lhs == null) return false;
@@ -938,6 +1127,33 @@ class NanoDlpHttpClient implements OdysseyClient {
     }
   }
 
+  /// Fetch a 2D layer PNG for a given plate and layer index. This will
+  /// return a canonical large-sized PNG (800x480) by force-resizing the
+  /// downloaded image. On error, a generated placeholder is returned.
+  @override
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/static/plates/$plateId/$layer.png');
+    final entry = await _downloadThumbnail(uri, 'plate $plateId layer $layer');
+    if (entry.bytes.isNotEmpty) {
+      try {
+        // Resize on a background isolate to avoid blocking the UI thread.
+        try {
+          return await compute(resizeLayer2DCompute, entry.bytes);
+        } catch (_) {
+          // If compute fails (e.g., in test environment), fall back to
+          // synchronous resize.
+          return NanoDlpThumbnailGenerator.resizeLayer2D(entry.bytes);
+        }
+      } catch (_) {
+        // fall through to placeholder
+      }
+    }
+    return NanoDlpThumbnailGenerator.generatePlaceholder(
+        NanoDlpThumbnailGenerator.largeWidth,
+        NanoDlpThumbnailGenerator.largeHeight);
+  }
+
   Future<List<NanoFile>> _fetchPlates({bool forceRefresh = false}) {
     if (!forceRefresh) {
       final cached = _platesCacheData;
@@ -976,7 +1192,7 @@ class NanoDlpHttpClient implements OdysseyClient {
   Future<List<NanoFile>> _loadPlatesFromNetwork() async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/plates/list/json');
-    _log.fine('Requesting NanoDLP plates list (no query params): $uri');
+    // _log.fine('Requesting NanoDLP plates list (no query params): $uri'); // commented out to reduce noise
 
     final client = _createClient();
     try {
@@ -1069,6 +1285,16 @@ class NanoDlpHttpClient implements OdysseyClient {
       case 'Small':
       default:
         return (400, 400);
+    }
+  }
+
+  @override
+  Future tareForceSensor() async {
+    try {
+      manualCommand('[[PressureWrite 1]]');
+    } catch (e, st) {
+      _log.warning('NanoDLP tareForceSensor error', e, st);
+      rethrow;
     }
   }
 }

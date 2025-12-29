@@ -1,5 +1,5 @@
 /*
-* Orion - Tools Screen
+* Orion - Materials Screen
 * Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,22 +17,18 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:orion/glasser/glasser.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import 'package:orion/glasser/glasser.dart';
-import 'package:orion/tools/move_z_screen.dart';
-import 'package:orion/tools/exposure_screen.dart';
-import 'package:orion/tools/force_screen.dart';
-
-class ToolsScreen extends StatefulWidget {
-  const ToolsScreen({super.key});
+class MaterialsScreen extends StatefulWidget {
+  const MaterialsScreen({super.key});
 
   @override
-  ToolsScreenState createState() => ToolsScreenState();
+  MaterialsScreenState createState() => MaterialsScreenState();
 }
 
-class ToolsScreenState extends State<ToolsScreen> {
-  int _selectedIndex = 0;
+class MaterialsScreenState extends State<MaterialsScreen> {
+  int _selectedIndex = 1;
 
   void _onItemTapped(int index) {
     setState(() {
@@ -50,35 +46,28 @@ class ToolsScreenState extends State<ToolsScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Tools'),
+          title: const Text('Materials'),
         ),
         body: _selectedIndex == 0
-            ? const MoveZScreen()
+            ? const Center(child: Text('To Be Implemented Soon!'))
             : _selectedIndex == 1
-                ? const ExposureScreen()
-                : _selectedIndex == 2
-                    ? const ForceSensorScreen()
-                    : const MoveZScreen(),
+                ? const Center(child: Text('To Be Implemented Soon!'))
+                : const Center(child: Text('To Be Implemented Soon!')),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           items: <BottomNavigationBarItem>[
             BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.arrowsDownUp()),
-              label: 'Move Z',
+              icon: PhosphorIcon(PhosphorIcons.flask()),
+              label: 'Resins',
             ),
             BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),
-              label: 'Exposure',
+              icon: PhosphorIcon(PhosphorIcons.scales()),
+              label: 'Calibration',
             ),
             BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.chartLineUp()),
-              label: 'Force Sensor',
+              icon: PhosphorIcon(PhosphorIcons.thermometer()),
+              label: 'Heaters',
             ),
-            // TODO: Implement Self Test
-            /*BottomNavigationBarItem(
-            icon: Icon(Icons.check),
-            label: 'Self Test',
-          ),*/
           ],
           currentIndex: _selectedIndex,
           selectedItemColor: Theme.of(context).colorScheme.primary,

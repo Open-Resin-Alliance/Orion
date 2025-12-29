@@ -17,14 +17,14 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 
 /// Provider that exposes manual hardware controls (move, home, cure, commands,
-/// and display test) using the `OdysseyClient` abstraction so screens do not
+/// and display test) using the `BackendClient` abstraction so screens do not
 /// depend on the concrete ApiService implementation.
 class ManualProvider extends ChangeNotifier {
-  final OdysseyClient _client;
+  final BackendClient _client;
   final _log = Logger('ManualProvider');
 
   bool _busy = false;
@@ -33,7 +33,7 @@ class ManualProvider extends ChangeNotifier {
   Object? _error;
   Object? get error => _error;
 
-  ManualProvider({OdysseyClient? client})
+  ManualProvider({BackendClient? client})
       : _client = client ?? BackendService();
 
   Future<bool> move(double height) async {
@@ -231,6 +231,26 @@ class ManualProvider extends ChangeNotifier {
       _busy = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<bool> manualTareForceSensor() async {
+    _log.info('tareForceSensor');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _client.tareForceSensor();
+      _busy = false;
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      _log.severe('tareForceSensor failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return true; // Return true even on error to avoid blocking UI
     }
   }
 }

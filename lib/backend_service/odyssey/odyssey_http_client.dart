@@ -20,10 +20,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 
-class OdysseyHttpClient implements OdysseyClient {
+class OdysseyHttpClient implements BackendClient {
   late final String apiUrl;
   final _log = Logger('OdysseyHttpClient');
   final http.Client Function() _clientFactory;
@@ -100,6 +101,49 @@ class OdysseyHttpClient implements OdysseyClient {
   Future<Map<String, dynamic>> getStatus() async {
     final resp = await _odysseyGet('/status', {});
     return json.decode(resp.body) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) async {
+    // Odyssey doesn't currently define a standard analytics endpoint. As a
+    // best-effort, try '/analytic/data/<n>' on Odyssey host; otherwise return
+    // an empty list.
+    try {
+      final uri = _dynUri(apiUrl, '/analytic/data/$n', {});
+      final client = _createClient();
+      final resp = await client.get(uri);
+      client.close();
+      if (resp.statusCode != 200) return [];
+      final decoded = json.decode(resp.body);
+      if (decoded is List)
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+    } catch (_) {}
+    return [];
+  }
+
+  @override
+  Future<dynamic> getAnalyticValue(int id) async {
+    // Odyssey doesn't support the scalar NanoDLP analytic/value endpoint.
+    // Return null to indicate unsupported / no-value.
+    return null;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    try {
+      final resp = await _odysseyGet('/notification', {});
+      final decoded = json.decode(resp.body);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 
   @override
@@ -219,6 +263,26 @@ class OdysseyHttpClient implements OdysseyClient {
   }
 
   @override
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer) async {
+    // Odyssey backend does not generally provide NanoDLP-style plate layer
+    // images. Return a placeholder matching the canonical NanoDLP large
+    // size so callers can display a consistent image.
+    try {
+      // Use the NanoDLP thumbnail generator's placeholder if available.
+      // Importing here avoids adding a package-level dependency at the
+      // top-level of this file which may not be desired for all builds.
+      // However, NanoDlpThumbnailGenerator is a light-weight helper already
+      // present in the project.
+      // ignore: avoid_dynamic_calls
+      return Future.value(NanoDlpThumbnailGenerator.generatePlaceholder(
+          NanoDlpThumbnailGenerator.largeWidth,
+          NanoDlpThumbnailGenerator.largeHeight));
+    } catch (_) {
+      return Future.value(Uint8List(0));
+    }
+  }
+
+  @override
   Future<void> startPrint(String location, String filePath) async {
     await _odysseyPost(
         '/print/start', {'location': location, 'file_path': filePath});
@@ -288,6 +352,18 @@ class OdysseyHttpClient implements OdysseyClient {
     } finally {
       client.close();
     }
+  }
+
+  @override
+  Future<void> disableNotification(int timestamp) {
+    // TODO: implement disableNotification
+    throw UnimplementedError();
+  }
+
+  @override
+  Future tareForceSensor() {
+    // TODO: implement tareForceSensor
+    throw UnimplementedError();
   }
 }
 

@@ -17,7 +17,6 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:orion/glasser/glasser.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 
 class StatusCard extends StatefulWidget {
@@ -26,6 +25,7 @@ class StatusCard extends StatefulWidget {
   final double progress;
   final Color statusColor;
   final StatusModel? status;
+  final bool showPercentage;
 
   const StatusCard({
     super.key,
@@ -34,6 +34,7 @@ class StatusCard extends StatefulWidget {
     required this.progress,
     required this.statusColor,
     required this.status,
+    this.showPercentage = true,
   });
 
   @override
@@ -51,6 +52,12 @@ class StatusCardState extends State<StatusCard> {
     } else if (widget.isCanceling || (s?.layer == null)) {
       cardIcon = const Icon(Icons.stop);
     } else if (widget.isPausing || s?.isPaused == true) {
+      cardIcon = const Icon(Icons.pause);
+    } else if (s?.layer != null && s?.isPaused != true) {
+      // Active printing (not paused/canceled): when we're rendering the
+      // compact circular form (e.g., because percentage is hidden), show a
+      // pause icon to indicate active printing rather than the default help
+      // icon.
       cardIcon = const Icon(Icons.pause);
     }
 
@@ -95,68 +102,79 @@ class StatusCardState extends State<StatusCard> {
         s?.isIdle != true);
 
     // While the print is active, show the progress in percentage. (overlapping text for outline effect)
-    return isActive
-        ? Stack(
-            children: <Widget>[
-              Text(
-                '${(widget.progress * 100).toStringAsFixed(0)}%',
-                style: TextStyle(
-                  fontSize: 75,
-                  foreground: Paint()
-                    ..style = PaintingStyle.stroke
-                    ..strokeWidth = 5
-                    ..color = Theme.of(context).colorScheme.primaryContainer,
-                ),
-              ),
-              Text(
-                '${(widget.progress * 100).toStringAsFixed(0)}%',
-                style: TextStyle(
-                  fontSize: 75,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ],
-          )
-        : Builder(
-            builder: (context) {
-              return GlassCard(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(2.0),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        top: 0,
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: CircularProgressIndicator(
-                            value: circleProgress,
-                            strokeWidth: 6,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                widget.statusColor),
-                            backgroundColor:
-                                widget.statusColor.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(25),
-                        child: Icon(
-                          cardIcon.icon,
-                          color: widget.statusColor,
-                          size: 70,
-                        ),
-                      )
-                    ],
+    final shouldShowPercentage = isActive && widget.showPercentage;
+    final shouldShowEmpty = isActive && !widget.showPercentage;
+
+    if (shouldShowPercentage) {
+      return Stack(
+        children: <Widget>[
+          Text(
+            '${(widget.progress * 100).toStringAsFixed(0)}%',
+            style: TextStyle(
+              fontSize: 75,
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 5
+                ..color = Theme.of(context).colorScheme.primaryContainer,
+            ),
+          ),
+          Text(
+            '${(widget.progress * 100).toStringAsFixed(0)}%',
+            style: TextStyle(
+              fontSize: 75,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (shouldShowEmpty) {
+      // Active print but percentage hidden: render absolutely nothing.
+      return const SizedBox.shrink();
+    }
+
+    // Default compact form with icon
+    return Builder(
+      builder: (context) {
+        return Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(2.0),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: CircularProgressIndicator(
+                      value: circleProgress,
+                      strokeWidth: 6,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(widget.statusColor),
+                      backgroundColor:
+                          widget.statusColor.withValues(alpha: 0.5),
+                    ),
                   ),
                 ),
-              );
-            },
-          );
+                Padding(
+                  padding: const EdgeInsets.all(25),
+                  child: Icon(
+                    cardIcon.icon,
+                    color: widget.statusColor,
+                    size: 70,
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

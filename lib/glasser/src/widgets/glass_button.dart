@@ -22,6 +22,24 @@ import '../constants.dart';
 import '../glass_effect.dart';
 import '../platform_config.dart';
 
+/// Available tint accents for [GlassButton].
+enum GlassButtonTint {
+  /// No tint, keeps the default styling for both glass and non-glass themes.
+  none,
+
+  /// Positive accent, rendered with a green emphasis.
+  positive,
+
+  /// Neutral accent that uses the current theme primary color.
+  neutral,
+
+  /// Warning accent, rendered with an orange emphasis.
+  warn,
+
+  /// Negative accent, rendered with a red emphasis.
+  negative,
+}
+
 /// A button that automatically becomes glassmorphic when the glass theme is active.
 ///
 /// This widget is a drop-in replacement for [ElevatedButton]. When the glass theme is enabled,
@@ -45,6 +63,8 @@ class GlassButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final ButtonStyle? style;
   final bool wantIcon;
+  final GlassButtonTint tint;
+  final EdgeInsetsGeometry? margin;
 
   const GlassButton({
     super.key,
@@ -52,16 +72,25 @@ class GlassButton extends StatelessWidget {
     required this.onPressed,
     this.style,
     this.wantIcon = false,
+    this.tint = GlassButtonTint.none,
+    this.margin,
   });
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    // If the button is disabled, force no tint so disabled buttons keep
+    // the neutral / muted appearance.
+    final effectiveTint = (onPressed == null) ? GlassButtonTint.none : tint;
+    // Resolve palette; neutral needs the theme primary so use context-aware resolver.
+    final tintPalette = _resolveTintPaletteWithContext(effectiveTint, context);
+    final resolvedMaterialStyle =
+        tintPalette == null ? style : tintPalette.toButtonStyle().merge(style);
 
     if (!themeProvider.isGlassTheme) {
       return ElevatedButton(
         onPressed: onPressed,
-        style: style,
+        style: resolvedMaterialStyle,
         child: child,
       );
     }
@@ -70,7 +99,9 @@ class GlassButton extends StatelessWidget {
       onPressed: onPressed,
       style: style,
       wantIcon: wantIcon,
-      child: child, // Pass the wantIcon parameter
+      tintPalette: tintPalette, // Pass the wantIcon parameter
+      margin: margin,
+      child: child,
     );
   }
 }
@@ -81,12 +112,16 @@ class _GlassmorphicButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final ButtonStyle? style;
   final bool wantIcon;
+  final _GlassButtonTintPalette? tintPalette;
+  final EdgeInsetsGeometry? margin;
 
   const _GlassmorphicButton({
     required this.child,
     required this.onPressed,
     this.style,
     this.wantIcon = true,
+    this.tintPalette,
+    this.margin,
   });
 
   @override
@@ -106,10 +141,23 @@ class _GlassmorphicButton extends StatelessWidget {
     final isCircle = style?.shape?.resolve({}) is CircleBorder;
     final borderRadius =
         BorderRadius.circular(isCircle ? 30 : glassCornerRadius);
+    final palette = tintPalette;
+    final hasTint = palette != null;
+    final tintColor = palette?.color;
+
     final fillOpacity = GlassPlatformConfig.surfaceOpacity(
       isEnabled ? 0.14 : 0.1,
       emphasize: isEnabled,
     );
+
+    Color? blendedFillColor;
+    if (hasTint) {
+      // Blend a low-opacity tint over white. Use alphaBlend so the result
+      // keeps white highlights while adding color.
+      blendedFillColor =
+          Color.alphaBlend(tintColor!.withValues(alpha: 0.75), Colors.white);
+    }
+
     final shadow = GlassPlatformConfig.interactiveShadow(
       enabled: isEnabled,
       blurRadius: isCircle ? 18 : 16,
@@ -118,6 +166,7 @@ class _GlassmorphicButton extends StatelessWidget {
     );
 
     Widget buttonChild = Container(
+      margin: margin ?? const EdgeInsets.all(0.0),
       decoration: BoxDecoration(
         borderRadius: borderRadius,
         boxShadow: shadow,
@@ -125,10 +174,23 @@ class _GlassmorphicButton extends StatelessWidget {
       child: GlassEffect(
         borderRadius: borderRadius,
         sigma: glassBlurSigma,
-        opacity: fillOpacity,
+        opacity: GlassPlatformConfig.surfaceOpacity(
+          0.12,
+          emphasize: isEnabled,
+        ),
+        // Provide a subtle tinted white base when a tint is requested so the
+        // control remains frosted but carries semantic color.
+        color: blendedFillColor,
+        // Tone down the outline brightness so tinted buttons aren't too
+        // aggressive. We still bypass platform adjustments for tinted buttons
+        // but use a reduced alpha for a softer outline.
         borderWidth: 1.5,
         emphasizeBorder: isEnabled,
+        borderColor: hasTint ? tintColor : null,
+        borderAlpha: hasTint ? 0.45 : 0.2,
+        useRawBorderAlpha: hasTint,
         interactiveSurface: true,
+        floatingSurface: false,
         child: Material(
           color: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: borderRadius),
@@ -136,18 +198,28 @@ class _GlassmorphicButton extends StatelessWidget {
           child: InkWell(
             borderRadius: borderRadius,
             onTap: onPressed,
-            splashColor: isEnabled ? Colors.white.withValues(alpha: 0.2) : null,
-            highlightColor:
-                isEnabled ? Colors.white.withValues(alpha: 0.1) : null,
+            splashColor: isEnabled
+                ? (hasTint
+                    ? tintColor!.withValues(alpha: 0.28)
+                    : Colors.white.withValues(alpha: 0.2))
+                : null,
+            highlightColor: isEnabled
+                ? (hasTint
+                    ? tintColor!.withValues(alpha: 0.18)
+                    : Colors.white.withValues(alpha: 0.1))
+                : null,
             child: Opacity(
-              opacity: isEnabled ? 1.0 : 0.6,
+              opacity: isEnabled ? 1.0 : 0.4,
               child: Padding(
                 padding: isCircle
                     ? const EdgeInsets.all(0)
                     : const EdgeInsets.symmetric(
                         horizontal: 24.0, vertical: 8.0),
                 child: Center(
-                  child: _buildButtonContentWithIcon(child, wantIcon: wantIcon),
+                  child: _buildTintAwareContent(
+                    _buildButtonContentWithIcon(child, wantIcon: wantIcon),
+                    palette,
+                  ),
                 ),
               ),
             ),
@@ -213,7 +285,6 @@ Widget _buildButtonContentWithIcon(Widget originalChild,
           Icon(
             icon,
             size: 18,
-            color: Colors.white,
           ),
           const SizedBox(width: 8),
           Text(originalChild.data ?? ''),
@@ -223,4 +294,137 @@ Widget _buildButtonContentWithIcon(Widget originalChild,
   }
 
   return originalChild;
+}
+
+Widget _buildTintAwareContent(
+  Widget content,
+  _GlassButtonTintPalette? palette,
+) {
+  if (palette == null) {
+    return content;
+  }
+
+  return IconTheme(
+    data: IconThemeData(color: palette.glassForeground),
+    child: DefaultTextStyle.merge(
+      style: TextStyle(color: palette.glassForeground),
+      child: content,
+    ),
+  );
+}
+
+_GlassButtonTintPalette? _resolveTintPalette(GlassButtonTint tint) {
+  switch (tint) {
+    case GlassButtonTint.none:
+      return null;
+    case GlassButtonTint.positive:
+      return const _GlassButtonTintPalette(
+        color: Colors.greenAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.greenAccent,
+      );
+    case GlassButtonTint.warn:
+      return const _GlassButtonTintPalette(
+        color: Colors.orangeAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.orangeAccent,
+      );
+    case GlassButtonTint.neutral:
+      // neutral uses theme primary; we'll resolve a placeholder here but
+      // callers should call the context-aware resolver below.
+      return const _GlassButtonTintPalette(
+        color: Colors.black,
+        materialForeground: Colors.white,
+        glassForeground: Colors.black,
+      );
+    case GlassButtonTint.negative:
+      return const _GlassButtonTintPalette(
+        color: Colors.redAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.redAccent,
+      );
+  }
+}
+
+_GlassButtonTintPalette? _resolveTintPaletteWithContext(
+    GlassButtonTint tint, BuildContext context) {
+  if (tint == GlassButtonTint.neutral) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return _GlassButtonTintPalette(
+      color: primary,
+      materialForeground: Colors.white,
+      glassForeground: primary,
+    );
+  }
+
+  return _resolveTintPalette(tint);
+}
+
+class _GlassButtonTintPalette {
+  final Color color;
+
+  /// Foreground color to use for non-glass (material) buttons - usually a
+  /// high-contrast value like white.
+  final Color materialForeground;
+
+  /// Foreground color to use for glass buttons: full tint color so the text
+  /// and icons match the outline.
+  final Color glassForeground;
+
+  const _GlassButtonTintPalette({
+    required this.color,
+    required this.materialForeground,
+    required this.glassForeground,
+  });
+
+  ButtonStyle toButtonStyle() {
+    return ButtonStyle(
+      // Use a light inner tint with a strong outline for material buttons so
+      // they visually match the glass variant (light fill + strong outline).
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return color.withValues(alpha: 0.08);
+        }
+        // Light inner tint
+        return color.withValues(alpha: 0.10);
+      }),
+      // Foreground (text/icon) should be full tint color for punchiness.
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return color.withValues(alpha: 0.6);
+        }
+        return color;
+      }),
+      iconColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return color.withValues(alpha: 0.6);
+        }
+        return color;
+      }),
+      // Strong outline using side, and overlay uses a slightly stronger tint.
+      side: WidgetStateProperty.resolveWith((states) {
+        final c = states.contains(WidgetState.disabled)
+            ? color.withValues(alpha: 0.45)
+            : color.withValues(alpha: 0.75);
+        return BorderSide(color: c, width: 1.4);
+      }),
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed)) {
+          return color.withValues(alpha: 0.22);
+        }
+        if (states.contains(WidgetState.focused) ||
+            states.contains(WidgetState.hovered)) {
+          return color.withValues(alpha: 0.12);
+        }
+        return null;
+      }),
+      surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
+      shadowColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return Colors.black.withValues(alpha: 0.08);
+        }
+        return Colors.black.withValues(alpha: 0.18);
+      }),
+    );
+  }
 }

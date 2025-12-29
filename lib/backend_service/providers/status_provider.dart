@@ -21,13 +21,13 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 
 /// Polls the backend `/status` endpoint and exposes a typed [StatusModel].
@@ -38,11 +38,12 @@ import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 /// * Lazy thumbnail fetching and caching
 /// * Convenience accessors for the UI
 class StatusProvider extends ChangeNotifier {
-  final OdysseyClient _client;
+  final BackendClient _client;
   final _log = Logger('StatusProvider');
 
   StatusModel? _status;
   String? _deviceStatusMessage;
+  int? _resinTemperature;
 
   /// Optional raw device-provided status message (e.g. NanoDLP "Status"
   /// field). When present this may be used to override the app bar title
@@ -50,6 +51,9 @@ class StatusProvider extends ChangeNotifier {
   /// "Peel Detection Started" are surfaced directly.
   String? get deviceStatusMessage => _deviceStatusMessage;
   StatusModel? get status => _status;
+
+  /// Current resin temperature reported by the backend (degrees Celsius).
+  int? get resinTemperature => _resinTemperature;
 
   bool _loading = true;
   bool get isLoading => _loading;
@@ -131,6 +135,19 @@ class StatusProvider extends ChangeNotifier {
   // int _sseConsecutiveErrors = 0; // reserved for future use
   bool _fetchInFlight = false;
   bool _disposed = false;
+  // True while the provider is attempting the first initial connection.
+  // This is used by the UI to show a startup/splash screen until the
+  // first status refresh completes (success or failure).
+  bool _initialAttemptInProgress = true;
+
+  bool get initialAttemptInProgress => _initialAttemptInProgress;
+
+  // True once we've received at least one successful status response. Used
+  // by the startup gate and connection error handling logic to differentiate
+  // between initial startup and post-startup connection loss.
+  bool _everHadSuccessfulStatus = false;
+
+  bool get hasEverConnected => _everHadSuccessfulStatus;
 
   // SSE (Server-Sent Events) client state. When streaming is active we
   // rely on incoming events instead of the periodic polling loop.
@@ -154,7 +171,7 @@ class StatusProvider extends ChangeNotifier {
 
   bool? get sseSupported => _sseSupported;
 
-  StatusProvider({OdysseyClient? client})
+  StatusProvider({BackendClient? client})
       : _client = client ?? BackendService() {
     // Prefer an SSE subscription when the backend supports it. If the
     // connection fails we fall back to the existing polling loop. See
@@ -202,9 +219,8 @@ class StatusProvider extends ChangeNotifier {
     // attempting to establish an SSE subscription in that case.
     try {
       final cfg = OrionConfig();
-      final backend = cfg.getString('backend', category: 'advanced');
-      final devNano = cfg.getFlag('nanoDLPmode', category: 'developer');
-      if (backend == 'nanodlp' || devNano) {
+      final isNano = cfg.isNanoDlpMode();
+      if (isNano) {
         _log.info(
             'Backend is NanoDLP; skipping SSE subscription and using polling');
         _startPolling();
@@ -223,7 +239,7 @@ class StatusProvider extends ChangeNotifier {
       // If config read fails, proceed to attempt SSE as a best-effort.
     }
 
-    _log.info('Attempting SSE subscription via OdysseyClient.getStatusStream');
+    _log.info('Attempting SSE subscription via BackendClient.getStatusStream');
     try {
       final stream = _client.getStatusStream();
       // When SSE becomes active, cancel any existing polling loop so we rely
@@ -244,6 +260,33 @@ class StatusProvider extends ChangeNotifier {
                     ?.toString();
           } catch (_) {
             _deviceStatusMessage = null;
+          }
+          // Capture resin temperature if the backend provides it (common NanoDLP fields)
+          try {
+            final maybeTemp = raw['resin'] ??
+                raw['Resin'] ??
+                raw['resin_temperature'] ??
+                raw['ResinTemperature'];
+            int? parsedTemp;
+            if (maybeTemp == null) {
+              parsedTemp = null;
+            } else if (maybeTemp is num) {
+              parsedTemp = maybeTemp.toInt();
+            } else {
+              final s = maybeTemp
+                  .toString()
+                  .trim()
+                  .toLowerCase()
+                  .replaceAll('°', '')
+                  .replaceAll('c', '')
+                  .trim();
+              final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+              parsedTemp =
+                  double.tryParse(numStr)?.round() ?? int.tryParse(numStr);
+            }
+            _resinTemperature = parsedTemp;
+          } catch (_) {
+            // ignore parsing errors and leave _resinTemperature unchanged
           }
           final parsed = StatusModel.fromJson(raw);
           // (previous snapshot removed) transitional clears now rely on the
@@ -482,6 +525,32 @@ class StatusProvider extends ChangeNotifier {
       } catch (_) {
         _deviceStatusMessage = null;
       }
+      // Capture resin temperature if available
+      try {
+        final maybeTemp = raw['resin'] ??
+            raw['Resin'] ??
+            raw['resin_temperature'] ??
+            raw['ResinTemperature'];
+        int? parsedTemp;
+        if (maybeTemp == null) {
+          parsedTemp = null;
+        } else if (maybeTemp is num) {
+          parsedTemp = maybeTemp.toInt();
+        } else {
+          final s = maybeTemp
+              .toString()
+              .trim()
+              .toLowerCase()
+              .replaceAll('°', '')
+              .replaceAll('c', '')
+              .trim();
+          final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+          parsedTemp = double.tryParse(numStr)?.round() ?? int.tryParse(numStr);
+        }
+        _resinTemperature = parsedTemp;
+      } catch (_) {
+        // ignore
+      }
       final parsed = StatusModel.fromJson(raw);
       // Compute fingerprint difference to detect meaningful changes that
       // should update the UI (z/layer/progress/etc.). This allows the
@@ -539,6 +608,7 @@ class StatusProvider extends ChangeNotifier {
       _status = parsed;
       _error = null;
       _loading = false;
+      _everHadSuccessfulStatus = true;
 
       // Successful refresh -> shorten polling interval
       _pollIntervalSeconds = _minPollIntervalSeconds;
@@ -611,8 +681,12 @@ class StatusProvider extends ChangeNotifier {
       _loading = false;
       // On failure, increase consecutive error count and back off polling
       _consecutiveErrors = min(_consecutiveErrors + 1, _maxReconnectAttempts);
+      // Keep backoff short until we've ever seen a successful status so the
+      // startup experience remains responsive. After the first success we
+      // revert to the normal ramp-to-60s behavior for subsequent failures.
+      final maxBackoff = _everHadSuccessfulStatus ? _maxPollIntervalSeconds : 5;
       final backoff = _computeBackoff(_consecutiveErrors,
-          base: _minPollIntervalSeconds, max: _maxPollIntervalSeconds);
+          base: _minPollIntervalSeconds, max: maxBackoff);
       _pollIntervalSeconds = backoff;
       _nextPollRetryAt = DateTime.now().add(Duration(seconds: backoff));
       // Clear timestamp when timer expires
@@ -628,6 +702,12 @@ class StatusProvider extends ChangeNotifier {
           'Status refresh failed after $elapsedStr; backing off polling for ${_pollIntervalSeconds}s (attempt $_consecutiveErrors)');
     } finally {
       _fetchInFlight = false;
+      // The initial attempt is finished once we've done at least one fetch
+      // (success or failure). Clear the flag so UI can dismiss any startup
+      // overlay.
+      if (_initialAttemptInProgress) {
+        _initialAttemptInProgress = false;
+      }
       if (!_disposed) {
         // Only notify listeners if one of the meaningful observable fields
         // actually changed. This avoids spamming watchers with identical
@@ -669,9 +749,7 @@ class StatusProvider extends ChangeNotifier {
         // visually responsive.
         try {
           final cfg = OrionConfig();
-          final backend = cfg.getString('backend', category: 'advanced');
-          final devNano = cfg.getFlag('nanoDLPmode', category: 'developer');
-          final isNano = backend == 'nanodlp' || devNano;
+          final isNano = cfg.isNanoDlpMode();
           if (!shouldNotify &&
               isNano &&
               (_status?.isPrinting == true || _status?.isPaused == true)) {

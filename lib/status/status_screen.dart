@@ -19,9 +19,10 @@
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'dart:typed_data';
-import 'package:orion/backend_service/nanodlp/nanodlp_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 
 import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -31,6 +32,8 @@ import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/status_card.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/util/layer_preview_cache.dart';
 
 class StatusScreen extends StatefulWidget {
   final bool newPrint;
@@ -61,11 +64,6 @@ class StatusScreenState extends State<StatusScreen> {
   // Presentation-local state (derived values computed per build instead of storing)
   bool get _isLandscape =>
       MediaQuery.of(context).orientation == Orientation.landscape;
-  int get _maxNameLength => _isLandscape ? 12 : 24;
-
-  String _truncateFileName(String name) => name.length >= _maxNameLength
-      ? '${name.substring(0, _maxNameLength)}...'
-      : name;
 
   // Duration formatting moved to StatusModel.formattedElapsedPrintTime
 
@@ -85,6 +83,17 @@ class StatusScreenState extends State<StatusScreen> {
       });
     }
   }
+
+  // Local UI state for toggling 2D layer preview
+  bool _showLayer2D = false;
+  Uint8List? _layer2DBytes;
+  ImageProvider? _layer2DImageProvider;
+  bool _layer2DLoading = false;
+  DateTime? _lastLayerToggleTime;
+  bool _prefetched = false;
+  int? _lastPrefetchedLayer;
+  int? _resolvedPlateIdForPrefetch;
+  String? _resolvedFilePathForPrefetch;
 
   bool _bytesEqual(Uint8List a, Uint8List b) {
     if (identical(a, b)) return true;
@@ -240,6 +249,33 @@ class StatusScreenState extends State<StatusScreen> {
         }
 
         final elapsedStr = status.formattedElapsedPrintTime;
+        // Trigger a one-time prefetch of 3D and current 2D layer thumbnails
+        // when we first observe a valid status with file metadata.
+        if (!_prefetched && status.printData?.fileData != null) {
+          _prefetched = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _prefetchThumbnails(status);
+          });
+        }
+
+        // Proactively preload next layers when the reported layer changes.
+        // Use a post-frame callback to perform async work outside build.
+        if (status.layer != null &&
+            status.printData?.fileData != null &&
+            status.printData?.fileData?.path != _resolvedFilePathForPrefetch) {
+          // File changed; clear previously-resolved plate id so we'll re-resolve.
+          _resolvedFilePathForPrefetch = status.printData?.fileData?.path;
+          _resolvedPlateIdForPrefetch = null;
+          _lastPrefetchedLayer = null;
+        }
+
+        if (status.layer != null && status.layer != _lastPrefetchedLayer) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _maybePreloadNextLayers(status);
+          });
+        }
         final fileName =
             _frozenFileName ?? status.printData?.fileData?.name ?? '';
 
@@ -247,15 +283,104 @@ class StatusScreenState extends State<StatusScreen> {
           child: Scaffold(
             appBar: AppBar(
               automaticallyImplyLeading: false,
+              centerTitle: true,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Builder(builder: (context) {
+                    final provider = Provider.of<StatusProvider>(context);
+                    final int? temp = provider.resinTemperature;
+                    return GlassCard(
+                        child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
+                            child: Row(
+                              children: [
+                                Icon(Icons.thermostat,
+                                    size: 20,
+                                    color:
+                                        Theme.of(context).colorScheme.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '$temp\u00B0C',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                            )));
+                  }),
+                ),
+              ],
               title: Builder(builder: (context) {
                 final deviceMsg = provider.deviceStatusMessage;
                 final statusText =
                     (deviceMsg != null && deviceMsg.trim().isNotEmpty)
                         ? deviceMsg
                         : provider.displayStatus;
-                return Text(
-                  statusText,
-                  style: Theme.of(context).appBarTheme.titleTextStyle,
+                // Use a single base font size for both title lines so they appear
+                // visually consistent. If the AppBar theme provides a title
+                // fontSize, use that as the base; otherwise default to 14 and
+                // reduce slightly.
+                final baseFontSize =
+                    (Theme.of(context).appBarTheme.titleTextStyle?.fontSize ??
+                            14) -
+                        10;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      fileName.isNotEmpty ? fileName : 'No file',
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .appBarTheme
+                          .titleTextStyle
+                          ?.copyWith(
+                            fontSize: baseFontSize,
+                            fontWeight: FontWeight.normal,
+                            color: Theme.of(context)
+                                .appBarTheme
+                                .titleTextStyle
+                                ?.color
+                                ?.withValues(alpha: 0.95),
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      statusText,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                              .appBarTheme
+                              .titleTextStyle
+                              ?.merge(TextStyle(
+                                fontWeight: FontWeight.normal,
+                                fontSize: baseFontSize,
+                              ))
+                              .copyWith(
+                                // Make status less visually dominant by lowering
+                                // its alpha relative to the AppBar title color.
+                                color: Theme.of(context)
+                                    .appBarTheme
+                                    .titleTextStyle
+                                    ?.color
+                                    ?.withValues(alpha: 0.65),
+                              ) ??
+                          TextStyle(
+                            fontSize: baseFontSize,
+                            fontWeight: FontWeight.normal,
+                            color: Theme.of(context)
+                                .appBarTheme
+                                .titleTextStyle
+                                ?.color
+                                ?.withValues(alpha: 0.65),
+                          ),
+                    ),
+                  ],
                 );
               }),
             ),
@@ -311,7 +436,6 @@ class StatusScreenState extends State<StatusScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildNameCard(fileName, provider),
             const SizedBox(height: 16),
             Expanded(
               child: Column(
@@ -365,8 +489,8 @@ class StatusScreenState extends State<StatusScreen> {
         child: Row(children: [
           Expanded(
             flex: 1,
-            child: ListView(children: [
-              _buildNameCard(fileName, provider),
+            child: Column(children: [
+              Spacer(),
               _buildInfoCard(
                 'Current Z Position',
                 '${statusModel?.physicalState.z.toStringAsFixed(3) ?? '-'} mm',
@@ -384,6 +508,7 @@ class StatusScreenState extends State<StatusScreen> {
                     ? '-'
                     : '${usedMaterial.toStringAsFixed(2)} mL',
               ),
+              Spacer(),
             ]),
           ),
           const SizedBox(width: 16.0),
@@ -409,37 +534,6 @@ class StatusScreenState extends State<StatusScreen> {
       child: ListTile(
         title: Text(title),
         subtitle: Text(subtitle),
-      ),
-    );
-  }
-
-  Widget _buildNameCard(String fileName, StatusProvider provider) {
-    final truncated = _truncateFileName(fileName);
-    final statusModel = provider.status;
-    final finishedSnapshot =
-        statusModel?.isIdle == true && statusModel?.layer != null;
-    // Prefer canonical 'finished' hint from the mapper.
-    final effectivelyFinished = statusModel?.finished == true;
-    final color = (finishedSnapshot && !effectivelyFinished)
-        ? Theme.of(context).colorScheme.error
-        : provider.statusColor(context);
-    return GlassCard(
-      outlined: true,
-      child: ListTile(
-        title: AutoSizeText.rich(
-          maxLines: 1,
-          minFontSize: 16,
-          TextSpan(children: [
-            TextSpan(
-              text: truncated,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ]),
-        ),
       ),
     );
   }
@@ -483,130 +577,399 @@ class StatusScreenState extends State<StatusScreen> {
         ? Theme.of(context).colorScheme.error
         : statusColor;
     return Center(
-      child: Stack(
-        children: [
-          GlassCard(
-            outlined: true,
-            elevation: 1.0,
-            child: Padding(
-              padding: const EdgeInsets.all(4.5),
-              child: ClipRRect(
-                borderRadius: themeProvider.isGlassTheme
-                    ? BorderRadius.circular(10.5)
-                    : BorderRadius.circular(7.75),
-                child: Stack(children: [
-                  ColorFiltered(
-                    colorFilter: const ColorFilter.matrix(<double>[
-                      0.2126, 0.7152, 0.0722, 0, 0, // grayscale matrix
-                      0.2126, 0.7152, 0.0722, 0, 0,
-                      0.2126, 0.7152, 0.0722, 0, 0,
-                      0, 0, 0, 1, 0,
-                    ]),
-                    child: thumbnail != null && thumbnail.isNotEmpty
-                        ? Image.memory(
-                            thumbnail,
-                            fit: BoxFit.cover,
-                          )
-                        : Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  effectiveStatusColor),
+      child: GestureDetector(
+        onTap: () {
+          // Debounce toggles: ignore taps that occur within 500ms of the
+          // previous toggle, and ignore while a layer load is in progress.
+          final now = DateTime.now();
+          if (_layer2DLoading) return;
+          if (_lastLayerToggleTime != null &&
+              now.difference(_lastLayerToggleTime!) <
+                  const Duration(milliseconds: 500)) {
+            return;
+          }
+
+          // Toggle 2D layer preview. If enabling, trigger fetch.
+          final providerState =
+              Provider.of<StatusProvider>(context, listen: false);
+          setState(() {
+            _showLayer2D = !_showLayer2D;
+            _lastLayerToggleTime = now;
+          });
+          if (_showLayer2D) {
+            _fetchLayer2D(providerState, statusModel);
+          }
+        },
+        child: Stack(
+          children: [
+            GlassCard(
+              outlined: true,
+              elevation: 1.0,
+              child: Padding(
+                padding: const EdgeInsets.all(4.5),
+                child: ClipRRect(
+                  borderRadius: themeProvider.isGlassTheme
+                      ? BorderRadius.circular(12.5)
+                      : BorderRadius.circular(7.75),
+                  child: Stack(children: [
+                    // Base thumbnail / spinner
+                    ColorFiltered(
+                      colorFilter: const ColorFilter.matrix(<double>[
+                        0.2126, 0.7152, 0.0722, 0, 0, // grayscale matrix
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0, 0, 0, 1, 0,
+                      ]),
+                      child: thumbnail != null && thumbnail.isNotEmpty
+                          ? Image.memory(
+                              thumbnail,
+                              fit: BoxFit.cover,
+                            )
+                          : Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    effectiveStatusColor),
+                              ),
                             ),
-                          ),
-                  ),
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.35),
                     ),
-                  ),
-                  Positioned.fill(
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: ClipRect(
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          heightFactor: progress,
-                          child: thumbnail != null && thumbnail.isNotEmpty
-                              ? Image.memory(
-                                  thumbnail,
-                                  fit: BoxFit.cover,
-                                )
-                              : Center(
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        effectiveStatusColor),
+
+                    // Dim overlay
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.35),
+                      ),
+                    ),
+
+                    // Progress wipe
+                    Positioned.fill(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: ClipRect(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            heightFactor: progress,
+                            child: thumbnail != null && thumbnail.isNotEmpty
+                                ? Image.memory(
+                                    thumbnail,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          effectiveStatusColor),
+                                    ),
                                   ),
-                                ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ]),
+
+                    // 2D layer overlay (covers base thumbnail and status card when active)
+                    if (_showLayer2D)
+                      Positioned.fill(
+                        child: _layer2DLoading
+                            ? Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      effectiveStatusColor),
+                                ),
+                              )
+                            : (_layer2DImageProvider != null
+                                ? Image(
+                                    image: _layer2DImageProvider!,
+                                    gaplessPlayback: true,
+                                    fit: BoxFit.cover,
+                                  )
+                                : (_layer2DBytes != null &&
+                                        _layer2DBytes!.isNotEmpty
+                                    ? Image.memory(
+                                        _layer2DBytes!,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Center(
+                                        child: Text('2D preview unavailable'),
+                                      ))),
+                      ),
+                  ]),
+                ),
               ),
             ),
-          ),
-          Positioned.fill(
-            right: 15,
-            child: Center(
-              child: StatusCard(
-                isCanceling: provider.isCanceling,
-                isPausing: provider.isPausing,
-                progress: progress,
-                statusColor: effectiveStatusColor,
-                status: status,
+            Positioned.fill(
+              right: 15,
+              child: Center(
+                child: StatusCard(
+                  isCanceling: provider.isCanceling,
+                  isPausing: provider.isPausing,
+                  progress: progress,
+                  statusColor: effectiveStatusColor,
+                  status: status,
+                  showPercentage: !_showLayer2D,
+                ),
               ),
             ),
-          ),
-          Positioned(
-            top: 0,
-            bottom: 0,
-            right: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(2),
-              child: Builder(builder: (context) {
-                final isGlassTheme = themeProvider.isGlassTheme;
-                return Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.only(
-                      topRight: isGlassTheme
-                          ? const Radius.circular(14.0)
-                          : const Radius.circular(9.75),
-                      bottomRight: isGlassTheme
-                          ? const Radius.circular(14.0)
-                          : const Radius.circular(9.75),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2.5),
-                    child: ClipRRect(
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Builder(builder: (context) {
+                  final isGlassTheme = themeProvider.isGlassTheme;
+                  return GlassCard(
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.only(
                         topRight: isGlassTheme
-                            ? const Radius.circular(11.5)
-                            : const Radius.circular(7.75),
+                            ? const Radius.circular(14.0)
+                            : const Radius.circular(9.75),
                         bottomRight: isGlassTheme
-                            ? const Radius.circular(11.5)
-                            : const Radius.circular(7.75),
+                            ? const Radius.circular(14.0)
+                            : const Radius.circular(9.75),
                       ),
-                      child: RotatedBox(
-                        quarterTurns: 3,
-                        child: LinearProgressIndicator(
-                          minHeight: 30,
-                          color: effectiveStatusColor,
-                          value: progress,
-                          backgroundColor: isGlassTheme
-                              ? effectiveStatusColor.withValues(alpha: 0.1)
-                              : null,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2.5),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.only(
+                          topRight: isGlassTheme
+                              ? const Radius.circular(11.5)
+                              : const Radius.circular(7.75),
+                          bottomRight: isGlassTheme
+                              ? const Radius.circular(11.5)
+                              : const Radius.circular(7.75),
+                        ),
+                        child: RotatedBox(
+                          quarterTurns: 3,
+                          child: LinearProgressIndicator(
+                            minHeight: 15,
+                            color: effectiveStatusColor,
+                            value: progress,
+                            backgroundColor: isGlassTheme
+                                ? effectiveStatusColor.withValues(alpha: 0.1)
+                                : null,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _fetchLayer2D(
+      StatusProvider provider, StatusModel? status) async {
+    if (status == null) return;
+    final fileData = status.printData?.fileData;
+    int? plateId;
+    final layerIndex = status.layer;
+    if (layerIndex == null) return;
+
+    try {
+      if (fileData != null) {
+        final meta = await BackendService().getFileMetadata(
+            fileData.locationCategory ?? 'Local', fileData.path);
+        if (meta['plate_id'] != null) {
+          plateId = meta['plate_id'] as int?;
+        }
+      }
+    } catch (_) {
+      plateId = widget.initialPlateId;
+    }
+    if (plateId == null) return;
+
+    final cached = LayerPreviewCache.instance.get(plateId, layerIndex);
+    if (cached != null) {
+      setState(() {
+        _layer2DBytes = cached;
+        _layer2DImageProvider = MemoryImage(cached);
+        _showLayer2D = true;
+      });
+      LayerPreviewCache.instance
+          .preload(BackendService(), plateId, layerIndex, count: 2);
+      return;
+    }
+
+    setState(() {
+      _layer2DLoading = true;
+    });
+    try {
+      final bytes = await LayerPreviewCache.instance
+          .fetchAndCache(BackendService(), plateId, layerIndex);
+      if (bytes.isNotEmpty) {
+        final imgProv = MemoryImage(bytes);
+        // Start precaching but don't await it — decoding can be expensive
+        // and awaiting here can cause UI jank. Fire-and-forget instead.
+        precacheImage(imgProv, context).catchError((_) {});
+        setState(() {
+          _layer2DBytes = bytes;
+          _layer2DImageProvider = imgProv;
+          _showLayer2D = true;
+        });
+        LayerPreviewCache.instance
+            .preload(BackendService(), plateId, layerIndex, count: 2);
+      }
+    } catch (_) {
+      // ignore
+    } finally {
+      setState(() {
+        _layer2DLoading = false;
+      });
+    }
+  }
+
+  Future<void> _prefetchThumbnails(StatusModel status) async {
+    // Prefetch the 3D thumbnail for the current file (Large) and the
+    // current 2D layer (and preload next layers). Best-effort; ignore
+    // any failures.
+    try {
+      final fileData = status.printData?.fileData;
+      if (fileData != null) {
+        // Prefetch 3D thumbnail (Large size) — fetch bytes and precache so
+        // Flutter's image cache holds a decoded image for instant display.
+        BackendService()
+            .getFileThumbnail(
+                fileData.locationCategory ?? 'Local', fileData.path, 'Large')
+            .then((bytes) async {
+          try {
+            if (bytes.isNotEmpty) {
+              await precacheImage(MemoryImage(bytes), context);
+            }
+          } catch (_) {
+            // ignore precache failures
+          }
+        }, onError: (_) {});
+      }
+    } catch (_) {
+      // ignore
+    }
+
+    // Prefetch current layer via LayerPreviewCache.fetchAndCache and
+    // then preload n+1/n+2 layers.
+    try {
+      final layerIndex = status.layer;
+      if (layerIndex == null) return;
+
+      int? plateId;
+      try {
+        final fileData = status.printData?.fileData;
+        if (fileData != null) {
+          final meta = await BackendService().getFileMetadata(
+              fileData.locationCategory ?? 'Local', fileData.path);
+          if (meta['plate_id'] != null) {
+            plateId = meta['plate_id'] as int?;
+          }
+        }
+      } catch (_) {
+        plateId = widget.initialPlateId;
+      }
+      if (plateId == null) return;
+
+      // Use fetchAndCache to dedupe concurrent fetches.
+      try {
+        final bytes = await LayerPreviewCache.instance
+            .fetchAndCache(BackendService(), plateId, layerIndex);
+        if (bytes.isNotEmpty) {
+          // If user already enabled 2D preview, immediately display the
+          // prefetched current layer so the preview reflects the active
+          // layer without requiring a manual toggle.
+          if (mounted && _showLayer2D) {
+            if (!(_layer2DBytes != null &&
+                _bytesEqual(_layer2DBytes!, bytes))) {
+              setState(() {
+                _layer2DBytes = bytes;
+                _layer2DImageProvider = MemoryImage(bytes);
+              });
+            }
+          }
+          // Fire off preloads for the next two layers in parallel; do not
+          // await to avoid blocking the UI thread.
+          for (int i = 1; i <= 2; i++) {
+            final target = layerIndex + i;
+            LayerPreviewCache.instance
+                .fetchAndCache(BackendService(), plateId, target)
+                .then((nextBytes) {
+              if (nextBytes.isNotEmpty) {
+                precacheImage(MemoryImage(nextBytes), context)
+                    .catchError((_) {});
+              }
+            }).catchError((_) {});
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  Future<void> _maybePreloadNextLayers(StatusModel status) async {
+    final layerIndex = status.layer;
+    if (layerIndex == null) return;
+
+    // Resolve plate id if not already resolved for current file path.
+    int? plateId = _resolvedPlateIdForPrefetch;
+    if (plateId == null) {
+      try {
+        final fileData = status.printData?.fileData;
+        if (fileData != null) {
+          final meta = await BackendService().getFileMetadata(
+              fileData.locationCategory ?? 'Local', fileData.path);
+          if (meta['plate_id'] != null) {
+            plateId = meta['plate_id'] as int?;
+            _resolvedPlateIdForPrefetch = plateId;
+          }
+        }
+      } catch (_) {
+        plateId = widget.initialPlateId;
+        _resolvedPlateIdForPrefetch = plateId;
+      }
+    }
+    if (plateId == null) return;
+
+    try {
+      // Ensure current layer is cached (deduped) then fetch+precache next two.
+      // Fetch current layer (deduped) but don't block on any decoding.
+      LayerPreviewCache.instance
+          .fetchAndCache(BackendService(), plateId, layerIndex)
+          .then((curBytes) {
+        if (curBytes.isNotEmpty) {
+          // Precache decoded image for faster rendering (fire-and-forget).
+          precacheImage(MemoryImage(curBytes), context).catchError((_) {});
+          // If the user currently has the 2D preview visible, immediately
+          // update the displayed image so the preview follows the layer.
+          if (mounted && _showLayer2D) {
+            // Avoid re-setting if the bytes are identical.
+            if (!(_layer2DBytes != null &&
+                _bytesEqual(_layer2DBytes!, curBytes))) {
+              setState(() {
+                _layer2DBytes = curBytes;
+                _layer2DImageProvider = MemoryImage(curBytes);
+              });
+            }
+          }
+        }
+      }).catchError((_) {});
+
+      // Launch preloads for the next two layers in parallel.
+      for (int i = 1; i <= 2; i++) {
+        final target = layerIndex + i;
+        LayerPreviewCache.instance
+            .fetchAndCache(BackendService(), plateId, target)
+            .then((nextBytes) {
+          if (nextBytes.isNotEmpty) {
+            precacheImage(MemoryImage(nextBytes), context).catchError((_) {});
+          }
+        }).catchError((_) {});
+      }
+      _lastPrefetchedLayer = layerIndex;
+    } catch (_) {
+      // ignore
+    }
   }
 
   Widget _buildButtons(StatusProvider provider, StatusModel? status) {
@@ -619,13 +982,19 @@ class StatusScreenState extends State<StatusScreen> {
     // * Active print (to allow pause/resume)
     // * Finished print (return home)
     // * Canceled print (return home)
-    // Disabled only when status not yet loaded or during cancel transition.
-    final pauseResumeEnabled = s != null && (!provider.isCanceling);
+    // Disabled when status not yet loaded, during cancel transition, or
+    // while a pause is latched (provider.isPausing) and we're not already
+    // in the paused state (i.e., disable the Pause action while it's
+    // latched). Resume should still be enabled when paused.
     final isPaused = s?.isPaused ?? false;
+    final pauseResumeEnabled = s != null &&
+        !provider.isCanceling &&
+        !(provider.isPausing && !isPaused);
 
     return Row(children: [
       Expanded(
         child: GlassButton(
+          tint: GlassButtonTint.neutral,
           onPressed: (!canShowOptions || provider.isCanceling)
               ? null
               : () {
@@ -664,6 +1033,7 @@ class StatusScreenState extends State<StatusScreen> {
                                 height: 65,
                                 width: 450,
                                 child: GlassButton(
+                                  tint: GlassButtonTint.neutral,
                                   style: buttonStyle,
                                   onPressed: () {
                                     Navigator.pop(ctx);
@@ -690,6 +1060,7 @@ class StatusScreenState extends State<StatusScreen> {
                                 height: 65,
                                 width: 450,
                                 child: HoldButton(
+                                  tint: GlassButtonTint.negative,
                                   style: buttonStyle,
                                   duration: const Duration(seconds: 2),
                                   onPressed: () {
@@ -723,6 +1094,11 @@ class StatusScreenState extends State<StatusScreen> {
       const SizedBox(width: 20),
       Expanded(
         child: GlassButton(
+          tint: isCanceled || isFinished
+              ? GlassButtonTint.neutral
+              : isPaused
+                  ? GlassButtonTint.positive
+                  : GlassButtonTint.warn,
           onPressed: !pauseResumeEnabled
               ? null
               : () {

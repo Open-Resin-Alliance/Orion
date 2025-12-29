@@ -70,6 +70,7 @@ dependencies:
     sdk: flutter
   marquee: ^2.3.0
   json_annotation: ^4.9.0
+  fl_chart: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -102,6 +103,7 @@ flutter:
     - assets/images/opensource.svg
     - assets/images/placeholder.png
     - assets/images/bsod.png
+    - assets/images/open_resin_alliance_logo_darkmode.png
     - assets/scripts/set_orion_config.sh
     - README.md
     - CHANGELOG.md

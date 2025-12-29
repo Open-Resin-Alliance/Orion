@@ -53,7 +53,8 @@ class _UIScreenState extends State<UIScreen> {
         ),
         body: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
             child: Column(
               children: [
                 // Theme Mode Selector Card

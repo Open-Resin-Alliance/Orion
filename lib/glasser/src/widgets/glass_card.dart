@@ -106,6 +106,7 @@ class GlassCard extends StatelessWidget {
         ),
         sigma: glassBlurSigma,
         borderWidth: outlined ? 1.4 : 1.0,
+        floatingSurface: false,
         child: Material(
           type: MaterialType.transparency,
           shape: RoundedRectangleBorder(borderRadius: borderRadius),

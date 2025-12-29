@@ -1,29 +1,49 @@
+/*
+* Orion - Backend Service
+* Copyright (C) 2025 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 import 'dart:typed_data';
-import 'package:orion/backend_service/odyssey/odyssey_client.dart';
+import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_simulated_client.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// BackendService is a small façade that selects a concrete
-/// `OdysseyClient` implementation at runtime. This centralizes the
+/// `BackendClient` implementation at runtime. This centralizes the
 /// point where an alternative backend implementation (different API)
 /// can be swapped in without changing providers or UI code.
-class BackendService implements OdysseyClient {
-  final OdysseyClient _delegate;
+class BackendService implements BackendClient {
+  final BackendClient _delegate;
 
   /// Default constructor: picks the concrete implementation based on
   /// configuration (or defaults to the HTTP adapter).
-  BackendService({OdysseyClient? delegate})
+  BackendService({BackendClient? delegate})
       : _delegate = delegate ?? _chooseFromConfig();
 
-  static OdysseyClient _chooseFromConfig() {
+  static BackendClient _chooseFromConfig() {
     try {
       final cfg = OrionConfig();
-      final backend = cfg.getString('backend', category: 'advanced');
-      if (backend == 'nanodlp') {
+      // Developer-mode simulated backend flag (developer.simulated = true)
+      final simulated = cfg.getFlag('simulated', category: 'developer');
+      if (simulated) {
+        return NanoDlpSimulatedClient();
+      }
+      if (cfg.isNanoDlpMode()) {
         // Return the NanoDLP adapter when explicitly requested in config.
-        // Add a small log to aid debugging in cases where config isn't applied.
-        // Note: avoid bringing logging package into this file if not used
         return NanoDlpHttpClient();
       }
     } catch (_) {
@@ -32,7 +52,7 @@ class BackendService implements OdysseyClient {
     return OdysseyHttpClient();
   }
 
-  // Forward all OdysseyClient methods to the selected delegate.
+  // Forward all BackendClient methods to the selected delegate.
   @override
   Future<Map<String, dynamic>> listItems(
           String location, int pageSize, int pageIndex, String subdirectory) =>
@@ -70,6 +90,14 @@ class BackendService implements OdysseyClient {
 
   @override
   Stream<Map<String, dynamic>> getStatusStream() => _delegate.getStatusStream();
+
+  @override
+  Future<List<Map<String, dynamic>>> getNotifications() =>
+      _delegate.getNotifications();
+
+  @override
+  Future<void> disableNotification(int timestamp) =>
+      _delegate.disableNotification(timestamp);
 
   @override
   Future<void> cancelPrint() => _delegate.cancelPrint();
@@ -115,4 +143,18 @@ class BackendService implements OdysseyClient {
 
   @override
   Future<void> displayTest(String test) => _delegate.displayTest(test);
+
+  @override
+  Future<Uint8List> getPlateLayerImage(int plateId, int layer) =>
+      _delegate.getPlateLayerImage(plateId, layer);
+
+  @override
+  Future<List<Map<String, dynamic>>> getAnalytics(int n) =>
+      _delegate.getAnalytics(n);
+
+  @override
+  Future<dynamic> getAnalyticValue(int id) => _delegate.getAnalyticValue(id);
+
+  @override
+  Future<dynamic> tareForceSensor() => _delegate.tareForceSensor();
 }
