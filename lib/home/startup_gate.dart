@@ -172,8 +172,13 @@ class _StartupGateState extends State<StartupGate> {
 
     // Choose the child widget depending on state
     final Widget child;
-    // On startup, ignore the "remind later" flag and always show if an update is available.
-    final showUpdate = updateManager.isUpdateAvailable && !_dismissUpdateScreen;
+    // On startup, we want to show the update screen if available.
+    // We respect the "ignoreUpdates" flag (which is the permanent "Do not show again"),
+    // but we intentionally ignore "remindLater" (24h snooze) on a fresh boot,
+    // assuming the user might want to see it again if they restarted.
+    final showUpdate = updateManager.isUpdateAvailable &&
+        !updateManager.isUpdateIgnored &&
+        !_dismissUpdateScreen;
 
     if (!isReadyToProceed) {
       child = StartupScreen(
@@ -214,7 +219,7 @@ class _StartupGateState extends State<StartupGate> {
           });
           // Navigate after frame to ensure HomeScreen is mounted
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.go('/settings/updates');
+            context.go('/updates');
           });
         },
       );

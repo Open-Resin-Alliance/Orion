@@ -41,6 +41,7 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
   late final AnimationController _controller;
   List<Color> _gradientColors = const [];
   Color _backgroundColor = Colors.black;
+  bool _dontShowAgain = false;
 
   @override
   void initState() {
@@ -200,7 +201,14 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size(200, 64),
                             ),
-                            onPressed: widget.onRemindLater,
+                            onPressed: () {
+                              if (_dontShowAgain) {
+                                // If user chose to ignore updates, set the flag.
+                                // We still call onRemindLater to dismiss the screen.
+                                updateManager.setIgnoreUpdates(true);
+                              }
+                              widget.onRemindLater();
+                            },
                             child: const Text(
                               'Remind Later',
                               style: TextStyle(fontSize: 22),
@@ -222,6 +230,35 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                       ),
                       0.5,
                       1.0,
+                    ),
+                    const SizedBox(height: 32),
+                    _buildAnimatedItem(
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Transform.scale(
+                            scale: 1.2,
+                            child: GlassSwitch(
+                              value: _dontShowAgain,
+                              onChanged: (val) {
+                                setState(() {
+                                  _dontShowAgain = val;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Do not show available updates again',
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                      0.55,
+                      1.05,
                     ),
                   ],
                 ),

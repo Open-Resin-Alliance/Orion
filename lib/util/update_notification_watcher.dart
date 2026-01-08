@@ -109,7 +109,7 @@ class UpdateNotificationWatcher {
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
-              context.go('/settings/updates');
+              context.go('/updates');
             },
             child: const Text(
               'Update Now',

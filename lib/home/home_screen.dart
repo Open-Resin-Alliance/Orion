@@ -173,7 +173,7 @@ class HomeScreenState extends State<HomeScreen> {
 
               if (updateManager.isUpdateAvailable) {
                 return GestureDetector(
-                  onTap: () => context.go('/settings/updates'),
+                  onTap: () => context.go('/updates'),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,

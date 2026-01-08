@@ -363,13 +363,13 @@ class OrionMainAppState extends State<OrionMainApp> {
                     return const AboutScreen();
                   },
                 ),
-                GoRoute(
-                  path: 'updates',
-                  builder: (BuildContext context, GoRouterState state) {
-                    return const SettingsScreen(initialIndex: 3);
-                  },
-                ),
               ],
+            ),
+            GoRoute(
+              path: 'updates',
+              builder: (BuildContext context, GoRouterState state) {
+                return const SettingsScreen(initialIndex: 3);
+              },
             ),
             GoRoute(
               path: 'status',

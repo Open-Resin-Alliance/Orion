@@ -92,6 +92,15 @@ class UpdateManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setIgnoreUpdates(bool value) {
+    _config.setFlag('ignoreUpdates', value, category: 'updates');
+    notifyListeners();
+  }
+
+  bool get isUpdateIgnored {
+    return _config.getFlag('ignoreUpdates', category: 'updates');
+  }
+
   /// Returns true if an update is available, regardless of whether the user
   /// has snoozed notifications.
   bool get isUpdateAvailable {
@@ -115,6 +124,10 @@ class UpdateManager extends ChangeNotifier {
   /// notifications, ignoring the [suppressNotifications] flag.
   bool get hasPendingUpdateNotification {
     if (!isUpdateAvailable) return false;
+
+    if (_config.getFlag('ignoreUpdates', category: 'updates')) {
+      return false;
+    }
 
     final remindStr = _config.getString('remindLater', category: 'updates');
     if (remindStr.isNotEmpty) {
