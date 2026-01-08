@@ -33,6 +33,27 @@ class AthenaUpdateProvider extends ChangeNotifier {
   String channel = 'stable';
   String printerType = '';
 
+  AthenaUpdateProvider() {
+    _loadPersistedState();
+  }
+
+  void _loadPersistedState() {
+    final cfg = OrionConfig();
+    if (cfg.getFlag('available', category: 'updates')) {
+      final current = cfg.getString('athena.current', category: 'updates');
+      final latest = cfg.getString('athena.latest', category: 'updates');
+      final ch = cfg.getString('athena.channel', category: 'updates');
+
+      if (current.isNotEmpty && latest.isNotEmpty) {
+        currentVersion = current;
+        latestVersion = latest;
+        channel = ch.isNotEmpty ? ch : 'stable';
+        updateAvailable = true;
+        notifyListeners();
+      }
+    }
+  }
+
   /// Check for updates using the Athena printer_data payload.
   ///
   /// This will call the configured olymp endpoint and set [updateAvailable]
@@ -84,8 +105,7 @@ class AthenaUpdateProvider extends ChangeNotifier {
       final resp = await http.get(uri);
       if (resp.statusCode != 200) {
         _log.warning('Olymp lookup failed: ${resp.statusCode} ${resp.body}');
-        updateAvailable = false;
-        latestVersion = '';
+        // Do not clear state on temporary network/server failure
         isChecking = false;
         notifyListeners();
         return;
@@ -108,8 +128,7 @@ class AthenaUpdateProvider extends ChangeNotifier {
       }
     } catch (e, st) {
       _log.warning('checkForUpdates failed', e, st);
-      updateAvailable = false;
-      latestVersion = '';
+      // Do not clear state on error; preserve persisted state
     } finally {
       isChecking = false;
       notifyListeners();

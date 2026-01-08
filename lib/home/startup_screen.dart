@@ -30,7 +30,16 @@ import 'package:provider/provider.dart';
 /// connection. Displayed by [StartupGate] until
 /// [StatusProvider.hasEverConnected] becomes true.
 class StartupScreen extends StatefulWidget {
-  const StartupScreen({super.key});
+  final VoidCallback? onAnimationsComplete;
+  final bool shouldAnimateOut;
+  final VoidCallback? onExitComplete;
+
+  const StartupScreen({
+    super.key,
+    this.onAnimationsComplete,
+    this.shouldAnimateOut = false,
+    this.onExitComplete,
+  });
 
   @override
   State<StartupScreen> createState() => _StartupScreenState();
@@ -43,11 +52,14 @@ class _StartupScreenState extends State<StartupScreen>
   late final AnimationController _logoMoveController;
   late final AnimationController _backgroundController;
   late final AnimationController _logoCrossfadeController;
+  late final AnimationController _exitController; // New controller for exit
   late final Animation<double> _logoOpacity;
   late final Animation<double> _logoMove;
   late final Animation<double> _loaderOpacity;
   late final Animation<double> _backgroundOpacity;
   late final Animation<double> _logoCrossfade;
+  late final Animation<double> _exitOpacity; // New animation for exit
+
   late final String _printerName;
   late final String _logoAssetPath;
   late final String? _secondaryLogoAssetPath;
@@ -140,6 +152,11 @@ class _StartupScreenState extends State<StartupScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
+    _exitController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
     _logoOpacity =
         CurvedAnimation(parent: _logoController, curve: Curves.easeInOut);
     _logoMove = CurvedAnimation(
@@ -151,6 +168,11 @@ class _StartupScreenState extends State<StartupScreen>
     // Split crossfade into two phases: fade out (0-0.5), fade in (0.5-1.0)
     _logoCrossfade = CurvedAnimation(
         parent: _logoCrossfadeController, curve: Curves.easeInOut);
+
+    // Exit animation: fade out content (1.0 -> 0.0)
+    _exitOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _exitController, curve: Curves.easeOut),
+    );
 
     // Stage animations: logo after 1s, background after 4s with a slower fade.
     Future.delayed(const Duration(seconds: 1), () {
@@ -177,6 +199,10 @@ class _StartupScreenState extends State<StartupScreen>
       Future.delayed(const Duration(milliseconds: 7600), () {
         if (mounted) _backgroundController.forward();
       });
+      // Signal completion after background fade finishes
+      Future.delayed(const Duration(milliseconds: 9400), () {
+        if (mounted) widget.onAnimationsComplete?.call();
+      });
     } else {
       // No secondary logo: use original timing
       Future.delayed(const Duration(seconds: 2), () {
@@ -187,6 +213,20 @@ class _StartupScreenState extends State<StartupScreen>
       });
       Future.delayed(const Duration(seconds: 4), () {
         if (mounted) _backgroundController.forward();
+      });
+      // Signal completion after background fade finishes
+      Future.delayed(const Duration(milliseconds: 5800), () {
+        if (mounted) widget.onAnimationsComplete?.call();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(StartupScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.shouldAnimateOut && !oldWidget.shouldAnimateOut) {
+      _exitController.forward().then((_) {
+        widget.onExitComplete?.call();
       });
     }
   }
@@ -228,6 +268,7 @@ class _StartupScreenState extends State<StartupScreen>
     _logoMoveController.dispose();
     _backgroundController.dispose();
     _logoCrossfadeController.dispose();
+    _exitController.dispose();
     super.dispose();
   }
 
@@ -356,203 +397,28 @@ class _StartupScreenState extends State<StartupScreen>
           ),
           Center(
             child: FadeTransition(
-              opacity: _logoOpacity,
-              child: AnimatedBuilder(
-                animation: _logoMove,
-                builder: (context, _) {
-                  final dy = -30.0 * _logoMove.value;
-                  final matrix = _colorMatrixFor(_logoMove.value);
-                  return Transform.translate(
-                    offset: Offset(0, dy - 10),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Slightly upscaled blurred black copy (halo)
-                            // Animate halo to match the visible logo during crossfade
-                            _secondaryLogoAssetPath != null
-                                ? AnimatedBuilder(
-                                    animation: _logoCrossfade,
-                                    builder: (context, _) {
-                                      final fadeProgress = _logoCrossfade.value;
-                                      final primaryOpacity = fadeProgress < 0.5
-                                          ? 1.0 - (fadeProgress * 2.0)
-                                          : 0.0;
-                                      final secondaryOpacity =
-                                          fadeProgress > 0.5
-                                              ? (fadeProgress - 0.5) * 2.0
-                                              : 0.0;
-
-                                      return Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          if (primaryOpacity > 0)
-                                            Opacity(
-                                              opacity: primaryOpacity,
-                                              child: Transform.translate(
-                                                offset: Offset(0, _logoOffset),
-                                                child: Transform.scale(
-                                                  scale: 1.07 * _logoScale,
-                                                  child: ImageFiltered(
-                                                    imageFilter:
-                                                        ui.ImageFilter.blur(
-                                                            sigmaX: 12,
-                                                            sigmaY: 12),
-                                                    child: ColorFiltered(
-                                                      colorFilter:
-                                                          ColorFilter.mode(
-                                                              Colors
-                                                                  .black
-                                                                  .withValues(
-                                                                      alpha:
-                                                                          0.5),
-                                                              BlendMode.srcIn),
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(8),
-                                                        child: _logoAssetPath
-                                                                .endsWith(
-                                                                    '.svg')
-                                                            ? SvgPicture.asset(
-                                                                _logoAssetPath,
-                                                                width: 220,
-                                                                height: 220,
-                                                                colorFilter:
-                                                                    _logoColor !=
-                                                                            null
-                                                                        ? ColorFilter
-                                                                            .mode(
-                                                                            _logoColor,
-                                                                            BlendMode.srcIn,
-                                                                          )
-                                                                        : null,
-                                                              )
-                                                            : Image.asset(
-                                                                _logoAssetPath,
-                                                                width: 220,
-                                                                height: 220,
-                                                                color:
-                                                                    _logoColor,
-                                                              ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          if (secondaryOpacity > 0)
-                                            Opacity(
-                                              opacity: secondaryOpacity,
-                                              child: Transform.translate(
-                                                offset: Offset(
-                                                    0, _secondaryLogoOffset),
-                                                child: Transform.scale(
-                                                  scale: 1.07 *
-                                                      _secondaryLogoScale,
-                                                  child: ImageFiltered(
-                                                    imageFilter:
-                                                        ui.ImageFilter.blur(
-                                                            sigmaX: 12,
-                                                            sigmaY: 12),
-                                                    child: ColorFiltered(
-                                                      colorFilter:
-                                                          ColorFilter.mode(
-                                                              Colors
-                                                                  .black
-                                                                  .withValues(
-                                                                      alpha:
-                                                                          0.5),
-                                                              BlendMode.srcIn),
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(8),
-                                                        child: _secondaryLogoAssetPath
-                                                                .endsWith(
-                                                                    '.svg')
-                                                            ? SvgPicture.asset(
-                                                                _secondaryLogoAssetPath,
-                                                                width: 220,
-                                                                height: 220,
-                                                                colorFilter:
-                                                                    _secondaryLogoColor !=
-                                                                            null
-                                                                        ? ColorFilter
-                                                                            .mode(
-                                                                            _secondaryLogoColor,
-                                                                            BlendMode.srcIn,
-                                                                          )
-                                                                        : null,
-                                                              )
-                                                            : Image.asset(
-                                                                _secondaryLogoAssetPath,
-                                                                width: 220,
-                                                                height: 220,
-                                                                color:
-                                                                    _secondaryLogoColor,
-                                                              ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      );
-                                    },
-                                  )
-                                : Transform.translate(
-                                    offset: Offset(0, _logoOffset),
-                                    child: Transform.scale(
-                                      scale: 1.07 * _logoScale,
-                                      child: ImageFiltered(
-                                        imageFilter: ui.ImageFilter.blur(
-                                            sigmaX: 12, sigmaY: 12),
-                                        child: ColorFiltered(
-                                          colorFilter: ColorFilter.mode(
-                                              Colors.black
-                                                  .withValues(alpha: 0.5),
-                                              BlendMode.srcIn),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(8),
-                                            child: _logoAssetPath
-                                                    .endsWith('.svg')
-                                                ? SvgPicture.asset(
-                                                    _logoAssetPath,
-                                                    width: 220,
-                                                    height: 220,
-                                                    colorFilter:
-                                                        _logoColor != null
-                                                            ? ColorFilter.mode(
-                                                                _logoColor,
-                                                                BlendMode.srcIn,
-                                                              )
-                                                            : null,
-                                                  )
-                                                : Image.asset(
-                                                    _logoAssetPath,
-                                                    width: 220,
-                                                    height: 220,
-                                                    color: _logoColor,
-                                                  ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                            // Foreground logo which receives the greyscale->color
-                            // matrix animation. Support fade-out-then-fade-in if secondary logo exists.
-                            Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: _secondaryLogoAssetPath != null
+              opacity: _exitOpacity, // Apply exit fade to logo content
+              child: FadeTransition(
+                opacity: _logoOpacity,
+                child: AnimatedBuilder(
+                  animation: _logoMove,
+                  builder: (context, _) {
+                    final dy = -30.0 * _logoMove.value;
+                    final matrix = _colorMatrixFor(_logoMove.value);
+                    return Transform.translate(
+                      offset: Offset(0, dy - 10),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Slightly upscaled blurred black copy (halo)
+                              // Animate halo to match the visible logo during crossfade
+                              _secondaryLogoAssetPath != null
                                   ? AnimatedBuilder(
                                       animation: _logoCrossfade,
                                       builder: (context, _) {
-                                        // First half (0-0.5): fade out primary
-                                        // Second half (0.5-1.0): fade in secondary
                                         final fadeProgress =
                                             _logoCrossfade.value;
                                         final primaryOpacity =
@@ -570,76 +436,264 @@ class _StartupScreenState extends State<StartupScreen>
                                             if (primaryOpacity > 0)
                                               Opacity(
                                                 opacity: primaryOpacity,
-                                                child: _buildLogo(
-                                                  _logoAssetPath,
-                                                  matrix,
-                                                  offset: _logoOffset,
+                                                child: Transform.translate(
+                                                  offset:
+                                                      Offset(0, _logoOffset),
+                                                  child: Transform.scale(
+                                                    scale: 1.07 * _logoScale,
+                                                    child: ImageFiltered(
+                                                      imageFilter:
+                                                          ui.ImageFilter.blur(
+                                                              sigmaX: 12,
+                                                              sigmaY: 12),
+                                                      child: ColorFiltered(
+                                                        colorFilter:
+                                                            ColorFilter.mode(
+                                                                Colors.black
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.5),
+                                                                BlendMode
+                                                                    .srcIn),
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(8),
+                                                          child: _logoAssetPath
+                                                                  .endsWith(
+                                                                      '.svg')
+                                                              ? SvgPicture
+                                                                  .asset(
+                                                                  _logoAssetPath,
+                                                                  width: 220,
+                                                                  height: 220,
+                                                                  colorFilter: _logoColor !=
+                                                                          null
+                                                                      ? ColorFilter
+                                                                          .mode(
+                                                                          _logoColor,
+                                                                          BlendMode
+                                                                              .srcIn,
+                                                                        )
+                                                                      : null,
+                                                                )
+                                                              : Image.asset(
+                                                                  _logoAssetPath,
+                                                                  width: 220,
+                                                                  height: 220,
+                                                                  color:
+                                                                      _logoColor,
+                                                                ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             if (secondaryOpacity > 0)
                                               Opacity(
                                                 opacity: secondaryOpacity,
-                                                child: _buildLogo(
-                                                  _secondaryLogoAssetPath,
-                                                  matrix,
-                                                  scale: _secondaryLogoScale,
-                                                  color: _secondaryLogoColor,
-                                                  offset: _secondaryLogoOffset,
+                                                child: Transform.translate(
+                                                  offset: Offset(
+                                                      0, _secondaryLogoOffset),
+                                                  child: Transform.scale(
+                                                    scale: 1.07 *
+                                                        _secondaryLogoScale,
+                                                    child: ImageFiltered(
+                                                      imageFilter:
+                                                          ui.ImageFilter.blur(
+                                                              sigmaX: 12,
+                                                              sigmaY: 12),
+                                                      child: ColorFiltered(
+                                                        colorFilter:
+                                                            ColorFilter.mode(
+                                                                Colors.black
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.5),
+                                                                BlendMode
+                                                                    .srcIn),
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(8),
+                                                          child:
+                                                              _secondaryLogoAssetPath
+                                                                      .endsWith(
+                                                                          '.svg')
+                                                                  ? SvgPicture
+                                                                      .asset(
+                                                                      _secondaryLogoAssetPath,
+                                                                      width:
+                                                                          220,
+                                                                      height:
+                                                                          220,
+                                                                      colorFilter: _secondaryLogoColor !=
+                                                                              null
+                                                                          ? ColorFilter
+                                                                              .mode(
+                                                                              _secondaryLogoColor,
+                                                                              BlendMode.srcIn,
+                                                                            )
+                                                                          : null,
+                                                                    )
+                                                                  : Image.asset(
+                                                                      _secondaryLogoAssetPath,
+                                                                      width:
+                                                                          220,
+                                                                      height:
+                                                                          220,
+                                                                      color:
+                                                                          _secondaryLogoColor,
+                                                                    ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                           ],
                                         );
                                       },
                                     )
-                                  : _buildLogo(_logoAssetPath, matrix,
-                                      offset: _logoOffset),
-                            ),
-                          ],
-                        ),
-                        if (_secondaryLogoAssetPath != null) ...[
-                          FadeTransition(
-                            opacity: _backgroundOpacity,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Powered by ',
-                                  style: TextStyle(
-                                    fontFamily: 'AtkinsonHyperlegible',
-                                    fontSize: 22,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                ShaderMask(
-                                  shaderCallback: (bounds) =>
-                                      const LinearGradient(
-                                    colors: [
-                                      Color(0xFFFF9D7A), // Pastel orange
-                                      Color(0xFFFF7A85), // Pastel red
-                                      Color(0xFFC49FE8), // Pastel purple
-                                    ],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ).createShader(bounds),
-                                  child: const Text(
-                                    'Open Resin Alliance',
+                                  : Transform.translate(
+                                      offset: Offset(0, _logoOffset),
+                                      child: Transform.scale(
+                                        scale: 1.07 * _logoScale,
+                                        child: ImageFiltered(
+                                          imageFilter: ui.ImageFilter.blur(
+                                              sigmaX: 12, sigmaY: 12),
+                                          child: ColorFiltered(
+                                            colorFilter: ColorFilter.mode(
+                                                Colors.black
+                                                    .withValues(alpha: 0.5),
+                                                BlendMode.srcIn),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(8),
+                                              child: _logoAssetPath
+                                                      .endsWith('.svg')
+                                                  ? SvgPicture.asset(
+                                                      _logoAssetPath,
+                                                      width: 220,
+                                                      height: 220,
+                                                      colorFilter: _logoColor !=
+                                                              null
+                                                          ? ColorFilter.mode(
+                                                              _logoColor,
+                                                              BlendMode.srcIn,
+                                                            )
+                                                          : null,
+                                                    )
+                                                  : Image.asset(
+                                                      _logoAssetPath,
+                                                      width: 220,
+                                                      height: 220,
+                                                      color: _logoColor,
+                                                    ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                              // Foreground logo which receives the greyscale->color
+                              // matrix animation. Support fade-out-then-fade-in if secondary logo exists.
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: _secondaryLogoAssetPath != null
+                                    ? AnimatedBuilder(
+                                        animation: _logoCrossfade,
+                                        builder: (context, _) {
+                                          // First half (0-0.5): fade out primary
+                                          // Second half (0.5-1.0): fade in secondary
+                                          final fadeProgress =
+                                              _logoCrossfade.value;
+                                          final primaryOpacity =
+                                              fadeProgress < 0.5
+                                                  ? 1.0 - (fadeProgress * 2.0)
+                                                  : 0.0;
+                                          final secondaryOpacity =
+                                              fadeProgress > 0.5
+                                                  ? (fadeProgress - 0.5) * 2.0
+                                                  : 0.0;
+
+                                          return Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              if (primaryOpacity > 0)
+                                                Opacity(
+                                                  opacity: primaryOpacity,
+                                                  child: _buildLogo(
+                                                    _logoAssetPath,
+                                                    matrix,
+                                                    offset: _logoOffset,
+                                                  ),
+                                                ),
+                                              if (secondaryOpacity > 0)
+                                                Opacity(
+                                                  opacity: secondaryOpacity,
+                                                  child: _buildLogo(
+                                                    _secondaryLogoAssetPath,
+                                                    matrix,
+                                                    scale: _secondaryLogoScale,
+                                                    color: _secondaryLogoColor,
+                                                    offset:
+                                                        _secondaryLogoOffset,
+                                                  ),
+                                                ),
+                                            ],
+                                          );
+                                        },
+                                      )
+                                    : _buildLogo(_logoAssetPath, matrix,
+                                        offset: _logoOffset),
+                              ),
+                            ],
+                          ),
+                          if (_secondaryLogoAssetPath != null) ...[
+                            FadeTransition(
+                              opacity: _backgroundOpacity,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Powered by ',
                                     style: TextStyle(
                                       fontFamily: 'AtkinsonHyperlegible',
                                       fontSize: 22,
-                                      color: Colors.white,
+                                      color: Colors.grey,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  ShaderMask(
+                                    shaderCallback: (bounds) =>
+                                        const LinearGradient(
+                                      colors: [
+                                        Color(0xFFFF9D7A), // Pastel orange
+                                        Color(0xFFFF7A85), // Pastel red
+                                        Color(0xFFC49FE8), // Pastel purple
+                                      ],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ).createShader(bounds),
+                                    child: const Text(
+                                      'Open Resin Alliance',
+                                      style: TextStyle(
+                                        fontFamily: 'AtkinsonHyperlegible',
+                                        fontSize: 22,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
-                    ),
-                  );
-                },
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -650,14 +704,17 @@ class _StartupScreenState extends State<StartupScreen>
             right: 20,
             bottom: 30,
             child: FadeTransition(
-              opacity: _loaderOpacity,
-              child: Text(
-                'Starting up $_printerName',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'AtkinsonHyperlegible',
-                  fontSize: 24,
-                  color: Theme.of(context).colorScheme.secondary,
+              opacity: _exitOpacity, // Apply exit fade to loader text
+              child: FadeTransition(
+                opacity: _loaderOpacity,
+                child: Text(
+                  'Starting up $_printerName',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'AtkinsonHyperlegible',
+                    fontSize: 24,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
                 ),
               ),
             ),
@@ -667,16 +724,19 @@ class _StartupScreenState extends State<StartupScreen>
             right: 40,
             bottom: 90,
             child: FadeTransition(
-              opacity: _loaderOpacity,
-              child: SizedBox(
-                height: 14,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(7),
-                  child: LinearProgressIndicator(
-                    // Use theme primary color for the indicator to match app theming.
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.primary),
-                    backgroundColor: Colors.black.withValues(alpha: 0.3),
+              opacity: _exitOpacity, // Apply exit fade to progress bar
+              child: FadeTransition(
+                opacity: _loaderOpacity,
+                child: SizedBox(
+                  height: 14,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(7),
+                    child: LinearProgressIndicator(
+                      // Use theme primary color for the indicator to match app theming.
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary),
+                      backgroundColor: Colors.black.withValues(alpha: 0.3),
+                    ),
                   ),
                 ),
               ),
