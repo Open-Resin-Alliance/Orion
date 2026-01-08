@@ -149,7 +149,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                               max: 2,
                               suffix: ' s',
                               decimals: 2,
-                              step: 0.2,
+                              step: 0.1,
                               onSave: (v) =>
                                   setState(() => _exposureIncrement = v),
                             ),
