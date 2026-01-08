@@ -249,7 +249,7 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                           ),
                           const SizedBox(width: 12),
                           const Text(
-                            'Do not show available updates again',
+                            'Don\'t show update notifications',
                             style: TextStyle(
                               fontSize: 20,
                               color: Colors.white70,
