@@ -54,7 +54,7 @@ class OrionUpdateProvider extends ChangeNotifier {
   String releaseDate = '';
   String commitDate = '';
   String assetUrl = '';
-  String releaseChannel = 'BRANCH_dev';
+  String releaseChannel = 'main';
 
   bool get isLoading => isChecking;
   String get release => releaseChannel;
