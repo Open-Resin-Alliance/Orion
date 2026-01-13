@@ -118,13 +118,14 @@ class AthenaUpdateProvider extends ChangeNotifier {
         latestVersion = '';
       }
 
-      if (channel != 'stable') {
-        // Pre-release channels: always consider update available
-        updateAvailable = true;
-      } else if (latestVersion.isEmpty || currentVersion.isEmpty) {
+      if (latestVersion.isEmpty || currentVersion.isEmpty) {
         updateAvailable = false;
       } else {
         updateAvailable = _isNewerVersion(latestVersion, currentVersion);
+        if (channel != 'stable' && !updateAvailable) {
+          _log.info(
+              'No update available on $channel channel (Local: $currentVersion, Remote: $latestVersion)');
+        }
       }
     } catch (e, st) {
       _log.warning('checkForUpdates failed', e, st);
