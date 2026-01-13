@@ -231,35 +231,37 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                       0.5,
                       1.0,
                     ),
-                    const SizedBox(height: 32),
-                    _buildAnimatedItem(
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Transform.scale(
-                            scale: 1.2,
-                            child: GlassSwitch(
-                              value: _dontShowAgain,
-                              onChanged: (val) {
-                                setState(() {
-                                  _dontShowAgain = val;
-                                });
-                              },
+                    if (!(orion.isUpdateAvailable && athena.updateAvailable)) ...[
+                      const SizedBox(height: 32),
+                      _buildAnimatedItem(
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Transform.scale(
+                              scale: 1.2,
+                              child: GlassSwitch(
+                                value: _dontShowAgain,
+                                onChanged: (val) {
+                                  setState(() {
+                                    _dontShowAgain = val;
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Don\'t show update notifications',
-                            style: TextStyle(
-                              fontSize: 20,
-                              color: Colors.white70,
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Don\'t show update notifications',
+                              style: TextStyle(
+                                fontSize: 20,
+                                color: Colors.white70,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        0.55,
+                        1.05,
                       ),
-                      0.55,
-                      1.05,
-                    ),
+                    ],
                   ],
                 ),
               ),
