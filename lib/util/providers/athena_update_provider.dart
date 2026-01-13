@@ -79,8 +79,7 @@ class AthenaUpdateProvider extends ChangeNotifier {
       final pd = await athena.getPrinterDataModel();
       if (pd == null) {
         _log.info('No Athena printer_data available');
-        updateAvailable = false;
-        latestVersion = '';
+        // Do not clear state on temporary failure to talk to local service
         isChecking = false;
         notifyListeners();
         return;
