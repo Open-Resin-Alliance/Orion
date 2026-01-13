@@ -169,7 +169,6 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
 
   @override
   Future<List<Map<String, dynamic>>> getAnalytics(int n) {
-    // TODO: implement getAnalytics
     throw UnimplementedError();
   }
 
@@ -177,5 +176,10 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
   Future<dynamic> getAnalyticValue(int id) async {
     // Not used by thumbnail tests.
     return null;
+  }
+
+  @override
+  Future tareForceSensor() {
+    throw UnimplementedError();
   }
 }

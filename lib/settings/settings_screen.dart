@@ -22,19 +22,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:logging/logging.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:path/path.dart' as path;
+import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/pubspec.dart';
-import 'package:orion/settings/about_dialog.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/debug_screen.dart';
-import 'package:orion/settings/fancy_license_screen.dart';
 import 'package:orion/settings/general_screen.dart';
 import 'package:orion/settings/update_screen.dart';
 import 'package:orion/settings/wifi_screen.dart';
-import 'package:orion/util/markdown_screen.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/providers/wifi_provider.dart';
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -187,8 +186,8 @@ class SettingsScreenState extends State<SettingsScreen> {
       },
     );
 
-    if (shouldDisconnect) {
-      await _wifiScreenKey.currentState?.disconnect();
+    if (shouldDisconnect && mounted) {
+      await context.read<WiFiProvider>().disconnect();
     }
   }
 
@@ -257,81 +256,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           appBar: AppBar(
             title: const Text('Settings'),
             actions: <Widget>[
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: _selectedIndex == 2
-                    ? IconButton(
-                        icon: PhosphorIcon(PhosphorIcons.info(), size: 40),
-                        iconSize: 40,
-                        onPressed: () {
-                          showOrionAboutDialog(
-                            context: context,
-                            applicationName: 'Orion',
-                            applicationVersion:
-                                'Version ${Pubspec.version} - ${Pubspec.versionFull.toString().split('+')[1] == 'SELFCOMPILED' ? 'Local Build' : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}'}',
-                            applicationLegalese:
-                                'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
-                            applicationIcon: const FlutterLogo(size: 100),
-                            children: <Widget>[
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 10, right: 10),
-                                child: GlassCard(
-                                  child: ListTile(
-                                    leading: const Icon(Icons.list, size: 30),
-                                    title: const Text('Changelog'),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const MarkdownScreen(
-                                                  filename: 'CHANGELOG.md'),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: GlassCard(
-                                  child: ListTile(
-                                    title: const Text('Open-Source Licenses'),
-                                    leading:
-                                        const Icon(Icons.favorite, size: 30),
-                                    onTap: () {
-                                      showFancyLicensePage(
-                                        context: context,
-                                        applicationName: 'Orion',
-                                        applicationVersion: Pubspec.version,
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      )
-                    : _selectedIndex == 1
-                        ? ValueListenableBuilder<bool>(
-                            valueListenable: isConnected,
-                            builder: (context, value, child) {
-                              return value
-                                  ? IconButton(
-                                      onPressed: () {
-                                        launchDisconnectDialog();
-                                      },
-                                      icon: PhosphorIcon(
-                                          PhosphorIcons.xCircle(),
-                                          size: 40),
-                                    )
-                                  : const SizedBox.shrink();
-                            },
-                          )
-                        : const SizedBox.shrink(),
-              ),
+              SystemStatusWidget(),
             ],
           ),
           body: _selectedIndex == 0
@@ -360,23 +285,44 @@ class SettingsScreenState extends State<SettingsScreen> {
           bottomNavigationBar: GlassBottomNavigationBar(
             type: BottomNavigationBarType.fixed,
             items: <BottomNavigationBarItem>[
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.settings),
+              BottomNavigationBarItem(
+                icon: PhosphorIcon(PhosphorIcons.gear()),
+                activeIcon: PhosphorIcon(
+                  PhosphorIconsFill.gear,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 label: 'General',
               ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.network_wifi),
-                label: 'WiFi',
+              BottomNavigationBarItem(
+                icon: PhosphorIcon(PhosphorIcons.network()),
+                activeIcon: PhosphorIcon(
+                  PhosphorIconsFill.network,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                label: 'Network',
               ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.info),
+              BottomNavigationBarItem(
+                icon: PhosphorIcon(PhosphorIcons.info()),
+                activeIcon: PhosphorIcon(
+                  PhosphorIconsFill.info,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 label: 'About',
               ),
-              const BottomNavigationBarItem(
-                  icon: Icon(Icons.update), label: 'Updates'),
+              BottomNavigationBarItem(
+                  icon: PhosphorIcon(PhosphorIcons.download()),
+                  activeIcon: PhosphorIcon(
+                    PhosphorIconsFill.download,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  label: 'Updates'),
               if (config.getFlag('developerMode', category: 'advanced'))
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.bug_report),
+                BottomNavigationBarItem(
+                  icon: PhosphorIcon(PhosphorIcons.bug()),
+                  activeIcon: PhosphorIcon(
+                    PhosphorIconsFill.bug,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   label: 'Debug',
                 ),
             ],

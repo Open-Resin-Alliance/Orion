@@ -169,7 +169,6 @@ class FakeBackendClient implements BackendClient {
 
   @override
   Future<List<Map<String, dynamic>>> getAnalytics(int n) {
-    // TODO: implement getAnalytics
     throw UnimplementedError();
   }
 
@@ -177,5 +176,10 @@ class FakeBackendClient implements BackendClient {
   Future<dynamic> getAnalyticValue(int id) async {
     // Not used in most tests; return null to indicate unsupported.
     return null;
+  }
+
+  @override
+  Future tareForceSensor() {
+    throw UnimplementedError();
   }
 }

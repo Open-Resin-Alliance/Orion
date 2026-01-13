@@ -18,6 +18,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../util/providers/theme_provider.dart';
+import 'glass_button.dart';
 import '../constants.dart';
 import '../glass_effect.dart';
 import '../platform_config.dart';
@@ -51,6 +52,7 @@ class GlassFloatingActionButton extends StatelessWidget {
   final double scale;
   // If true and extended, places the icon after the text (e.g. "Next ->").
   final bool iconAfterLabel;
+  final GlassButtonTint tint;
 
   const GlassFloatingActionButton({
     super.key,
@@ -59,6 +61,19 @@ class GlassFloatingActionButton extends StatelessWidget {
     this.heroTag,
     this.scale = 1.0,
     this.iconAfterLabel = false,
+    this.tint = GlassButtonTint.none,
+  })  : label = null,
+        icon = null,
+        extended = false;
+
+  const GlassFloatingActionButton.withTint({
+    super.key,
+    this.child,
+    this.onPressed,
+    this.heroTag,
+    this.scale = 1.0,
+    this.iconAfterLabel = false,
+    this.tint = GlassButtonTint.none,
   })  : label = null,
         icon = null,
         extended = false;
@@ -71,19 +86,40 @@ class GlassFloatingActionButton extends StatelessWidget {
     this.heroTag,
     this.scale = 1.0,
     this.iconAfterLabel = false,
+    this.tint = GlassButtonTint.none,
+  })  : child = null,
+        extended = true;
+
+  const GlassFloatingActionButton.extendedWithTint({
+    super.key,
+    this.label,
+    this.icon,
+    this.onPressed,
+    this.heroTag,
+    this.scale = 1.0,
+    this.iconAfterLabel = false,
+    this.tint = GlassButtonTint.none,
   })  : child = null,
         extended = true;
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    // Resolve tint palette for this FAB. If the button is disabled, ignore tint.
+    final effectiveTint = (onPressed == null) ? GlassButtonTint.none : tint;
+    final _FabTintPalette? tintPalette =
+        _resolveFabTintPalette(effectiveTint, context);
 
     // (theme lookup removed; currently not needed in this branch)
 
     if (!themeProvider.isGlassTheme) {
       final cs = Theme.of(context).colorScheme;
-      final bg = cs.secondaryContainer;
-      final fg = cs.onSecondaryContainer;
+      final bg = tintPalette != null
+          ? tintPalette.color.withValues(alpha: 0.10)
+          : cs.secondaryContainer;
+      final fg = tintPalette != null
+          ? tintPalette.materialForeground
+          : cs.onSecondaryContainer;
       if (extended) {
         final iconWidget = icon == null
             ? null
@@ -171,6 +207,13 @@ class GlassFloatingActionButton extends StatelessWidget {
       );
       final fillOpacity =
           GlassPlatformConfig.surfaceOpacity(0.14, emphasize: true);
+      // If tinted, compute a blended fill color and a border color
+      final bool hasTint = tintPalette != null;
+      final Color? blendedFillColor = hasTint
+          ? Color.alphaBlend(
+              tintPalette.color.withValues(alpha: 0.75), Colors.white)
+          : null;
+      final Color? borderColor = hasTint ? tintPalette.color : null;
 
       return Container(
         decoration: BoxDecoration(
@@ -181,9 +224,13 @@ class GlassFloatingActionButton extends StatelessWidget {
           borderRadius: borderRadius,
           sigma: glassBlurSigma,
           opacity: fillOpacity,
+          color: blendedFillColor,
           floatingSurface: true,
           borderWidth: 1.6,
           emphasizeBorder: true,
+          borderColor: borderColor,
+          useRawBorderAlpha: hasTint,
+          borderAlpha: hasTint ? 0.45 : 0.2,
           child: Material(
             color: Colors.transparent,
             shape: RoundedRectangleBorder(borderRadius: borderRadius),
@@ -208,12 +255,17 @@ class GlassFloatingActionButton extends StatelessWidget {
                   final iconWidget = icon == null
                       ? null
                       : DefaultTextStyle(
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontFamily: 'AtkinsonHyperlegible',
-                              color: Colors.white),
+                              color: hasTint
+                                  ? tintPalette.glassForeground
+                                  : Colors.white),
                           child: IconTheme(
                             data: IconThemeData(
-                                color: Colors.white, size: 20 * scale),
+                                color: hasTint
+                                    ? tintPalette.glassForeground
+                                    : Colors.white,
+                                size: 20 * scale),
                             child: icon!,
                           ),
                         );
@@ -221,7 +273,9 @@ class GlassFloatingActionButton extends StatelessWidget {
                     child: DefaultTextStyle(
                       style: TextStyle(
                         fontFamily: 'AtkinsonHyperlegible',
-                        color: Colors.white,
+                        color: hasTint
+                            ? tintPalette.glassForeground
+                            : Colors.white,
                         fontSize: 16 * scale,
                         fontWeight: FontWeight.w500,
                       ),
@@ -254,7 +308,7 @@ class GlassFloatingActionButton extends StatelessWidget {
         ),
       );
     } else {
-      final borderRadius = BorderRadius.circular(28);
+      final borderRadius = BorderRadius.circular(glassCornerRadius);
       final shadow = GlassPlatformConfig.interactiveShadow(
         enabled: onPressed != null,
         blurRadius: 24,
@@ -263,6 +317,13 @@ class GlassFloatingActionButton extends StatelessWidget {
       );
       final fillOpacity =
           GlassPlatformConfig.surfaceOpacity(0.15, emphasize: true);
+
+      final bool hasTint = tintPalette != null;
+      final Color? blendedFillColor = hasTint
+          ? Color.alphaBlend(
+              tintPalette.color.withValues(alpha: 0.75), Colors.white)
+          : null;
+      final Color? borderColor = hasTint ? tintPalette.color : null;
 
       return FloatingActionButton(
         heroTag: heroTag,
@@ -282,15 +343,23 @@ class GlassFloatingActionButton extends StatelessWidget {
               borderRadius: borderRadius,
               sigma: glassBlurSigma,
               opacity: fillOpacity,
+              color: blendedFillColor,
               floatingSurface: true,
               borderWidth: 1.6,
               emphasizeBorder: true,
+              borderColor: borderColor,
+              useRawBorderAlpha: hasTint,
+              borderAlpha: hasTint ? 0.45 : 0.2,
               child: Center(
                 child: DefaultTextStyle(
                   style: const TextStyle(
                       fontFamily: 'AtkinsonHyperlegible', color: Colors.white),
                   child: IconTheme(
-                    data: IconThemeData(color: Colors.white, size: 24 * scale),
+                    data: IconThemeData(
+                        color: hasTint
+                            ? tintPalette.glassForeground
+                            : Colors.white,
+                        size: 24 * scale),
                     child: child ?? const SizedBox(),
                   ),
                 ),
@@ -300,5 +369,52 @@ class GlassFloatingActionButton extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+class _FabTintPalette {
+  final Color color;
+  final Color materialForeground;
+  final Color glassForeground;
+
+  const _FabTintPalette({
+    required this.color,
+    required this.materialForeground,
+    required this.glassForeground,
+  });
+}
+
+_FabTintPalette? _resolveFabTintPalette(
+    GlassButtonTint tint, BuildContext context) {
+  if (tint == GlassButtonTint.none) return null;
+  if (tint == GlassButtonTint.neutral) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return _FabTintPalette(
+      color: primary,
+      materialForeground: Colors.white,
+      glassForeground: primary,
+    );
+  }
+  switch (tint) {
+    case GlassButtonTint.positive:
+      return const _FabTintPalette(
+        color: Colors.greenAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.greenAccent,
+      );
+    case GlassButtonTint.warn:
+      return const _FabTintPalette(
+        color: Colors.orangeAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.orangeAccent,
+      );
+    case GlassButtonTint.negative:
+      return const _FabTintPalette(
+        color: Colors.redAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.redAccent,
+      );
+    default:
+      return null;
   }
 }

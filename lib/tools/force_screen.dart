@@ -38,7 +38,7 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
   VoidCallback? _listener;
   late final AnalyticsProvider _prov;
   bool _isPaused = false;
-  double _tareOffset = 0.0;
+  final double _tareOffset = 0.0;
 
   @override
   void initState() {
