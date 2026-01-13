@@ -48,7 +48,7 @@ class AthenaUpdateProvider extends ChangeNotifier {
         currentVersion = current;
         latestVersion = latest;
         channel = ch.isNotEmpty ? ch : 'stable';
-        updateAvailable = true;
+        updateAvailable = _isNewerVersion(latestVersion, currentVersion);
         notifyListeners();
       }
     }
@@ -87,9 +87,9 @@ class AthenaUpdateProvider extends ChangeNotifier {
 
       channel = pd.updateChannel?.trim().isNotEmpty == true
           ? pd.updateChannel!.trim()
-          : 'stable';
-      currentVersion = pd.softwareVersion ?? '';
-      printerType = pd.machineType ?? '';
+          : (channel.isNotEmpty ? channel : 'stable');
+      currentVersion = pd.softwareVersion ?? currentVersion;
+      printerType = pd.machineType ?? printerType;
 
       // Build olymp URL
       final params = {
