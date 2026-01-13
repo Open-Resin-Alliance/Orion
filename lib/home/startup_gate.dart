@@ -47,6 +47,7 @@ class _StartupGateState extends State<StartupGate> {
   bool _checkForUpdatesComplete = false;
   bool _dismissUpdateScreen = false;
   bool _startupExitComplete = false;
+  bool _appStarted = false;
 
   @override
   void initState() {
@@ -176,11 +177,12 @@ class _StartupGateState extends State<StartupGate> {
     // We respect the "ignoreUpdates" flag (which is the permanent "Do not show again"),
     // but we intentionally ignore "remindLater" (24h snooze) on a fresh boot,
     // assuming the user might want to see it again if they restarted.
-    final showUpdate = updateManager.isUpdateAvailable &&
+    final showUpdate = !_appStarted &&
+        updateManager.isUpdateAvailable &&
         !updateManager.isUpdateIgnored &&
         !_dismissUpdateScreen;
 
-    if (!isReadyToProceed) {
+    if (!_appStarted && !isReadyToProceed) {
       child = StartupScreen(
         key: const ValueKey('startup'),
         onAnimationsComplete: () {
@@ -224,7 +226,18 @@ class _StartupGateState extends State<StartupGate> {
         },
       );
     } else {
-      // We are proceeding to the main app, so unsuppress notifications
+      // We are proceeding to the main app...
+      if (!_appStarted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_appStarted) {
+            setState(() {
+              _appStarted = true;
+            });
+          }
+        });
+      }
+
+      // Unsuppress notifications
       if (updateManager.suppressNotifications) {
         Future.microtask(() => updateManager.suppressNotifications = false);
       }
