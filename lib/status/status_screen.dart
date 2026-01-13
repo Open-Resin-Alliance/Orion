@@ -87,6 +87,13 @@ class StatusScreenState extends State<StatusScreen> {
 
     _log.info('StatusScreen opened - newPrint: ${widget.newPrint}');
 
+    // Mark status screen as open so we can block notifications
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<StatusProvider>().setStatusScreenOpen(true);
+      }
+    });
+
     // Mark calibration overlay as hidden so it doesn't reappear
     CalibrationProgressOverlay.markAsHidden();
 
@@ -192,6 +199,18 @@ class StatusScreenState extends State<StatusScreen> {
 
   @override
   void dispose() {
+    try {
+      if (mounted) {
+        context.read<StatusProvider>().setStatusScreenOpen(false);
+      } else {
+        // Use the context directly even if unmounted because we need to clear the flag
+        Provider.of<StatusProvider>(context, listen: false)
+            .setStatusScreenOpen(false);
+      }
+    } catch (_) {
+      // Provider might be disposed or unavailable
+    }
+
     if (_analyticsListener != null) {
       try {
         context.read<AnalyticsProvider>().removeListener(_analyticsListener!);

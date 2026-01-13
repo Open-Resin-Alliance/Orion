@@ -129,6 +129,21 @@ class StatusProvider extends ChangeNotifier {
       false; // UI transitional state until backend reflects pause/resume
   bool get isPausing => _isPausing;
 
+  // Track if the Status Screen is currently open/visible to the user.
+  // This allows other components (like update notifications) to avoid
+  // interrupting the user while they are viewing print status/results.
+  bool _isStatusScreenOpen = false;
+  bool get isStatusScreenOpen => _isStatusScreenOpen;
+
+  /// Update the visibility state of the Status Screen.
+  void setStatusScreenOpen(bool isOpen) {
+    if (_isStatusScreenOpen == isOpen) return;
+    _isStatusScreenOpen = isOpen;
+    // We notify listeners so watchers can react to screen transitions
+    // (e.g. enabling/disabling notifications).
+    notifyListeners();
+  }
+
   // Awaiting state: after a cancel/finish & reset, we keep the UI in a loading
   // spinner until we observe a NEW active print (Printing or Paused) AND the
   // thumbnail is considered ready. We do not attempt to guess by filename so
