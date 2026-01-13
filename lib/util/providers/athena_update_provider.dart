@@ -112,9 +112,10 @@ class AthenaUpdateProvider extends ChangeNotifier {
 
       final decoded = json.decode(resp.body);
       if (decoded is Map && decoded.containsKey('version')) {
-        latestVersion = decoded['version']?.toString() ?? '';
-      } else {
-        latestVersion = '';
+        final newLatest = decoded['version']?.toString() ?? '';
+        if (newLatest.isNotEmpty) {
+          latestVersion = newLatest;
+        }
       }
 
       if (latestVersion.isEmpty || currentVersion.isEmpty) {
