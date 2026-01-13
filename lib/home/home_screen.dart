@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -41,6 +42,20 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   final OrionConfig _config = OrionConfig();
   bool isRemote = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Safety check: Ensure the status screen flag is cleared when we land on Home.
+    // This prevents the update dialog from being permanently suppressed if the
+    // status screen didn't clean up properly.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<StatusProvider>(context, listen: false)
+            .setStatusScreenOpen(false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
