@@ -264,18 +264,19 @@ class StatusScreenState extends State<StatusScreen> {
           _log.info(
               'Detected calibration print completion, showing post-calibration overlay');
 
-          // Get calibration context
-          final calibrationContext =
-              context.read<CalibrationContextProvider>().context;
+          // Get calibration context provider and navigator before popping
+          final calibrationProvider = context.read<CalibrationContextProvider>();
+          final calibrationContext = calibrationProvider.context;
+          final nav = Navigator.of(context);
 
           if (!mounted) return;
 
           // Navigate home first
-          Navigator.popUntil(context, ModalRoute.withName('/'));
+          nav.popUntil(ModalRoute.withName('/'));
 
           // Show post-calibration overlay if we have context
           if (calibrationContext != null) {
-            Navigator.of(context).push(
+            nav.push(
               PageRouteBuilder(
                 opaque: false,
                 barrierDismissible: false,
@@ -297,9 +298,9 @@ class StatusScreenState extends State<StatusScreen> {
                   evaluationGuideUrl: calibrationContext.evaluationGuideUrl,
                   onComplete: () {
                     // Pop everything: overlay, StatusScreen, CalibrationScreen, progress overlay
-                    Navigator.of(context).popUntil(ModalRoute.withName('/'));
+                    nav.popUntil(ModalRoute.withName('/'));
                     // Clear context after evaluation is complete
-                    context.read<CalibrationContextProvider>().clearContext();
+                    calibrationProvider.clearContext();
                   },
                 ),
               ),
