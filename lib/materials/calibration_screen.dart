@@ -15,7 +15,9 @@
 * limitations under the License.
 */
 
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
@@ -124,11 +126,11 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                               description:
                                   'The exposure time for the first test piece. This should be lower than your expected optimal exposure.',
                               currentValue: _startingExposure,
-                              min: 0,
+                              min: 1,
                               max: 10,
                               suffix: ' sec',
                               decimals: 2,
-                              step: 0.5,
+                              step: 1,
                               onSave: (v) =>
                                   setState(() => _startingExposure = v),
                             ),
@@ -145,7 +147,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                               description:
                                   'How much exposure time increases for each successive test piece. Larger increments cover a wider range faster.',
                               currentValue: _exposureIncrement,
-                              min: 0,
+                              min: 0.1,
                               max: 2,
                               suffix: ' s',
                               decimals: 2,
@@ -451,104 +453,18 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     double? step,
     required ValueChanged<double> onSave,
   }) async {
-    double tempValue = currentValue;
-    final effectiveStep = step ?? (decimals == 0 ? 1.0 : 0.1);
-
     await showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => GlassAlertDialog(
-          title: Text(title,
-              style:
-                  const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
-          content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (description != null) ...[
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 19,
-                      color: Colors.grey.shade400,
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                ] else
-                  const SizedBox(height: 24),
-                Text(
-                  decimals == 0
-                      ? '${tempValue.round()}$suffix'
-                      : '${tempValue.toStringAsFixed(decimals)}$suffix',
-                  style: TextStyle(
-                    fontSize: 46,
-                    fontWeight: FontWeight.w700,
-                    height: 1.0,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: Theme.of(context).colorScheme.primary,
-                    inactiveTrackColor: Colors.grey.shade700,
-                    thumbColor: Colors.white,
-                    overlayColor: Colors.white.withValues(alpha: 0.2),
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 12.0),
-                    overlayShape:
-                        const RoundSliderOverlayShape(overlayRadius: 24.0),
-                    trackHeight: 8.0,
-                  ),
-                  child: Slider(
-                    value: tempValue,
-                    min: min,
-                    max: max,
-                    divisions: ((max - min) / effectiveStep).round(),
-                    onChanged: (v) {
-                      setDialogState(() {
-                        tempValue = decimals == 0
-                            ? v.roundToDouble()
-                            : double.parse(v.toStringAsFixed(decimals));
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-          actions: [
-            GlassButton(
-              tint: GlassButtonTint.negative,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(120, 60),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(fontSize: 22),
-              ),
-            ),
-            GlassButton(
-              tint: GlassButtonTint.positive,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(120, 60),
-              ),
-              onPressed: () {
-                onSave(tempValue);
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                'Save',
-                style: TextStyle(fontSize: 22),
-              ),
-            ),
-          ],
-        ),
+      builder: (context) => _EditValueDialog(
+        title: title,
+        description: description,
+        currentValue: currentValue,
+        min: min,
+        max: max,
+        suffix: suffix,
+        decimals: decimals,
+        step: step,
+        onSave: onSave,
       ),
     );
   }
@@ -1361,6 +1277,289 @@ class _PreCalibrationOverlay extends StatelessWidget {
               color: Colors.grey.shade300,
               height: 1.3,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EditValueDialog extends StatefulWidget {
+  final String title;
+  final String? description;
+  final double currentValue;
+  final double min;
+  final double max;
+  final String suffix;
+  final int decimals;
+  final double? step;
+  final ValueChanged<double> onSave;
+
+  const _EditValueDialog({
+    required this.title,
+    this.description,
+    required this.currentValue,
+    required this.min,
+    required this.max,
+    required this.suffix,
+    required this.decimals,
+    this.step,
+    required this.onSave,
+  });
+
+  @override
+  _EditValueDialogState createState() => _EditValueDialogState();
+}
+
+class _EditValueDialogState extends State<_EditValueDialog> {
+  late double _currentValue;
+  bool _isZoomed = false;
+  Timer? _holdTimer;
+  double? _zoomMin;
+  double? _zoomMax;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentValue = widget.currentValue;
+  }
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel();
+    super.dispose();
+  }
+
+  void _resetHoldTimer() {
+    _holdTimer?.cancel();
+    // 600ms delay to detect "holding still"
+    _holdTimer = Timer(const Duration(milliseconds: 600), _enterZoom);
+  }
+
+  void _enterZoom() {
+    if (_isZoomed) return;
+
+    double totalRange = widget.max - widget.min;
+    if (totalRange <= 0) return;
+
+    // Calculate current thumb position ratio (0.0 to 1.0)
+    double currentRatio = (_currentValue - widget.min) / totalRange;
+
+    // Define Zoom Span (limit to ~20% of total range)
+    double originalStep = widget.step ?? (widget.decimals == 0 ? 1.0 : 0.1);
+    double zoomSpan = totalRange * 0.2;
+    // Enforce minimum zoom window size (at least 1 step size, creates 10 finer steps)
+    if (zoomSpan < originalStep) zoomSpan = originalStep;
+    // But don't exceed total range
+    if (zoomSpan > totalRange) zoomSpan = totalRange;
+
+    // Calculate new min/max such that the thumb stays at the same screen ratio
+    // _currentValue = zMin + zoomSpan * currentRatio
+    double zMin = _currentValue - (zoomSpan * currentRatio);
+    double zMax = zMin + zoomSpan;
+
+    // Clamp to valid bounds if possible (may cause slight jump if at edges)
+    if (zMin < widget.min) {
+      zMin = widget.min;
+      zMax = zMin + zoomSpan;
+    }
+    if (zMax > widget.max) {
+      zMax = widget.max;
+      zMin = zMax - zoomSpan;
+    }
+    // Final sanity check
+    if (zMin < widget.min) zMin = widget.min;
+
+    if (mounted) {
+      setState(() {
+        _zoomMin = zMin;
+        _zoomMax = zMax;
+        _isZoomed = true;
+        HapticFeedback.lightImpact();
+      });
+    }
+  }
+
+  void _exitZoom() {
+    _holdTimer?.cancel();
+    if (_isZoomed) {
+      setState(() {
+        _isZoomed = false;
+        _zoomMin = null;
+        _zoomMax = null;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double activeMin = _isZoomed ? (_zoomMin ?? widget.min) : widget.min;
+    double activeMax = _isZoomed ? (_zoomMax ?? widget.max) : widget.max;
+    // originalStep determines basic precision; zoomed step is 10x finer.
+    double originalStep = widget.step ?? (widget.decimals == 0 ? 1.0 : 0.1);
+    double activeStep = _isZoomed ? (originalStep / 10.0) : originalStep;
+
+    final activeColor = _isZoomed
+        ? Theme.of(context).colorScheme.tertiary
+        : Theme.of(context).colorScheme.primary;
+
+    int activeDecimals = _isZoomed ? widget.decimals + 1 : widget.decimals;
+
+    return GlassAlertDialog(
+      title: Text(widget.title,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.description != null) ...[
+              Text(
+                widget.description!,
+                style: TextStyle(
+                  fontSize: 19,
+                  color: Colors.grey.shade400,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+            ] else
+              const SizedBox(height: 24),
+
+            // Value Display
+            Text(
+              activeDecimals == 0
+                  ? '${_currentValue.round()}${widget.suffix}'
+                  : '${_currentValue.toStringAsFixed(activeDecimals)}${widget.suffix}',
+              style: TextStyle(
+                fontSize: 46,
+                fontWeight: FontWeight.w700,
+                height: 1.0,
+                color: activeColor,
+                shadows: _isZoomed
+                    ? [
+                        Shadow(
+                          color: activeColor.withValues(alpha: 0.5),
+                          blurRadius: 10,
+                        )
+                      ]
+                    : null,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                // Min Label
+                SizedBox(
+                  width: 50,
+                  child: Text(
+                    activeDecimals == 0
+                        ? activeMin.round().toString()
+                        : activeMin.toStringAsFixed(activeDecimals),
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Slider with Hold Detection
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: activeColor,
+                      inactiveTrackColor: Colors.grey.shade700,
+                      thumbColor: _isZoomed ? activeColor : Colors.white,
+                      overlayColor: _isZoomed
+                          ? activeColor.withValues(alpha: 0.2)
+                          : Colors.white.withValues(alpha: 0.2),
+                      thumbShape:
+                          const RoundSliderThumbShape(enabledThumbRadius: 12.0),
+                      overlayShape:
+                          const RoundSliderOverlayShape(overlayRadius: 24.0),
+                      trackHeight: 8.0,
+                    ),
+                    child: Slider(
+                      value: _currentValue.clamp(activeMin, activeMax),
+                      min: activeMin,
+                      max: activeMax,
+                      // Ensure divisions are sufficient for high resolution
+                      divisions: (activeMax - activeMin) > 0
+                          ? ((activeMax - activeMin) / activeStep)
+                              .round()
+                              .clamp(1, 10000)
+                          : 1,
+                      onChangeStart: (_) => _resetHoldTimer(),
+                      onChangeEnd: (_) => _exitZoom(),
+                      onChanged: (v) {
+                        // While dragging, constantly reset the hold timer.
+                        // If dragging stops (but touch continues), timer fires.
+                        _resetHoldTimer();
+                        setState(() {
+                          int precision =
+                              _isZoomed ? widget.decimals + 1 : widget.decimals;
+
+                          _currentValue = precision == 0
+                              ? v.roundToDouble()
+                              : double.parse(v.toStringAsFixed(precision));
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Max Label
+                SizedBox(
+                  width: 50,
+                  child: Text(
+                    activeDecimals == 0
+                        ? activeMax.round().toString()
+                        : activeMax.toStringAsFixed(activeDecimals),
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.start,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+      actions: [
+        GlassButton(
+          tint: GlassButtonTint.negative,
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(120, 60),
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(fontSize: 22),
+          ),
+        ),
+        GlassButton(
+          tint: GlassButtonTint.positive,
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(120, 60),
+          ),
+          onPressed: () {
+            widget.onSave(_currentValue);
+            Navigator.of(context).pop();
+          },
+          child: const Text(
+            'Save',
+            style: TextStyle(fontSize: 22),
           ),
         ),
       ],
