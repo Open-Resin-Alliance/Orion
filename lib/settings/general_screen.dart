@@ -389,7 +389,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         return GlassAlertDialog(
                                           title: const Center(
                                               child:
-                                                  Text('Custom Odyssey URL')),
+                                                  Text('Custom Backend URL')),
                                           content: SizedBox(
                                             width: MediaQuery.of(context)
                                                     .size
@@ -421,6 +421,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           ),
                                           actions: [
                                             GlassButton(
+                                              tint: GlassButtonTint.neutral,
                                               onPressed: () {
                                                 Navigator.of(context).pop();
                                               },
@@ -429,9 +430,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                       const Size(0, 60)),
                                               child: const Text('Close',
                                                   style:
-                                                      TextStyle(fontSize: 16)),
+                                                      TextStyle(fontSize: 22)),
                                             ),
                                             GlassButton(
+                                              tint: GlassButtonTint.positive,
                                               onPressed: () {
                                                 setState(() {
                                                   customUrl = urlTextFieldKey
@@ -448,7 +450,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                       const Size(0, 60)),
                                               child: const Text('Confirm',
                                                   style:
-                                                      TextStyle(fontSize: 16)),
+                                                      TextStyle(fontSize: 22)),
                                             ),
                                           ],
                                         );
