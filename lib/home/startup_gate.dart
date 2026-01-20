@@ -39,6 +39,7 @@ class StartupGate extends StatefulWidget {
 class _StartupGateState extends State<StartupGate> {
   late StatusProvider _statusProv;
   bool _isAthena = false;
+  bool _isSimulated = false;
   bool _athenaReady = false;
   bool _checkingAthena = false;
 
@@ -69,6 +70,8 @@ class _StartupGateState extends State<StartupGate> {
     // Detect Athena machines: NanoDLP backend and model name contains 'athena'
     try {
       final cfg = OrionConfig();
+      _isSimulated = cfg.getFlag('simulated', category: 'developer') ||
+          cfg.getFlag('simulated', category: 'advanced');
       _isAthena = cfg.isNanoDlpMode() &&
           cfg.getMachineModelName().toLowerCase().contains('athena');
     } catch (_) {
@@ -107,7 +110,7 @@ class _StartupGateState extends State<StartupGate> {
     // When we see the backend become available, kick off Athena IoT checks
     try {
       final prov = Provider.of<StatusProvider>(context, listen: false);
-      if (_isAthena && !_athenaReady && prov.hasEverConnected) {
+      if (_isAthena && !_isSimulated && !_athenaReady && prov.hasEverConnected) {
         _ensureAthenaReady();
       }
     } catch (_) {}
@@ -126,6 +129,7 @@ class _StartupGateState extends State<StartupGate> {
   }
 
   Future<void> _ensureAthenaReady() async {
+    if (_isSimulated) return;
     if (_checkingAthena) return;
     _checkingAthena = true;
     try {
@@ -167,7 +171,9 @@ class _StartupGateState extends State<StartupGate> {
     final prov = Provider.of<StatusProvider>(context, listen: false);
     final updateManager = Provider.of<UpdateManager>(context, listen: false);
 
-    final backendReady = prov.hasEverConnected && (!_isAthena || _athenaReady);
+    final requireAthenaReady = _isAthena && !_isSimulated;
+    final backendReady =
+      prov.hasEverConnected && (!requireAthenaReady || _athenaReady);
     final isReadyToProceed =
         _animationsComplete && backendReady && _checkForUpdatesComplete;
 
