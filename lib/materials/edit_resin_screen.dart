@@ -24,6 +24,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
+import 'package:orion/widgets/zoom_value_editor_dialog.dart';
 
 /// Edit screen showing 6 cards (2x3 grid) displaying current resin parameter
 /// values. Tapping any card opens a dialog with a slider to adjust the value.
@@ -342,7 +343,6 @@ class EditResinScreenState extends State<EditResinScreen> {
                   value,
                   style: const TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.w700,
                     height: 1.0,
                   ),
                   maxLines: 1,
@@ -367,106 +367,18 @@ class EditResinScreenState extends State<EditResinScreen> {
     double? step,
     required ValueChanged<double> onSave,
   }) async {
-    double tempValue = currentValue;
-    final effectiveStep = step ?? (decimals == 0 ? 1.0 : 0.1);
-
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => GlassAlertDialog(
-          title: Text(title,
-              style:
-                  const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
-          content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (description != null) ...[
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 19,
-                      color: Colors.grey.shade400,
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                ] else
-                  const SizedBox(height: 24),
-                Text(
-                  decimals == 0
-                      ? '${tempValue.round()}$suffix'
-                      : '${tempValue.toStringAsFixed(decimals)}$suffix',
-                  style: TextStyle(
-                    fontSize: 46,
-                    fontWeight: FontWeight.w700,
-                    height: 1.0,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: Theme.of(context).colorScheme.primary,
-                    inactiveTrackColor: Colors.grey.shade700,
-                    thumbColor: Colors.white,
-                    overlayColor: Colors.white.withValues(alpha: 0.2),
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 12.0),
-                    overlayShape:
-                        const RoundSliderOverlayShape(overlayRadius: 24.0),
-                    trackHeight: 8.0,
-                  ),
-                  child: Slider(
-                    value: tempValue,
-                    min: min,
-                    max: max,
-                    divisions: ((max - min) / effectiveStep).round(),
-                    onChanged: (v) {
-                      setDialogState(() {
-                        tempValue = decimals == 0
-                            ? v.roundToDouble()
-                            : double.parse(v.toStringAsFixed(decimals));
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-          actions: [
-            GlassButton(
-              tint: GlassButtonTint.negative,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(120, 60),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(fontSize: 22),
-              ),
-            ),
-            GlassButton(
-              tint: GlassButtonTint.positive,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(120, 60),
-              ),
-              onPressed: () {
-                onSave(tempValue);
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                'Save',
-                style: TextStyle(fontSize: 22),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final result = await ZoomValueEditorDialog.show(
+      context,
+      title: title,
+      description: description,
+      currentValue: currentValue,
+      min: min,
+      max: max,
+      suffix: suffix,
+      decimals: decimals,
+      step: step,
     );
+    if (result != null) onSave(result);
   }
 
   @override
@@ -504,7 +416,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                                 max: 30,
                                 suffix: ' s',
                                 decimals: 2,
-                                step: 0.20,
+                                step: 0.10,
                                 onSave: (v) => setState(() => _burnInTime = v),
                               ),
                             ),
@@ -568,7 +480,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                                 max: 20,
                                 suffix: ' s',
                                 decimals: 2,
-                                step: 0.2,
+                                step: 0.1,
                                 onSave: (v) =>
                                     setState(() => _waitAfterCure = v),
                               ),
@@ -594,7 +506,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                                 max: 20,
                                 suffix: ' mm',
                                 decimals: 2,
-                                step: 0.2,
+                                step: 0.1,
                                 onSave: (v) => setState(() => _liftAfter = v),
                               ),
                             ),
@@ -613,7 +525,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                                 max: 20,
                                 suffix: ' s',
                                 decimals: 2,
-                                step: 0.2,
+                                step: 0.1,
                                 onSave: (v) =>
                                     setState(() => _waitAfterLife = v),
                               ),
