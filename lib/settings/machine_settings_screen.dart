@@ -19,6 +19,8 @@ import 'package:flutter/material.dart';
 import 'package:orion/util/orion_list_tile.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class MachineSettingsScreen extends StatefulWidget {
@@ -46,8 +48,12 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
     return PopScope(
       child: GlassApp(
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Machine Settings'),
+          appBar: OrionAppBar(
+            title: const Text('Settings'),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            actions: <Widget>[
+              SystemStatusWidget(),
+            ],
           ),
           body: Padding(
             padding: const EdgeInsets.only(left: 16, right: 16, top: 5),

@@ -16,6 +16,8 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
@@ -48,9 +50,13 @@ class _UIScreenState extends State<UIScreen> {
 
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('User Interface'),
-        ),
+        appBar: OrionAppBar(
+            title: const Text('User Interface'),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            actions: <Widget>[
+              SystemStatusWidget(),
+            ],
+          ),
         body: SingleChildScrollView(
           child: Padding(
             padding:
@@ -69,11 +75,10 @@ class _UIScreenState extends State<UIScreen> {
                         const Text(
                           'Theme Mode',
                           style: TextStyle(
-                            fontSize: 24.0,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 26.0,
                           ),
                         ),
-                        const SizedBox(height: 20.0),
+                        const SizedBox(height: 16.0),
                         GlassThemeSelector(
                           selectedTheme: themeProvider.orionThemeMode,
                           onThemeChanged: (OrionThemeMode newMode) {
@@ -102,11 +107,10 @@ class _UIScreenState extends State<UIScreen> {
                           const Text(
                             'Theme Color',
                             style: TextStyle(
-                              fontSize: 24.0,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 26.0,
                             ),
                           ),
-                          const SizedBox(height: 20.0),
+                          const SizedBox(height: 16.0),
                           ThemeColorSelector(
                             config: config,
                           ),
