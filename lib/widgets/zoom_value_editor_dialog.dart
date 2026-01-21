@@ -339,6 +339,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
                       height: 1.0,
                       color: activeColor,
                       shadows: null,
+                      fontFamily: 'AtkinsonHyperlegible'
                     );
 
                     final spans = <TextSpan>[];
