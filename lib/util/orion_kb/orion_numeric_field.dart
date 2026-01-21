@@ -26,10 +26,12 @@ Future<String?> showOrionNumericKeyboard(
   BuildContext context, {
   required double initialValue,
   bool allowNegative = false,
-  bool allowDecimal = true,
   int decimalPlaces = 2,
   void Function(String)? onChanged,
 }) {
+  // Decimals are allowed whenever decimalPlaces > 0
+  final allowDecimal = decimalPlaces > 0;
+
   // Format initial value, stripping unnecessary trailing zeros
   String formattedValue = initialValue.toStringAsFixed(decimalPlaces);
   if (allowDecimal && decimalPlaces > 0) {
@@ -39,14 +41,13 @@ Future<String?> showOrionNumericKeyboard(
       formattedValue = '0';
     }
   }
-  
+
   final textController = TextEditingController(text: formattedValue);
   return Navigator.of(context).push<String>(
     _NumericKeyboardModal(
       textController: textController,
       locale: Localizations.localeOf(context).toString(),
       allowNegative: allowNegative,
-      allowDecimal: allowDecimal,
       decimalPlaces: decimalPlaces,
       onChanged: onChanged,
     ),
@@ -57,7 +58,6 @@ class SpawnOrionNumericField extends StatefulWidget {
   final String keyboardHint;
   final String locale;
   final bool allowNegative;
-  final bool allowDecimal;
   final int decimalPlaces;
   final Function(double) onChanged;
   final ScrollController? scrollController;
@@ -68,7 +68,6 @@ class SpawnOrionNumericField extends StatefulWidget {
     required this.keyboardHint,
     required this.locale,
     this.allowNegative = false,
-    this.allowDecimal = true,
     this.decimalPlaces = 2,
     this.onChanged = _defaultOnChanged,
     this.scrollController,
@@ -177,7 +176,6 @@ class SpawnOrionNumericFieldState extends State<SpawnOrionNumericField>
               controller: _controller,
               locale: widget.locale,
               allowNegative: widget.allowNegative,
-              allowDecimal: widget.allowDecimal,
               decimalPlaces: widget.decimalPlaces,
               onChanged: (value) {
                 if (value != null) {
@@ -208,7 +206,6 @@ class OrionNumericTextField extends StatefulWidget {
   final TextEditingController controller;
   final String locale;
   final bool allowNegative;
-  final bool allowDecimal;
   final int decimalPlaces;
   final Function(double?) onChanged;
 
@@ -219,7 +216,6 @@ class OrionNumericTextField extends StatefulWidget {
     required this.controller,
     required this.locale,
     required this.allowNegative,
-    required this.allowDecimal,
     required this.decimalPlaces,
     required this.onChanged,
   });
@@ -256,7 +252,6 @@ class OrionNumericTextFieldState extends State<OrionNumericTextField>
             textController: widget.controller,
             locale: widget.locale,
             allowNegative: widget.allowNegative,
-            allowDecimal: widget.allowDecimal,
             decimalPlaces: widget.decimalPlaces,
           ),
         )
@@ -383,7 +378,6 @@ class _NumericKeyboardModal extends ModalRoute<String> {
   final TextEditingController textController;
   final String locale;
   final bool allowNegative;
-  final bool allowDecimal;
   final int decimalPlaces;
   final void Function(String)? onChanged;
 
@@ -391,7 +385,6 @@ class _NumericKeyboardModal extends ModalRoute<String> {
     required this.textController,
     required this.locale,
     required this.allowNegative,
-    required this.allowDecimal,
     required this.decimalPlaces,
     this.onChanged,
   });
@@ -446,7 +439,7 @@ class _NumericKeyboardModal extends ModalRoute<String> {
               child: _NumericKeyboard(
                 controller: numericController,
                 allowNegative: allowNegative,
-                allowDecimal: allowDecimal,
+                allowDecimal: decimalPlaces > 0,
                 decimalPlaces: decimalPlaces,
                 onChanged: onChanged,
                 onReturn: () {
