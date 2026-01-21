@@ -114,7 +114,6 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
       context,
       initialValue: _currentValue,
       allowNegative: widget.min < 0,
-      allowDecimal: widget.decimals > 0,
       decimalPlaces: widget.decimals,
       onChanged: (text) {
         // Live update with unclamped temporary value
