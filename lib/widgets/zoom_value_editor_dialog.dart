@@ -7,6 +7,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/orion_kb/orion_numeric_field.dart';
+import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 
 class ZoomValueEditorDialog extends StatefulWidget {
   final String title;
@@ -73,23 +75,75 @@ class ZoomValueEditorDialog extends StatefulWidget {
   State<ZoomValueEditorDialog> createState() => _ZoomValueEditorDialogState();
 }
 
-class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> {
+class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with SingleTickerProviderStateMixin {
   late double _currentValue;
+  String? _tempEditValue; // Temporary unclamped value while editing
   bool _isZoomed = false;
+  bool _isEditingNumeric = false;
   Timer? _holdTimer;
   double? _zoomMin;
   double? _zoomMax;
+  final ValueNotifier<bool> _keyboardOpen = ValueNotifier<bool>(false);
+  final GlobalKey _valueDisplayKey = GlobalKey();
+  late AnimationController _cursorBlinkController;
 
   @override
   void initState() {
     super.initState();
     _currentValue = widget.currentValue;
+    _cursorBlinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 530),
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _holdTimer?.cancel();
+    _keyboardOpen.dispose();
+    _cursorBlinkController.dispose();
     super.dispose();
+  }
+
+  Future<void> _editNumericValue() async {
+    _exitZoom();
+    setState(() => _isEditingNumeric = true);
+    _keyboardOpen.value = true;
+
+    final result = await showOrionNumericKeyboard(
+      context,
+      initialValue: _currentValue,
+      allowNegative: widget.min < 0,
+      decimalPlaces: widget.decimals,
+      onChanged: (text) {
+        // Live update with unclamped temporary value
+        setState(() {
+          _tempEditValue = text;
+        });
+      },
+    );
+
+    if (mounted) {
+      _keyboardOpen.value = false;
+      setState(() {
+        _tempEditValue = null;
+      });
+      if (result != null && result.isNotEmpty) {
+        try {
+          final parsed = double.parse(result);
+          final clamped = parsed.clamp(widget.min, widget.max);
+          setState(() {
+            _currentValue = clamped;
+            _isEditingNumeric = false;
+          });
+          HapticFeedback.lightImpact();
+        } catch (e) {
+          setState(() => _isEditingNumeric = false);
+        }
+      } else {
+        setState(() => _isEditingNumeric = false);
+      }
+    }
   }
 
   void _resetHoldTimer() {
@@ -201,79 +255,184 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.description != null) ...[
-              Text(
-                widget.description!,
-                style: TextStyle(
-                  fontSize: 19,
-                  color: Colors.grey.shade400,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
+            ValueListenableBuilder<bool>(
+              valueListenable: _keyboardOpen,
+              builder: (context, isKeyboardOpen, child) {
+                return AnimatedOpacity(
+                  opacity: isKeyboardOpen ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: isKeyboardOpen ? 0 : null,
+                    child: widget.description != null
+                        ? Padding(
+                            padding: EdgeInsets.only(
+                              bottom: isKeyboardOpen ? 0 : 24,
+                            ),
+                            child: Text(
+                              widget.description!,
+                              style: TextStyle(
+                                fontSize: 19,
+                                color: Colors.grey.shade400,
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        : SizedBox(
+                            height: isKeyboardOpen ? 0 : 24,
+                          ),
+                  ),
+                );
+              },
+            ),
+            if (widget.description == null)
+              ValueListenableBuilder<bool>(
+                valueListenable: _keyboardOpen,
+                builder: (context, isKeyboardOpen, child) {
+                  return SizedBox(
+                    height: isKeyboardOpen ? 0 : 24,
+                  );
+                },
               ),
-              const SizedBox(height: 24),
-            ] else
-              const SizedBox(height: 24),
 
-            // Value Display (when zoomed, dim digits more significant than the step)
-            Builder(builder: (context) {
-              final valueStr = activeDecimals == 0
-                  ? _currentValue.round().toString()
-                  : _currentValue.toStringAsFixed(activeDecimals);
-              final baseStyle = TextStyle(
-                fontSize: 46,
-                fontWeight: FontWeight.w700,
-                height: 1.0,
-                color: activeColor,
-                shadows: null,
-              );
-
-              final spans = <TextSpan>[];
-              if (_isZoomed && valueStr.isNotEmpty) {
-                final stepForHighlight = activeStep;
-                if (stepForHighlight > 0) {
-                  final dimColor = activeColor.withValues(alpha: 0.5);
-                  final decimalIndex = valueStr.indexOf('.');
-                  final digitsBeforeDecimal =
-                      decimalIndex >= 0 ? decimalIndex : valueStr.length;
-                  final thresholdExp = stepForHighlight > 0
-                      ? (math.log(stepForHighlight) / math.ln10).floor()
-                      : 0;
-
-                  int currentExp = digitsBeforeDecimal - 1;
-                  for (var i = 0; i < valueStr.length; i++) {
-                    final ch = valueStr[i];
-                    if (ch == '-') {
-                      spans.add(TextSpan(text: ch, style: baseStyle.copyWith(color: dimColor)));
-                      continue;
-                    }
-                    if (ch == '.') {
-                      spans.add(TextSpan(text: ch, style: baseStyle));
-                      currentExp = -1; // next digit is the first fractional
-                      continue;
-                    }
-                    if (ch.codeUnitAt(0) >= 48 && ch.codeUnitAt(0) <= 57) {
-                      final shouldDim = currentExp > thresholdExp;
-                      spans.add(TextSpan(
-                        text: ch,
-                        style: baseStyle.copyWith(color: shouldDim ? dimColor : activeColor),
-                      ));
-                      currentExp -= 1;
+            // Value Display (tap to edit with numeric keyboard)
+            GestureDetector(
+              onTap: _isEditingNumeric ? null : _editNumericValue,
+              child: MouseRegion(
+                cursor: _isEditingNumeric ? MouseCursor.defer : SystemMouseCursors.click,
+                child: AnimatedBuilder(
+                  animation: _cursorBlinkController,
+                  builder: (context, _) {
+                    String valueStr;
+                    bool showCursor = false;
+                    
+                    if (_tempEditValue != null) {
+                      showCursor = true;
+                      // Editing mode: format with placeholder dashes
+                      if (_tempEditValue!.isEmpty) {
+                        // Empty: show just integer placeholder dashes
+                        final intPlaces = widget.max.toString().split('.')[0].length;
+                        valueStr = '−' * intPlaces;
+                      } else {
+                        valueStr = _tempEditValue!;
+                        // Only add decimal placeholder if user has entered decimal point
+                        if (valueStr.contains('.') && activeDecimals > 0) {
+                          final parts = valueStr.split('.');
+                          if (parts[1].length < activeDecimals) {
+                            // Has decimal but incomplete, pad with dashes
+                            valueStr += '−' * (activeDecimals - parts[1].length);
+                          }
+                        }
+                      }
                     } else {
-                      spans.add(TextSpan(text: ch, style: baseStyle));
+                      // Not editing: show formatted current value
+                      valueStr = activeDecimals == 0
+                          ? _currentValue.round().toString()
+                          : _currentValue.toStringAsFixed(activeDecimals);
                     }
-                  }
-                } else {
-                  spans.add(TextSpan(text: valueStr, style: baseStyle));
-                }
-              } else {
-                spans.add(TextSpan(text: valueStr, style: baseStyle));
-              }
-              if (widget.suffix.isNotEmpty) {
-                spans.add(TextSpan(text: widget.suffix, style: baseStyle));
-              }
-              return RichText(text: TextSpan(children: spans));
-            }),
+                    
+                    final baseStyle = TextStyle(
+                      fontSize: 46,
+                      fontWeight: FontWeight.w700,
+                      height: 1.0,
+                      color: activeColor,
+                      shadows: null,
+                      fontFamily: 'AtkinsonHyperlegible'
+                    );
+
+                    final spans = <TextSpan>[];
+                    
+                    if (_isZoomed && valueStr.isNotEmpty && _tempEditValue == null) {
+                      final stepForHighlight = activeStep;
+                      if (stepForHighlight > 0) {
+                        final dimColor = activeColor.withValues(alpha: 0.5);
+                        final decimalIndex = valueStr.indexOf('.');
+                        final digitsBeforeDecimal =
+                            decimalIndex >= 0 ? decimalIndex : valueStr.length;
+                        final thresholdExp = stepForHighlight > 0
+                            ? (math.log(stepForHighlight) / math.ln10).floor()
+                            : 0;
+
+                        int currentExp = digitsBeforeDecimal - 1;
+                        for (var i = 0; i < valueStr.length; i++) {
+                          final ch = valueStr[i];
+                          if (ch == '-' || ch == '−') {
+                            spans.add(TextSpan(text: ch, style: baseStyle.copyWith(color: dimColor)));
+                            continue;
+                          }
+                          if (ch == '.') {
+                            spans.add(TextSpan(text: ch, style: baseStyle));
+                            currentExp = -1; // next digit is the first fractional
+                            continue;
+                          }
+                          if (ch.codeUnitAt(0) >= 48 && ch.codeUnitAt(0) <= 57) {
+                            final shouldDim = currentExp > thresholdExp;
+                            spans.add(TextSpan(
+                              text: ch,
+                              style: baseStyle.copyWith(color: shouldDim ? dimColor : activeColor),
+                            ));
+                            currentExp -= 1;
+                          } else {
+                            spans.add(TextSpan(text: ch, style: baseStyle));
+                          }
+                        }
+                      } else {
+                        spans.add(TextSpan(text: valueStr, style: baseStyle));
+                      }
+                    } else {
+                      // Build spans with blinking dashes in edit mode
+                      bool editingDecimals = showCursor && _tempEditValue!.contains('.');
+                      
+                      for (var i = 0; i < valueStr.length; i++) {
+                        final ch = valueStr[i];
+                        // Make placeholder dashes blink based on editing position
+                        if (showCursor && ch == '−') {
+                          // Find if we're before or after decimal point
+                          bool isBeforeDecimal = true;
+                          for (var j = 0; j < i; j++) {
+                            if (valueStr[j] == '.') {
+                              isBeforeDecimal = false;
+                              break;
+                            }
+                          }
+                          
+                          // Blink integer dashes when editing integers, decimal dashes when editing decimals
+                          bool shouldBlink = (isBeforeDecimal && !editingDecimals) || 
+                                           (!isBeforeDecimal && editingDecimals);
+                          
+                          spans.add(TextSpan(
+                            text: ch,
+                            style: baseStyle.copyWith(
+                              color: activeColor.withValues(
+                                alpha: shouldBlink 
+                                    ? 0.3 + (0.7 * _cursorBlinkController.value)
+                                    : 0.3,
+                              ),
+                            ),
+                          ));
+                        } else {
+                          spans.add(TextSpan(text: ch, style: baseStyle));
+                        }
+                      }
+                    }
+                    if (widget.suffix.isNotEmpty) {
+                      spans.add(TextSpan(text: widget.suffix, style: baseStyle));
+                    }
+                    return RichText(
+                      key: _valueDisplayKey,
+                      text: TextSpan(children: spans),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            // Expander to push content up when keyboard opens
+            OrionKbExpander(
+              isKeyboardOpen: _keyboardOpen,
+              widgetKey: _valueDisplayKey,
+            ),
 
             const SizedBox(height: 12),
 

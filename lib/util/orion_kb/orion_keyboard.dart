@@ -17,6 +17,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:provider/provider.dart';
 
@@ -183,7 +184,7 @@ class OrionKeyboardState extends State<OrionKeyboard> {
           if (hasShiftAndBackspace)
             Expanded(
               child: KeyboardButton(
-                text: "⌫",
+                text: "BACKSPACE",
                 isShiftEnabled: _isShiftEnabled,
                 isCapsEnabled: _isCapsEnabled,
                 controller: widget.controller,
@@ -233,7 +234,7 @@ class OrionKeyboardState extends State<OrionKeyboard> {
             child: KeyboardButton(
               text: MediaQuery.of(context).orientation == Orientation.landscape
                   ? keyboardLayout['bottomRow3']!
-                  : '↵',
+                  : 'ENTER',
               isShiftEnabled: ValueNotifier<bool>(false),
               isCapsEnabled: _isCapsEnabled,
               controller: widget.controller,
@@ -248,7 +249,7 @@ class OrionKeyboardState extends State<OrionKeyboard> {
   }
 }
 
-class KeyboardButton extends StatelessWidget {
+class KeyboardButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
   final TextEditingController controller;
@@ -260,11 +261,11 @@ class KeyboardButton extends StatelessWidget {
   static const Set<String> _functionKeyLabels = {
     '⇧',
     '⇪',
-    '⌫',
+    'BACKSPACE',
     '123',
     'abc',
     'return',
-    '↵',
+    'ENTER',
     '#+=',
     '123\u200B',
   };
@@ -279,6 +280,14 @@ class KeyboardButton extends StatelessWidget {
     required this.isSymbolKeyboardShown,
     required this.isSecondarySymbolKeyboardShown,
   });
+
+  @override
+  State<KeyboardButton> createState() => _KeyboardButtonState();
+}
+
+class _KeyboardButtonState extends State<KeyboardButton> {
+  DateTime? _lastShiftTapTime;
+  static const _doubleTapWindow = Duration(milliseconds: 300);
 
   @override
   Widget build(BuildContext context) {
@@ -324,7 +333,7 @@ class KeyboardButton extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: borderRadius),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
-                      onTap: () => _handleKey(text, context),
+                      onTap: () => _handleKey(widget.text, context),
                       borderRadius: borderRadius,
                       splashColor: Colors.white.withValues(alpha: 0.18),
                       highlightColor: Colors.white.withValues(alpha: 0.1),
@@ -346,7 +355,7 @@ class KeyboardButton extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  _handleKey(text, context);
+                  _handleKey(widget.text, context);
                 },
                 child: Container(
                   alignment: Alignment.center,
@@ -364,68 +373,87 @@ class KeyboardButton extends StatelessWidget {
 
   void _handleKey(String text, BuildContext context) {
     if (text == "123\u200B" || text == "#+=") {
-      isSecondarySymbolKeyboardShown.value =
-          !isSecondarySymbolKeyboardShown.value;
+      widget.isSecondarySymbolKeyboardShown.value =
+          !widget.isSecondarySymbolKeyboardShown.value;
     } else if (text == "123") {
-      isSecondarySymbolKeyboardShown.value = false;
-      isSymbolKeyboardShown.value = !isSymbolKeyboardShown.value;
+      widget.isSecondarySymbolKeyboardShown.value = false;
+      widget.isSymbolKeyboardShown.value = !widget.isSymbolKeyboardShown.value;
     } else if (text == "abc") {
-      isSecondarySymbolKeyboardShown.value = false;
-      isSymbolKeyboardShown.value = false;
+      widget.isSecondarySymbolKeyboardShown.value = false;
+      widget.isSymbolKeyboardShown.value = false;
     } else if (text == "⇧") {
       _handleShiftKey();
     } else if (text == "⇪") {
       _handleCapsLockKey();
-    } else if (text == "⌫") {
+    } else if (text == "BACKSPACE") {
       _handleBackspaceKey();
-    } else if (text == "return" || text == '↵') {
+    } else if (text == "return" || text == 'ENTER') {
       _handleReturnKey(context);
-    } else if (text != "123" && text != "return" && text != "↵") {
+    } else if (text != "123" && text != "return" && text != "ENTER") {
       _handleAlphanumericKey(text);
     }
   }
 
   void _handleShiftKey() {
-    if (isShiftEnabled.value) {
-      isCapsEnabled.value = true;
+    final now = DateTime.now();
+    
+    // Check for double-tap: only if shift is currently enabled
+    if (widget.isShiftEnabled.value && 
+        !widget.isCapsEnabled.value &&
+        _lastShiftTapTime != null && 
+        now.difference(_lastShiftTapTime!) < _doubleTapWindow) {
+      // Quick double-tap detected: enable caps lock
+      widget.isCapsEnabled.value = true;
+      widget.isShiftEnabled.value = true;
+      _lastShiftTapTime = null; // Reset
     } else {
-      isShiftEnabled.value = true;
+      // Single tap: toggle shift
+      if (widget.isShiftEnabled.value && !widget.isCapsEnabled.value) {
+        widget.isShiftEnabled.value = false;
+        _lastShiftTapTime = null; // Reset when toggling off
+      } else {
+        widget.isShiftEnabled.value = true;
+        _lastShiftTapTime = now; // Set timer when enabling
+      }
     }
   }
 
   void _handleCapsLockKey() {
-    if (isCapsEnabled.value) {
-      isCapsEnabled.value = false;
-      isShiftEnabled.value = false;
+    if (widget.isCapsEnabled.value) {
+      widget.isCapsEnabled.value = false;
+      widget.isShiftEnabled.value = false;
+      _lastShiftTapTime = null;
     } else {
-      isCapsEnabled.value = true;
-      isShiftEnabled.value = true;
+      widget.isCapsEnabled.value = true;
+      widget.isShiftEnabled.value = true;
+      _lastShiftTapTime = null;
     }
   }
 
   void _handleBackspaceKey() {
-    if (controller.text.isNotEmpty && controller.text != '\u200B') {
-      controller.text =
-          controller.text.substring(0, controller.text.length - 1);
+    if (widget.controller.text.isNotEmpty && widget.controller.text != '\u200B') {
+      widget.controller.text =
+          widget.controller.text.substring(0, widget.controller.text.length - 1);
     }
   }
 
   void _handleReturnKey(BuildContext context) {
-    Navigator.of(context).pop(controller.text);
+    Navigator.of(context).pop(widget.controller.text);
   }
 
   void _handleAlphanumericKey(String text) {
     String key;
-    if (isCapsEnabled.value || isShiftEnabled.value) {
+    if (widget.isCapsEnabled.value || widget.isShiftEnabled.value) {
       key = text.toUpperCase();
     } else {
       key = text.toLowerCase();
     }
-    controller.text += key;
+    widget.controller.text += key;
     // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
-    controller.notifyListeners();
-    if (!isCapsEnabled.value) {
-      isShiftEnabled.value = false;
+    widget.controller.notifyListeners();
+    if (!widget.isCapsEnabled.value) {
+      widget.isShiftEnabled.value = false;
+      _lastShiftTapTime = null;
     }
   }
 
@@ -449,23 +477,23 @@ class KeyboardButton extends StatelessWidget {
     final brightnessMap = isDarkMode ? darkBrightness : lightBrightness;
 
     final lookupTable = {
-      '⇧': isShiftEnabled.value
+      '⇧': widget.isShiftEnabled.value
           ? brightnessMap['highlight']
           : brightnessMap['altKey'],
-      '⇪': isCapsEnabled.value
+      '⇪': widget.isCapsEnabled.value
           ? brightnessMap['highlight']
           : brightnessMap['altKey'],
-      '⌫': brightnessMap['altKey'],
+      'BACKSPACE': brightnessMap['altKey'],
       '123': brightnessMap['altKey'],
       'abc': brightnessMap['altKey'],
       'return': brightnessMap['altKey'],
-      '↵': brightnessMap['altKey'],
+      'ENTER': brightnessMap['altKey'],
       '#+=': brightnessMap['altKey'],
       '123\u200B': brightnessMap['altKey'],
     };
 
     final brightness =
-        (lookupTable[text] ?? brightnessMap['stdKey']!).clamp(0.0, 1.0);
+        (lookupTable[widget.text] ?? brightnessMap['stdKey']!).clamp(0.0, 1.0);
     return Theme.of(context)
         .colorScheme
         .onPrimaryContainer
@@ -477,13 +505,81 @@ class KeyboardButton extends StatelessWidget {
     required Color color,
     FontWeight fontWeight = FontWeight.w500,
   }) {
+    // Use icons for special keys
+    if (widget.text == 'BACKSPACE') {
+      return Icon(
+        PhosphorIconsFill.backspace,
+        color: color,
+        size: 24,
+      );
+    }
+    if (widget.text == 'ENTER') {
+      return Icon(
+        PhosphorIcons.arrowBendDownLeft(),
+        color: color,
+        size: 24,
+      );
+    }
+    if (widget.text == '⇧') {
+      // Show different icons based on shift/caps state
+      return ValueListenableBuilder<bool>(
+        valueListenable: widget.isCapsEnabled,
+        builder: (context, isCaps, _) {
+          return ValueListenableBuilder<bool>(
+            valueListenable: widget.isShiftEnabled,
+            builder: (context, isShift, _) {
+              if (isCaps) {
+                // Caps lock engaged -> filled double caret
+                return Icon(
+                  PhosphorIcons.caretDoubleUp(PhosphorIconsStyle.fill),
+                  color: color,
+                  size: 24,
+                );
+              }
+
+              if (isShift) {
+                // Shift engaged -> double caret outline
+                return Icon(
+                  PhosphorIcons.caretDoubleUp(),
+                  color: color,
+                  size: 24,
+                );
+              }
+
+              // Not engaged -> single caret outline
+              return Icon(
+                PhosphorIcons.caretUp(),
+                color: color,
+                size: 24,
+              );
+            },
+          );
+        },
+      );
+    }
+    if (widget.text == '⇪') {
+      // Caps lock key shows state (outline vs filled)
+      return ValueListenableBuilder<bool>(
+        valueListenable: widget.isCapsEnabled,
+        builder: (context, isCaps, _) {
+          return Icon(
+            isCaps
+                ? PhosphorIcons.caretDoubleUp(PhosphorIconsStyle.fill)
+                : PhosphorIcons.caretDoubleUp(),
+            color: color,
+            size: 24,
+          );
+        },
+      );
+    }
+    
     return ValueListenableBuilder<bool>(
-      valueListenable: isShiftEnabled,
+      valueListenable: widget.isShiftEnabled,
       builder: (context, isShiftActive, child) {
-        final bool lockCase = _isFunctionKey(text);
+        final bool lockCase = _isFunctionKey(widget.text);
         final String displayText = lockCase
-            ? text
-            : (isShiftActive ? text.toUpperCase() : text.toLowerCase());
+            ? widget.text
+            : (isShiftActive ? widget.text.toUpperCase() : widget.text.toLowerCase());
         return FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
@@ -499,5 +595,5 @@ class KeyboardButton extends StatelessWidget {
     );
   }
 
-  bool _isFunctionKey(String keyLabel) => _functionKeyLabels.contains(keyLabel);
+  bool _isFunctionKey(String keyLabel) => KeyboardButton._functionKeyLabels.contains(keyLabel);
 }
