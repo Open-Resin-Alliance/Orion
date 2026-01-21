@@ -336,7 +336,7 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
               maxLines: 1,
             )..layout();
 
-            final reservedWidthUnclamped = tp.width - 5; // small padding
+            final reservedWidthUnclamped = tp.width; // small padding
             // Clamp the reserved width to avoid excessive widths in test
             // environments where font metrics may be different or absent.
             final reservedWidth = reservedWidthUnclamped.clamp(20.0, 120.0);
