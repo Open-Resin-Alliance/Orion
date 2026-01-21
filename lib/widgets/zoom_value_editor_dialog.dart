@@ -107,7 +107,10 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
 
   Future<void> _editNumericValue() async {
     _exitZoom();
-    setState(() => _isEditingNumeric = true);
+    setState(() {
+      _isEditingNumeric = true;
+      _tempEditValue = '';
+    });
     _keyboardOpen.value = true;
 
     final result = await showOrionNumericKeyboard(
@@ -115,6 +118,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
       initialValue: _currentValue,
       allowNegative: widget.min < 0,
       decimalPlaces: widget.decimals,
+      clearOnOpen: true,
       onChanged: (text) {
         // Live update with unclamped temporary value
         setState(() {

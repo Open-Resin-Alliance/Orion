@@ -28,17 +28,23 @@ Future<String?> showOrionNumericKeyboard(
   bool allowNegative = false,
   int decimalPlaces = 2,
   void Function(String)? onChanged,
+  bool clearOnOpen = false,
 }) {
   // Decimals are allowed whenever decimalPlaces > 0
   final allowDecimal = decimalPlaces > 0;
 
   // Format initial value, stripping unnecessary trailing zeros
-  String formattedValue = initialValue.toStringAsFixed(decimalPlaces);
-  if (allowDecimal && decimalPlaces > 0) {
-    formattedValue = formattedValue.replaceAll(RegExp(r'\.?0+$'), '');
-    // Ensure we keep at least one digit
-    if (formattedValue.isEmpty || formattedValue == '-') {
-      formattedValue = '0';
+  String formattedValue;
+  if (clearOnOpen) {
+    formattedValue = '';
+  } else {
+    formattedValue = initialValue.toStringAsFixed(decimalPlaces);
+    if (allowDecimal && decimalPlaces > 0) {
+      formattedValue = formattedValue.replaceAll(RegExp(r'\.?0+$'), '');
+      // Ensure we keep at least one digit
+      if (formattedValue.isEmpty || formattedValue == '-') {
+        formattedValue = '0';
+      }
     }
   }
 
