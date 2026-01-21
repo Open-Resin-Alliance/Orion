@@ -40,7 +40,7 @@ class SystemStatusWidget extends StatefulWidget {
     this.showWifi = true,
     this.showTemperature = true,
     this.iconSize = 30,
-    this.fontSize = 28,
+    this.fontSize = 26,
   });
 
   @override
@@ -320,7 +320,6 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
           // when digits change.
           Builder(builder: (ctx) {
             final textStyle = TextStyle(
-              fontFamily: 'AtkinsonHyperlegible',
               fontSize: widget.fontSize,
               fontWeight: FontWeight.w400,
               height: 1.0,
@@ -336,7 +335,7 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
               maxLines: 1,
             )..layout();
 
-            final reservedWidthUnclamped = tp.width; // small padding
+            final reservedWidthUnclamped = tp.width + 4.0; // small padding
             // Clamp the reserved width to avoid excessive widths in test
             // environments where font metrics may be different or absent.
             final reservedWidth = reservedWidthUnclamped.clamp(20.0, 120.0);
