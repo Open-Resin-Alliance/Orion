@@ -512,10 +512,9 @@ class _NumericKeyboard extends StatelessWidget {
   }
 
   Widget _buildPortraitLayout() {
-    // Build fourth row buttons dynamically
-    final fourthRowButtons = ['00', '0'];
+    // If negatives allowed, replace '00' with '−', else keep '00'
+    final fourthRowButtons = [allowNegative ? '−' : '00', '0'];
     if (allowDecimal) fourthRowButtons.add('.');
-    if (allowNegative) fourthRowButtons.add('−');
 
     return Column(
       children: [
@@ -529,10 +528,8 @@ class _NumericKeyboard extends StatelessWidget {
   }
 
   Widget _buildLandscapeLayout() {
-    // Build bottom row buttons dynamically
-    final bottomButtons = ['00'];
-    if (allowNegative) bottomButtons.add('−');
-    bottomButtons.add('0');
+    // If negatives allowed, replace '00' with '−', else keep '00'
+    final bottomButtons = [allowNegative ? '−' : '00', '0'];
     if (allowDecimal) bottomButtons.add('.');
 
     return Row(
