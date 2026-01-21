@@ -18,6 +18,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Show numeric keyboard modal and return edited value
 /// Useful for inline numeric editing without a dedicated textfield
@@ -565,7 +566,7 @@ class _NumericKeyboard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(right: 10, top: 5, bottom: 2.5),
                   child: _NumericKeyButton(
-                    text: '⌫',
+                    icon: PhosphorIcon(PhosphorIconsFill.backspace, size: 32),
                     onPressed: _handleBackspace,
                   ),
                 ),
@@ -574,7 +575,7 @@ class _NumericKeyboard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(right: 10, top: 2.5, bottom: 5),
                   child: _NumericKeyButton(
-                    text: '↵',
+                    icon: PhosphorIcon(PhosphorIconsFill.arrowElbowDownLeft, size: 32),
                     isPrimary: true,
                     onPressed: onReturn,
                   ),
@@ -619,14 +620,14 @@ class _NumericKeyboard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: _NumericKeyButton(
-              text: '⌫',
+              icon: PhosphorIcon(PhosphorIconsFill.backspace),
               onPressed: _handleBackspace,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: _NumericKeyButton(
-              text: '↵',
+              icon: PhosphorIcon(PhosphorIconsFill.arrowElbowDownLeft),
               isPrimary: true,
               onPressed: onReturn,
             ),
@@ -688,15 +689,17 @@ class _NumericKeyboard extends StatelessWidget {
 }
 
 class _NumericKeyButton extends StatelessWidget {
-  final String text;
+  final String? text;
+  final Widget? icon;
   final VoidCallback? onPressed;
   final bool isPrimary;
 
   const _NumericKeyButton({
-    required this.text,
+    this.text,
+    this.icon,
     this.onPressed,
     this.isPrimary = false,
-  });
+  }) : assert(text != null || icon != null, 'Either text or icon must be provided');
 
   @override
   Widget build(BuildContext context) {
@@ -731,8 +734,8 @@ class _NumericKeyButton extends StatelessWidget {
             highlightColor:
                 Colors.white.withValues(alpha: isDisabled ? 0 : 0.1),
             child: Center(
-              child: Text(
-                text,
+              child: icon ?? Text(
+                text!,
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w500,
