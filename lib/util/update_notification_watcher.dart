@@ -141,6 +141,7 @@ class UpdateNotificationWatcher {
               minimumSize: const Size(140, 60),
             ),
             onPressed: () {
+              updateManager.acknowledgeUpdatePrompt();
               updateManager.remindLater();
               Navigator.of(ctx).pop();
             },
@@ -155,6 +156,7 @@ class UpdateNotificationWatcher {
               minimumSize: const Size(140, 60),
             ),
             onPressed: () {
+              updateManager.acknowledgeUpdatePrompt();
               Navigator.of(ctx).pop();
               context.go('/updates');
             },
@@ -165,7 +167,12 @@ class UpdateNotificationWatcher {
           ),
         ],
       ),
-    ).then((_) => _isDialogShown = false);
+    ).then((_) {
+      _isDialogShown = false;
+      // If the dialog was dismissed without pressing a button (barrier/back),
+      // still acknowledge so we don't spam the user in this session.
+      updateManager.acknowledgeUpdatePrompt();
+    });
   }
 
   static UpdateNotificationWatcher? install(BuildContext context) {

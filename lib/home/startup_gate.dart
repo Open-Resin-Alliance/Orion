@@ -216,12 +216,14 @@ class _StartupGateState extends State<StartupGate> {
       child = UpdateAvailableScreen(
         key: const ValueKey('update_available'),
         onRemindLater: () {
+          updateManager.acknowledgeUpdatePrompt();
           updateManager.remindLater();
           setState(() {
             _dismissUpdateScreen = true;
           });
         },
         onUpdateNow: () {
+          updateManager.acknowledgeUpdatePrompt();
           setState(() {
             _dismissUpdateScreen = true;
           });

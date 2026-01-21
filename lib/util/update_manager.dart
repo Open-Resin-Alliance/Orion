@@ -12,6 +12,7 @@ class UpdateManager extends ChangeNotifier {
   Timer? _timer;
   Timer? _debounceTimer;
   bool _suppressNotifications = false;
+  bool _promptAcknowledgedThisSession = false;
 
   UpdateManager(this.orionProvider, this.athenaProvider) {
     _startTimer();
@@ -26,6 +27,14 @@ class UpdateManager extends ChangeNotifier {
   }
 
   bool get suppressNotifications => _suppressNotifications;
+
+  /// Mark that a user has acknowledged an update prompt for this app session.
+  /// Prevents further update dialogs until Orion is restarted.
+  void acknowledgeUpdatePrompt() {
+    if (_promptAcknowledgedThisSession) return;
+    _promptAcknowledgedThisSession = true;
+    notifyListeners();
+  }
 
   void _startTimer() {
     // Initial check after a short delay to allow app to settle
@@ -117,6 +126,7 @@ class UpdateManager extends ChangeNotifier {
   /// This respects the [suppressNotifications] flag.
   bool get shouldShowNotification {
     if (_suppressNotifications) return false;
+    if (_promptAcknowledgedThisSession) return false;
     return hasPendingUpdateNotification;
   }
 
