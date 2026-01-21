@@ -119,6 +119,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
       allowNegative: widget.min < 0,
       decimalPlaces: widget.decimals,
       clearOnOpen: true,
+      maxIntegerDigits: _maxIntegerDigitsFromRange(widget.min, widget.max),
       onChanged: (text) {
         // Live update with unclamped temporary value
         setState(() {
@@ -148,6 +149,13 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
         setState(() => _isEditingNumeric = false);
       }
     }
+  }
+
+  int _maxIntegerDigitsFromRange(double min, double max) {
+    final spanMax = math.max(min.abs(), max.abs());
+    if (spanMax < 1) return 1;
+    final floorVal = spanMax.floor();
+    return floorVal.toString().length;
   }
 
   void _resetHoldTimer() {

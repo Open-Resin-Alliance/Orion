@@ -29,6 +29,7 @@ Future<String?> showOrionNumericKeyboard(
   int decimalPlaces = 2,
   void Function(String)? onChanged,
   bool clearOnOpen = false,
+  int? maxIntegerDigits,
 }) {
   // Decimals are allowed whenever decimalPlaces > 0
   final allowDecimal = decimalPlaces > 0;
@@ -56,6 +57,7 @@ Future<String?> showOrionNumericKeyboard(
       allowNegative: allowNegative,
       decimalPlaces: decimalPlaces,
       onChanged: onChanged,
+      maxIntegerDigits: maxIntegerDigits,
     ),
   );
 }
@@ -386,6 +388,7 @@ class _NumericKeyboardModal extends ModalRoute<String> {
   final bool allowNegative;
   final int decimalPlaces;
   final void Function(String)? onChanged;
+  final int? maxIntegerDigits;
 
   _NumericKeyboardModal({
     required this.textController,
@@ -393,6 +396,7 @@ class _NumericKeyboardModal extends ModalRoute<String> {
     required this.allowNegative,
     required this.decimalPlaces,
     this.onChanged,
+    this.maxIntegerDigits,
   });
 
   @override
@@ -447,6 +451,7 @@ class _NumericKeyboardModal extends ModalRoute<String> {
                 allowNegative: allowNegative,
                 allowDecimal: decimalPlaces > 0,
                 decimalPlaces: decimalPlaces,
+                maxIntegerDigits: maxIntegerDigits,
                 onChanged: onChanged,
                 onReturn: () {
                   Navigator.of(context).pop(numericController.text);
@@ -490,6 +495,7 @@ class _NumericKeyboard extends StatelessWidget {
   final int decimalPlaces;
   final VoidCallback onReturn;
   final void Function(String)? onChanged;
+  final int? maxIntegerDigits;
 
   const _NumericKeyboard({
     required this.controller,
@@ -498,6 +504,7 @@ class _NumericKeyboard extends StatelessWidget {
     required this.decimalPlaces,
     required this.onReturn,
     this.onChanged,
+    this.maxIntegerDigits,
   });
 
   void _notifyChanged() {
@@ -641,6 +648,24 @@ class _NumericKeyboard extends StatelessWidget {
     final text = controller.text;
     final selection = controller.selection;
 
+    int integerDigitsCount(String value) {
+      String sanitized = value;
+      if (sanitized.startsWith('−')) {
+        sanitized = sanitized.substring(1);
+      }
+      final dotIndex = sanitized.indexOf('.');
+      if (dotIndex >= 0) {
+        return dotIndex;
+      }
+      return sanitized.length;
+    }
+
+    int fractionalDigitsCount(String value) {
+      final dotIndex = value.indexOf('.');
+      if (dotIndex < 0) return 0;
+      return value.length - dotIndex - 1;
+    }
+
     if (char == '.') {
       if (text.contains('.')) return; // Already has decimal
       if (text.isEmpty) {
@@ -648,6 +673,10 @@ class _NumericKeyboard extends StatelessWidget {
         controller.selection =
             TextSelection.fromPosition(TextPosition(offset: 2));
         _notifyChanged();
+        return;
+      }
+      // Respect integer digit cap when adding decimal to existing prefix
+      if (maxIntegerDigits != null && integerDigitsCount(text) > maxIntegerDigits!) {
         return;
       }
     }
@@ -668,8 +697,20 @@ class _NumericKeyboard extends StatelessWidget {
       return;
     }
 
-    // Handle regular digit or "00"
-    controller.text = text + char;
+    // Handle regular digit or "00", while enforcing max digits
+    String prospective = text + char;
+
+    if (maxIntegerDigits != null && integerDigitsCount(prospective) > maxIntegerDigits!) {
+      return;
+    }
+
+    if (allowDecimal && decimalPlaces > 0 && prospective.contains('.')) {
+      if (fractionalDigitsCount(prospective) > decimalPlaces) {
+        return;
+      }
+    }
+
+    controller.text = prospective;
     controller.selection =
         TextSelection.fromPosition(TextPosition(offset: controller.text.length));
     _notifyChanged();
