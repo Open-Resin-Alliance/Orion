@@ -64,6 +64,10 @@ import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 
+// Global route observer to let screens react when returning via pop
+final RouteObserver<ModalRoute<void>> appRouteObserver =
+  RouteObserver<ModalRoute<void>>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -317,6 +321,7 @@ class OrionMainAppState extends State<OrionMainApp> {
   void _initRouter() {
     _router = GoRouter(
       navigatorKey: _navKey,
+      observers: [appRouteObserver],
       routes: <RouteBase>[
         GoRoute(
           path: '/',
@@ -330,7 +335,7 @@ class OrionMainAppState extends State<OrionMainApp> {
             GoRoute(
               path: 'home',
               builder: (BuildContext context, GoRouterState state) {
-                return const HomeScreen();
+                return HomeScreen(key: UniqueKey());
               },
             ),
             GoRoute(

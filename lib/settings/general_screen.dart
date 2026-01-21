@@ -57,6 +57,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool verboseLogging;
   late bool selfDestructMode;
   late String machineName;
+  late bool quickAccessMode;
 
   late String originalRotation;
 
@@ -98,6 +99,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     verboseLogging = config.getFlag('verboseLogging', category: 'developer');
     selfDestructMode =
         config.getFlag('selfDestructMode', category: 'topsecret');
+    quickAccessMode = config.getFlag('quickAccessMode', category: 'ui');
     screenRotation = screenRotation == '' ? '0' : screenRotation;
     config.setString('screenRotation', screenRotation, category: 'advanced');
     originalRotation = screenRotation;
@@ -242,6 +244,19 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         ),
                       ),
                       const SizedBox(height: 20.0),
+                      OrionListTile(
+                        title: 'Quick Access Mode',
+                        icon: PhosphorIcons.house,
+                        value: quickAccessMode,
+                        onChanged: (bool value) {
+                          setState(() {
+                            quickAccessMode = value;
+                            config.setFlag('quickAccessMode', quickAccessMode,
+                                category: 'ui');
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12.0),
                       OrionListTile(
                         title: 'Use USB by Default',
                         icon: PhosphorIcons.usb,
