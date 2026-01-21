@@ -37,6 +37,9 @@ class OrionConfig {
   // `orion.cfg` is updated via _writeConfig(). Listeners should be
   // lightweight and avoid throwing.
   static final List<VoidCallback> _changeListeners = [];
+  // Small in-memory overrides to ensure recent writes are visible immediately
+  // across screens (helps when navigating back without a full rebuild).
+  static final Map<String, dynamic> _flagOverrides = {};
 
   /// Register a callback to be invoked after `orion.cfg` is written.
   static void addChangeListener(VoidCallback cb) {
@@ -263,6 +266,8 @@ class OrionConfig {
     if (config[category][flagName] == value) return;
 
     config[category][flagName] = value;
+    // Record override for immediate visibility across routes
+    _flagOverrides['$category.$flagName'] = value;
     _logger.config('setFlag: $flagName to $value');
 
     _writeConfig(config);
@@ -290,8 +295,23 @@ class OrionConfig {
   }
 
   bool getFlag(String flagName, {String category = 'general'}) {
+    // Prefer in-memory override when available
+    final overrideKey = '$category.$flagName';
+    if (_flagOverrides.containsKey(overrideKey)) {
+      final ov = _flagOverrides[overrideKey];
+      if (ov is bool) return ov;
+    }
+
     var config = _getConfig();
-    return config[category]?[flagName] ?? false;
+    final value = config[category]?[flagName];
+    if (value is bool) return value;
+    if (value is String) {
+      final lower = value.toLowerCase();
+      if (lower == 'true') return true;
+      if (lower == 'false') return false;
+    }
+    if (value is num) return value != 0;
+    return false;
   }
 
   String getString(String key, {String category = 'general'}) {
