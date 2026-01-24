@@ -39,13 +39,19 @@ class UpdateScreen extends StatefulWidget {
   UpdateScreenState createState() => UpdateScreenState();
 }
 
-class UpdateScreenState extends State<UpdateScreen> {
+class UpdateScreenState extends State<UpdateScreen>
+    with TickerProviderStateMixin {
   final Logger _logger = Logger('UpdateScreen');
   final OrionConfig _config = OrionConfig();
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
     // Updates are now managed by background providers (UpdateManager),
     // so we don't need to trigger checks here manually unless we want a "Refresh" button.
     // However, to ensure fresh data when visiting the screen, we can trigger a check if not already checking.
@@ -63,6 +69,12 @@ class UpdateScreenState extends State<UpdateScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
   void _viewChangelog(String releaseNotes) {
     Navigator.push(
       context,
@@ -70,6 +82,278 @@ class UpdateScreenState extends State<UpdateScreen> {
         builder: (context) => MarkdownScreen(changelog: releaseNotes),
       ),
     );
+  }
+
+  Widget _buildPulsingDialog(Widget dialog) {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final pulseValue = Curves.easeInOut.transform(_pulseController.value);
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withOpacity(0.1 + (pulseValue * 0.2)),
+                blurRadius: 20 + (pulseValue * 10),
+                spreadRadius: -15,
+                offset: const Offset(0, 0),
+              ),
+            ],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: dialog,
+        );
+      },
+    );
+  }
+
+  Future<void> _offerResetChannel(BuildContext ctx) async {
+    final resetConfirmed = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (dctx) => GlassAlertDialog(
+        title: Row(
+          children: [
+            PhosphorIcon(
+              PhosphorIcons.arrowClockwise(),
+              color: Colors.greenAccent,
+              size: 32,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Reset Update Channel',
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Would you like to switch back to the stable update channel?\n\n'
+          'This is recommended for production builds.',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(dctx).pop(false),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+            child: const Text('Keep Development Channel',
+                style: TextStyle(fontSize: 18)),
+          ),
+          GlassButton(
+            tint: GlassButtonTint.positive,
+            onPressed: () => Navigator.of(dctx).pop(true),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+            child: const Text('Reset to Stable',
+                style: TextStyle(fontSize: 18)),
+          ),
+        ],
+      ),
+    ) ??
+        false;
+
+    if (resetConfirmed) {
+      try {
+        final nano = NanoDlpHttpClient();
+        await nano.manualCommand('[[Exec echo "stable" > /home/pi/channel]]');
+        _logger.info('Update channel reset to stable');
+        
+        // Refresh AthenaOS update status to reflect the new channel
+        if (ctx.mounted) {
+          final athenaProvider = Provider.of<AthenaUpdateProvider>(ctx, listen: false);
+          await athenaProvider.checkForUpdates();
+        }
+      } catch (e) {
+        _logger.warning('Failed to reset channel: $e');
+      }
+    }
+  }
+
+  Future<bool> _showDevelopmentFirmwareWarning(BuildContext ctx) async {
+    _pulseController.repeat(reverse: true);
+    try {
+      final confirmed = await showDialog<bool>(
+            context: ctx,
+            barrierDismissible: false,
+            barrierColor: Colors.red.withOpacity(0.15),
+            builder: (dctx) => _buildPulsingDialog(
+              GlassAlertDialog(
+                title: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.warning(),
+                      color: Colors.redAccent,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Development Firmware Ahead',
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                content: const Text(
+                  'This is an unstable development build.\n'
+                  'Unexpected behavior may occur.\n'
+                  'Hardware damage is possible.\n\n'
+                  'You accept all consequences.',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
+                ),
+                actions: [
+                  GlassButton(
+                    tint: GlassButtonTint.negative,
+                    onPressed: () => Navigator.of(dctx).pop(true),
+                    style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 60)),
+                    child: const Text('I Accept',
+                        style: TextStyle(fontSize: 20)),
+                  ),
+                  GlassButton(
+                    tint: GlassButtonTint.positive,
+                    onPressed: () => Navigator.of(dctx).pop(false),
+                    style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 60)),
+                    child: const Text('Cancel',
+                        style: TextStyle(fontSize: 20)),
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          false;
+      return confirmed;
+    } finally {
+      _pulseController.stop();
+    }
+  }
+
+  Future<bool> _showSecondConfirmation(BuildContext ctx) async {
+    _pulseController.repeat(reverse: true);
+    try {
+      final confirmed = await showDialog<bool>(
+            context: ctx,
+            barrierDismissible: false,
+            barrierColor: Colors.red.withOpacity(0.15),
+            builder: (dctx) => _buildPulsingDialog(
+              GlassAlertDialog(
+                title: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.warning(),
+                      color: Colors.redAccent,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Confirm Update',
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                content: const Text(
+                  'Are you certain you want to proceed\nwith this development firmware?\n\n'
+                  'The system may become unstable or inoperable.',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
+                ),
+                actions: [
+                  GlassButton(
+                    tint: GlassButtonTint.positive,
+                    onPressed: () => Navigator.of(dctx).pop(false),
+                    style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 60)),
+                    child: const Text('Cancel',
+                        style: TextStyle(fontSize: 20)),
+                  ),
+                  GlassButton(
+                    tint: GlassButtonTint.negative,
+                    onPressed: () => Navigator.of(dctx).pop(true),
+                    style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 60)),
+                    child: const Text('Continue',
+                        style: TextStyle(fontSize: 20)),
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          false;
+      return confirmed;
+    } finally {
+      _pulseController.stop();
+    }
+  }
+
+  Future<bool> _showFinalConfirmation(BuildContext ctx) async {
+    _pulseController.repeat(reverse: true);
+    try {
+      final confirmed = await showDialog<bool>(
+            context: ctx,
+            barrierDismissible: false,
+            barrierColor: Colors.red.withOpacity(0.15),
+            builder: (dctx) => _buildPulsingDialog(
+              GlassAlertDialog(
+                title: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.warning(),
+                      color: Colors.redAccent,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Final Warning',
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                content: const Text(
+                  'This is your final warning.\n\n'
+                  'Proceeding may result in permanent hardware damage\n'
+                  'and system failure. You will not be able to recover.\n\n'
+                  'Click Cancel unless you fully accept this risk.',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                ),
+                actions: [
+                  GlassButton(
+                    tint: GlassButtonTint.negative,
+                    onPressed: () => Navigator.of(dctx).pop(true),
+                    style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 60)),
+                    child: const Text('Update Now',
+                        style: TextStyle(fontSize: 20)),
+                  ),
+                  GlassButton(
+                    tint: GlassButtonTint.positive,
+                    onPressed: () => Navigator.of(dctx).pop(false),
+                    style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 60)),
+                    child: const Text('Cancel',
+                        style: TextStyle(fontSize: 20)),
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          false;
+      return confirmed;
+    } finally {
+      _pulseController.stop();
+    }
   }
 
   Future<void> launchUpdateDialog(
@@ -138,46 +422,70 @@ class UpdateScreenState extends State<UpdateScreen> {
   }
 
   Future<void> _triggerAthenaUpdate(BuildContext ctx) async {
-    // Confirm again with the user
-    final confirmed = await showDialog<bool>(
-          context: ctx,
-          barrierDismissible: false,
-          builder: (dctx) => GlassAlertDialog(
-            title: Row(
-              children: [
-                PhosphorIcon(
-                  PhosphorIcons.download(),
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 32,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Update AthenaOS',
-                  style: TextStyle(
+    final athenaProvider = Provider.of<AthenaUpdateProvider>(ctx, listen: false);
+    final isMasterBranch = athenaProvider.channel == 'master';
+
+    bool confirmed = false;
+
+    if (isMasterBranch) {
+      // Triple confirmation for development firmware
+      if (!await _showDevelopmentFirmwareWarning(ctx)) {
+        await _offerResetChannel(ctx);
+        return;
+      }
+      if (!await _showSecondConfirmation(ctx)) {
+        await _offerResetChannel(ctx);
+        return;
+      }
+      if (!await _showFinalConfirmation(ctx)) {
+        await _offerResetChannel(ctx);
+        return;
+      }
+      confirmed = true;
+    } else {
+      // Regular confirmation for stable/beta channels
+      confirmed = await showDialog<bool>(
+            context: ctx,
+            barrierDismissible: false,
+            builder: (dctx) => GlassAlertDialog(
+              title: Row(
+                children: [
+                  PhosphorIcon(
+                    PhosphorIcons.download(),
                     color: Theme.of(context).colorScheme.primary,
+                    size: 32,
                   ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Update AthenaOS',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+              content: const Text(
+                  'Do you want to update AthenaOS?\nThis will trigger an update on the connected Athena printer.'),
+              actions: [
+                GlassButton(
+                  tint: GlassButtonTint.negative,
+                  onPressed: () => Navigator.of(dctx).pop(false),
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                  child:
+                      const Text('Dismiss', style: TextStyle(fontSize: 20)),
+                ),
+                GlassButton(
+                  tint: GlassButtonTint.positive,
+                  onPressed: () => Navigator.of(dctx).pop(true),
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                  child:
+                      const Text('Update Now', style: TextStyle(fontSize: 20)),
                 ),
               ],
             ),
-            content: const Text(
-                'Do you want to update AthenaOS?\nThis will trigger an update on the connected Athena printer.'),
-            actions: [
-              GlassButton(
-                tint: GlassButtonTint.negative,
-                onPressed: () => Navigator.of(dctx).pop(false),
-                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                child: const Text('Dismiss', style: TextStyle(fontSize: 20)),
-              ),
-              GlassButton(
-                tint: GlassButtonTint.positive,
-                onPressed: () => Navigator.of(dctx).pop(true),
-                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                child: const Text('Update Now', style: TextStyle(fontSize: 20)),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+          ) ??
+          false;
+    }
 
     if (!confirmed) return;
 
@@ -328,10 +636,13 @@ class UpdateScreenState extends State<UpdateScreen> {
                             final model =
                                 cfg.getMachineModelName().toLowerCase();
                             final isAthena = model.contains('athena');
+                            final isMasterBranch =
+                                isNano && isAthena && athenaProvider.channel == 'master';
 
                             String headerText;
                             if (isNano && isAthena) {
-                              headerText = 'AthenaOS';
+                              headerText =
+                                  isMasterBranch ? 'AthenaOS Internal' : 'AthenaOS';
                             } else {
                               headerText = 'Backend';
                             }
@@ -339,10 +650,14 @@ class UpdateScreenState extends State<UpdateScreen> {
                             return Row(
                               children: [
                                 PhosphorIcon(
-                                  isNano && isAthena
-                                      ? PhosphorIconsFill.info
-                                      : PhosphorIconsFill.info,
-                                  color: Theme.of(context).colorScheme.primary,
+                                  isMasterBranch
+                                      ? PhosphorIcons.warning()
+                                      : (isNano && isAthena
+                                          ? PhosphorIconsFill.info
+                                          : PhosphorIconsFill.info),
+                                  color: isMasterBranch
+                                      ? Colors.redAccent
+                                      : Theme.of(context).colorScheme.primary,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 10),
@@ -352,8 +667,11 @@ class UpdateScreenState extends State<UpdateScreen> {
                                     style: TextStyle(
                                       fontSize: 26,
                                       fontWeight: FontWeight.bold,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
+                                      color: isMasterBranch
+                                          ? Colors.redAccent
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .primary,
                                     ),
                                   ),
                                 ),
@@ -564,6 +882,7 @@ class UpdateScreenState extends State<UpdateScreen> {
       if (ap.updateAvailable) {
         final bool isBetaChannel =
             ap.channel.isNotEmpty && ap.channel != 'stable';
+        final bool isMasterBranch = ap.channel == 'master';
         final bool isSameVersion = ap.latestVersion.isNotEmpty &&
             ap.currentVersion.isNotEmpty &&
             ap.latestVersion == ap.currentVersion;
@@ -574,25 +893,33 @@ class UpdateScreenState extends State<UpdateScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: isBetaChannel && isSameVersion
-                    ? Colors.redAccent.withValues(alpha: 0.12)
-                    : Colors.orangeAccent.withValues(alpha: 0.2),
+                color: isMasterBranch
+                    ? Colors.redAccent.withValues(alpha: 0.2)
+                    : (isBetaChannel && isSameVersion
+                        ? Colors.redAccent.withValues(alpha: 0.12)
+                        : Colors.orangeAccent.withValues(alpha: 0.2)),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                    color: isBetaChannel && isSameVersion
+                    color: isMasterBranch
                         ? Colors.redAccent.withValues(alpha: 0.5)
-                        : Colors.orangeAccent.withValues(alpha: 0.5)),
+                        : (isBetaChannel && isSameVersion
+                            ? Colors.redAccent.withValues(alpha: 0.5)
+                            : Colors.orangeAccent.withValues(alpha: 0.5))),
               ),
               child: Text(
-                isBetaChannel && isSameVersion
-                    ? 'BETA VERSION'
-                    : 'UPDATE AVAILABLE',
+                isMasterBranch
+                    ? 'INTERNAL BUILD'
+                    : (isBetaChannel && isSameVersion
+                        ? 'BETA VERSION'
+                        : 'UPDATE AVAILABLE'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: isBetaChannel && isSameVersion
+                  color: isMasterBranch
                       ? Colors.redAccent
-                      : Colors.orangeAccent,
+                      : (isBetaChannel && isSameVersion
+                          ? Colors.redAccent
+                          : Colors.orangeAccent),
                 ),
               ),
             ),
@@ -611,12 +938,12 @@ class UpdateScreenState extends State<UpdateScreen> {
             SizedBox(
               width: double.infinity,
               child: GlassButton(
-                tint: isBetaChannel && isSameVersion
+                tint: isMasterBranch
                     ? GlassButtonTint.negative
-                    : GlassButtonTint.positive,
+                    : (isBetaChannel && isSameVersion
+                        ? GlassButtonTint.negative
+                        : GlassButtonTint.positive),
                 onPressed: () async {
-                  // For beta channels where the latest == current we label this
-                  // a "Force Update" to make it clear this isn't a normal update.
                   await _triggerAthenaUpdate(context);
                 },
                 style: ElevatedButton.styleFrom(
@@ -628,9 +955,11 @@ class UpdateScreenState extends State<UpdateScreen> {
                     const Icon(Icons.system_update_alt, size: 24),
                     const SizedBox(width: 20),
                     Text(
-                      isBetaChannel && isSameVersion
-                          ? 'Force Update'
-                          : 'Update AthenaOS',
+                      isMasterBranch
+                          ? 'Update Internal Build'
+                          : (isBetaChannel && isSameVersion
+                              ? 'Force Update'
+                              : 'Update AthenaOS'),
                       style: const TextStyle(fontSize: 20),
                     ),
                   ],
