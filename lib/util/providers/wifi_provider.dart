@@ -21,10 +21,18 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:orion/util/orion_config.dart';
+
+import 'wifi_backends/wifi_backend.dart';
+import 'wifi_backends/modern_wifi_backend.dart';
+import 'wifi_backends/legacy_wifi_backend.dart';
 
 /// Provides comprehensive WiFi management including status, scanning, and connection.
+/// Supports both modern (nmcli-based) and legacy (iwlist+wpa_supplicant) backends
+/// based on the configured wifiMode setting.
 class WiFiProvider with ChangeNotifier {
   final Logger _log = Logger('WiFiProvider');
+  late WiFiBackend _backend;
 
   String? _currentSSID;
   int? _signalStrength; // 0-100 for Linux, negative dBm for macOS
@@ -61,8 +69,68 @@ class WiFiProvider with ChangeNotifier {
 
   WiFiProvider({bool startPolling = true}) {
     _detectPlatform();
+    _initializeBackend();
     if (startPolling) {
       _startPolling();
+    }
+  }
+
+  /// Initialize the appropriate WiFi backend based on configuration
+  void _initializeBackend() {
+    try {
+      final config = OrionConfig();
+      final wifiMode = config.getString('wifiMode', category: 'advanced');
+      
+      if (wifiMode == 'legacy') {
+        _backend = LegacyWiFiBackend();
+        _log.info('Using legacy WiFi backend (iwlist + wpa_supplicant)');
+      } else {
+        _backend = ModernWiFiBackend();
+        _log.info('Using modern WiFi backend (nmcli)');
+      }
+      
+      // Inject state update callbacks into backend
+      _connectBackendCallbacks();
+    } catch (e) {
+      _log.warning('Failed to initialize backend: $e, defaulting to modern');
+      _backend = ModernWiFiBackend();
+      _connectBackendCallbacks();
+    }
+  }
+
+  /// Connect the backend's state callbacks to the provider's state fields
+  void _connectBackendCallbacks() {
+    // For Modern backend
+    if (_backend is ModernWiFiBackend) {
+      final modern = _backend as ModernWiFiBackend;
+      modern.updateState = (ssid, signal, connected, connectionType) {
+        _currentSSID = ssid;
+        _signalStrength = signal;
+        _isConnected = connected;
+        _connectionType = connectionType;
+      };
+      modern.updateIp = (ip) {
+        _ipAddress = ip;
+      };
+      modern.updateIfaceName = (name) {
+        _ifaceName = name;
+      };
+    }
+    // For Legacy backend  
+    else if (_backend is LegacyWiFiBackend) {
+      final legacy = _backend as LegacyWiFiBackend;
+      legacy.updateState = (ssid, signal, connected, connectionType) {
+        _currentSSID = ssid;
+        _signalStrength = signal;
+        _isConnected = connected;
+        _connectionType = connectionType;
+      };
+      legacy.updateIp = (ip) {
+        _ipAddress = ip;
+      };
+      legacy.updateIfaceName = (name) {
+        _ifaceName = name;
+      };
     }
   }
 
@@ -104,18 +172,8 @@ class WiFiProvider with ChangeNotifier {
     final prevLinkSpeed = _linkSpeed;
 
     try {
-      if (_platform == 'linux') {
-        await _fetchLinuxWiFiStatus();
-      } else if (_platform == 'macos') {
-        await _fetchMacOSWiFiStatus();
-      } else {
-        // Not supported on other platforms
-        _isConnected = false;
-        _currentSSID = null;
-        _signalStrength = null;
-        _ipAddress = null;
-        _connectionType = 'none';
-      }
+      // Delegate to backend implementation
+      await _backend.fetchWiFiStatus();
 
       // Determine if any of the observed fields changed
       final changed = (prevCurrentSSID != _currentSSID) ||
@@ -149,256 +207,6 @@ class WiFiProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _fetchLinuxWiFiStatus() async {
-    try {
-      // Get active connection
-      final result = await Process.run(
-        'nmcli',
-        ['-t', '-f', 'active,ssid,signal', 'dev', 'wifi'],
-      );
-
-      if (result.exitCode == 0) {
-        final lines = result.stdout.toString().split('\n');
-        final activeLine = lines.firstWhere(
-          (line) => line.startsWith('yes:'),
-          orElse: () => '',
-        );
-
-        if (activeLine.isNotEmpty) {
-          final parts = activeLine.split(':');
-          if (parts.length >= 3) {
-            _isConnected = true;
-            _connectionType = 'wifi';
-            _currentSSID = parts[1];
-            _signalStrength = int.tryParse(parts[2]) ?? 0;
-            await _fetchIPAddress();
-          } else {
-            _isConnected = false;
-            _currentSSID = null;
-            _signalStrength = null;
-            _ipAddress = null;
-          }
-        } else {
-          _isConnected = false;
-          _currentSSID = null;
-          _signalStrength = null;
-          _ipAddress = null;
-        }
-      } else {
-        _isConnected = false;
-        _currentSSID = null;
-        _signalStrength = null;
-        _ipAddress = null;
-      }
-    } catch (e) {
-      _log.fine('Error fetching Linux WiFi status: $e');
-      _isConnected = false;
-      _currentSSID = null;
-      _signalStrength = null;
-      _ipAddress = null;
-    }
-
-    // If not connected via WiFi, check for Ethernet connectivity (nmcli)
-    if (!_isConnected) {
-      try {
-        // Ask nmcli for TYPE,STATE and DEVICE so we know which iface is connected
-        final result = await Process.run(
-          'nmcli',
-          ['-t', '-f', 'TYPE,STATE,DEVICE', 'device'],
-        );
-        if (result.exitCode == 0) {
-          final lines = result.stdout.toString().split('\n');
-          for (final line in lines) {
-            if (line.startsWith('ethernet:')) {
-              final parts = line.split(':');
-              // Expect TYPE:STATE:DEVICE
-              if (parts.length >= 3 && parts[1] == 'connected') {
-                final dev = parts[2];
-                _isConnected = true;
-                _connectionType = 'ethernet';
-                _currentSSID = null;
-                _signalStrength = null;
-
-                // Record interface name and try to resolve its IP
-                _ifaceName = dev;
-                try {
-                  final interfaces = await NetworkInterface.list(
-                      type: InternetAddressType.IPv4);
-                  NetworkInterface? matching;
-                  for (final i in interfaces) {
-                    if (i.name == dev) {
-                      matching = i;
-                      break;
-                    }
-                  }
-                  // fallback to first interface if exact name not found
-                  matching ??= interfaces.isNotEmpty ? interfaces.first : null;
-                  if (matching != null && matching.addresses.isNotEmpty) {
-                    _ipAddress = matching.addresses.first.address;
-                  }
-                } catch (e) {
-                  _log.fine('Failed to resolve IP for $dev: $e');
-                }
-
-                // Populate MAC and link speed for this interface
-                await _fetchNetworkDetails(dev);
-                break;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        // nmcli may not be available; leave as not connected
-      }
-    }
-  }
-
-  Future<void> _fetchMacOSWiFiStatus() async {
-    // For macOS assume Ethernet is the active connection on developer machines
-    _isConnected = true;
-    _connectionType = 'ethernet';
-    _currentSSID = null;
-    _signalStrength = null;
-    await _fetchIPAddress();
-  }
-
-  Future<void> _fetchIPAddress() async {
-    try {
-      final interfaces =
-          await NetworkInterface.list(type: InternetAddressType.IPv4);
-      if (interfaces.isNotEmpty) {
-        final iface = interfaces.first;
-        _ifaceName = iface.name;
-        _ipAddress = iface.addresses.first.address;
-        // Try to populate MAC and link speed from system tools
-        await _fetchNetworkDetails(iface.name);
-      } else {
-        _ipAddress = null;
-      }
-    } catch (e) {
-      _log.fine('Error fetching IP address: $e');
-      _ipAddress = null;
-    }
-  }
-
-  Future<void> _fetchNetworkDetails(String iface) async {
-    _macAddress = null;
-    _linkSpeed = null;
-
-    try {
-      if (_platform == 'linux') {
-        // Try sysfs for MAC
-        try {
-          final macFile = File('/sys/class/net/$iface/address');
-          if (await macFile.exists()) {
-            _macAddress = (await macFile.readAsString()).trim();
-          }
-        } catch (e) {
-          _log.fine('Failed reading MAC from sysfs: $e');
-        }
-
-        // Try sysfs for speed (only works for ethernet interfaces, not wireless)
-        if (_connectionType == 'ethernet') {
-          try {
-            final speedFile = File('/sys/class/net/$iface/speed');
-            if (await speedFile.exists()) {
-              final val = (await speedFile.readAsString()).trim();
-              if (val.isNotEmpty && val != '-1') {
-                _linkSpeed = '$val/$val';
-              }
-            }
-          } catch (e) {
-            _log.fine('Failed reading speed from sysfs: $e');
-          }
-        }
-
-        // Fallback: try nmcli device show
-        if (_macAddress == null ||
-            (_linkSpeed == null && _connectionType == 'ethernet')) {
-          try {
-            final res =
-                await Process.run('nmcli', ['-t', 'device', 'show', iface]);
-            if (res.exitCode == 0) {
-              final out = res.stdout.toString().split('\n');
-              for (final line in out) {
-                if (line.trim().isEmpty) continue;
-                final idx = line.indexOf(':');
-                if (idx <= 0) continue;
-                final key = line.substring(0, idx).trim();
-                final val = line.substring(idx + 1).trim();
-
-                if (_macAddress == null && key == 'GENERAL.HWADDR') {
-                  _macAddress = val;
-                } else if (_linkSpeed == null &&
-                    _connectionType == 'ethernet' &&
-                    (key == 'SPEED' || key == 'GENERAL.SPEED')) {
-                  // nmcli may use SPEED or GENERAL.SPEED depending on version
-                  final sp = val.replaceAll(RegExp(r'\s+'), '');
-                  if (sp.isNotEmpty) _linkSpeed = '$sp/$sp';
-                } else if (_ipAddress == null &&
-                    key.startsWith('IP4.ADDRESS')) {
-                  // val may include CIDR, keep the address with CIDR
-                  _ipAddress = val;
-                }
-              }
-            }
-          } catch (e) {
-            _log.fine('nmcli device show failed: $e');
-          }
-        }
-
-        // If link speed still unknown for ethernet, try ethtool as a final fallback (common on Linux)
-        if (_linkSpeed == null &&
-            _platform == 'linux' &&
-            _connectionType == 'ethernet') {
-          try {
-            final eth = await Process.run('ethtool', [iface]);
-            if (eth.exitCode == 0) {
-              final lines = eth.stdout.toString().split('\n');
-              for (final l in lines) {
-                final m = RegExp(r'Speed:\s*(\d+)([A-Za-z/]+)?').firstMatch(l);
-                if (m != null) {
-                  final sp = m.group(1);
-                  if (sp != null && sp.isNotEmpty) {
-                    _linkSpeed = '$sp/$sp';
-                    break;
-                  }
-                }
-              }
-            }
-          } catch (e) {
-            // ethtool may not be installed or allowed; ignore
-          }
-        }
-      } else if (_platform == 'macos') {
-        // macOS: use ifconfig to get ether and media lines
-        try {
-          final res = await Process.run('ifconfig', [iface]);
-          if (res.exitCode == 0) {
-            final out = res.stdout.toString().split('\n');
-            for (final line in out) {
-              final trimmed = line.trim();
-              if (trimmed.startsWith('ether ') && _macAddress == null) {
-                _macAddress = trimmed.split(' ').sublist(1).join(' ').trim();
-              } else if (trimmed.startsWith('media:') && _linkSpeed == null) {
-                // media: autoselect (1000baseT <full-duplex>)
-                final m = RegExp(r"(\d+)base").firstMatch(trimmed);
-                if (m != null) {
-                  final sp = m.group(1);
-                  if (sp != null) _linkSpeed = '$sp/$sp';
-                }
-              }
-            }
-          }
-        } catch (e) {
-          _log.fine('ifconfig failed: $e');
-        }
-      }
-    } catch (e) {
-      _log.fine('Failed to fetch network details for $iface: $e');
-    }
-  }
-
   /// Scan for available WiFi networks
   Future<List<Map<String, String>>> scanNetworks() async {
     if (_platform == 'other') {
@@ -421,43 +229,10 @@ class WiFiProvider with ChangeNotifier {
           };
         });
         _availableNetworks = networks;
-      } else if (_platform == 'linux') {
-        await Process.run('sudo', ['nmcli', 'device', 'wifi', 'rescan']);
-        _log.info('Rescanning Wi-Fi networks');
-        final result = await Process.run('nmcli', ['device', 'wifi', 'list']);
-
-        if (result.exitCode == 0) {
-          final networks = <Map<String, String>>[];
-          final lines = result.stdout.toString().split('\n');
-          final pattern = RegExp(
-            r"(?:(\*)\s+)?([0-9A-Fa-f:]{17})\s+(.*?)\s+(Infra)\s+(\d+)\s+([\d\sMbit/s]+)\s+(\d+)\s+([\w▂▄▆█_]+)\s+(.*)",
-            multiLine: true,
-          );
-
-          for (int i = 2; i < lines.length; i++) {
-            final match = pattern.firstMatch(lines[i]);
-            if (match != null) {
-              networks.add({
-                'SSID': match.group(3) ?? '',
-                'SIGNAL': match.group(7) ?? '',
-                'SECURITY': match.group(9) ?? '',
-              });
-            }
-          }
-
-          // Sort: current network first, then by signal strength
-          networks.sort((a, b) {
-            if (a['SSID'] == _currentSSID) return -1;
-            if (b['SSID'] == _currentSSID) return 1;
-            return int.parse(b['SIGNAL'] ?? '0')
-                .compareTo(int.parse(a['SIGNAL'] ?? '0'));
-          });
-
-          _availableNetworks = _mergeNetworks(networks);
-        } else {
-          _log.severe('Failed to get Wi-Fi networks: ${result.stderr}');
-          _availableNetworks = [];
-        }
+      } else {
+        // Delegate to backend
+        final networks = await _backend.scanNetworks();
+        _availableNetworks = networks;
       }
     } catch (e, st) {
       _log.severe('Error scanning WiFi networks', e, st);
@@ -468,27 +243,6 @@ class WiFiProvider with ChangeNotifier {
     }
 
     return _availableNetworks;
-  }
-
-  List<Map<String, String>> _mergeNetworks(List<Map<String, String>> networks) {
-    final merged = <String, Map<String, String>>{};
-
-    for (var network in networks) {
-      final ssid = network['SSID'];
-      if (ssid == null || ssid.isEmpty) continue;
-
-      if (merged.containsKey(ssid)) {
-        final existingSignal = int.parse(merged[ssid]!['SIGNAL']!);
-        final newSignal = int.parse(network['SIGNAL']!);
-        if (newSignal > existingSignal) {
-          merged[ssid] = network;
-        }
-      } else {
-        merged[ssid] = network;
-      }
-    }
-
-    return merged.values.toList();
   }
 
   /// Connect to a WiFi network
@@ -504,25 +258,14 @@ class WiFiProvider with ChangeNotifier {
         _currentSSID = ssid;
         _isConnected = true;
         _signalStrength = -45; // Good signal
-        await _fetchIPAddress();
         await scanNetworks();
         return true;
       } else if (_platform == 'linux') {
-        final result = await Process.run(
-          'sudo',
-          ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password],
-        );
-
-        if (result.exitCode == 0) {
-          _log.info('Connected to $ssid');
-          _currentSSID = ssid;
-          await _fetchWiFiStatus();
+        final result = await _backend.connectToNetwork(ssid, password);
+        if (result) {
           await scanNetworks();
-          return true;
-        } else {
-          _log.warning('Failed to connect to $ssid: ${result.stderr}');
-          return false;
         }
+        return result;
       } else {
         _log.warning('WiFi connection not supported on this platform');
         return false;
@@ -556,14 +299,8 @@ class WiFiProvider with ChangeNotifier {
         _log.info('Fake disconnected (macOS dev mode)');
         return true;
       } else if (_platform == 'linux') {
-        // If ethernet, disconnect the actual interface; otherwise disconnect WiFi
-        final iface = _ifaceName ?? 'wlan0';
-        final result = await Process.run(
-          'sudo',
-          ['nmcli', 'device', 'disconnect', iface],
-        );
-
-        if (result.exitCode == 0) {
+        final result = await _backend.disconnect();
+        if (result) {
           _currentSSID = null;
           _signalStrength = null;
           _isConnected = false;
@@ -573,11 +310,8 @@ class WiFiProvider with ChangeNotifier {
           _linkSpeed = null;
           await scanNetworks();
           notifyListeners();
-          return true;
-        } else {
-          _log.warning('Failed to disconnect: ${result.stderr}');
-          return false;
         }
+        return result;
       } else {
         _log.warning('WiFi disconnection not supported on this platform');
         return false;
