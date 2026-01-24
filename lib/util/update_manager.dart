@@ -5,6 +5,9 @@ import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/providers/orion_update_provider.dart';
 import 'package:orion/util/orion_config.dart';
 
+/// Which update component(s) to clear pending flags for.
+enum UpdateComponent { orion, athena }
+
 class UpdateManager extends ChangeNotifier {
   final OrionUpdateProvider orionProvider;
   final AthenaUpdateProvider athenaProvider;
@@ -98,6 +101,39 @@ class UpdateManager extends ChangeNotifier {
     final remindTime = DateTime.now().add(const Duration(hours: 24));
     _config.setString('remindLater', remindTime.toIso8601String(),
         category: 'updates');
+    notifyListeners();
+  }
+
+  /// Clear pending update flags and suppress notifications.
+  /// Call this before starting an update to ensure stale notifications
+  /// don't resurface if the app restarts during the update process.
+  /// 
+  /// [components] specifies which component(s) to clear. Defaults to all.
+  void clearPendingUpdates(
+      {Set<UpdateComponent> components = const {
+        UpdateComponent.orion,
+        UpdateComponent.athena
+      }}) {
+    suppressNotifications = true;
+
+    if (components.contains(UpdateComponent.orion)) {
+      _config.setString('orion.current', '', category: 'updates');
+      _config.setString('orion.latest', '', category: 'updates');
+      _config.setString('orion.release', '', category: 'updates');
+    }
+
+    if (components.contains(UpdateComponent.athena)) {
+      _config.setString('athena.current', '', category: 'updates');
+      _config.setString('athena.latest', '', category: 'updates');
+      _config.setString('athena.channel', '', category: 'updates');
+    }
+
+    // Only clear 'available' flag if both are being cleared
+    if (components.contains(UpdateComponent.orion) &&
+        components.contains(UpdateComponent.athena)) {
+      _config.setFlag('available', false, category: 'updates');
+    }
+
     notifyListeners();
   }
 

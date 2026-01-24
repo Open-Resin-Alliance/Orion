@@ -24,6 +24,7 @@ import 'package:provider/provider.dart';
 import 'package:orion/util/providers/orion_update_provider.dart';
 import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
+import 'package:orion/util/update_manager.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/update_progress.dart';
@@ -129,6 +130,9 @@ class UpdateScreenState extends State<UpdateScreen> {
     );
 
     if (shouldUpdate) {
+      // Clear pending Orion updates before starting, in case Orion exits during process
+      final updateManager = Provider.of<UpdateManager>(context, listen: false);
+      updateManager.clearPendingUpdates(components: {UpdateComponent.orion});
       await provider.performUpdate(context, assetUrl);
     }
   }
@@ -176,6 +180,11 @@ class UpdateScreenState extends State<UpdateScreen> {
         false;
 
     if (!confirmed) return;
+
+    // Clear pending updates (both Orion and Athena, as AthenaOS may update both)
+    final updateManager = Provider.of<UpdateManager>(ctx, listen: false);
+    updateManager.clearPendingUpdates(
+        components: {UpdateComponent.orion, UpdateComponent.athena});
 
     // Pause polling to prevent connection error dialogs during update/reboot
     final statusProvider = Provider.of<StatusProvider>(ctx, listen: false);
