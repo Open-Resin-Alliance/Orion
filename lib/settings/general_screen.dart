@@ -112,14 +112,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   }
 
   bool shouldDestruct() {
+    // Always make the Self-Destruct option rare to appear,
+    // regardless of whether it has ever been toggled before.
+    // Roughly ~0.1% chance on a given build of this screen.
     final rand = Random();
-    if (selfDestructMode && rand.nextInt(1000) < 2) {
-      setState(() {
-        selfDestructMode = false;
-      });
-      return true;
-    }
-    return !selfDestructMode;
+    return rand.nextInt(1000) == 0;
   }
 
   bool isJune() {
