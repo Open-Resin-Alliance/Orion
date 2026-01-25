@@ -34,6 +34,7 @@ import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/orion_list_tile.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/thumbnail_cache.dart';
 
 class GeneralCfgScreen extends StatefulWidget {
   const GeneralCfgScreen({super.key});
@@ -934,6 +935,134 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       category: 'developer');
                 });
               },
+            ),
+            const SizedBox(height: 20.0),
+            Row(
+              children: [
+                Expanded(
+                  child: GlassButton(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 60),
+                    ),
+                    tint: GlassButtonTint.warn,
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => GlassAlertDialog(
+                              title: const Text('Clear Thumbnail Cache'),
+                              content: const Text(
+                                  'Clear all cached thumbnails from memory and disk? This will free up disk space and memory. Continue?',
+                                  style: TextStyle(fontSize: 18.0)),
+                              actions: [
+                                GlassButton(
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(0, 60),
+                                    ),
+                                    tint: GlassButtonTint.neutral,
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancel',
+                                        style: TextStyle(fontSize: 22.0))),
+                                GlassButton(
+                                    tint: GlassButtonTint.warn,
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(0, 60),
+                                    ),
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(true),
+                                    child: const Text('Clear',
+                                        style: TextStyle(fontSize: 22.0))),
+                              ],
+                            ),
+                          ) ??
+                          false;
+
+                      if (confirmed) {
+                        try {
+                          // Show clearing message
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (ctx) => const GlassAlertDialog(
+                              title: Text('Clearing Cache'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 16),
+                                  Text('Clearing thumbnail cache...',
+                                      style: TextStyle(fontSize: 18)),
+                                ],
+                              ),
+                            ),
+                          );
+
+                          // Clear the cache
+                          await ThumbnailCache.instance.clearAll();
+
+                          // Close progress dialog
+                          if (mounted) Navigator.of(context).pop();
+
+                          // Show success message
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => GlassAlertDialog(
+                                title: const Text('Success'),
+                                content: const Text(
+                                    'Thumbnail cache cleared successfully.',
+                                    style: TextStyle(fontSize: 18)),
+                                actions: [
+                                  GlassButton(
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(0, 60),
+                                    ),
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(),
+                                    child: const Text('OK',
+                                        style: TextStyle(fontSize: 22)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          // Close progress dialog if still showing
+                          if (mounted) Navigator.of(context).pop();
+
+                          // Show error message
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => GlassAlertDialog(
+                                title: const Text('Error'),
+                                content: Text(
+                                    'Failed to clear thumbnail cache: $e',
+                                    style: const TextStyle(fontSize: 18)),
+                                actions: [
+                                  GlassButton(
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(0, 60),
+                                    ),
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(),
+                                    child: const Text('OK',
+                                        style: TextStyle(fontSize: 22)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    child: const Text(
+                      'Clear Thumbnail Cache',
+                      style: TextStyle(fontSize: 22),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
