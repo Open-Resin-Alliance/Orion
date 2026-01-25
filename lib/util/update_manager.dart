@@ -71,7 +71,7 @@ class UpdateManager extends ChangeNotifier {
     ]);
 
     final available =
-        orionProvider.isUpdateAvailable || athenaProvider.updateAvailable;
+        orionProvider.isUpdateAvailable || athenaProvider.shouldNotify;
     _config.setFlag('available', available, category: 'updates');
 
     if (available) {
@@ -84,7 +84,7 @@ class UpdateManager extends ChangeNotifier {
         _config.setString('orion.release', orionProvider.release,
             category: 'updates');
       }
-      if (athenaProvider.updateAvailable) {
+      if (athenaProvider.shouldNotify) {
         _config.setString('athena.current', athenaProvider.currentVersion,
             category: 'updates');
         _config.setString('athena.latest', athenaProvider.latestVersion,
@@ -149,8 +149,8 @@ class UpdateManager extends ChangeNotifier {
   /// Returns true if an update is available, regardless of whether the user
   /// has snoozed notifications.
   bool get isUpdateAvailable {
-    // Check live providers first
-    if (orionProvider.isUpdateAvailable || athenaProvider.updateAvailable) {
+    // Check live providers first (shouldNotify excludes master branch)
+    if (orionProvider.isUpdateAvailable || athenaProvider.shouldNotify) {
       return true;
     }
     // Fallback to config (useful for startup before check completes)
@@ -186,11 +186,11 @@ class UpdateManager extends ChangeNotifier {
   }
 
   String get updateMessage {
-    if (orionProvider.isUpdateAvailable && athenaProvider.updateAvailable) {
+    if (orionProvider.isUpdateAvailable && athenaProvider.shouldNotify) {
       return 'Updates Available';
     } else if (orionProvider.isUpdateAvailable) {
       return 'Orion Update Available';
-    } else if (athenaProvider.updateAvailable) {
+    } else if (athenaProvider.shouldNotify) {
       return 'AthenaOS Update Available';
     }
     // If we only have the config flag but not the specific provider details yet,
