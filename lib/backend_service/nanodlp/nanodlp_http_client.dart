@@ -628,7 +628,11 @@ class NanoDlpHttpClient implements BackendClient {
       }
 
       final plates = await _fetchPlates();
-      final files = plates.map((p) => p.toOdysseyFileEntry()).toList();
+      // Filter out calibration plate (ID 0) before mapping to file entries
+      final files = plates
+          .where((p) => p.plateId != 0)
+          .map((p) => p.toOdysseyFileEntry())
+          .toList();
       _log.info('listItems: mapped ${files.length} files from NanoDLP payload');
       return {
         'files': files,
