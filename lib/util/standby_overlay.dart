@@ -18,6 +18,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'dart:ui' as ui;
@@ -174,6 +175,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   }
 
   Widget _buildClockDisplay(BuildContext context) {
+    final primaryFamily = defaultTargetPlatform == TargetPlatform.linux
+        ? 'AtkinsonHyperlegible'
+        : 'AtkinsonHyperlegibleNext';
+    const cjkFallback = ['AtkinsonHyperlegible', 'NotoSansSC', 'NotoSansJP', 'NotoSansKR'];
     final accentColor = Theme.of(context).colorScheme.primary;
     
     return Transform(
@@ -198,7 +203,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
           _currentTime,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontFamily: 'AtkinsonHyperlegibleNext',
+            fontFamily: primaryFamily,
+            fontFamilyFallback: cjkFallback,
             fontSize: 150,
             fontWeight: FontWeight.w500,
             color: Colors.white,
@@ -223,6 +229,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   Widget _buildProgressIndicator(BuildContext context, double progress) {
     final percentage = (progress * 100).toStringAsFixed(0);
     final primaryColor = Theme.of(context).colorScheme.primary;
+    final primaryFamily = defaultTargetPlatform == TargetPlatform.linux
+        ? 'AtkinsonHyperlegible'
+        : 'AtkinsonHyperlegibleNext';
+    const cjkFallback = ['AtkinsonHyperlegible', 'NotoSansSC', 'NotoSansJP', 'NotoSansKR'];
     
     return Stack(
       alignment: Alignment.center,
@@ -240,7 +250,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         Text(
           '$percentage%',
           style: TextStyle(
-            fontFamily: 'AtkinsonHyperlegibleNext',
+            fontFamily: primaryFamily,
+            fontFamilyFallback: cjkFallback,
             fontSize: 100,
             fontWeight: FontWeight.w500,
             color: primaryColor,

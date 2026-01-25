@@ -64,6 +64,7 @@ import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 import 'package:orion/util/standby_overlay.dart';
+import 'package:orion/util/font_probe.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -432,6 +433,18 @@ class OrionMainAppState extends State<OrionMainApp> {
                 }
                 if (_updateWatcher == null && navCtx != null) {
                   _updateWatcher = UpdateNotificationWatcher.install(navCtx);
+                }
+                // Font variation probe: enabled via ORION_FONT_PROBE=1
+                if (Platform.isLinux) {
+                  final envProbe = Platform.environment['ORION_FONT_PROBE'];
+                  if (envProbe == '1') {
+                    // Run once per boot
+                    Platform.environment['ORION_FONT_PROBE'] = '0';
+                    // ignore errors
+                    try {
+                      runFontVariationProbe(ctx);
+                    } catch (_) {}
+                  }
                 }
                 // Attach a listener to StatusProvider so we can auto-open
                 // the StatusScreen when a print becomes active (remote start).

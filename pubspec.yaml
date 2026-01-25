@@ -133,12 +133,18 @@ flutter:
           weight: 700
           style: italic
 
-    # Noto CJK fallback fonts (not checked into the repo due to size).
-    # Run `scripts/download_cjk_fonts.sh` to fetch these into assets/fonts/.
-    - family: NotoSansCJK
+    # Noto CJK fallback fonts.
+    # To maximize compatibility with embedders that have limited variable-font
+    # support (like flutter-pi), we register the three script families
+    # separately so the engine can pick whichever provides the needed glyphs.
+    - family: NotoSansSC
       fonts:
         - asset: assets/fonts/NotoSansSC-VariableFont_wght.ttf
+    - family: NotoSansJP
+      fonts:
         - asset: assets/fonts/NotoSansJP-VariableFont_wght.ttf
+    - family: NotoSansKR
+      fonts:
         - asset: assets/fonts/NotoSansKR-VariableFont_wght.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see

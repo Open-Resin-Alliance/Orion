@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 mixin Pubspec {
-  static final buildDate = DateTime.utc(2025, 10, 1, 19, 10, 15);
+  static final buildDate = DateTime.utc(2026, 1, 25, 2, 3, 59);
 
   static const name = 'orion';
 
@@ -12,17 +12,17 @@ mixin Pubspec {
 
   static const publish_to = 'none';
 
-  static const versionFull = '0.3.2+SELFCOMPILED';
+  static const versionFull = '0.4.0+SELFCOMPILED';
 
-  static const version = '0.3.2';
+  static const version = '0.4.0';
 
-  static const versionSmall = '0.3';
+  static const versionSmall = '0.4';
 
   static const versionMajor = 0;
 
-  static const versionMinor = 3;
+  static const versionMinor = 4;
 
-  static const versionPatch = 2;
+  static const versionPatch = 0;
 
   static const versionBuild = 0;
 
@@ -77,12 +77,16 @@ mixin Pubspec {
     },
     'marquee': '^2.3.0',
     'json_annotation': '^4.9.0',
+    'fl_chart': '^1.1.1',
+    'fvp': '^0.35.1',
+    'google_fonts': '^6.1.0',
   };
 
   static const dev_dependencies = <dynamic, dynamic>{
     'flutter_test': <dynamic, dynamic>{
       'sdk': 'flutter',
     },
+    'test': '^1.21.0',
     'flutter_lints': '^6.0.0',
     'build_runner': '^2.4.10',
     'json_serializable': '^6.8.0',
@@ -96,11 +100,31 @@ mixin Pubspec {
       'assets/images/opensource.svg',
       'assets/images/placeholder.png',
       'assets/images/bsod.png',
+      'assets/images/ora/open_resin_alliance_logo_darkmode.png',
+      'assets/images/concepts_3d/athena_logo.svg',
+      'assets/images/concepts_3d/c3d.svg',
+      'assets/images/concepts_3d/a2_pro_arm.svg',
+      'assets/images/concepts_3d/a2_standard_arm.svg',
+      'assets/videos/concepts_3d/athena2_regular_step1.mp4',
       'assets/scripts/set_orion_config.sh',
       'README.md',
       'CHANGELOG.md',
     ],
     'fonts': <dynamic>[
+      <dynamic, dynamic>{
+        'family': 'AtkinsonHyperlegibleNext',
+        'fonts': <dynamic>[
+          <dynamic, dynamic>{
+            'asset':
+                'assets/fonts/AtkinsonHyperlegibleNext-VariableFont_wght.ttf',
+          },
+          <dynamic, dynamic>{
+            'asset':
+                'assets/fonts/AtkinsonHyperlegibleNext-Italic-VariableFont_wght.ttf',
+            'style': 'italic',
+          },
+        ],
+      },
       <dynamic, dynamic>{
         'family': 'AtkinsonHyperlegible',
         'fonts': <dynamic>[
@@ -119,6 +143,30 @@ mixin Pubspec {
             'asset': 'assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf',
             'weight': 700,
             'style': 'italic',
+          },
+        ],
+      },
+      <dynamic, dynamic>{
+        'family': 'NotoSansSC',
+        'fonts': <dynamic>[
+          <dynamic, dynamic>{
+            'asset': 'assets/fonts/NotoSansSC-VariableFont_wght.ttf',
+          },
+        ],
+      },
+      <dynamic, dynamic>{
+        'family': 'NotoSansJP',
+        'fonts': <dynamic>[
+          <dynamic, dynamic>{
+            'asset': 'assets/fonts/NotoSansJP-VariableFont_wght.ttf',
+          },
+        ],
+      },
+      <dynamic, dynamic>{
+        'family': 'NotoSansKR',
+        'fonts': <dynamic>[
+          <dynamic, dynamic>{
+            'asset': 'assets/fonts/NotoSansKR-VariableFont_wght.ttf',
           },
         ],
       },
