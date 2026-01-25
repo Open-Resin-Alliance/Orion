@@ -21,10 +21,9 @@ import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 
 ThemeData createLightTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
-    // Use NotoSansCJK as a fallback for CJK characters so Linux displays
-    // Chinese/Japanese/Korean glyphs correctly when the primary font lacks them.
-    fontFamilyFallback: const ['NotoSansCJK'],
+    fontFamily: 'AtkinsonHyperlegibleNext',
+    // Keep classic Atkinson as secondary fallback, then CJK
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.light,
@@ -32,8 +31,8 @@ ThemeData createLightTheme(Color seedColor) {
     ),
     appBarTheme: const AppBarTheme(
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
-        fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontFamilyFallback: ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.black,
       ),
@@ -44,18 +43,20 @@ ThemeData createLightTheme(Color seedColor) {
     ),
     // Ensure the TextTheme entries include the CJK fallback
     textTheme: _withCjkFallback(const TextTheme(
-      bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
+      bodyMedium:
+        TextStyle(fontFamily: 'AtkinsonHyperlegibleNext', fontSize: 20),
       titleLarge: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontSize: 20), // For AppBar title
     )),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       selectedLabelStyle: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
-          fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontFamilyFallback: ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       unselectedLabelStyle: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
-          fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontFamilyFallback: ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
@@ -77,8 +78,8 @@ ThemeData createLightTheme(Color seedColor) {
 
 ThemeData createDarkTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
-    fontFamilyFallback: const ['NotoSansCJK'],
+    fontFamily: 'AtkinsonHyperlegibleNext',
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.dark,
@@ -86,8 +87,8 @@ ThemeData createDarkTheme(Color seedColor) {
     ),
     appBarTheme: const AppBarTheme(
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
-        fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontFamilyFallback: ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.white,
       ),
@@ -97,18 +98,20 @@ ThemeData createDarkTheme(Color seedColor) {
       iconTheme: IconThemeData(size: 30, color: Colors.white),
     ),
     textTheme: _withCjkFallback(const TextTheme(
-      bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
+      bodyMedium:
+        TextStyle(fontFamily: 'AtkinsonHyperlegibleNext', fontSize: 20),
       titleLarge: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontSize: 20), // For AppBar title
     )),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       selectedLabelStyle: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
-          fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontFamilyFallback: ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       unselectedLabelStyle: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
-          fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontFamilyFallback: ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
@@ -130,8 +133,8 @@ ThemeData createDarkTheme(Color seedColor) {
 
 ThemeData createGlassTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
-    fontFamilyFallback: const ['NotoSansCJK'],
+    fontFamily: 'AtkinsonHyperlegibleNext',
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.dark,
@@ -152,8 +155,8 @@ ThemeData createGlassTheme(Color seedColor) {
       backgroundColor: Colors.transparent,
       elevation: 0,
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
-        fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: 'AtkinsonHyperlegibleNext',
+        fontFamilyFallback: ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.white,
       ),
@@ -165,12 +168,12 @@ ThemeData createGlassTheme(Color seedColor) {
     ),
     textTheme: _withCjkFallback(const TextTheme(
       bodyMedium: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: 'AtkinsonHyperlegibleNext',
         fontSize: 20,
         color: Colors.white,
       ),
       titleLarge: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: 'AtkinsonHyperlegibleNext',
         fontSize: 20,
         color: Colors.white,
       ),
@@ -178,12 +181,12 @@ ThemeData createGlassTheme(Color seedColor) {
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Colors.transparent,
       selectedLabelStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: 'AtkinsonHyperlegibleNext',
         fontSize: 18,
         color: Colors.white,
       ),
       unselectedLabelStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: 'AtkinsonHyperlegibleNext',
         fontSize: 18,
         color: Colors.white70,
       ),
