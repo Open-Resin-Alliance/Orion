@@ -372,7 +372,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   crossAxisCount: 3,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 2.2,
+                  childAspectRatio: 2.3,
                 ),
                 itemCount: 6,
                 itemBuilder: (context, index) {
