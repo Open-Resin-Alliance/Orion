@@ -63,6 +63,7 @@ import 'package:orion/util/providers/orion_update_provider.dart';
 import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
+import 'package:orion/util/standby_overlay.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -406,9 +407,8 @@ class OrionMainAppState extends State<OrionMainApp> {
       LocaleProvider localeProvider, ThemeProvider themeProvider) {
     return GlassApp(
       child: Builder(builder: (innerCtx) {
-        // Use MaterialApp.router's builder to get a context that has
-        // MaterialLocalizations and a Navigator. Install the watcher
-        // after the first frame using that context.
+        // Build the app shell and inject the StandbyOverlay from within
+        // MaterialApp.router's builder so Directionality/Theme are available
         return MaterialApp.router(
           title: 'Orion',
           debugShowCheckedModeBanner: false,
@@ -504,7 +504,11 @@ class OrionMainAppState extends State<OrionMainApp> {
                 } catch (_) {}
               } catch (_) {}
             });
-            return child ?? const SizedBox.shrink();
+            // Wrap the built subtree with the StandbyOverlay so it can
+            // access Theme/Directionality provided by MaterialApp.
+            return StandbyOverlay(
+              child: child ?? const SizedBox.shrink(),
+            );
           },
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,
