@@ -90,65 +90,45 @@ class ThumbnailCache {
       return future;
     }
 
-    // Try to find any cached entry for the same path+size regardless of
-    // lastModified. This avoids cache misses when the provider recreates
-    // OrionApiFile instances with differing lastModified values while the
-    // file itself hasn't changed on disk. We'll return the cached bytes
-    // immediately (if not expired) and schedule a background refresh if
-    // the reported lastModified differs.
-    final prefix = '$location|${file.path}|';
-    String? foundKey;
-    for (final k in _cache.keys) {
-      if (k.startsWith(prefix) && k.endsWith('|$size')) {
-        foundKey = k;
-        break;
+    // First, try exact match with the current cache key (includes lastModified)
+    // to avoid serving stale thumbnails when files are replaced with same path.
+    final exactKey = _cacheKey(location, file, size);
+    final exactMatch = _cache[exactKey];
+    if (exactMatch != null) {
+      if (!_isExpired(exactMatch.timestamp)) {
+        // refresh LRU order by reinserting at tail
+        _cache.remove(exactKey);
+        _cache[exactKey] = exactMatch;
+        return Future.value(exactMatch.bytes);
+      } else {
+        _cache.remove(exactKey);
+        _inFlight.remove(exactKey);
       }
     }
-    if (foundKey != null) {
-      final existing = _cache.remove(foundKey);
-      if (existing != null) {
-        if (!_isExpired(existing.timestamp)) {
-          // refresh LRU order by reinserting at tail
-          _cache[foundKey] = existing;
 
-          // If the cached entry's lastModified differs from the current
-          // file.lastModified, schedule a background refresh so we update
-          // the cache without delaying the UI.
-          try {
-            final parts = foundKey.split('|');
-            int existingLm = 0;
-            if (parts.length >= 3) {
-              existingLm = int.tryParse(parts[2]) ?? 0;
-            }
-            final currentLm = file.lastModified ?? 0;
-            if (currentLm != 0 && existingLm != currentLm) {
-              final newKey = _cacheKey(location, file, size);
-              if (!_inFlight.containsKey(newKey)) {
-                // start but don't await
-                _inFlight[newKey] = ThumbnailUtil.extractThumbnailBytes(
-                  location,
-                  subdirectory,
-                  fileName,
-                  size: size,
-                ).then<Uint8List?>((bytes) {
-                  _store(newKey, bytes);
-                  _inFlight.remove(newKey);
-                  return bytes;
-                }).catchError((_, __) {
-                  _inFlight.remove(newKey);
-                  return null;
-                });
-              }
-            }
-          } catch (_) {
-            // ignore parsing errors and continue returning cached bytes
-          }
-
-          // Intentionally suppress memory-load debug logs to keep runtime logs concise.
-
-          return Future.value(existing.bytes);
+    // Fallback: Try to find cached entries for same path+size with different
+    // lastModified. This handles the case where the provider recreates
+    // OrionApiFile instances with slightly different lastModified values
+    // (e.g., millisecond precision differences) while the file content
+    // hasn't actually changed. Only use this as a fallback if the exact
+    // match above failed, and only if lastModified is zero or very small
+    // (indicating the file's actual mtime might not be reliably available).
+    if ((file.lastModified ?? 0) == 0) {
+      final prefix = '$location|${file.path}|';
+      String? fallbackKey;
+      for (final k in _cache.keys) {
+        if (k.startsWith(prefix) && k.endsWith('|$size')) {
+          fallbackKey = k;
+          break;
         }
-        _inFlight.remove(foundKey);
+      }
+      if (fallbackKey != null) {
+        final fallback = _cache[fallbackKey];
+        if (fallback != null && !_isExpired(fallback.timestamp)) {
+          _cache.remove(fallbackKey);
+          _cache[fallbackKey] = fallback;
+          return Future.value(fallback.bytes);
+        }
       }
     }
 
@@ -542,45 +522,79 @@ class ThumbnailCache {
   Future<Uint8List?> _readFromDiskIfFresh(
       String location, OrionApiFile file, String size) async {
     try {
-      final keyPrefix = '$location|${file.path}|';
-      // Attempt to find any matching disk entry for this path+size.
+      // First, try exact key match (includes lastModified) to avoid
+      // serving stale disk cache entries when files are replaced.
+      final exactKey = _cacheKey(location, file, size);
       final dir = await _ensureDiskCacheDir();
-      final candidates = dir.listSync().whereType<File>();
-      for (final f in candidates) {
-        final decoded = Uri.decodeComponent(p.basename(f.path));
-        if (decoded.startsWith(keyPrefix) && decoded.endsWith('|$size')) {
-          try {
-            // If TTL is enabled, check file age and treat as stale if older
-            // than configured TTL. Stale files are scheduled for deletion
-            // asynchronously and ignored for serving.
-            if (_diskEntryTtl != null) {
-              try {
-                final mtime = f.lastModifiedSync();
-                if (DateTime.now().difference(mtime) > _diskEntryTtl!) {
-                  // schedule background deletion of the stale file
-                  scheduleMicrotask(() async {
-                    try {
-                      await f.delete();
-                    } catch (_) {
-                      // ignore deletion errors
-                    }
-                  });
-                  // skip this file and continue searching
+      final exactKeyEncoded = Uri.encodeComponent(exactKey);
+      final exactFile = File(p.join(dir.path, exactKeyEncoded));
+      
+      if (await exactFile.exists()) {
+        try {
+          if (_diskEntryTtl != null) {
+            final mtime = exactFile.lastModifiedSync();
+            if (DateTime.now().difference(mtime) > _diskEntryTtl!) {
+              // stale file, delete and continue
+              scheduleMicrotask(() async {
+                try {
+                  await exactFile.delete();
+                } catch (_) {}
+              });
+            } else {
+              // Fresh exact match found
+              return await exactFile.readAsBytes();
+            }
+          } else {
+            // No TTL, return the exact match
+            return await exactFile.readAsBytes();
+          }
+        } catch (e, st) {
+          _log.fine('Failed to read exact thumbnail from disk: $e', e, st);
+        }
+      }
+
+      // Fallback: Search for entries with same path+size but different lastModified.
+      // This handles cases where file lastModified isn't reliably available (zero value).
+      // Only use this if current file's lastModified is zero/unavailable.
+      if ((file.lastModified ?? 0) == 0) {
+        final keyPrefix = '$location|${file.path}|';
+        final candidates = dir.listSync().whereType<File>();
+        for (final f in candidates) {
+          final decoded = Uri.decodeComponent(p.basename(f.path));
+          if (decoded.startsWith(keyPrefix) && decoded.endsWith('|$size')) {
+            try {
+              // If TTL is enabled, check file age and treat as stale if older
+              // than configured TTL. Stale files are scheduled for deletion
+              // asynchronously and ignored for serving.
+              if (_diskEntryTtl != null) {
+                try {
+                  final mtime = f.lastModifiedSync();
+                  if (DateTime.now().difference(mtime) > _diskEntryTtl!) {
+                    // schedule background deletion of the stale file
+                    scheduleMicrotask(() async {
+                      try {
+                        await f.delete();
+                      } catch (_) {
+                        // ignore deletion errors
+                      }
+                    });
+                    // skip this file and continue searching
+                    continue;
+                  }
+                } catch (_) {
+                  // If we cannot stat the file, skip it and continue
                   continue;
                 }
-              } catch (_) {
-                // If we cannot stat the file, skip it and continue
-                continue;
               }
-            }
 
-            final bytes = await f.readAsBytes();
-            return bytes;
-          } catch (e, st) {
-            _log.fine(
-                'Failed to read thumbnail from disk ${f.path}: $e', e, st);
-            // continue searching other candidates
-            continue;
+              final bytes = await f.readAsBytes();
+              return bytes;
+            } catch (e, st) {
+              _log.fine(
+                  'Failed to read thumbnail from disk ${f.path}: $e', e, st);
+              // continue searching other candidates
+              continue;
+            }
           }
         }
       }
