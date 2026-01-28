@@ -190,7 +190,7 @@ class AboutScreenState extends State<AboutScreen> {
             applicationLegalese:
                 'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
             applicationIcon: Image.asset(
-              'assets/images/open_resin_alliance_logo_darkmode.png',
+              'assets/images/ora/open_resin_alliance_logo_darkmode.png',
               width: 100,
               height: 100,
               fit: BoxFit.contain,

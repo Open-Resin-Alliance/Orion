@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -59,6 +60,81 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
 
   ThermalState? _lastThermalState;
 
+  // State for debouncing WiFi status
+  bool _dispConnected = false;
+  String _dispType = 'none';
+  int? _dispSignal;
+  String _dispPlatform = 'unknown';
+  Timer? _holdTimer;
+  WiFiProvider? _wifiProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    try {
+      final provider = context.read<WiFiProvider>();
+      if (_wifiProvider != provider) {
+        _wifiProvider?.removeListener(_onProviderUpdate);
+        _wifiProvider = provider;
+        _wifiProvider?.addListener(_onProviderUpdate);
+        _onProviderUpdate();
+      }
+    } catch (_) {
+      // Provider might not be available in tests
+    }
+  }
+
+  @override
+  void dispose() {
+    _wifiProvider?.removeListener(_onProviderUpdate);
+    _holdTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onProviderUpdate() {
+    if (!mounted || _wifiProvider == null) return;
+    final provider = _wifiProvider!;
+    final realConnected = provider.isConnected;
+
+    if (realConnected) {
+      _holdTimer?.cancel();
+      _holdTimer = null;
+      // Update if changed
+      if (!_dispConnected ||
+          _dispType != provider.connectionType ||
+          _dispSignal != provider.signalStrength ||
+          _dispPlatform != provider.platform) {
+        setState(() {
+          _dispConnected = true;
+          _dispType = provider.connectionType;
+          _dispSignal = provider.signalStrength;
+          _dispPlatform = provider.platform;
+        });
+      }
+    } else {
+      // Provider reports disconnected
+      if (_dispConnected) {
+        // Currently showing connected - hold it for a bit
+        _holdTimer ??= Timer(const Duration(seconds: 10), () {
+          if (mounted) {
+            setState(() {
+              _dispConnected = false;
+              _dispType = 'none';
+            });
+          }
+        });
+      } else {
+        // Already showing disconnected - ensure state matches
+        if (_dispConnected) {
+          setState(() {
+            _dispConnected = false;
+            _dispType = 'none';
+          });
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     AnalyticsProvider? analyticsProvider;
@@ -71,29 +147,12 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
       analyticsProvider = null;
     }
     final statusProvider = context.watch<StatusProvider>();
-    // Select only the specific WiFiProvider fields we care about so the
-    // widget only rebuilds when these values actually change. This avoids
-    // flicker caused by frequent provider notifications that don't change
-    // the semantic network status.
-    bool wifiConnected = false;
-    int? signalStrength;
-    String platform = '';
-    String connectionType = '';
-    try {
-      wifiConnected = context.select<WiFiProvider, bool>((p) => p.isConnected);
-      signalStrength =
-          context.select<WiFiProvider, int?>((p) => p.signalStrength);
-      platform = context.select<WiFiProvider, String>((p) => p.platform);
-      connectionType =
-          context.select<WiFiProvider, String>((p) => p.connectionType);
-    } catch (_) {
-      // In some test harnesses WiFiProvider isn't installed. Fall back to
-      // safe defaults so the widget can still be built in isolation.
-      wifiConnected = false;
-      signalStrength = null;
-      platform = '';
-      connectionType = '';
-    }
+
+    // Use debounced state variables
+    final wifiConnected = _dispConnected;
+    final signalStrength = _dispSignal;
+    final platform = _dispPlatform;
+    final connectionType = _dispType;
 
     // Get current and target temperature from analytics (if available)
     final currentTemp = analyticsProvider?.getLatestForKey('TemperatureInside');

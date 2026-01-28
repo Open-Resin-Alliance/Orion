@@ -49,7 +49,7 @@ class GlassThemeSelector extends StatelessWidget {
     super.key,
     required this.selectedTheme,
     required this.onThemeChanged,
-    this.padding = const EdgeInsets.all(16.0),
+    this.padding = const EdgeInsets.all(0.0),
   });
 
   @override

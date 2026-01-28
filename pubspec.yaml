@@ -17,7 +17,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.3.2+SELFCOMPILED
+version: 0.4.0+SELFCOMPILED
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
@@ -71,6 +71,9 @@ dependencies:
   marquee: ^2.3.0
   json_annotation: ^4.9.0
   fl_chart: ^1.1.1
+  # video_player: ^2.10.1
+  fvp: ^0.35.1
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -103,14 +106,22 @@ flutter:
     - assets/images/opensource.svg
     - assets/images/placeholder.png
     - assets/images/bsod.png
-    - assets/images/open_resin_alliance_logo_darkmode.png
-    - assets/images/athena_logo.svg
-    - assets/images/c3d.svg
+    - assets/images/ora/open_resin_alliance_logo_darkmode.png
+    - assets/images/concepts_3d/athena_logo.svg
+    - assets/images/concepts_3d/c3d.svg
+    - assets/images/concepts_3d/a2_pro_arm.svg
+    - assets/images/concepts_3d/a2_standard_arm.svg
+    - assets/videos/concepts_3d/athena2_regular_step1.mp4
     - assets/scripts/set_orion_config.sh
     - README.md
     - CHANGELOG.md
 
   fonts:
+    - family: AtkinsonHyperlegibleNext
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-VariableFont_wght.ttf
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-Italic-VariableFont_wght.ttf
+          style: italic
     - family: AtkinsonHyperlegible
       fonts:
         - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
@@ -121,6 +132,14 @@ flutter:
         - asset: assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf
           weight: 700
           style: italic
+
+    # Noto CJK fallback fonts (not checked into the repo due to size).
+    # Run `scripts/download_cjk_fonts.sh` to fetch these into assets/fonts/.
+    - family: NotoSansCJK
+      fonts:
+        - asset: assets/fonts/NotoSansSC-VariableFont_wght.ttf
+        - asset: assets/fonts/NotoSansJP-VariableFont_wght.ttf
+        - asset: assets/fonts/NotoSansKR-VariableFont_wght.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

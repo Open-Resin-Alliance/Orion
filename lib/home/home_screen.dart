@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -29,6 +30,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/update_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,6 +42,20 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   final OrionConfig _config = OrionConfig();
   bool isRemote = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Safety check: Ensure the status screen flag is cleared when we land on Home.
+    // This prevents the update dialog from being permanently suppressed if the
+    // status screen didn't clean up properly.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<StatusProvider>(context, listen: false)
+            .setStatusScreenOpen(false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,9 +175,83 @@ class HomeScreenState extends State<HomeScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: AppBar(
-          title: Text(
-            _config.getString('machineName', category: 'machine'),
-            textAlign: TextAlign.center,
+          title: Consumer<UpdateManager>(
+            builder: (context, updateManager, child) {
+              final machineName =
+                  _config.getString('machineName', category: 'machine');
+
+              // Match DetailScreen styling logic
+              final baseFontSize =
+                  (Theme.of(context).appBarTheme.titleTextStyle?.fontSize ??
+                          14) -
+                      10;
+
+              if (updateManager.isUpdateAvailable) {
+                return GestureDetector(
+                  onTap: () => context.go('/updates'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        machineName,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .appBarTheme
+                            .titleTextStyle
+                            ?.copyWith(
+                              fontSize: baseFontSize,
+                              fontWeight: FontWeight.normal,
+                              color: Theme.of(context)
+                                  .appBarTheme
+                                  .titleTextStyle
+                                  ?.color
+                                  ?.withValues(alpha: 0.95),
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      GlassCard(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        accentColor: Colors.orangeAccent,
+                        accentOpacity: 0.15,
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 2.0),
+                          child: Text(
+                            updateManager.updateMessage,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                    .appBarTheme
+                                    .titleTextStyle
+                                    ?.copyWith(
+                                      fontSize: baseFontSize - 2,
+                                      fontWeight: FontWeight.normal,
+                                      color: Colors.orangeAccent,
+                                    ) ??
+                                TextStyle(
+                                  fontSize: baseFontSize - 2,
+                                  fontWeight: FontWeight.normal,
+                                  color: Colors.orangeAccent,
+                                ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return Text(
+                machineName,
+                textAlign: TextAlign.center,
+              );
+            },
           ),
           centerTitle: true,
           leadingWidth: 120,

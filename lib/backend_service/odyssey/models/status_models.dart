@@ -38,6 +38,8 @@ class StatusModel {
   final bool? finished;
   @JsonKey(name: 'print_data')
   final PrintData? printData;
+  @JsonKey(name: 'prev_layer_seconds')
+  final double? prevLayerSeconds;
   @JsonKey(name: 'physical_state')
   final PhysicalState physicalState;
 
@@ -49,6 +51,7 @@ class StatusModel {
     this.pauseLatched,
     this.finished,
     required this.printData,
+    this.prevLayerSeconds,
     required this.physicalState,
   });
 
@@ -66,10 +69,21 @@ class StatusModel {
 
   /// Print progress as 0.0 – 1.0 based on current [layer] and total layer count.
   double get progress {
+    // If no layer information, we have no progress to report.
     if (layer == null) return 0;
     final total = printData?.layerCount;
     if (total == null || total == 0) return 0;
-    return layer!.clamp(0, total) / total;
+
+    // If the backend explicitly marked the job finished (or the model
+    // reports an idle state with a final layer), report full progress.
+    if (finished == true || (isIdle && layer != null)) return 1.0;
+
+    // The reported `layer` is the index of the layer currently being
+    // processed. The completed layer count is therefore `layer - 1`.
+    // Use completed/total so the in-progress layer does not count as
+    // a finished layer in the percentage calculation.
+    final completed = (layer! - 1).clamp(0, total);
+    return completed / total;
   }
 
   /// Elapsed print time as reported by backend (converted to [Duration]).

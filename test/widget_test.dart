@@ -15,7 +15,6 @@
 * limitations under the License.
 */
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orion/home/startup_gate.dart';
 

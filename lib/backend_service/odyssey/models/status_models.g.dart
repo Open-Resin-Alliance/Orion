@@ -16,6 +16,7 @@ StatusModel _$StatusModelFromJson(Map<String, dynamic> json) => StatusModel(
       printData: json['print_data'] == null
           ? null
           : PrintData.fromJson(json['print_data'] as Map<String, dynamic>),
+      prevLayerSeconds: (json['prev_layer_seconds'] as num?)?.toDouble(),
       physicalState: PhysicalState.fromJson(
           json['physical_state'] as Map<String, dynamic>),
     );
@@ -29,6 +30,7 @@ Map<String, dynamic> _$StatusModelToJson(StatusModel instance) =>
       'pause_latched': instance.pauseLatched,
       'finished': instance.finished,
       'print_data': instance.printData?.toJson(),
+      'prev_layer_seconds': instance.prevLayerSeconds,
       'physical_state': instance.physicalState.toJson(),
     };
 

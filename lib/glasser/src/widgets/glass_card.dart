@@ -70,41 +70,109 @@ class GlassCard extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     if (!themeProvider.isGlassTheme) {
-      // For non-glass theme, if an accent color is provided, render a bordered
-      // wrapper so the accent is visible regardless of the theme.
-      final card = outlined
-          ? Card.outlined(
-              margin: margin,
-              color: color,
-              elevation: elevation,
-              shape: shape,
-              child: child,
-            )
-          : Card(
-              margin: margin,
-              color: color,
-              elevation: elevation,
-              shape: shape,
-              child: child,
-            );
+      // For non-glass theme, prefer to apply the accent color to the Card's
+      // existing border (shape side) so the accent tints the card edge rather
+      // than adding a separate outer border which looks visually detached.
+      ShapeBorder? effectiveShape = shape;
 
       if (accentColor != null) {
-        final borderRadius = (shape is RoundedRectangleBorder &&
+        // Determine a sensible border radius to preserve the caller's shape
+        // when possible, otherwise fall back to the standard corner radius.
+        final BorderRadius resolvedRadius = (shape is RoundedRectangleBorder &&
                 (shape as RoundedRectangleBorder).borderRadius is BorderRadius)
             ? (shape as RoundedRectangleBorder).borderRadius as BorderRadius
             : BorderRadius.circular(glassCornerRadius);
 
-        // Use a softer border width consistent with GlassButton's material
-        // styling so material and glass variants match visually.
-        return Container(
-          margin: margin ?? const EdgeInsets.all(4.0),
-          decoration: BoxDecoration(
-            borderRadius: borderRadius,
-            border: Border.all(color: accentColor!, width: 1.4),
-          ),
-          child: card,
+        if (shape == null || shape is RoundedRectangleBorder) {
+          // If there is no custom shape or it's a RoundedRectangleBorder,
+          // construct a RoundedRectangleBorder that includes a stroked side so
+          // the accent color appears as the card's border.
+          effectiveShape = RoundedRectangleBorder(
+            borderRadius: resolvedRadius,
+            side: BorderSide(color: accentColor!, width: 1.4),
+          );
+        } else {
+          // If the provided shape is not a RoundedRectangleBorder we can't
+          // reliably inject a side. Fall back to wrapping with a container
+          // border (previous behavior) so we still show the accent.
+          final card = outlined
+              ? Card.outlined(
+                  margin: margin ?? const EdgeInsets.all(4.0),
+                  color: color,
+                  elevation: elevation,
+                  shape: shape,
+                  child: child,
+                )
+              : Card(
+                  margin: margin ?? const EdgeInsets.all(4.0),
+                  color: color,
+                  elevation: elevation,
+                  shape: shape,
+                  child: child,
+                );
+
+          return Container(
+            margin: margin ?? const EdgeInsets.all(4.0),
+            decoration: BoxDecoration(
+              borderRadius: resolvedRadius,
+              border: Border.all(color: accentColor!, width: 1.4),
+            ),
+            child: card,
+          );
+        }
+      }
+
+      // Compose a child that includes a subtly tinted overlay when an accent
+      // color is present. The overlay is placed inside the Card and the Card
+      // is clipped to the same shape so the tint stays within the card bounds
+      // and doesn't paint outside or over the card's border.
+      Widget cardInner = child;
+      if (accentColor != null) {
+        // Resolve a borderRadius matching the Card shape so the inner tint is
+        // clipped and matches the rounded corners of the card.
+        BorderRadius innerBorderRadius =
+            BorderRadius.circular(glassCornerRadius);
+        if (effectiveShape is RoundedRectangleBorder) {
+          final rrb = effectiveShape;
+          if (rrb.borderRadius is BorderRadius) {
+            innerBorderRadius = rrb.borderRadius as BorderRadius;
+          }
+        }
+
+        cardInner = Stack(
+          children: [
+            child,
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: accentColor!.withValues(alpha: accentOpacity),
+                    borderRadius: innerBorderRadius,
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       }
+
+      final card = outlined
+          ? Card.outlined(
+              margin: margin ?? const EdgeInsets.all(4.0),
+              color: color,
+              elevation: elevation,
+              shape: effectiveShape,
+              clipBehavior: Clip.antiAlias,
+              child: cardInner,
+            )
+          : Card(
+              margin: margin ?? const EdgeInsets.all(4.0),
+              color: color,
+              elevation: elevation,
+              shape: effectiveShape,
+              clipBehavior: Clip.antiAlias,
+              child: cardInner,
+            );
 
       return card;
     }

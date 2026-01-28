@@ -22,6 +22,8 @@ import 'package:orion/materials/heater_screen.dart';
 import 'package:orion/materials/resins_screen.dart';
 import 'package:orion/materials/calibration_screen.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/util/orion_config.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class MaterialsScreen extends StatefulWidget {
@@ -52,42 +54,58 @@ class MaterialsScreenState extends State<MaterialsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cfg = OrionConfig();
+    final hasVat = cfg.hasHeatedVat();
+    final hasChamber = cfg.hasHeatedChamber();
+
+    // Build tabs dynamically. If neither heater is present, hide the
+    // Heaters tab entirely.
+    final List<Widget> screens = [];
+    final List<BottomNavigationBarItem> items = [];
+
+    if (hasVat || hasChamber) {
+      screens.add(const HeaterScreen());
+      items.add(BottomNavigationBarItem(
+        icon: PhosphorIcon(PhosphorIcons.thermometer()),
+        activeIcon: PhosphorIcon(PhosphorIconsFill.thermometer,
+            color: Theme.of(context).colorScheme.primary),
+        label: 'Heaters',
+      ));
+    }
+
+    screens.add(const ResinsScreen());
+    items.add(BottomNavigationBarItem(
+      icon: PhosphorIcon(PhosphorIcons.flask()),
+      activeIcon: PhosphorIcon(PhosphorIconsFill.flask,
+          color: Theme.of(context).colorScheme.primary),
+      label: 'Resins',
+    ));
+
+    screens.add(const CalibrationScreen());
+    items.add(BottomNavigationBarItem(
+      icon: PhosphorIcon(PhosphorIcons.hourglassHigh()),
+      activeIcon: PhosphorIcon(PhosphorIconsFill.hourglassLow,
+          color: Theme.of(context).colorScheme.primary),
+      label: 'Calibration',
+    ));
+
+    // Ensure selected index is within bounds
+    if (_selectedIndex >= screens.length) _selectedIndex = 0;
+
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
+        appBar: OrionAppBar(
           title: const Text('Materials'),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: const [SystemStatusWidget()],
         ),
-        body: _selectedIndex == 0
-            ? const HeaterScreen()
-            : _selectedIndex == 1
-                ? const ResinsScreen()
-                : const CalibrationScreen(),
+        body: screens[_selectedIndex],
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
-          items: <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.thermometer()),
-              activeIcon: PhosphorIcon(PhosphorIconsFill.thermometer,
-                  color: Theme.of(context).colorScheme.primary),
-              label: 'Heaters',
-            ),
-            BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.flask()),
-              activeIcon: PhosphorIcon(PhosphorIconsFill.flask,
-                  color: Theme.of(context).colorScheme.primary),
-              label: 'Resins',
-            ),
-            BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.scales()),
-              activeIcon: PhosphorIcon(PhosphorIconsFill.scales,
-                  color: Theme.of(context).colorScheme.primary),
-              label: 'Calibration',
-            ),
-          ],
+          items: items,
           currentIndex: _selectedIndex,
           selectedItemColor: Theme.of(context).colorScheme.primary,
-          onTap: _onItemTapped,
+          onTap: (idx) => _onItemTapped(idx),
           unselectedItemColor: Theme.of(context).colorScheme.secondary,
         ),
       ),

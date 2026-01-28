@@ -23,6 +23,7 @@ import 'package:flutter/services.dart';
 
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
@@ -38,7 +39,8 @@ import 'package:orion/util/providers/wifi_provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final int initialIndex;
+  const SettingsScreen({super.key, this.initialIndex = 0});
 
   @override
   SettingsScreenState createState() => SettingsScreenState();
@@ -58,6 +60,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
     needsRestart = config.getFlag('needsRestart', category: 'internal');
     _wifiScreenFuture = _initializeWifiScreen();
   }
@@ -253,8 +256,9 @@ class SettingsScreenState extends State<SettingsScreen> {
       },
       child: GlassApp(
         child: Scaffold(
-          appBar: AppBar(
+          appBar: OrionAppBar(
             title: const Text('Settings'),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
             actions: <Widget>[
               SystemStatusWidget(),
             ],

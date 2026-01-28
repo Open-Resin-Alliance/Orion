@@ -23,10 +23,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:orion/util/install_locator.dart';
 
 class OrionConfig {
   final _logger = Logger('OrionConfig');
   late final String _configPath;
+  // Cache the detected config path so repeated instantiations (common in
+  // providers during app startup) don't repeatedly probe the filesystem and
+  // spam the logs. This is safe because config path is global for a running
+  // runtime instance and is inexpensive to validate if needed.
+  static String? _cachedConfigPath;
   // Simple change listener registry so other services can react when
   // `orion.cfg` is updated via _writeConfig(). Listeners should be
   // lightweight and avoid throwing.
@@ -43,8 +49,197 @@ class OrionConfig {
   }
 
   OrionConfig() {
-    _configPath = Platform.environment['ORION_CFG'] ?? '.';
+    // If we've already detected the config path in a previous instance,
+    // reuse it to avoid repeated filesystem probes and logging spam.
+    if (_cachedConfigPath != null) {
+      _configPath = _cachedConfigPath!;
+      return;
+    }
+    // Try a more deterministic approach first: locate the directory that
+    // contains the application shared-object / engine binary (e.g. app.so,
+    // libapp.so, or the packaged `orion` binary). This is more reliable
+    // than relying solely on the flutter-pi runtime CWD because installers
+    // typically place the engine and packaged vendor files next to each
+    // other.
+    try {
+      final engineDir = findEngineDir();
+      if (engineDir != null && engineDir.isNotEmpty) {
+        // If the engine dir looks promising, prefer it, but only return
+        // immediately when we can confirm a config file is located either
+        // in that directory or adjacent (one level up) or as a root-level
+        // file like /opt/orion.cfg. Many installers place shared files in
+        // the parent of the engine dir (for example engineDir=="/opt/orion"
+        // while config is "/opt/orion.cfg"). Attempt those checks first
+        // to avoid prematurely returning a directory that doesn't contain
+        // our config files.
+        final engineConfig = path.join(engineDir, 'orion.cfg');
+        final engineVendor = path.join(engineDir, 'vendor.cfg');
+        final parentDir = path.dirname(engineDir);
+        final parentConfig = path.join(parentDir, 'orion.cfg');
+        final parentVendor = path.join(parentDir, 'vendor.cfg');
+        final rootCandidateConfig = path.join('/opt', 'orion.cfg');
+        final rootCandidateVendor = path.join('/opt', 'vendor.cfg');
+
+        if (File(engineConfig).existsSync() ||
+            File(engineVendor).existsSync()) {
+          _configPath = engineDir;
+          _cachedConfigPath = _configPath;
+          _logger.fine('OrionConfig: located engine dir -> $_configPath');
+          return;
+        }
+
+        if (File(parentConfig).existsSync() ||
+            File(parentVendor).existsSync()) {
+          _configPath = parentDir;
+          _cachedConfigPath = _configPath;
+          _logger.fine(
+              'OrionConfig: found config adjacent to engine -> $_configPath');
+          return;
+        }
+
+        if (File(rootCandidateConfig).existsSync() ||
+            File(rootCandidateVendor).existsSync()) {
+          _configPath = '/opt';
+          _cachedConfigPath = _configPath;
+          _logger.fine('OrionConfig: found /opt config file; using /opt');
+          return;
+        }
+
+        // If none of the above config files exist, fall through to the
+        // autodetection logic below but keep the engineDir as a candidate
+        // to be searched later.
+        _logger.fine('OrionConfig: engine dir probe found $engineDir; '
+            'no adjacent config file, will continue autodetection');
+        // add engineDir as a candidate by setting a temporary variable that
+        // will be used below when building candidates list
+        // (we'll re-call _findEngineDir indirectly by using execDir below).
+      }
+    } catch (e) {
+      _logger.fine('OrionConfig: engine dir probe failed: $e');
+    }
+    // Attempt to determine the correct on-disk location for orion.cfg/vendor.cfg
+    // Priority:
+    // 1. ORION_CFG env var (can be a directory or a full path to a .cfg file)
+    // 2. Look for common install/config locations relative to the executable,
+    //    script, HOME, and known install prefixes like /opt and /home/pi
+    // 3. Fallback to current working directory
+    String? envPath = Platform.environment['ORION_CFG'];
+    if (envPath != null && envPath.isNotEmpty) {
+      try {
+        // If user provided a full path to a config file, use its directory
+        if (envPath.endsWith('.cfg') && File(envPath).existsSync()) {
+          _configPath = path.dirname(envPath);
+          _cachedConfigPath = _configPath;
+          return;
+        }
+        // Otherwise assume it's a directory
+        _configPath = envPath;
+        return;
+      } catch (_) {
+        // Ignore and fall through to autodetection
+      }
+    }
+
+    // Candidate directories to search for orion.cfg
+    final candidates = <String>[];
+
+    // If engine dir probe produced nothing earlier, we still want to add a
+    // second-chance engine-dir candidate using resolvedExecutable's parent
+    // so later vendor.cfg/orion.cfg checks can find packaged files.
+    try {
+      final execDir = path.dirname(Platform.resolvedExecutable);
+      if (execDir.isNotEmpty && !candidates.contains(execDir))
+        candidates.add(execDir);
+    } catch (_) {}
+
+    try {
+      // Current working directory
+      candidates.add(Directory.current.path);
+    } catch (_) {}
+
+    try {
+      // Directory containing the running executable (useful for packaged installs)
+      final execDir = path.dirname(Platform.resolvedExecutable);
+      if (execDir.isNotEmpty) candidates.add(execDir);
+    } catch (_) {}
+
+    try {
+      // Directory containing the script (Dart VM)
+      final scriptDir = path.dirname(Platform.script.toFilePath());
+      if (scriptDir.isNotEmpty) candidates.add(scriptDir);
+    } catch (_) {}
+
+    // Common system locations
+    candidates.add('/opt');
+    final home = Platform.environment['HOME'];
+    if (home != null && home.isNotEmpty) candidates.add(home);
+    candidates.add('/home/pi');
+
+    // Also consider some absolute config file locations that are commonly used
+    final candidateFiles = <String>[];
+    for (final d in candidates) {
+      candidateFiles.add(path.join(d, 'orion.cfg'));
+    }
+    // Also check root-level installer locations like /opt/orion.cfg and /home/pi/orion.cfg
+    candidateFiles.add('/opt/orion.cfg');
+    if (home != null && home.isNotEmpty)
+      candidateFiles.add(path.join(home, 'orion.cfg'));
+    candidateFiles.add('/home/pi/orion.cfg');
+
+    for (final f in candidateFiles) {
+      try {
+        if (File(f).existsSync()) {
+          _configPath = path.dirname(f);
+          _cachedConfigPath = _configPath;
+          _logger
+              .fine('OrionConfig: found orion.cfg at $f; using $_configPath');
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // If we didn't find an orion.cfg, try to locate a vendor.cfg and use
+    // its directory. Some installations ship only vendor.cfg alongside the
+    // runtime and expect the app to pick it up (e.g. /opt/vendor.cfg).
+    final vendorCandidateFiles = <String>[];
+    for (final d in candidates) {
+      vendorCandidateFiles.add(path.join(d, 'vendor.cfg'));
+    }
+    vendorCandidateFiles.add('/opt/vendor.cfg');
+    if (home != null && home.isNotEmpty)
+      vendorCandidateFiles.add(path.join(home, 'vendor.cfg'));
+    vendorCandidateFiles.add('/home/pi/vendor.cfg');
+
+    for (final f in vendorCandidateFiles) {
+      try {
+        if (File(f).existsSync()) {
+          _configPath = path.dirname(f);
+          _cachedConfigPath = _configPath;
+          _logger
+              .fine('OrionConfig: found vendor.cfg at $f; using $_configPath');
+          return;
+        }
+      } catch (_) {}
+    }
+
+    // Fallback to current working directory if nothing found
+    try {
+      _configPath = Directory.current.path;
+      _configPath = Directory.current.path;
+      _cachedConfigPath = _configPath;
+      _logger.fine(
+          'OrionConfig: no config found; falling back to CWD=$_configPath');
+    } catch (_) {
+      _configPath = '.';
+      _cachedConfigPath = _configPath;
+    }
   }
+
+  /// Return the resolved configuration directory path used by this
+  /// OrionConfig instance. This is a stable, runtime-detected directory
+  /// where packaged config files (orion.cfg/vendor.cfg) are located and
+  /// can be useful for locating other install-adjacent resources.
+  String getConfigPath() => _configPath;
 
   ThemeMode getThemeMode() {
     var config = _getConfig();
@@ -63,6 +258,10 @@ class OrionConfig {
   void setFlag(String flagName, bool value, {String category = 'general'}) {
     var config = _getConfig();
     config[category] ??= {};
+
+    // Optimization: Only write if value actually changed
+    if (config[category][flagName] == value) return;
+
     config[category][flagName] = value;
     _logger.config('setFlag: $flagName to $value');
 
@@ -72,6 +271,10 @@ class OrionConfig {
   void setString(String key, String value, {String category = 'general'}) {
     var config = _getConfig();
     config[category] ??= {};
+
+    // Optimization: Only write if value actually changed
+    if (config[category][key] == value) return;
+
     config[category][key] = value;
 
     if (value == '') {
@@ -93,7 +296,56 @@ class OrionConfig {
 
   String getString(String key, {String category = 'general'}) {
     var config = _getConfig();
-    return config[category]?[key] ?? '';
+    try {
+      final categoryMap = config[category];
+      if (categoryMap is Map && categoryMap.containsKey(key)) {
+        final v = categoryMap[key];
+        return v is String ? v : v?.toString() ?? '';
+      }
+
+      // Support dotted keys and nested vendor maps. E.g. 'nanodlp.base_url'
+      // may be represented in config as:
+      // advanced: { 'nanodlp.base_url': 'http://...' }
+      // or
+      // advanced: { 'nanodlp': { 'base_url': 'http://...' } }
+      if (key.contains('.') && categoryMap is Map) {
+        final parts = key.split('.');
+        dynamic node = categoryMap;
+        for (var part in parts) {
+          if (node is Map && node.containsKey(part)) {
+            node = node[part];
+            continue;
+          }
+          // Try snake_case -> camelCase fallback (base_url -> baseUrl)
+          final camel = _snakeToCamel(part);
+          if (node is Map && node.containsKey(camel)) {
+            node = node[camel];
+            continue;
+          }
+          // Try lowercase variant
+          final lower = part.toLowerCase();
+          if (node is Map && node.containsKey(lower)) {
+            node = node[lower];
+            continue;
+          }
+          node = null;
+          break;
+        }
+        if (node != null) return node is String ? node : node?.toString() ?? '';
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  String _snakeToCamel(String s) {
+    if (!s.contains('_')) return s;
+    final parts = s.split('_');
+    return parts.first +
+        parts
+            .skip(1)
+            .map((p) =>
+                p.isEmpty ? '' : '${p[0].toUpperCase()}${p.substring(1)}')
+            .join();
   }
 
   void toggleFlag(String flagName, {String category = 'general'}) {
@@ -179,16 +431,240 @@ class OrionConfig {
     }
 
     try {
-      return Map<String, dynamic>.from(
-          json.decode(vendorFile.readAsStringSync()));
+      final base =
+          Map<String, dynamic>.from(json.decode(vendorFile.readAsStringSync()));
+      // Apply any vendor overrides if present
+      final overrides = _getVendorOverrideConfig();
+      if (overrides.isNotEmpty) {
+        return _mergeConfigs(base, overrides);
+      }
+      return base;
     } catch (e) {
       _logger.warning('Failed to parse vendor.cfg: $e');
       return {};
     }
   }
 
+  Map<String, dynamic> _getVendorOverrideConfig() {
+    var fullPath = path.join(_configPath, 'vendor_overrides.cfg');
+    var file = File(fullPath);
+    if (!file.existsSync() || file.readAsStringSync().isEmpty) return {};
+    try {
+      return Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+    } catch (e) {
+      _logger.warning('Failed to parse vendor_overrides.cfg: $e');
+      return {};
+    }
+  }
+
+  /// Read only the packaged vendor.cfg (do not include runtime vendor overrides).
+  /// This ensures display names and vendor-provided metadata come from the
+  /// vendor's packaged configuration rather than any runtime override file.
+  Map<String, dynamic> _getVendorBaseConfig() {
+    var fullPath = path.join(_configPath, 'vendor.cfg');
+    var vendorFile = File(fullPath);
+
+    if (!vendorFile.existsSync() || vendorFile.readAsStringSync().isEmpty) {
+      return {};
+    }
+
+    try {
+      return Map<String, dynamic>.from(
+          json.decode(vendorFile.readAsStringSync()));
+    } catch (e) {
+      _logger.warning('Failed to parse vendor.cfg (base): $e');
+      return {};
+    }
+  }
+
+  // --- User-managed feature overrides ---
+  /// Set a single user feature flag which takes precedence over Athena and vendor flags.
+  void setUserFeatureFlag(String key, bool value) {
+    var fullPath = path.join(_configPath, 'orion.cfg');
+    var file = File(fullPath);
+    Map<String, dynamic> userConfig = {};
+    if (file.existsSync() && file.readAsStringSync().isNotEmpty) {
+      try {
+        userConfig =
+            Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+      } catch (_) {
+        userConfig = {};
+      }
+    }
+
+    userConfig['userFeatureFlags'] ??= {};
+    final uff = Map<String, dynamic>.from(userConfig['userFeatureFlags']);
+    uff[key] = value;
+    userConfig['userFeatureFlags'] = uff;
+
+    try {
+      final encoder = const JsonEncoder.withIndent('  ');
+      file.writeAsStringSync(encoder.convert(userConfig));
+    } catch (e) {
+      _logger.warning(
+          'Failed to write orion.cfg while setting user feature flag: $e');
+    }
+  }
+
+  /// Set a hardware feature under userFeatureFlags.hardwareFeatures
+  void setUserHardwareFeature(String key, bool value) {
+    var fullPath = path.join(_configPath, 'orion.cfg');
+    var file = File(fullPath);
+    Map<String, dynamic> userConfig = {};
+    if (file.existsSync() && file.readAsStringSync().isNotEmpty) {
+      try {
+        userConfig =
+            Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+      } catch (_) {
+        userConfig = {};
+      }
+    }
+
+    userConfig['userFeatureFlags'] ??= {};
+    final uff = Map<String, dynamic>.from(userConfig['userFeatureFlags']);
+    uff['hardwareFeatures'] ??= {};
+    final hw = Map<String, dynamic>.from(uff['hardwareFeatures']);
+    hw[key] = value;
+    uff['hardwareFeatures'] = hw;
+    userConfig['userFeatureFlags'] = uff;
+
+    try {
+      final encoder = const JsonEncoder.withIndent('  ');
+      file.writeAsStringSync(encoder.convert(userConfig));
+    } catch (e) {
+      _logger.warning(
+          'Failed to write orion.cfg while setting user hardware feature: $e');
+    }
+  }
+
+  /// Clear all user-managed feature overrides
+  void clearUserFeatureOverrides() {
+    var fullPath = path.join(_configPath, 'orion.cfg');
+    var file = File(fullPath);
+    Map<String, dynamic> userConfig = {};
+    if (file.existsSync() && file.readAsStringSync().isNotEmpty) {
+      try {
+        userConfig =
+            Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+      } catch (_) {
+        userConfig = {};
+      }
+    }
+
+    if (userConfig.containsKey('userFeatureFlags')) {
+      userConfig.remove('userFeatureFlags');
+      try {
+        final encoder = const JsonEncoder.withIndent('  ');
+        file.writeAsStringSync(encoder.convert(userConfig));
+      } catch (e) {
+        _logger.warning(
+            'Failed to write orion.cfg while clearing user feature overrides: $e');
+      }
+    }
+  }
+
+  /// Persist vendor overrides which are merged on top of `vendor.cfg` at runtime.
+  /// Persist vendor overrides. Instead of keeping a separate file, merge the
+  /// provided overrides into `orion.cfg` under the `vendor` section.
+  ///
+  /// Passing an empty map will remove any previously-applied vendor override
+  /// keys we manage (featureFlags and vendorMachineName) from `orion.cfg`.
+  void setVendorOverrides(Map<String, dynamic> overrides) {
+    var fullPath = path.join(_configPath, 'orion.cfg');
+    var file = File(fullPath);
+
+    Map<String, dynamic> userConfig = {};
+    if (file.existsSync() && file.readAsStringSync().isNotEmpty) {
+      try {
+        userConfig =
+            Map<String, dynamic>.from(json.decode(file.readAsStringSync()));
+      } catch (e) {
+        _logger.warning(
+            'Failed to parse existing orion.cfg while applying overrides: $e');
+        // Fall back to empty config so we don't crash.
+        userConfig = {};
+      }
+    }
+
+    // We no longer write overrides into the `vendor` section. Instead, apply
+    // overrides into the primary (top-level) `featureFlags` block so they are
+    // visible and portable with `orion.cfg`. This keeps vendor.* untouched.
+    if (overrides.isEmpty) {
+      // No-op when empty to avoid accidentally removing user values.
+      _logger.fine(
+          'setVendorOverrides called with empty overrides; no changes made');
+      return;
+    }
+
+    if (overrides.containsKey('featureFlags')) {
+      final newFF = Map<String, dynamic>.from(overrides['featureFlags'] ?? {});
+      final existingTopFF =
+          Map<String, dynamic>.from(userConfig['featureFlags'] ?? {});
+      userConfig['featureFlags'] = _mergeConfigs(existingTopFF, newFF);
+    }
+
+    // We intentionally ignore overrides['vendor'] here; if callers need to
+    // update other vendor-specific keys (like vendorMachineName) they should
+    // use the explicit public helpers (setString / setFlag) so changes are
+    // visible in the main config sections.
+
+    // If overrides contains a 'vendor' section we do NOT create a
+    // vendor_overrides.cfg. Instead, copy vendor-provided display-name
+    // mappings (featureNames) and canonical machineModelName into the
+    // top-level orion.cfg so they are portable and do not require a
+    // separate runtime vendor file.
+    if (overrides.containsKey('vendor')) {
+      try {
+        final newVendor = Map<String, dynamic>.from(overrides['vendor'] ?? {});
+
+        // If vendor provided friendly names for features, merge them into
+        // top-level `featureNames` in orion.cfg so getFeatureDisplayName
+        // will pick them up.
+        if (newVendor.containsKey('featureNames')) {
+          userConfig['featureNames'] ??= {};
+          final existingNames =
+              Map<String, dynamic>.from(userConfig['featureNames'] ?? {});
+          final incomingNames =
+              Map<String, dynamic>.from(newVendor['featureNames'] ?? {});
+          userConfig['featureNames'] =
+              _mergeConfigs(existingNames, incomingNames);
+        }
+
+        // If vendor provided a canonical machine model name, write it into
+        // the canonical `machine.machineModelName` slot of orion.cfg.
+        if (newVendor.containsKey('machineModelName')) {
+          userConfig['machine'] ??= {};
+          userConfig['machine']['machineModelName'] =
+              newVendor['machineModelName'];
+        }
+      } catch (e) {
+        _logger.warning('Failed to merge vendor overrides into orion.cfg: $e');
+      }
+    }
+
+    // Persist the modified orion.cfg (we may have updated featureNames or
+    // machine.machineModelName above).
+    try {
+      final encoder = const JsonEncoder.withIndent('  ');
+      file.writeAsStringSync(encoder.convert(userConfig));
+    } catch (e) {
+      _logger.warning('Failed to write orion.cfg while applying overrides: $e');
+    }
+  }
+
   /// Return the vendor-declared machine model name.
   String getMachineModelName() {
+    // Prefer the canonical machine section in orion.cfg when present
+    try {
+      final cfg = _getConfig();
+      final machine = cfg['machine'];
+      if (machine is Map &&
+          machine['machineModelName'] is String &&
+          (machine['machineModelName'] as String).isNotEmpty) {
+        return machine['machineModelName'] as String;
+      }
+    } catch (_) {}
+
     var vendor = _getVendorConfig();
     return vendor['machineModelName'] ??
         vendor['vendor']?['machineModelName'] ??
@@ -214,9 +690,19 @@ class OrionConfig {
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.
   bool getFeatureFlag(String key, {bool defaultValue = false}) {
-    // Read merged config so `orion.cfg` can override vendor-provided flags.
-    var merged = _getConfig();
-    final flags = merged['featureFlags'];
+    // Priority: userFeatureFlags (manual overrides) -> top-level featureFlags
+    // (including Athena-applied overrides) -> vendor.featureFlags -> default
+    try {
+      final cfg = _getConfig();
+      final userFF = cfg['userFeatureFlags'];
+      if (userFF is Map && userFF.containsKey(key)) return userFF[key] == true;
+
+      final topFF = cfg['featureFlags'];
+      if (topFF is Map && topFF.containsKey(key)) return topFF[key] == true;
+    } catch (_) {}
+
+    var vendor = _getVendorConfig();
+    final flags = vendor['featureFlags'];
     if (flags is Map && flags.containsKey(key)) {
       return flags[key] == true;
     }
@@ -235,12 +721,35 @@ class OrionConfig {
 
   /// Return nested `hardwareFeatures` map (may be empty)
   Map<String, dynamic> getHardwareFeatures() {
-    var merged = _getConfig();
-    final flags = merged['featureFlags'];
+    // Merge priority: userFeatureFlags.hardwareFeatures -> top-level
+    // featureFlags.hardwareFeatures -> vendor.featureFlags.hardwareFeatures
+    final merged = <String, dynamic>{};
+    try {
+      final cfg = _getConfig();
+      final userFF = cfg['userFeatureFlags'];
+      if (userFF is Map && userFF['hardwareFeatures'] is Map) {
+        merged.addAll(Map<String, dynamic>.from(userFF['hardwareFeatures']));
+      }
+      final topFF = cfg['featureFlags'];
+      if (topFF is Map && topFF['hardwareFeatures'] is Map) {
+        // Only add keys not already present from userFF
+        final topHw = Map<String, dynamic>.from(topFF['hardwareFeatures']);
+        topHw.forEach((k, v) {
+          if (!merged.containsKey(k)) merged[k] = v;
+        });
+      }
+    } catch (_) {}
+
+    var vendor = _getVendorConfig();
+    final flags = vendor['featureFlags'];
     if (flags is Map && flags['hardwareFeatures'] is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(flags['hardwareFeatures']);
+      final vendHw = Map<String, dynamic>.from(flags['hardwareFeatures']);
+      vendHw.forEach((k, v) {
+        if (!merged.containsKey(k)) merged[k] = v;
+      });
     }
-    return {};
+
+    return merged;
   }
 
   /// Generic helper to read a hardware feature boolean from
@@ -260,10 +769,30 @@ class OrionConfig {
 
   /// Return the full featureFlags map (may be empty)
   Map<String, dynamic> getFeatureFlags() {
-    var merged = _getConfig();
-    final flags = merged['featureFlags'];
-    if (flags is Map<String, dynamic>) return Map<String, dynamic>.from(flags);
-    return {};
+    // Merge userFeatureFlags (highest) -> top-level featureFlags -> vendor
+    final merged = <String, dynamic>{};
+    try {
+      final cfg = _getConfig();
+      final userFF = cfg['userFeatureFlags'];
+      if (userFF is Map<String, dynamic>)
+        merged.addAll(Map<String, dynamic>.from(userFF));
+      final topFF = cfg['featureFlags'];
+      if (topFF is Map<String, dynamic>) {
+        topFF.forEach((k, v) {
+          if (!merged.containsKey(k)) merged[k] = v;
+        });
+      }
+    } catch (_) {}
+
+    final vendor = _getVendorConfig();
+    final vflags = vendor['featureFlags'];
+    if (vflags is Map<String, dynamic>) {
+      vflags.forEach((k, v) {
+        if (!merged.containsKey(k)) merged[k] = v;
+      });
+    }
+
+    return merged;
   }
 
   /// Read the internalConfig section (vendor-specified internal config)
@@ -280,6 +809,43 @@ class OrionConfig {
   String getInternalConfigString(String key, {String defaultValue = ''}) {
     final internal = getInternalConfig();
     return internal[key]?.toString() ?? defaultValue;
+  }
+
+  /// Return a human-friendly display name for a feature flag.
+  ///
+  /// Resolution order:
+  /// 1. userFeatureNames in `orion.cfg` (allows local user renames)
+  /// 2. top-level featureNames in `orion.cfg` (populated by remote vendor
+  ///    overrides when appropriate)
+  /// 3. vendor-provided featureNames (from `vendor.cfg`)
+  /// 4. the provided [defaultName]
+  String getFeatureDisplayName(String key, {String defaultName = ''}) {
+    try {
+      final cfg = _getConfig();
+      final userNames = cfg['userFeatureNames'];
+      if (userNames is Map &&
+          userNames[key] is String &&
+          (userNames[key] as String).isNotEmpty) {
+        return userNames[key] as String;
+      }
+
+      final topNames = cfg['featureNames'];
+      if (topNames is Map &&
+          topNames[key] is String &&
+          (topNames[key] as String).isNotEmpty) {
+        return topNames[key] as String;
+      }
+    } catch (_) {}
+
+    final vendor = _getVendorBaseConfig();
+    final vnames = vendor['featureNames'] ?? vendor['vendor']?['featureNames'];
+    if (vnames is Map &&
+        vnames[key] is String &&
+        (vnames[key] as String).isNotEmpty) {
+      return vnames[key] as String;
+    }
+
+    return defaultName;
   }
 
   /// Convenience check for whether the app should operate in NanoDLP mode.
@@ -348,9 +914,57 @@ class OrionConfig {
     var userConfig =
         Map<String, dynamic>.from(json.decode(configFile.readAsStringSync()));
 
-    // Return merged view for reading
-    return _mergeConfigs(
-        _mergeConfigs(defaultConfig, vendorConfig), userConfig);
+    // Build merged view for reading
+    var merged =
+        _mergeConfigs(_mergeConfigs(defaultConfig, vendorConfig), userConfig);
+
+    // If the user did not explicitly set theme/color preferences but the
+    // vendor provides them (for example 'glass' and a vendorThemeSeed),
+    // prefer the vendor values in the runtime merged view so the UI
+    // reflects the packaged vendor theme. Do not persist this change to
+    // disk here; it's only a runtime preference override unless the user
+    // writes settings.
+    try {
+      final vendorBlock = vendorConfig['vendor'];
+      if (vendorBlock is Map<String, dynamic>) {
+        final vThemeMode = vendorBlock['themeMode'];
+        final vSeed = vendorBlock['vendorThemeSeed'];
+
+        final userHasTheme = userConfig['general'] is Map &&
+            userConfig['general'].containsKey('themeMode') &&
+            (userConfig['general']['themeMode'] as String).isNotEmpty;
+
+        final userHasSeed = userConfig['general'] is Map &&
+            userConfig['general'].containsKey('colorSeed') &&
+            (userConfig['general']['colorSeed'] as String).isNotEmpty;
+
+        // Apply themeMode only when the user hasn't set one and vendor
+        // provides a non-empty value. We also guard to only override the
+        // default 'dark' so we don't accidentally clobber intentional
+        // merged values.
+        if (!userHasTheme && vThemeMode is String && vThemeMode.isNotEmpty) {
+          if ((merged['general']?['themeMode'] as String?) == 'dark') {
+            merged['general'] ??= {};
+            merged['general']['themeMode'] = vThemeMode;
+          }
+        }
+
+        // If user hasn't selected a colorSeed but vendor provided a
+        // vendorThemeSeed, set the runtime colorSeed to the special value
+        // 'vendor' so ThemeProvider will pick up the vendor color.
+        if (!userHasSeed && vSeed is String && vSeed.isNotEmpty) {
+          final currentSeed = merged['general']?['colorSeed'] as String?;
+          if (currentSeed == null || currentSeed.isEmpty) {
+            merged['general'] ??= {};
+            merged['general']['colorSeed'] = 'vendor';
+          }
+        }
+      }
+    } catch (e) {
+      _logger.fine('Failed to apply vendor theme/color to merged view: $e');
+    }
+
+    return merged;
   }
 
   void _writeConfig(Map<String, dynamic> config) {
@@ -411,6 +1025,28 @@ class OrionConfig {
 
     var fullPath = path.join(_configPath, 'orion.cfg');
     var configFile = File(fullPath);
+    final isNewConfigFile = !configFile.existsSync();
+
+    // If we're creating the initial orion.cfg (file didn't exist), allow
+    // vendor themeMode to be applied even when a default is present. This
+    // ensures packaged vendor preferences (like 'glass') are respected on
+    // first-run instead of being masked by the hard-coded app default.
+    if (isNewConfigFile) {
+      try {
+        final vendorBlock = vendor['vendor'];
+        if (vendorBlock is Map<String, dynamic>) {
+          final vThemeMode = vendorBlock['themeMode'];
+          if (vThemeMode is String && vThemeMode.isNotEmpty) {
+            configToWrite['general'] ??= {};
+            configToWrite['general']['themeMode'] = vThemeMode;
+          }
+        }
+      } catch (e) {
+        _logger
+            .fine('Failed to copy vendor theme defaults on initial write: $e');
+      }
+    }
+
     var encoder = const JsonEncoder.withIndent('  ');
     configFile.writeAsStringSync(encoder.convert(configToWrite));
     // Notify any registered listeners that the on-disk config has changed.

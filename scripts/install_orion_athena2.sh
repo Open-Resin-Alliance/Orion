@@ -26,7 +26,7 @@ cleanup() {
 trap cleanup EXIT
 
 SCRIPT_NAME="$(basename "$0")"
-ORION_URL="https://github.com/Open-Resin-Alliance/Orion/releases/download/BRANCH_heaters-&-materials/orion_armv7.tar.gz"
+ORION_URL="https://github.com/Open-Resin-Alliance/Orion/releases/download/BRANCH_athena_public_beta/orion_armv7.tar.gz"
 DOWNSAMPLED_RES="210, 210"
 
 uninstall_orion() {
@@ -246,22 +246,6 @@ main() {
     vts=$(date +%s)
     cp "$VENDOR_CONFIG_PATH" "${VENDOR_CONFIG_PATH}.bak.${vts}"
   fi
-  HOSTNAME_VALUE=$(hostname)
-  # Attempt to read a hardware serial from the device tree. Some systems
-  # expose a serial at /sys/firmware/devicetree/base/serial-number.
-  # The file may contain a trailing NUL; strip it. If unavailable, fall
-  # back to a safe default to keep the config valid.
-  if [[ -r "/sys/firmware/devicetree/base/serial-number" ]]; then
-    MACHINE_SERIAL=$(tr -d '\0' </sys/firmware/devicetree/base/serial-number 2>/dev/null || true)
-    # Remove newlines/carriage returns and any remaining non-printables.
-    MACHINE_SERIAL=$(printf '%s' "$MACHINE_SERIAL" | tr -d '\r\n' | sed 's/[^[:print:]]//g')
-    # Escape any double quotes to keep the JSON valid.
-    MACHINE_SERIAL=$(printf '%s' "$MACHINE_SERIAL" | sed 's/"/\\\"/g')
-    MACHINE_SERIAL=${MACHINE_SERIAL:-ATHENA2-0001}
-    printf '[%s] Detected machine serial: %s\n' "$SCRIPT_NAME" "$MACHINE_SERIAL"
-  else
-    MACHINE_SERIAL="ATHENA2-0001"
-  fi
   printf '\n[%s] Writing default Orion configuration to %s...\n' "$SCRIPT_NAME" "$CONFIG_PATH"
   cat >"$CONFIG_PATH" <<EOF
 {
@@ -275,14 +259,9 @@ main() {
     "developerMode": true,
     "backend": "nanodlp"
   },
-  "machine": {
-    "machineName": "${HOSTNAME_VALUE}",
-    "machineSerial": "${MACHINE_SERIAL}",
-    "firstRun": true
-  },
   "developer": {
     "releaseOverride": true,
-    "overrideRelease": "BRANCH_heaters-&-materials",
+    "overrideRelease": "BRANCH_athena_public_beta",
     "overrideUpdateCheck": false
   },
   "topsecret": {
@@ -326,12 +305,17 @@ EOF
     "enableCustomName": false,
     "enablePowerControl": false,
     "hardwareFeatures": {
-        "hasHeatedChamber": true,
-        "hasHeatedVat": true,
-        "hasCamera": true,
-        "hasAirFilter": true,
-        "hasForceSensor": true
+      "hasHeatedChamber": true,
+      "hasHeatedVat": true,
+      "hasCamera": true,
+      "hasAirFilter": false,
+      "hasForceSensor": true,
+      "hasCameraFlash": true,
+      "hasSmartpower": true
     }
+  },
+  "featureNames": {
+    "hasAirFilter": "AEGIS Air Filtration"
   },
   "advanced": {
     "backend": "nanodlp",

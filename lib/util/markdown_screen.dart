@@ -21,6 +21,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 
 class MarkdownScreen extends StatelessWidget {
   final String? filename;
@@ -32,9 +34,13 @@ class MarkdownScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(filename ?? 'Changelog'),
-        ),
+        appBar: OrionAppBar(
+            title: Text(filename ?? 'Markdown Document'),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            actions: <Widget>[
+              SystemStatusWidget(),
+            ],
+          ),
         body: Padding(
           padding: const EdgeInsets.all(12.0),
           child: changelog != null

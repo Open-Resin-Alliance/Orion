@@ -19,6 +19,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:path/path.dart' as path;
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
@@ -62,6 +63,15 @@ class DetailScreenState extends State<DetailScreen> {
   FileMetadata? _meta;
   Future<Uint8List?>? _thumbnailFuture;
   bool _isThumbnailLoading = false;
+
+  /// Remove leading bracketed prefixes like "[AFP]" or "[Template]" from
+  /// material names so the centered label is cleaner.
+  String _stripMaterialPrefix(String? material) {
+    if (material == null) return '';
+    // Remove one or more bracketed tokens at the start, e.g.
+    // "[AFP] [Template] ResinName" -> "ResinName"
+    return material.replaceAll(RegExp(r'^\s*(\[[^\]]+\]\s*)+'), '').trim();
+  }
 
   @override
   void initState() {
@@ -143,10 +153,13 @@ class DetailScreenState extends State<DetailScreen> {
     maxNameLength = isLandScape ? 12 : 24;
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
+        appBar: OrionAppBar(
           actions: [SystemStatusWidget()],
-          title: Builder(builder: (context) {
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+          // Keep the left-hand back affordance simple and labeled "Back".
+          title: const Text('Back'),
+          // Move the filename + date into the visual center of the AppBar.
+          centerWidget: Builder(builder: (context) {
             // Use a single base font size for both title lines so they appear
             // visually consistent. If the AppBar theme provides a title
             // fontSize, use that as the base; otherwise default to 14 and
@@ -176,13 +189,9 @@ class DetailScreenState extends State<DetailScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _meta != null
-                      ? DateTime.fromMillisecondsSinceEpoch(
-                              _meta!.fileData.lastModified * 1000)
-                          .toString()
-                          .split('.')
-                          .first
-                      : '',
+                  // Show the material name (if present) with any leading
+                  // bracketed prefixes stripped (e.g. "[AFP] Resin" -> "Resin").
+                  _stripMaterialPrefix(_meta?.materialName),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -289,9 +298,13 @@ class DetailScreenState extends State<DetailScreen> {
                       ),
                       Expanded(
                         child: buildInfoCard(
-                          'File Size',
-                          _meta?.fileData.fileSize != null
-                              ? '${(_meta!.fileData.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB'
+                          'Date & Time',
+                          _meta != null
+                              ? DateTime.fromMillisecondsSinceEpoch(
+                                      _meta!.fileData.lastModified * 1000)
+                                  .toString()
+                                  .split('.')
+                                  .first
                               : '-',
                         ),
                       ),
@@ -337,9 +350,13 @@ class DetailScreenState extends State<DetailScreen> {
                           : '-',
                     ),
                     buildInfoCard(
-                        'File Size',
-                        _meta?.fileData.fileSize != null
-                            ? '${(_meta!.fileData.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB'
+                        'Date & Time',
+                        _meta != null
+                            ? DateTime.fromMillisecondsSinceEpoch(
+                                    _meta!.fileData.lastModified * 1000)
+                                .toString()
+                                .split('.')
+                                .first
                             : '-'),
                     Spacer(),
                   ],

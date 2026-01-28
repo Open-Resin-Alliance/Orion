@@ -21,6 +21,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fading_edge_scrollview/fading_edge_scrollview.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:orion/util/install_locator.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
@@ -97,10 +98,9 @@ class DebugScreenState extends State<DebugScreen> {
 
   Future<List<String>> _getLogMessages() async {
     try {
-      Directory logDir = await getApplicationSupportDirectory();
-      File logFile = File('${logDir.path}/app.log');
-      if (await logFile.exists()) {
-        List<String> lines = await logFile.readAsLines();
+      final file = await _resolveLogFile();
+      if (file != null && await file.exists()) {
+        List<String> lines = await file.readAsLines();
         return _groupLogMessages(lines);
       } else {
         return ['Log file not found.'];
@@ -108,6 +108,61 @@ class DebugScreenState extends State<DebugScreen> {
     } catch (e) {
       return ['Error reading log file: $e'];
     }
+  }
+
+  /// Resolve the most likely location of the runtime log file. Uses a
+  /// prioritized probe similar to `OrionConfig` so logs can be found even
+  /// when the runtime is packaged in `/opt` or the engine directory.
+  Future<File?> _resolveLogFile() async {
+    try {
+      // 1) Honor explicit env override
+      final env = Platform.environment['ORION_LOG_FILE'];
+      if (env != null && env.isNotEmpty) {
+        final f = File(env);
+        if (await f.exists()) return f;
+      }
+
+      // 2) Application support directory (preferred persistent location)
+      try {
+        final appSupport = await getApplicationSupportDirectory();
+        final f = File('${appSupport.path}/app.log');
+        if (await f.exists()) return f;
+      } catch (_) {}
+
+      // 3) Engine dir probe (packaged installs often place logs adjacent)
+      try {
+        final engineDir = findEngineDir();
+        if (engineDir != null && engineDir.isNotEmpty) {
+          final f = File('$engineDir/app.log');
+          if (await f.exists()) return f;
+          final parent = Directory(engineDir).parent.path;
+          final fp = File('$parent/app.log');
+          if (await fp.exists()) return fp;
+          final opt = File('/opt/app.log');
+          if (await opt.exists()) return opt;
+        }
+      } catch (_) {}
+
+      // 4) Executable directory
+      try {
+        final execDir = Directory(Platform.resolvedExecutable).parent.path;
+        final f = File('$execDir/app.log');
+        if (await f.exists()) return f;
+      } catch (_) {}
+
+      // 5) CWD
+      try {
+        final f = File('${Directory.current.path}/app.log');
+        if (await f.exists()) return f;
+      } catch (_) {}
+
+      // 6) Fallback: application support (even if file doesn't yet exist)
+      try {
+        final appSupport = await getApplicationSupportDirectory();
+        return File('${appSupport.path}/app.log');
+      } catch (_) {}
+    } catch (_) {}
+    return null;
   }
 
   List<String> _groupLogMessages(List<String> lines) {

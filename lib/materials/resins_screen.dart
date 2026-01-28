@@ -280,19 +280,52 @@ class ResinsScreenState extends State<ResinsScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Always render the IconButton so layout height remains
-                  // consistent. For locked profiles we visually dim it and
-                  // disable interaction. Use partial opacity to hint disabled
-                  // affordance while keeping layout stable.
+                  // Larger tappable edit affordance: include an explicit
+                  // label and generous hit target so users can reliably
+                  // tap Edit without accidentally selecting the profile.
                   Opacity(
                     opacity: resin.locked ? 0.28 : 1.0,
-                    child: IconButton(
-                      tooltip: resin.locked ? null : 'Edit',
-                      icon: PhosphorIcon(PhosphorIcons.pencil()),
-                      iconSize: 34,
-                      color: resin.locked ? Colors.grey.shade400 : null,
-                      onPressed:
-                          resin.locked ? null : () => _onEditResin(resin),
+                    child: Tooltip(
+                      message: resin.locked ? 'Locked' : 'Edit',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap:
+                              resin.locked ? null : () => _onEditResin(resin),
+                          // Make the hit area wide so there's a buffer zone
+                          // between tapping the profile and the Edit control.
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0, vertical: 6.0),
+                            child: SizedBox(
+                              width: 110,
+                              height: 48,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  PhosphorIcon(PhosphorIcons.pencil(),
+                                      size: 26,
+                                      color: resin.locked
+                                          ? Colors.grey.shade400
+                                          : null),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Edit',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        color: resin.locked
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade50,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
