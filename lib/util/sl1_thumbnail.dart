@@ -140,8 +140,27 @@ class ThumbnailUtil {
     String filePath, {
     String size = "Small",
   }) async {
+    File? tempCopy;
     try {
-      final file = File(filePath);
+      File file = File(filePath);
+      if (Platform.isLinux && filePath.startsWith('/media/')) {
+        try {
+          final tempDir = await getTemporaryDirectory();
+          final tmpRoot = Directory(p.join(tempDir.path, 'orion_nanodlp_tmp'));
+          if (!await tmpRoot.exists()) {
+            await tmpRoot.create(recursive: true);
+          }
+          final tmpPath = p.join(
+            tmpRoot.path,
+            '${p.basename(filePath)}_${DateTime.now().millisecondsSinceEpoch}',
+          );
+          final staged = await file.copy(tmpPath);
+          tempCopy = staged;
+          file = staged;
+        } catch (e) {
+          _logger.fine('Failed to stage NanoDLP file in temp dir', e);
+        }
+      }
       if (!await file.exists()) {
         return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
       }
@@ -186,6 +205,13 @@ class ThumbnailUtil {
       return resized as Uint8List;
     } catch (e) {
       _logger.warning('Failed to extract NanoDLP zip thumbnail', e);
+    } finally {
+      // Best-effort cleanup of temp copy if we created one.
+      try {
+        if (tempCopy != null && await tempCopy.exists()) {
+          await tempCopy.delete();
+        }
+      } catch (_) {}
     }
 
     return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
