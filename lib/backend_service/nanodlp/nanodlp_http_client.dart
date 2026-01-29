@@ -439,15 +439,16 @@ class NanoDlpHttpClient implements BackendClient {
     try {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       final uri = Uri.parse('$baseNoSlash/plate/add');
-      _log.info('NanoDLP importFile request: $uri (file: ${request.usbFilePath}, job: ${request.jobName})');
-      
+      _log.info(
+          'NanoDLP importFile request: $uri (file: ${request.usbFilePath}, job: ${request.jobName})');
+
       final httpRequest = http.MultipartRequest('POST', uri);
-      
+
       // Determine if we're connecting to localhost
-      final isLocalhost = uri.host == 'localhost' || 
-                         uri.host == '127.0.0.1' ||
-                         uri.host.startsWith('127.');
-      
+      final isLocalhost = uri.host == 'localhost' ||
+          uri.host == '127.0.0.1' ||
+          uri.host.startsWith('127.');
+
       if (isLocalhost) {
         // For localhost, send the file path directly (NanoDLP can access it locally)
         httpRequest.fields['USBFile'] = request.usbFilePath;
@@ -457,10 +458,10 @@ class NanoDlpHttpClient implements BackendClient {
         if (!await file.exists()) {
           throw Exception('File not found: ${request.usbFilePath}');
         }
-        
+
         final fileBytes = await file.readAsBytes();
         final fileName = path.basename(request.usbFilePath);
-        
+
         // Use "ZipFile" as the field name, matching the WebUI form for remote uploads
         httpRequest.files.add(
           http.MultipartFile.fromBytes(
@@ -470,14 +471,15 @@ class NanoDlpHttpClient implements BackendClient {
           ),
         );
       }
-      
+
       // Add form fields: Path (job name) and ProfileID
       httpRequest.fields['Path'] = request.jobName;
       httpRequest.fields['ProfileID'] = request.profileId;
-      
+
       // Set Accept header to match WebUI behavior
-      httpRequest.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
-      
+      httpRequest.headers['Accept'] =
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
+
       final client = _createClient();
       try {
         // Use longer timeout for file uploads (default 5s is too short for large files)
@@ -485,16 +487,16 @@ class NanoDlpHttpClient implements BackendClient {
         final response = await httpRequest.send().timeout(uploadTimeout);
         final statusCode = response.statusCode;
         final responseBody = await response.stream.bytesToString();
-        
+
         _log.info('NanoDLP importFile response: $statusCode');
         if (responseBody.isNotEmpty) {
           _log.fine('NanoDLP importFile response body: $responseBody');
         }
-        
+
         if (statusCode == 200 || statusCode == 302) {
           // 200 = success, 302 = redirect (also indicates success)
           int? plateId;
-          
+
           // Try to extract plate ID from Location header for 302 redirects
           if (statusCode == 302) {
             final location = response.headers['location'];
@@ -507,16 +509,15 @@ class NanoDlpHttpClient implements BackendClient {
               }
             }
           }
-          
+
           // Invalidate plates cache so the new file appears in listings
           _platesCacheData = null;
           _platesCacheTime = null;
           _platesCacheFuture = null;
-          
+
           return plateId;
         } else {
-          _log.warning(
-              'NanoDLP importFile failed: $statusCode $responseBody');
+          _log.warning('NanoDLP importFile failed: $statusCode $responseBody');
           throw Exception('Import failed: HTTP $statusCode');
         }
       } finally {
@@ -565,8 +566,51 @@ class NanoDlpHttpClient implements BackendClient {
 
   @override
   Future<Map<String, dynamic>> deleteFile(
-          String location, String filePath) async =>
-      throw UnimplementedError('NanoDLP deleteFile not implemented');
+      String location, String filePath) async {
+    try {
+      // Resolve plate ID from path/name if possible.
+      int? plateId = int.tryParse(filePath);
+      if (plateId == null) {
+        final plate = await _findPlateForPath(filePath);
+        if (plate != null && plate.plateId != null) {
+          plateId = plate.plateId;
+        }
+      }
+
+      if (plateId == null) {
+        throw Exception('NanoDLP deleteFile failed: plate ID not found');
+      }
+
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/plate/delete/$plateId');
+      _log.info('NanoDLP deleteFile request: $uri');
+
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200 &&
+            resp.statusCode != 204 &&
+            resp.statusCode != 302) {
+          _log.warning(
+              'NanoDLP deleteFile failed: ${resp.statusCode} ${resp.body}');
+          throw Exception('NanoDLP deleteFile failed: ${resp.statusCode}');
+        }
+
+        // Invalidate plates cache so deleted file disappears immediately.
+        invalidatePlatesCache();
+
+        return {
+          'success': true,
+          'plate_id': plateId,
+        };
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.severe('NanoDLP deleteFile error', e, st);
+      rethrow;
+    }
+  }
 
   @override
   Future<Map<String, dynamic>> getFileMetadata(
