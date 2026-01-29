@@ -26,7 +26,7 @@ String get _primaryFontFamily {
   if (Platform.isLinux) {
     return 'AtkinsonHyperlegible';
   }
-  return 'AtkinsonHyperlegibleNext';
+  return 'AtkinsonHyperlegible';
 }
 
 ThemeData createLightTheme(Color seedColor) {
