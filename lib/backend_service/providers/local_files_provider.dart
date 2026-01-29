@@ -27,7 +27,7 @@ import 'package:orion/util/orion_api_filesystem/orion_api_directory.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_item.dart';
 
 /// Provides file listing from local filesystem for USB/Media directories
-/// 
+///
 /// Used on NanoDLP machines when there is no backend override URL.
 /// On Linux, scans /media/usb for .stl and .nanodlp files.
 /// On macOS (development), scans ~/Documents for testing.
@@ -57,6 +57,16 @@ class LocalFilesProvider extends ChangeNotifier {
 
   // Supported file extensions
   static const List<String> supportedExtensions = ['.stl', '.nanodlp'];
+  static const Set<String> _ignoredDirectoryNames = {
+    'system volume information',
+    '_macosx',
+    '.spotlight-v100',
+    '.trashes',
+    '.fseventsd',
+    '.temporaryitems',
+    '.vol',
+    'lost+found',
+  };
 
   LocalFilesProvider({String? baseDirectory}) {
     if (baseDirectory != null) {
@@ -65,7 +75,8 @@ class LocalFilesProvider extends ChangeNotifier {
       // Platform-specific defaults: macOS uses ~/Documents for development, Linux uses /media/usb
       if (Platform.isMacOS) {
         final username = Platform.environment['USER'];
-        _baseDirectory = username != null ? '/Users/$username/Documents' : '~/Documents';
+        _baseDirectory =
+            username != null ? '/Users/$username/Documents' : '~/Documents';
       } else {
         _baseDirectory = '/media/usb';
       }
@@ -130,6 +141,9 @@ class LocalFilesProvider extends ChangeNotifier {
       for (final entity in dirEntities) {
         if (entity is Directory) {
           try {
+            if (_isIgnoredDirectory(entity)) {
+              continue;
+            }
             directories.add(_createDirectoryItem(entity, resolvedPath));
           } catch (e) {
             _log.warning('Failed to create directory item: ${entity.path}', e);
@@ -176,6 +190,15 @@ class LocalFilesProvider extends ChangeNotifier {
   bool _isSupportedFile(String filePath) {
     final ext = path.extension(filePath).toLowerCase();
     return supportedExtensions.contains(ext);
+  }
+
+  bool _isIgnoredDirectory(Directory dir) {
+    final name = path.basename(dir.path).toLowerCase();
+    if (name.isEmpty) return false;
+    if (_ignoredDirectoryNames.contains(name)) return true;
+    // Hide common metadata directories that start with a dot.
+    if (name.startsWith('.') && name != '..') return true;
+    return false;
   }
 
   /// Create an OrionApiDirectory from a File entity
@@ -269,6 +292,9 @@ class LocalFilesProvider extends ChangeNotifier {
       for (final entity in dirEntities) {
         if (entity is Directory) {
           try {
+            if (_isIgnoredDirectory(entity)) {
+              continue;
+            }
             directories.add(_createDirectoryItem(entity, resolvedPath));
           } catch (e) {
             _log.warning('Failed to create directory item: ${entity.path}', e);
@@ -291,8 +317,7 @@ class LocalFilesProvider extends ChangeNotifier {
       items.addAll(directories);
       items.addAll(files);
 
-      _log.fine(
-          'listItemsAsOrionApiItems: built items count=${items.length}');
+      _log.fine('listItemsAsOrionApiItems: built items count=${items.length}');
       return items;
     } catch (e, st) {
       _log.severe('Failed to fetch items as OrionApiItems', e, st);
