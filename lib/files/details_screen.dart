@@ -225,69 +225,71 @@ class DetailScreenState extends State<DetailScreen> {
             title: const Text('Back'),
             // Move the filename + date into the visual center of the AppBar.
             centerWidget: Builder(builder: (context) {
-            // Use a single base font size for both title lines so they appear
-            // visually consistent. If the AppBar theme provides a title
-            // fontSize, use that as the base; otherwise default to 14 and
-            // reduce slightly.
-            final baseFontSize =
-                (Theme.of(context).appBarTheme.titleTextStyle?.fontSize ?? 14) -
-                    10;
+              // Use a single base font size for both title lines so they appear
+              // visually consistent. If the AppBar theme provides a title
+              // fontSize, use that as the base; otherwise default to 14 and
+              // reduce slightly.
+              final baseFontSize =
+                  (Theme.of(context).appBarTheme.titleTextStyle?.fontSize ??
+                          14) -
+                      10;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.fileName.isNotEmpty ? widget.fileName : 'No file',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(
-                        fontSize: baseFontSize,
-                        fontWeight: FontWeight.normal,
-                        color: Theme.of(context)
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.fileName.isNotEmpty ? widget.fileName : 'No file',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        Theme.of(context).appBarTheme.titleTextStyle?.copyWith(
+                              fontSize: baseFontSize,
+                              fontWeight: FontWeight.normal,
+                              color: Theme.of(context)
+                                  .appBarTheme
+                                  .titleTextStyle
+                                  ?.color
+                                  ?.withValues(alpha: 0.95),
+                            ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    // Show the material name (if present) with any leading
+                    // bracketed prefixes stripped (e.g. "[AFP] Resin" -> "Resin").
+                    _stripMaterialPrefix(_meta?.materialName),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
                             .appBarTheme
                             .titleTextStyle
-                            ?.color
-                            ?.withValues(alpha: 0.95),
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  // Show the material name (if present) with any leading
-                  // bracketed prefixes stripped (e.g. "[AFP] Resin" -> "Resin").
-                  _stripMaterialPrefix(_meta?.materialName),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context)
-                          .appBarTheme
-                          .titleTextStyle
-                          ?.merge(TextStyle(
-                            fontWeight: FontWeight.normal,
-                            fontSize: baseFontSize,
-                          ))
-                          .copyWith(
-                            // Make status less visually dominant by lowering
-                            // its alpha relative to the AppBar title color.
-                            color: Theme.of(context)
-                                .appBarTheme
-                                .titleTextStyle
-                                ?.color
-                                ?.withValues(alpha: 0.65),
-                          ) ??
-                      TextStyle(
-                        fontSize: baseFontSize,
-                        fontWeight: FontWeight.normal,
-                        color: Theme.of(context)
-                            .appBarTheme
-                            .titleTextStyle
-                            ?.color
-                            ?.withValues(alpha: 0.65),
-                      ),
-                ),
-              ],
-            );
+                            ?.merge(TextStyle(
+                              fontWeight: FontWeight.normal,
+                              fontSize: baseFontSize,
+                            ))
+                            .copyWith(
+                              // Make status less visually dominant by lowering
+                              // its alpha relative to the AppBar title color.
+                              color: Theme.of(context)
+                                  .appBarTheme
+                                  .titleTextStyle
+                                  ?.color
+                                  ?.withValues(alpha: 0.65),
+                            ) ??
+                        TextStyle(
+                          fontSize: baseFontSize,
+                          fontWeight: FontWeight.normal,
+                          color: Theme.of(context)
+                              .appBarTheme
+                              .titleTextStyle
+                              ?.color
+                              ?.withValues(alpha: 0.65),
+                        ),
+                  ),
+                ],
+              );
             }),
           ),
           body: Center(
@@ -555,16 +557,75 @@ class DetailScreenState extends State<DetailScreen> {
       context: context,
       builder: (BuildContext context) {
         return GlassAlertDialog(
-          title: const Text('Delete File'),
-          content: const Text(
-            'Are you sure you want to delete this file?\nThis action cannot be undone.',
+          title: Row(
+            children: [
+              Icon(
+                Icons.delete_forever_rounded,
+                color: Theme.of(context).colorScheme.error,
+                size: 26,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Delete File',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'Are you sure you want to delete this file?',
+                style: TextStyle(
+                  fontSize: 18,
+                  height: 1.5,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'This action cannot be undone.',
+                style: TextStyle(
+                  fontSize: 18,
+                  height: 1.5,
+                ),
+              ),
+            ],
           ),
           actions: [
             GlassButton(
+              tint: GlassButtonTint.neutral,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel', style: TextStyle(fontSize: 20)),
+              child: const Text('Cancel', style: TextStyle(fontSize: 22)),
             ),
             GlassButton(
+              tint: GlassButtonTint.negative,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
               onPressed: () async {
                 try {
                   final provider =
@@ -588,7 +649,7 @@ class DetailScreenState extends State<DetailScreen> {
                   if (mounted) Navigator.of(context).pop(false);
                 }
               },
-              child: const Text('Delete', style: TextStyle(fontSize: 20)),
+              child: const Text('Delete', style: TextStyle(fontSize: 22)),
             ),
           ],
         );
