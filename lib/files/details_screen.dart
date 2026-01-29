@@ -38,12 +38,14 @@ class DetailScreen extends StatefulWidget {
   final String fileName;
   final String fileSubdirectory;
   final String fileLocation;
+  final bool returnToLocalOnPop;
 
   const DetailScreen({
     super.key,
     required this.fileName,
     required this.fileSubdirectory,
     required this.fileLocation,
+    this.returnToLocalOnPop = false,
   });
 
   @override
@@ -63,6 +65,9 @@ class DetailScreenState extends State<DetailScreen> {
   FileMetadata? _meta;
   Future<Uint8List?>? _thumbnailFuture;
   bool _isThumbnailLoading = false;
+  int _metaRetryCount = 0;
+  bool _metaRetryPending = false;
+  static const int _maxMetaRetries = 25;
 
   /// Remove leading bracketed prefixes like "[AFP]" or "[Template]" from
   /// material names so the centered label is cleaner.
@@ -79,10 +84,47 @@ class DetailScreenState extends State<DetailScreen> {
     _loadMetadata();
   }
 
-  Future<void> _loadMetadata() async {
-    setState(() {
-      loading = true;
+  void _popWithResult([Object? result]) {
+    if (!mounted) return;
+    if (widget.returnToLocalOnPop) {
+      if (result is Map) {
+        result['switchToLocal'] = true;
+      } else {
+        result = {
+          'switchToLocal': true,
+          if (result != null) 'result': result,
+        };
+      }
+    }
+    Navigator.of(context).pop(result);
+  }
+
+  bool _isMetadataReady(FileMetadata meta) {
+    if (meta.layerHeight != null && meta.layerHeight! > 0) return true;
+    if (meta.printTime != null && meta.printTime! > 0) return true;
+    if (meta.usedMaterial != null && meta.usedMaterial! > 0) return true;
+    if (meta.fileData.lastModified > 0) return true;
+    return false;
+  }
+
+  void _scheduleMetadataRetry() {
+    if (_metaRetryPending || _metaRetryCount >= _maxMetaRetries) return;
+    _metaRetryPending = true;
+    _metaRetryCount++;
+    final delayMs = 400 + (_metaRetryCount * 120);
+    Future.delayed(Duration(milliseconds: delayMs.clamp(400, 2000))).then((_) {
+      _metaRetryPending = false;
+      if (!mounted) return;
+      _loadMetadata(isRetry: true);
     });
+  }
+
+  Future<void> _loadMetadata({bool isRetry = false}) async {
+    if (!isRetry || _meta == null) {
+      setState(() {
+        loading = true;
+      });
+    }
 
     final provider = Provider.of<FilesProvider>(context, listen: false);
     final filePath = DetailScreen._isDefaultDir(widget.fileSubdirectory)
@@ -90,6 +132,9 @@ class DetailScreenState extends State<DetailScreen> {
         : '${widget.fileSubdirectory}/${widget.fileName}';
 
     try {
+      if (isRetry) {
+        provider.invalidateFilesCache();
+      }
       final FileMetadata? meta =
           await provider.fetchFileMetadata(widget.fileLocation, filePath);
       if (meta == null) {
@@ -104,19 +149,20 @@ class DetailScreenState extends State<DetailScreen> {
       // Kick off thumbnail extraction but render metadata directly from the
       // typed model in build(). This mirrors the approach used in StatusScreen
       // where presentation derives values directly from the provider model.
-      final thumbFuture = ThumbnailCache.instance.getThumbnail(
-        location: widget.fileLocation,
-        subdirectory: widget.fileSubdirectory,
-        fileName: widget.fileName,
-        file: OrionApiFile(
-          path: widget.fileSubdirectory == ''
-              ? widget.fileName
-              : '${widget.fileSubdirectory}/${widget.fileName}',
-          name: widget.fileName,
-          parentPath: widget.fileSubdirectory,
-        ),
-        size: 'Large',
-      );
+      final Future<Uint8List?>? thumbFuture = _thumbnailFuture ??
+          ThumbnailCache.instance.getThumbnail(
+            location: widget.fileLocation,
+            subdirectory: widget.fileSubdirectory,
+            fileName: widget.fileName,
+            file: OrionApiFile(
+              path: widget.fileSubdirectory == ''
+                  ? widget.fileName
+                  : '${widget.fileSubdirectory}/${widget.fileName}',
+              name: widget.fileName,
+              parentPath: widget.fileSubdirectory,
+            ),
+            size: 'Large',
+          );
 
       // Track thumbnail loading separately so we can optionally overlay a
       // full-screen spinner while the image downloads to avoid UI flicker.
@@ -125,18 +171,29 @@ class DetailScreenState extends State<DetailScreen> {
           _meta = meta;
           _thumbnailFuture = thumbFuture;
           loading = false;
-          _isThumbnailLoading = true;
+          if (_thumbnailFuture != null) {
+            _isThumbnailLoading = true;
+          }
         });
       }
 
       // Clear the thumbnail-loading flag when the future completes (success or error).
-      thumbFuture.whenComplete(() {
-        if (mounted) {
-          setState(() {
-            _isThumbnailLoading = false;
-          });
-        }
-      });
+      if (thumbFuture != null) {
+        thumbFuture.whenComplete(() {
+          if (mounted) {
+            setState(() {
+              _isThumbnailLoading = false;
+            });
+          }
+        });
+      }
+
+      // If metadata is incomplete, schedule a retry to refresh it.
+      if (!_isMetadataReady(meta)) {
+        _scheduleMetadataRetry();
+      } else {
+        _metaRetryCount = 0;
+      }
     } catch (e, st) {
       _logger.severe('Failed to load file metadata', e, st);
       if (mounted) {
@@ -152,14 +209,22 @@ class DetailScreenState extends State<DetailScreen> {
     isLandScape = MediaQuery.of(context).orientation == Orientation.landscape;
     maxNameLength = isLandScape ? 12 : 24;
     return GlassApp(
-      child: Scaffold(
-        appBar: OrionAppBar(
-          actions: [SystemStatusWidget()],
-          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
-          // Keep the left-hand back affordance simple and labeled "Back".
-          title: const Text('Back'),
-          // Move the filename + date into the visual center of the AppBar.
-          centerWidget: Builder(builder: (context) {
+      child: WillPopScope(
+        onWillPop: () async {
+          if (widget.returnToLocalOnPop) {
+            _popWithResult();
+            return false;
+          }
+          return true;
+        },
+        child: Scaffold(
+          appBar: OrionAppBar(
+            actions: [SystemStatusWidget()],
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            // Keep the left-hand back affordance simple and labeled "Back".
+            title: const Text('Back'),
+            // Move the filename + date into the visual center of the AppBar.
+            centerWidget: Builder(builder: (context) {
             // Use a single base font size for both title lines so they appear
             // visually consistent. If the AppBar theme provides a title
             // fontSize, use that as the base; otherwise default to 14 and
@@ -223,32 +288,33 @@ class DetailScreenState extends State<DetailScreen> {
                 ),
               ],
             );
-          }),
-        ),
-        body: Center(
-          child: loading
-              ? const CircularProgressIndicator()
-              : _meta == null
-                  ? const Text('Failed to load file metadata')
-                  // If the thumbnail is still downloading, show a full-screen
-                  // spinner instead of rendering the details layout to avoid
-                  // partial UI flicker.
-                  : (_isThumbnailLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : LayoutBuilder(
-                          builder: (BuildContext context,
-                              BoxConstraints constraints) {
-                            return isLandScape
-                                ? Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 16, right: 16, bottom: 20),
-                                    child: buildLandscapeLayout(context))
-                                : Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 16, right: 16, bottom: 20),
-                                    child: buildPortraitLayout(context));
-                          },
-                        )),
+            }),
+          ),
+          body: Center(
+            child: loading
+                ? const CircularProgressIndicator()
+                : _meta == null
+                    ? const Text('Failed to load file metadata')
+                    // If the thumbnail is still downloading, show a full-screen
+                    // spinner instead of rendering the details layout to avoid
+                    // partial UI flicker.
+                    : (_isThumbnailLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : LayoutBuilder(
+                            builder: (BuildContext context,
+                                BoxConstraints constraints) {
+                              return isLandScape
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(
+                                          left: 16, right: 16, bottom: 20),
+                                      child: buildLandscapeLayout(context))
+                                  : Padding(
+                                      padding: const EdgeInsets.only(
+                                          left: 16, right: 16, bottom: 20),
+                                      child: buildPortraitLayout(context));
+                            },
+                          )),
+          ),
         ),
       ),
     );
@@ -530,7 +596,7 @@ class DetailScreenState extends State<DetailScreen> {
     );
     if (deleteConfirmed == true) {
       // Pop this detail screen and signal to previous screen to refresh
-      Navigator.of(context).pop(true); // Pass true to indicate refresh needed
+      _popWithResult({'refresh': true});
     }
   }
 

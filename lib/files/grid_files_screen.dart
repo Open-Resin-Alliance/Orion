@@ -32,9 +32,12 @@ import 'package:path/path.dart' as path;
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
+import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/providers/files_provider.dart';
+import 'package:orion/backend_service/providers/local_files_provider.dart';
 
 import 'package:orion/files/details_screen.dart';
+import 'package:orion/files/import_screen.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_directory.dart';
@@ -85,6 +88,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   bool _isLoading = false;
   bool _isNavigating = false;
   bool _isNanoDlp = false;
+  bool _useLocalFilesProvider = false; // Use local filesystem instead of API
 
   // Thumbnail fetch concurrency control to avoid starting too many
   // simultaneous ThumbnailCache requests which can lag the app on low-end
@@ -99,34 +103,70 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   @override
   void initState() {
     super.initState();
-    // No immediate placeholder; we'll show a smooth spinner while bytes are
-    // decoded off the main isolate.
     final OrionConfig config = OrionConfig();
     _isUSB = config.getFlag('useUsbByDefault');
-    // Determine whether the configured backend is NanoDLP. Use this as the
-    // canonical source for UI decisions (hide USB/Internal toggles etc.).
     _isNanoDlp =
         config.getString('backend', category: 'advanced').toLowerCase() ==
             'nanodlp';
+    
+    // Check if we CAN use LocalFilesProvider for USB on this machine
+    _useLocalFilesProvider = _canUseLocalFilesProvider();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_defaultDirectory.isEmpty) {
-        final provider = Provider.of<FilesProvider>(context, listen: false);
-        await provider.loadItems(_isUSB ? 'Usb' : 'Local', '');
-        await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
-        // If provider reported an error during initial load, display an error dialog
-        if (provider.error != null && !_apiErrorState) {
+        // First, always check LocalFilesProvider availability if it's enabled
+        if (_useLocalFilesProvider) {
+          final localProvider =
+              Provider.of<LocalFilesProvider>(context, listen: false);
+          final localUsbAvail = await localProvider.usbAvailable();
           setState(() {
-            _apiErrorState = true;
+            _usbAvailable = localUsbAvail;
           });
-          showErrorDialog(context, 'PINK-CARROT');
         }
-        final items = provider.items;
-        if (items.isNotEmpty) {
-          _defaultDirectory = path.dirname(items.first.path);
-          _directory = _defaultDirectory;
+        
+        // Load from appropriate provider based on _isUSB and _useLocalFilesProvider
+        if (_isUSB && _useLocalFilesProvider) {
+          // Load from LocalFilesProvider (USB)
+          final provider =
+              Provider.of<LocalFilesProvider>(context, listen: false);
+          await provider.loadItems('Usb', '');
+          await _syncAfterLoad(provider, 'Usb');
+          if (provider.error != null && !_apiErrorState) {
+            setState(() {
+              _apiErrorState = true;
+            });
+            showErrorDialog(context, 'PINK-CARROT');
+          }
+          final items = provider.items;
+          if (items.isNotEmpty) {
+            _defaultDirectory = provider.baseDirectory;
+            _directory = _defaultDirectory;
+          } else {
+            // Fall back to the base directory from provider
+            _defaultDirectory = provider.baseDirectory;
+            _directory = _defaultDirectory;
+          }
         } else {
-          _defaultDirectory = '~';
-          _directory = _defaultDirectory;
+          // Load from FilesProvider (API)
+          final provider = Provider.of<FilesProvider>(context, listen: false);
+          await provider.loadItems(_isUSB ? 'Usb' : 'Local', '');
+          await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
+          if (provider.error != null && !_apiErrorState) {
+            setState(() {
+              _apiErrorState = true;
+            });
+            showErrorDialog(context, 'PINK-CARROT');
+          }
+          final items = provider.items;
+          if (items.isNotEmpty) {
+            _defaultDirectory = path.dirname(items.first.path);
+            _directory = _defaultDirectory;
+          } else {
+            // Fall back to home directory expanded
+            final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '/root';
+            _defaultDirectory = homeDir;
+            _directory = _defaultDirectory;
+          }
         }
       }
     });
@@ -208,17 +248,58 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     });
   }
 
+  /// Check if we CAN use LocalFilesProvider for USB on this machine
+  /// (doesn't mean we're using it now, just if it's possible)
+  bool _canUseLocalFilesProvider() {
+    try {
+      final cfg = OrionConfig();
+      
+      // On macOS (development), always available
+      if (Platform.isMacOS) return true;
+      
+      // On Linux, only for NanoDLP machines without custom backend URL
+      if (!_isNanoDlp) return false;
+      
+      // Check if there's a custom backend URL configured
+      final customUrl = cfg.getString('customUrl', category: 'advanced');
+      final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
+      final baseUrl = cfg.getString('nanodlp.base_url', category: 'advanced');
+      
+      // If any custom URL is set, LocalFilesProvider is not available
+      if (baseUrl.isNotEmpty || (useCustom && customUrl.isNotEmpty)) {
+        return false;
+      }
+      
+      // No custom URL, so LocalFilesProvider can be used
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // removed placeholder bytes field; using spinner + background decode now
 
   // Helper: after calling provider.loadItems(requestedLocation,..)
   // update _isUSB/_usbAvailable and notify user if we fell back from USB->Local.
   Future<void> _syncAfterLoad(
-      FilesProvider provider, String requestedLocation) async {
+      dynamic provider, String requestedLocation) async {
     try {
-      final avail = await provider.usbAvailable();
-      setState(() {
-        _usbAvailable = avail;
-      });
+      // If LocalFilesProvider is available, only check its USB availability
+      // Don't use the FilesProvider (API) USB check when LocalFilesProvider can be used
+      if (_useLocalFilesProvider) {
+        final localProvider =
+            Provider.of<LocalFilesProvider>(context, listen: false);
+        final avail = await localProvider.usbAvailable();
+        setState(() {
+          _usbAvailable = avail;
+        });
+      } else {
+        // Only use FilesProvider USB check if LocalFilesProvider is not available
+        final avail = await provider.usbAvailable();
+        setState(() {
+          _usbAvailable = avail;
+        });
+      }
     } catch (_) {
       // ignore
     }
@@ -256,9 +337,34 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       _isLoading = true; // Indicate loading state
     });
     try {
-      final provider = Provider.of<FilesProvider>(context, listen: false);
-      await provider.loadItems(_isUSB ? 'Usb' : 'Local', _subdirectory);
-      await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
+      // Invalidate backend cache to ensure we fetch fresh data (e.g., after WebUI deletions)
+      BackendService().invalidateFilesCache();
+      
+      if (_isUSB && _useLocalFilesProvider) {
+        final provider =
+            Provider.of<LocalFilesProvider>(context, listen: false);
+        await provider.loadItems('Usb', _subdirectory);
+        await _syncAfterLoad(provider, 'Usb');
+        
+        // Clean up cached thumbnails for deleted files
+        final currentPaths = provider.items
+            .whereType<OrionApiFile>()
+            .map((f) => f.path)
+            .toList();
+        ThumbnailCache.instance.validateAndCleanup('Usb', currentPaths);
+      } else {
+        final provider = Provider.of<FilesProvider>(context, listen: false);
+        await provider.loadItems(_isUSB ? 'Usb' : 'Local', _subdirectory);
+        await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
+        
+        // Clean up cached thumbnails for deleted files
+        final currentPaths = provider.items
+            .whereType<OrionApiFile>()
+            .map((f) => f.path)
+            .toList();
+        ThumbnailCache.instance.validateAndCleanup(
+            _isUSB ? 'Usb' : 'Local', currentPaths);
+      }
       setState(() {
         _isLoading = false;
       });
@@ -268,6 +374,40 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         showErrorDialog(context, 'PINK-CARROT');
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _switchToLocalAfterImport() async {
+    setState(() {
+      _isNavigating = true;
+      _isUSB = false;
+      _subdirectory = '';
+    });
+
+    try {
+      final provider = Provider.of<FilesProvider>(context, listen: false);
+      await provider.loadItems('Local', '');
+      await _syncAfterLoad(provider, 'Local');
+
+      final items = provider.items;
+      if (items.isNotEmpty) {
+        _defaultDirectory = path.dirname(items.first.path);
+        _directory = _defaultDirectory;
+      } else {
+        final homeDir = Platform.environment['HOME'] ??
+            Platform.environment['USERPROFILE'] ??
+            '/root';
+        _defaultDirectory = homeDir;
+        _directory = _defaultDirectory;
+      }
+    } catch (e) {
+      _logger.warning('Failed to switch to Local after import', e);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isNavigating = false;
+        });
+      }
     }
   }
 
@@ -296,9 +436,20 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       return _isUSB == false ? 'Print Files (Internal)' : 'Print Files (USB)';
     }
 
-    // If it's a subdirectory of the default directory, only show the directory name
+    // If it's a subdirectory of the default directory, only show the relative path
     if (_apiErrorState) return 'Odyssey API Error';
-    return "$directory ${_isUSB ? '(USB)' : '(Internal)'}";
+    
+    try {
+      final relativePath = path.relative(directory, from: _defaultDirectory);
+      if (relativePath == '.') {
+        // If we're at the base, show the label
+        return _isUSB == false ? 'Print Files (Internal)' : 'Print Files (USB)';
+      }
+      return "$relativePath ${_isUSB ? '(USB)' : '(Internal)'}";
+    } catch (_) {
+      // Fallback to full path if relative fails
+      return "$directory ${_isUSB ? '(USB)' : '(Internal)'}";
+    }
   }
 
   String _resolveSubdirectoryForFile(OrionApiFile file) {
@@ -315,6 +466,21 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     }
   }
 
+  String _resolveLocalSubdirectoryForFile(
+      OrionApiFile file, LocalFilesProvider provider) {
+    try {
+      final baseDir = provider.baseDirectory;
+      final parentDir = path.dirname(file.path);
+      final relative = path.relative(parentDir, from: baseDir);
+      if (relative == '.' || relative == baseDir) {
+        return '';
+      }
+      return relative;
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassApp(
@@ -324,60 +490,114 @@ class GridFilesScreenState extends State<GridFilesScreen> {
           toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: <Widget>[SystemStatusWidget()],
         ),
-        body: Consumer<FilesProvider>(
-          builder: (context, provider, child) {
-            // If the provider reports an error at any time, show the dialog once
-            if (provider.error != null && !_apiErrorState) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                setState(() {
-                  _apiErrorState = true;
-                });
-                // Show the standard error dialog
-                showErrorDialog(context, 'PINK-CARROT');
-              });
-            }
-            final loading = provider.isLoading || _isLoading;
-            final itemsList = provider.items;
-            if (loading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            // In NanoDLP mode there is no Internal/USB toggle, so hide the
-            // parent card. Use the screen-level `_isNanoDlp` flag derived
-            // from `orion.cfg` as the source-of-truth.
-            final hideParentCard = _isNanoDlp;
-            final crossCount =
-                MediaQuery.of(context).orientation == Orientation.landscape
-                    ? 4
-                    : 2;
-            return Padding(
-              padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
-              child: GridView.builder(
-                controller: _scrollController,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  childAspectRatio: 1.03,
-                  mainAxisSpacing: 5,
-                  crossAxisSpacing: 5,
-                  crossAxisCount: crossCount,
-                ),
-                itemCount: itemsList.length + (hideParentCard ? 0 : 1),
-                itemBuilder: (BuildContext context, int index) {
-                  if (!hideParentCard) {
-                    if (index == 0) {
-                      return _buildParentCard(context);
-                    }
-                    final OrionApiItem item = itemsList[index - 1];
-                    return _buildItemCard(context, item, provider);
-                  } else {
-                    final OrionApiItem item = itemsList[index];
-                    return _buildItemCard(context, item, provider);
-                  }
-                },
-              ),
-            );
-          },
-        ),
+        body: (_isUSB && _useLocalFilesProvider)
+            ? _buildLocalFilesContent(context)
+            : _buildApiFilesContent(context),
         floatingActionButton: _buildRefreshFab(),
       ),
+    );
+  }
+
+  /// Build content using LocalFilesProvider (filesystem-based)
+  Widget _buildLocalFilesContent(BuildContext context) {
+    return Consumer<LocalFilesProvider>(
+      builder: (context, provider, child) {
+        // If the provider reports an error at any time, show the dialog once
+        if (provider.error != null && !_apiErrorState) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _apiErrorState = true;
+            });
+            // Show the standard error dialog
+            showErrorDialog(context, 'PINK-CARROT');
+          });
+        }
+        final loading = provider.isLoading || _isLoading;
+        final itemsList = provider.items;
+        if (loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        // For LocalFilesProvider, always show parent card for directory navigation
+        final crossCount =
+            MediaQuery.of(context).orientation == Orientation.landscape
+                ? 4
+                : 2;
+        return Padding(
+          padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+          child: GridView.builder(
+            controller: _scrollController,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              childAspectRatio: 1.03,
+              mainAxisSpacing: 5,
+              crossAxisSpacing: 5,
+              crossAxisCount: crossCount,
+            ),
+            itemCount: itemsList.length + 1,
+            itemBuilder: (BuildContext context, int index) {
+              if (index == 0) {
+                return _buildParentCard(context);
+              }
+              final OrionApiItem item = itemsList[index - 1];
+              return _buildLocalItemCard(context, item, provider);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build content using FilesProvider (API-based)
+  Widget _buildApiFilesContent(BuildContext context) {
+    return Consumer<FilesProvider>(
+      builder: (context, provider, child) {
+        // If the provider reports an error at any time, show the dialog once
+        if (provider.error != null && !_apiErrorState) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _apiErrorState = true;
+            });
+            // Show the standard error dialog
+            showErrorDialog(context, 'PINK-CARROT');
+          });
+        }
+        final loading = provider.isLoading || _isLoading;
+        final itemsList = provider.items;
+        if (loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        // Show parent card only if we can toggle to USB (i.e., LocalFilesProvider is available)
+        // For NanoDLP without LocalFilesProvider available, hide the card
+        final hideParentCard = _isNanoDlp && !_useLocalFilesProvider;
+        final crossCount =
+            MediaQuery.of(context).orientation == Orientation.landscape
+                ? 4
+                : 2;
+        return Padding(
+          padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+          child: GridView.builder(
+            controller: _scrollController,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              childAspectRatio: 1.03,
+              mainAxisSpacing: 5,
+              crossAxisSpacing: 5,
+              crossAxisCount: crossCount,
+            ),
+            itemCount: itemsList.length + (hideParentCard ? 0 : 1),
+            itemBuilder: (BuildContext context, int index) {
+              if (!hideParentCard) {
+                if (index == 0) {
+                  return _buildParentCard(context);
+                }
+                final OrionApiItem item = itemsList[index - 1];
+                return _buildItemCard(context, item, provider);
+              } else {
+                final OrionApiItem item = itemsList[index];
+                return _buildItemCard(context, item, provider);
+              }
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -390,19 +610,40 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             ? null
             : _directory == _defaultDirectory
                 ? () async {
+                    // Toggle between USB and Internal
                     _isUSB = !_isUSB;
-                    final provider =
-                        Provider.of<FilesProvider>(context, listen: false);
-                    final newLocation = _isUSB ? 'Usb' : 'Local';
-                    final rawSubdir = _defaultDirectory.isEmpty
-                        ? ''
-                        : path.relative(_directory, from: _defaultDirectory);
-                    final subdir = rawSubdir == '.' ? '' : rawSubdir;
-                    await provider.loadItems(newLocation, subdir);
-                    await _syncAfterLoad(provider, newLocation);
-                    setState(() {
-                      _subdirectory = subdir;
-                    });
+
+                    if (_isUSB && _useLocalFilesProvider) {
+                      // Switch to LocalFilesProvider (USB)
+                      final provider = Provider.of<LocalFilesProvider>(context,
+                          listen: false);
+                      setState(() {
+                        _defaultDirectory = provider.baseDirectory;
+                        _directory = _defaultDirectory;
+                        _subdirectory = '';
+                      });
+                      await provider.loadItems('Usb', '');
+                      await _syncAfterLoad(provider, 'Usb');
+                    } else {
+                      // Switch to FilesProvider (API)
+                      final provider =
+                          Provider.of<FilesProvider>(context, listen: false);
+                      final newLocation = _isUSB ? 'Usb' : 'Local';
+                      await provider.loadItems(newLocation, '');
+                      await _syncAfterLoad(provider, newLocation);
+                      final items = provider.items;
+                      if (items.isNotEmpty) {
+                        setState(() {
+                          _defaultDirectory = path.dirname(items.first.path);
+                          _directory = _defaultDirectory;
+                          _subdirectory = '';
+                        });
+                      } else {
+                        setState(() {
+                          _subdirectory = '';
+                        });
+                      }
+                    }
                   }
                 : () async {
                     try {
@@ -412,16 +653,29 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                         _isNavigating = true;
                         _directory = parentDirectory;
                       });
-                      final provider =
-                          Provider.of<FilesProvider>(context, listen: false);
-                      final rawSubdir = parentDirectory == _defaultDirectory
+                        final localBase = _isUSB && _useLocalFilesProvider
+                          ? Provider.of<LocalFilesProvider>(context,
+                              listen: false)
+                            .baseDirectory
+                          : _defaultDirectory;
+                        final rawSubdir = parentDirectory == localBase
                           ? ''
-                          : path.relative(parentDirectory,
-                              from: _defaultDirectory);
+                          : path.relative(parentDirectory, from: localBase);
                       final subdir = rawSubdir == '.' ? '' : rawSubdir;
-                      await provider.loadItems(
-                          _isUSB ? 'Usb' : 'Local', subdir);
-                      await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
+
+                      if (_isUSB && _useLocalFilesProvider) {
+                        final provider = Provider.of<LocalFilesProvider>(
+                            context,
+                            listen: false);
+                        await provider.loadItems('Usb', subdir);
+                        await _syncAfterLoad(provider, 'Usb');
+                      } else {
+                        final provider = Provider.of<FilesProvider>(context,
+                            listen: false);
+                        await provider.loadItems(
+                            _isUSB ? 'Usb' : 'Local', subdir);
+                        await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
+                      }
                       setState(() {
                         _isNavigating = false;
                         _subdirectory = subdir;
@@ -473,6 +727,147 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLocalItemCard(BuildContext context, OrionApiItem item,
+      LocalFilesProvider provider) {
+    final String fileName = path.basename(item.path);
+    final String displayName = fileName;
+    final bool isFile = item is OrionApiFile;
+    final OrionApiFile? fileItem = item is OrionApiFile ? item : null;
+    final String fileSubdirectory = fileItem != null
+      ? _resolveLocalSubdirectoryForFile(fileItem, provider)
+      : '';
+    final String fileExt = path.extension(fileName).toLowerCase();
+    final bool shouldShowLocalThumbnail =
+      fileItem != null && fileExt == '.nanodlp';
+
+    return GlassCard(
+      elevation: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () async {
+          if (item is OrionApiDirectory) {
+            _scrollController.jumpTo(0);
+
+            // Calculate the relative path from the local base directory
+            final baseDir = provider.baseDirectory;
+            final relativeSubdir = path.relative(item.path, from: baseDir);
+            final normalizedSubdir = relativeSubdir == '.' ? '' : relativeSubdir;
+
+            setState(() {
+              _isNavigating = true;
+              _defaultDirectory = baseDir;
+              _directory = item.path;
+              _subdirectory = normalizedSubdir;
+            });
+
+            await provider.loadItems('Usb', normalizedSubdir);
+            await _syncAfterLoad(provider, 'Usb');
+
+            setState(() {
+              _isNavigating = false;
+            });
+          }
+          // Files are not directly opened in LocalFilesProvider mode - they need to be loaded via USB to the machine
+          else if (fileItem != null && _isNanoDlp) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ImportScreen(
+                  fileName: fileName,
+                  filePath: fileItem.path,
+                ),
+              ),
+            ).then((result) {
+              if (result == true) {
+                refresh();
+                return;
+              }
+              if (result is Map) {
+                if (result['switchToLocal'] == true) {
+                  _switchToLocalAfterImport();
+                } else if (result['refresh'] == true) {
+                  refresh();
+                }
+              }
+            });
+          }
+        },
+        child: _isNavigating
+            ? const Center(child: CircularProgressIndicator())
+            : GridTile(
+                footer: isFile
+                    ? _buildFileFooter(context, displayName)
+                    : _buildDirectoryFooter(context, displayName),
+                child: item is OrionApiDirectory
+                    ? IconTheme(
+                        data: const IconThemeData(color: Colors.grey),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 15),
+                          child: PhosphorIcon(PhosphorIcons.folder(), size: 75),
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(4.5),
+                        child: shouldShowLocalThumbnail
+                            ? FutureBuilder<Uint8List?>(
+                                future: _queuedGetThumbnail(
+                                  location: provider.location,
+                                  subdirectory: fileSubdirectory,
+                                  fileName: fileName,
+                                  file: fileItem,
+                                ),
+                                builder: (BuildContext context,
+                                    AsyncSnapshot<Uint8List?> snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Padding(
+                                        padding: EdgeInsets.all(20),
+                                        child: Center(
+                                            child: CircularProgressIndicator()));
+                                  } else if (snapshot.hasError) {
+                                    return _buildFileIcon(fileName);
+                                  }
+
+                                  final bytes = snapshot.data;
+                                  if (bytes == null || bytes.isEmpty) {
+                                    return _buildFileIcon(fileName);
+                                  }
+
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(7.75),
+                                    child: Image.memory(bytes, fit: BoxFit.cover),
+                                  );
+                                },
+                              )
+                            : _buildFileIcon(fileName),
+                      ),
+              ),
+      ),
+    );
+  }
+
+  /// Build a file icon based on file extension
+  Widget _buildFileIcon(String fileName) {
+    final ext = path.extension(fileName).toLowerCase();
+    final IconData iconData;
+
+    if (ext == '.stl') {
+      iconData = PhosphorIcons.cube();
+    } else if (ext == '.nanodlp') {
+      iconData = PhosphorIcons.file();
+    } else {
+      iconData = PhosphorIcons.file();
+    }
+
+    return IconTheme(
+      data: const IconThemeData(color: Colors.grey),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 15),
+        child: PhosphorIcon(iconData, size: 75),
       ),
     );
   }
