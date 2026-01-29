@@ -22,7 +22,6 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as path;
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
@@ -93,8 +92,9 @@ class ImportScreenState extends State<ImportScreen> {
   }
 
   Future<void> _importFile() async {
-    final jobName = _jobNameKey.currentState?.getCurrentText().trim() ?? _defaultJobName();
-    
+    final jobName =
+        _jobNameKey.currentState?.getCurrentText().trim() ?? _defaultJobName();
+
     if (jobName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a job name')),
@@ -113,7 +113,6 @@ class ImportScreenState extends State<ImportScreen> {
     final progressNotifier = ValueNotifier<double>(0.0);
     final messageNotifier = ValueNotifier<String>('Preparing import...');
     final titleNotifier = ValueNotifier<String>('IMPORTING FILE');
-    final iconNotifier = ValueNotifier<IconData>(PhosphorIconsFill.upload);
 
     // Show import progress overlay
     if (mounted) {
@@ -123,7 +122,6 @@ class ImportScreenState extends State<ImportScreen> {
             progress: progressNotifier,
             message: messageNotifier,
             title: titleNotifier,
-            iconListenable: iconNotifier,
           ),
           fullscreenDialog: true,
         ),
@@ -133,8 +131,9 @@ class ImportScreenState extends State<ImportScreen> {
     try {
       messageNotifier.value = 'Uploading file...';
       progressNotifier.value = 0.05;
-      
-      final resinsProvider = Provider.of<ResinsProvider>(context, listen: false);
+
+      final resinsProvider =
+          Provider.of<ResinsProvider>(context, listen: false);
       final resins = resinsProvider.userResins;
       final selectedResin = resins.firstWhere(
         (r) => (r.path ?? r.name) == _selectedResinKey,
@@ -144,18 +143,18 @@ class ImportScreenState extends State<ImportScreen> {
       // Extract profile ID from the resin profile
       final profileId = selectedResin.path ?? selectedResin.name;
 
-          // Create a backend service instance to import the file
-          final backendService = BackendService();
+      // Create a backend service instance to import the file
+      final backendService = BackendService();
 
-          // Capture current file list so we can detect the newly imported file
-          final filesProvider = FilesProvider(client: backendService);
-          final existingItems =
-            await filesProvider.listItemsAsOrionApiItems('Local', '');
-          final existingKeys = existingItems
-            .whereType<OrionApiFile>()
-            .map((f) => _fileKey(f))
-            .toSet();
-      
+      // Capture current file list so we can detect the newly imported file
+      final filesProvider = FilesProvider(client: backendService);
+      final existingItems =
+          await filesProvider.listItemsAsOrionApiItems('Local', '');
+      final existingKeys = existingItems
+          .whereType<OrionApiFile>()
+          .map((f) => _fileKey(f))
+          .toSet();
+
       final importRequest = NanoImportRequest(
         usbFilePath: widget.filePath,
         jobName: jobName,
@@ -163,23 +162,25 @@ class ImportScreenState extends State<ImportScreen> {
       );
 
       final plateId = await backendService.importFile(importRequest);
-      
+
       if (mounted) {
         messageNotifier.value = 'Processing file metadata...';
-        
+
         // Poll for the newly imported file to appear with valid metadata
         bool fileReady = false;
         int pollAttempts = 0;
-        const maxAttempts = 50; // 50 attempts * 300ms = 15 seconds max (NanoDLP needs time to process)
-        
+        const maxAttempts =
+            50; // 50 attempts * 300ms = 15 seconds max (NanoDLP needs time to process)
+
         while (!fileReady && pollAttempts < maxAttempts && mounted) {
           await Future.delayed(const Duration(milliseconds: 300));
           pollAttempts++;
-          
+
           try {
             backendService.invalidateFilesCache();
-            final items = await filesProvider.listItemsAsOrionApiItems('Local', '');
-            
+            final items =
+                await filesProvider.listItemsAsOrionApiItems('Local', '');
+
             // Find the imported file: prefer plate ID when available, otherwise diff or name match
             OrionApiFile? newFile;
             if (plateId != null) {
@@ -208,14 +209,16 @@ class ImportScreenState extends State<ImportScreen> {
                     orElse: () => throw Exception('File not found'),
                   );
             }
-            
+
             // Check if metadata is populated (NanoDLP may take time to fill fields)
             final metaPath = _metadataPathForFile(newFile);
-            final meta = await filesProvider.fetchFileMetadata('Local', metaPath);
+            final meta =
+                await filesProvider.fetchFileMetadata('Local', metaPath);
             final metaReady = _isMetadataReady(meta);
-            final listReady = (newFile.layerHeight != null && newFile.layerHeight! > 0) ||
-                (newFile.layerCount != null && newFile.layerCount! > 0) ||
-                (newFile.printTime != null && newFile.printTime! > 0);
+            final listReady =
+                (newFile.layerHeight != null && newFile.layerHeight! > 0) ||
+                    (newFile.layerCount != null && newFile.layerCount! > 0) ||
+                    (newFile.printTime != null && newFile.printTime! > 0);
 
             if (metaReady || listReady) {
               fileReady = true;
@@ -227,20 +230,19 @@ class ImportScreenState extends State<ImportScreen> {
                   baseProgress: 0.5,
                   span: 0.5,
                   titleNotifier: titleNotifier,
-                  iconNotifier: iconNotifier,
                 );
               } else {
                 progressNotifier.value = 1.0;
                 messageNotifier.value = 'Import complete!';
               }
-              
+
               // Wait a moment for the UI to show completion, then navigate
               await Future.delayed(const Duration(milliseconds: 800));
-              
+
               if (mounted) {
                 // Close overlay and navigate to DetailsScreen
                 Navigator.of(context).pop(); // Close overlay
-                
+
                 final result = await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => DetailScreen(
@@ -259,18 +261,18 @@ class ImportScreenState extends State<ImportScreen> {
               }
             } else {
               // File found but metadata not ready yet, update progress
-                final progress =
+              final progress =
                   (pollAttempts / maxAttempts).clamp(0.0, 1.0) * 0.5;
-                progressNotifier.value = progress;
+              progressNotifier.value = progress;
             }
           } catch (e) {
             if (pollAttempts >= maxAttempts && mounted) {
               // Timeout waiting for file/metadata
               messageNotifier.value = 'Import complete (metadata pending)';
               progressNotifier.value = 1.0;
-              
+
               await Future.delayed(const Duration(milliseconds: 800));
-              
+
               if (mounted) {
                 Navigator.of(context).pop(); // Close overlay
                 Navigator.of(context).pop(true); // Go back to files screen
@@ -284,11 +286,11 @@ class ImportScreenState extends State<ImportScreen> {
       if (mounted) {
         messageNotifier.value = 'Import failed!';
         progressNotifier.value = 0.0;
-        
+
         await Future.delayed(const Duration(milliseconds: 1000));
-        
+
         Navigator.of(context).pop(); // Close overlay
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to import file: $e')),
         );
@@ -325,14 +327,11 @@ class ImportScreenState extends State<ImportScreen> {
     return false;
   }
 
-  Future<void> _pollSlicerProgress(
-    ValueNotifier<double> progressNotifier,
-    ValueNotifier<String> messageNotifier,
-    {double baseProgress = 0.0,
-    double span = 1.0,
-    ValueNotifier<String>? titleNotifier,
-    ValueNotifier<IconData>? iconNotifier}
-  ) async {
+  Future<void> _pollSlicerProgress(ValueNotifier<double> progressNotifier,
+      ValueNotifier<String> messageNotifier,
+      {double baseProgress = 0.0,
+      double span = 1.0,
+      ValueNotifier<String>? titleNotifier}) async {
     messageNotifier.value = 'Ever tried DragonFruit? It\'s delicious!';
 
     final startTime = DateTime.now();
@@ -364,7 +363,6 @@ class ImportScreenState extends State<ImportScreen> {
           }
           if (sawReset) {
             titleNotifier?.value = 'SLICING JOB';
-            iconNotifier?.value = PhosphorIcons.knife();
           }
           messageNotifier.value = 'Ever tried DragonFruit? It\'s delicious!';
           final normalized = clamped.clamp(0.0, 0.99);
@@ -491,7 +489,8 @@ class ImportScreenState extends State<ImportScreen> {
             children: [
               const Text('Material Profile', style: TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
-              const Text('No material profiles found', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const Text('No material profiles found',
+                  style: TextStyle(fontSize: 14, color: Colors.grey)),
             ],
           ),
         ),
@@ -535,7 +534,8 @@ class ImportScreenState extends State<ImportScreen> {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Row(
@@ -558,7 +558,8 @@ class ImportScreenState extends State<ImportScreen> {
                           ],
                         ),
                       ),
-                      Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 24),
+                      Icon(Icons.chevron_right,
+                          color: Colors.grey.shade400, size: 24),
                     ],
                   ),
                 ),
@@ -587,11 +588,13 @@ class ImportScreenState extends State<ImportScreen> {
             children: [
               // Header Section
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+                      color:
+                          Theme.of(context).dividerColor.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
@@ -611,11 +614,10 @@ class ImportScreenState extends State<ImportScreen> {
                     ),
                     if (_selectedResinKey != null) ...[
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).colorScheme.primaryContainer,
+                          color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
