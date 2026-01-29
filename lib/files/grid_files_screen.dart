@@ -89,6 +89,11 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   bool _isNavigating = false;
   bool _isNanoDlp = false;
   bool _useLocalFilesProvider = false; // Use local filesystem instead of API
+  bool _selectionMode = false;
+  final Set<String> _selectedFileKeys = <String>{};
+  bool _isBulkDeleting = false;
+  int _bulkDeleteTotal = 0;
+  int _bulkDeleteCompleted = 0;
 
   // Thumbnail fetch concurrency control to avoid starting too many
   // simultaneous ThumbnailCache requests which can lag the app on low-end
@@ -379,6 +384,187 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     }
   }
 
+  void _enterSelection(OrionApiFile file) {
+    setState(() {
+      _selectionMode = true;
+      _selectedFileKeys.add(_selectionKey(file));
+    });
+  }
+
+  void _toggleSelection(OrionApiFile file) {
+    final key = _selectionKey(file);
+    setState(() {
+      if (_selectedFileKeys.contains(key)) {
+        _selectedFileKeys.remove(key);
+      } else {
+        _selectedFileKeys.add(key);
+      }
+      if (_selectedFileKeys.isEmpty) {
+        _selectionMode = false;
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectionMode = false;
+      _selectedFileKeys.clear();
+    });
+  }
+
+  Future<void> _deleteSelectedFiles() async {
+    if (_selectedFileKeys.isEmpty) return;
+    if (_isBulkDeleting) return;
+
+    if (_isUSB && _useLocalFilesProvider) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bulk delete not supported for local USB files.'),
+        ),
+      );
+      return;
+    }
+
+    final count = _selectedFileKeys.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => GlassAlertDialog(
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.delete_forever_rounded,
+              size: 26,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Delete Files',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '$count selected',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        content: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Are you sure you want to delete the selected files?'),
+            SizedBox(height: 8),
+            Text(
+              'This action cannot be undone.',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            wantIcon: false,
+            onPressed: () => Navigator.of(context).pop(false),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: const Text('Cancel'),
+          ),
+          GlassButton(
+            tint: GlassButtonTint.negative,
+            wantIcon: false,
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isBulkDeleting = true;
+      _bulkDeleteTotal = _selectedFileKeys.length;
+      _bulkDeleteCompleted = 0;
+    });
+
+    final provider = Provider.of<FilesProvider>(context, listen: false);
+    final location = _isUSB ? 'Usb' : 'Local';
+    final failures = <String>[];
+
+    try {
+      for (final key in _selectedFileKeys) {
+        final filePath = _selectionKeyToPath(key);
+        final ok = await provider.deleteFile(location, filePath);
+        if (!ok) failures.add(filePath);
+        if (mounted) {
+          setState(() {
+            _bulkDeleteCompleted += 1;
+          });
+        }
+      }
+
+      if (failures.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete ${failures.length} file(s).'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBulkDeleting = false;
+          _bulkDeleteTotal = 0;
+          _bulkDeleteCompleted = 0;
+        });
+      }
+    }
+
+    _clearSelection();
+    await refresh();
+  }
+
+  String _selectionKey(OrionApiFile file) {
+    final plateId = file.plateId;
+    if (plateId != null) {
+      return 'plate:$plateId';
+    }
+    final lastModified = file.lastModified ?? 0;
+    final parentPath = file.parentPath;
+    final name = file.name;
+    final pathValue = file.path;
+    if (pathValue.isNotEmpty && lastModified > 0) {
+      return '$pathValue|$lastModified';
+    }
+    if (pathValue.isNotEmpty) {
+      return '$pathValue|$name|$parentPath|$lastModified';
+    }
+    return '$parentPath|$name|$lastModified';
+  }
+
+  String _selectionKeyToPath(String key) {
+    if (key.startsWith('plate:')) {
+      return key.substring('plate:'.length);
+    }
+    final parts = key.split('|');
+    return parts.isNotEmpty ? parts.first : key;
+  }
+
   Future<void> _switchToLocalAfterImport() async {
     setState(() {
       _isNavigating = true;
@@ -495,7 +681,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         body: (_isUSB && _useLocalFilesProvider)
             ? _buildLocalFilesContent(context)
             : _buildApiFilesContent(context),
-        floatingActionButton: _buildRefreshFab(),
+        floatingActionButton: _selectedFileKeys.isNotEmpty
+            ? _buildDeleteFab()
+            : _buildRefreshFab(),
       ),
     );
   }
@@ -736,6 +924,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     final String displayName = fileName;
     final bool isFile = item is OrionApiFile;
     final OrionApiFile? fileItem = item is OrionApiFile ? item : null;
+    final bool isSelected =
+        fileItem != null && _selectedFileKeys.contains(_selectionKey(fileItem));
     final String fileSubdirectory = fileItem != null
         ? _resolveLocalSubdirectoryForFile(fileItem, provider)
         : '';
@@ -748,6 +938,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: () async {
+          if (_selectionMode) {
+            if (fileItem != null) {
+              _toggleSelection(fileItem);
+            }
+            return;
+          }
           if (item is OrionApiDirectory) {
             _scrollController.jumpTo(0);
 
@@ -796,57 +992,70 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             });
           }
         },
+        onLongPress: () {
+          if (fileItem == null) return;
+          if (_selectionMode) {
+            _toggleSelection(fileItem);
+          } else {
+            _enterSelection(fileItem);
+          }
+        },
         child: _isNavigating
             ? const Center(child: CircularProgressIndicator())
-            : GridTile(
-                footer: isFile
-                    ? _buildFileFooter(context, displayName)
-                    : _buildDirectoryFooter(context, displayName),
-                child: item is OrionApiDirectory
-                    ? IconTheme(
-                        data: const IconThemeData(color: Colors.grey),
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 15),
-                          child: PhosphorIcon(PhosphorIcons.folder(), size: 75),
+            : _wrapWithSelectionOverlay(
+                context,
+                GridTile(
+                  footer: isFile
+                      ? _buildFileFooter(context, displayName)
+                      : _buildDirectoryFooter(context, displayName),
+                  child: item is OrionApiDirectory
+                      ? IconTheme(
+                          data: const IconThemeData(color: Colors.grey),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 15),
+                            child:
+                                PhosphorIcon(PhosphorIcons.folder(), size: 75),
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.all(4.5),
+                          child: shouldShowLocalThumbnail
+                              ? FutureBuilder<Uint8List?>(
+                                  future: _queuedGetThumbnail(
+                                    location: provider.location,
+                                    subdirectory: fileSubdirectory,
+                                    fileName: fileName,
+                                    file: fileItem,
+                                  ),
+                                  builder: (BuildContext context,
+                                      AsyncSnapshot<Uint8List?> snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return const Padding(
+                                          padding: EdgeInsets.all(20),
+                                          child: Center(
+                                              child:
+                                                  CircularProgressIndicator()));
+                                    } else if (snapshot.hasError) {
+                                      return _buildFileIcon(fileName);
+                                    }
+
+                                    final bytes = snapshot.data;
+                                    if (bytes == null || bytes.isEmpty) {
+                                      return _buildFileIcon(fileName);
+                                    }
+
+                                    return ClipRRect(
+                                      borderRadius: BorderRadius.circular(7.75),
+                                      child: Image.memory(bytes,
+                                          fit: BoxFit.cover),
+                                    );
+                                  },
+                                )
+                              : _buildFileIcon(fileName),
                         ),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.all(4.5),
-                        child: shouldShowLocalThumbnail
-                            ? FutureBuilder<Uint8List?>(
-                                future: _queuedGetThumbnail(
-                                  location: provider.location,
-                                  subdirectory: fileSubdirectory,
-                                  fileName: fileName,
-                                  file: fileItem,
-                                ),
-                                builder: (BuildContext context,
-                                    AsyncSnapshot<Uint8List?> snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const Padding(
-                                        padding: EdgeInsets.all(20),
-                                        child: Center(
-                                            child:
-                                                CircularProgressIndicator()));
-                                  } else if (snapshot.hasError) {
-                                    return _buildFileIcon(fileName);
-                                  }
-
-                                  final bytes = snapshot.data;
-                                  if (bytes == null || bytes.isEmpty) {
-                                    return _buildFileIcon(fileName);
-                                  }
-
-                                  return ClipRRect(
-                                    borderRadius: BorderRadius.circular(7.75),
-                                    child:
-                                        Image.memory(bytes, fit: BoxFit.cover),
-                                  );
-                                },
-                              )
-                            : _buildFileIcon(fileName),
-                      ),
+                ),
+                isSelected,
               ),
       ),
     );
@@ -880,6 +1089,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     final String displayName = fileName;
     final OrionApiFile? fileItem = item is OrionApiFile ? item : null;
     final bool isFile = fileItem != null;
+    final bool isSelected =
+        fileItem != null && _selectedFileKeys.contains(_selectionKey(fileItem));
     final String fileSubdirectory = fileItem != null
         ? _resolveSubdirectoryForFile(fileItem)
         : _subdirectory;
@@ -890,6 +1101,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: () async {
+          if (_selectionMode) {
+            if (fileItem != null) {
+              _toggleSelection(fileItem);
+            }
+            return;
+          }
           if (item is OrionApiDirectory) {
             _scrollController.jumpTo(0);
             setState(() {
@@ -940,55 +1157,68 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             });
           }
         },
+        onLongPress: () {
+          if (fileItem == null) return;
+          if (_selectionMode) {
+            _toggleSelection(fileItem);
+          } else {
+            _enterSelection(fileItem);
+          }
+        },
         child: _isNavigating
             ? const Center(child: CircularProgressIndicator())
-            : GridTile(
-                footer: isFile
-                    ? _buildFileFooter(context, displayName)
-                    : _buildDirectoryFooter(context, displayName),
-                child: item is OrionApiDirectory
-                    ? IconTheme(
-                        data: const IconThemeData(color: Colors.grey),
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 15),
-                          child: PhosphorIcon(PhosphorIcons.folder(), size: 75),
-                        ),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.all(4.5),
-                        child: FutureBuilder<Uint8List?>(
-                          future: _queuedGetThumbnail(
-                            location: provider.location,
-                            subdirectory: fileSubdirectory,
-                            fileName: fileName,
-                            file: fileItem!,
+            : _wrapWithSelectionOverlay(
+                context,
+                GridTile(
+                  footer: isFile
+                      ? _buildFileFooter(context, displayName)
+                      : _buildDirectoryFooter(context, displayName),
+                  child: item is OrionApiDirectory
+                      ? IconTheme(
+                          data: const IconThemeData(color: Colors.grey),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 15),
+                            child:
+                                PhosphorIcon(PhosphorIcons.folder(), size: 75),
                           ),
-                          builder: (BuildContext context,
-                              AsyncSnapshot<Uint8List?> snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: Center(
-                                      child: CircularProgressIndicator()));
-                            } else if (snapshot.hasError) {
-                              return const Icon(Icons.error);
-                            }
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.all(4.5),
+                          child: FutureBuilder<Uint8List?>(
+                            future: _queuedGetThumbnail(
+                              location: provider.location,
+                              subdirectory: fileSubdirectory,
+                              fileName: fileName,
+                              file: fileItem!,
+                            ),
+                            builder: (BuildContext context,
+                                AsyncSnapshot<Uint8List?> snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Padding(
+                                    padding: EdgeInsets.all(20),
+                                    child: Center(
+                                        child: CircularProgressIndicator()));
+                              } else if (snapshot.hasError) {
+                                return const Icon(Icons.error);
+                              }
 
-                            final bytes = snapshot.data;
-                            if (bytes == null || bytes.isEmpty) {
-                              return const Icon(Icons.error);
-                            }
+                              final bytes = snapshot.data;
+                              if (bytes == null || bytes.isEmpty) {
+                                return const Icon(Icons.error);
+                              }
 
-                            return ClipRRect(
-                              borderRadius: themeProvider.isGlassTheme
-                                  ? BorderRadius.circular(10.5)
-                                  : BorderRadius.circular(7.75),
-                              child: Image.memory(bytes, fit: BoxFit.cover),
-                            );
-                          },
+                              return ClipRRect(
+                                borderRadius: themeProvider.isGlassTheme
+                                    ? BorderRadius.circular(10.5)
+                                    : BorderRadius.circular(7.75),
+                                child: Image.memory(bytes, fit: BoxFit.cover),
+                              );
+                            },
+                          ),
                         ),
-                      ),
+                ),
+                isSelected,
               ),
       ),
     );
@@ -1112,11 +1342,81 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     }
   }
 
+  Widget _wrapWithSelectionOverlay(
+      BuildContext context, Widget child, bool isSelected) {
+    if (!isSelected) return child;
+
+    final showDeleting = _isBulkDeleting;
+    final progressText = _bulkDeleteTotal > 0
+        ? 'Deleting $_bulkDeleteCompleted/$_bulkDeleteTotal'
+        : 'Deleting…';
+
+    final color = Theme.of(context).colorScheme.primary;
+    return Stack(
+      children: [
+        child,
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(glassCornerRadius + 1),
+              border: Border.all(color: color, width: 3),
+              color: color.withValues(alpha: 0.12),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+            padding: const EdgeInsets.all(4),
+            child: const Icon(Icons.check, size: 16, color: Colors.white),
+          ),
+        ),
+        if (showDeleting)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(glassCornerRadius + 1),
+                color: Colors.black.withValues(alpha: 0.25),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 2.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    progressText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildRefreshFab() {
     return SizedBox(
       width: 70,
       height: 70,
       child: GlassFloatingActionButton(
+        doForceBlur: true,
         tint: GlassButtonTint.positive,
         onPressed: _isLoading ? null : () => refresh(),
         child: _isLoading
@@ -1129,6 +1429,31 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                 ),
               )
             : PhosphorIcon(PhosphorIcons.arrowClockwise(), size: 36),
+      ),
+    );
+  }
+
+  Widget _buildDeleteFab() {
+    final hasSelection = _selectedFileKeys.isNotEmpty;
+    return SizedBox(
+      width: 70,
+      height: 70,
+      child: GlassFloatingActionButton(
+        doForceBlur: true,
+        tint: GlassButtonTint.negative,
+        onPressed: (_isLoading || _isBulkDeleting || !hasSelection)
+            ? null
+            : _deleteSelectedFiles,
+        child: _isBulkDeleting
+            ? const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2.5,
+                ),
+              )
+            : PhosphorIcon(PhosphorIcons.trash(), size: 34),
       ),
     );
   }
