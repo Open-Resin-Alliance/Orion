@@ -108,10 +108,10 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     _isNanoDlp =
         config.getString('backend', category: 'advanced').toLowerCase() ==
             'nanodlp';
-    
+
     // Check if we CAN use LocalFilesProvider for USB on this machine
     _useLocalFilesProvider = _canUseLocalFilesProvider();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_defaultDirectory.isEmpty) {
         // First, always check LocalFilesProvider availability if it's enabled
@@ -123,7 +123,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             _usbAvailable = localUsbAvail;
           });
         }
-        
+
         // Load from appropriate provider based on _isUSB and _useLocalFilesProvider
         if (_isUSB && _useLocalFilesProvider) {
           // Load from LocalFilesProvider (USB)
@@ -163,7 +163,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             _directory = _defaultDirectory;
           } else {
             // Fall back to home directory expanded
-            final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '/root';
+            final homeDir = Platform.environment['HOME'] ??
+                Platform.environment['USERPROFILE'] ??
+                '/root';
             _defaultDirectory = homeDir;
             _directory = _defaultDirectory;
           }
@@ -253,23 +255,23 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   bool _canUseLocalFilesProvider() {
     try {
       final cfg = OrionConfig();
-      
+
       // On macOS (development), always available
       if (Platform.isMacOS) return true;
-      
+
       // On Linux, only for NanoDLP machines without custom backend URL
       if (!_isNanoDlp) return false;
-      
+
       // Check if there's a custom backend URL configured
       final customUrl = cfg.getString('customUrl', category: 'advanced');
       final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
       final baseUrl = cfg.getString('nanodlp.base_url', category: 'advanced');
-      
+
       // If any custom URL is set, LocalFilesProvider is not available
       if (baseUrl.isNotEmpty || (useCustom && customUrl.isNotEmpty)) {
         return false;
       }
-      
+
       // No custom URL, so LocalFilesProvider can be used
       return true;
     } catch (_) {
@@ -339,13 +341,13 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     try {
       // Invalidate backend cache to ensure we fetch fresh data (e.g., after WebUI deletions)
       BackendService().invalidateFilesCache();
-      
+
       if (_isUSB && _useLocalFilesProvider) {
         final provider =
             Provider.of<LocalFilesProvider>(context, listen: false);
         await provider.loadItems('Usb', _subdirectory);
         await _syncAfterLoad(provider, 'Usb');
-        
+
         // Clean up cached thumbnails for deleted files
         final currentPaths = provider.items
             .whereType<OrionApiFile>()
@@ -356,14 +358,14 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final provider = Provider.of<FilesProvider>(context, listen: false);
         await provider.loadItems(_isUSB ? 'Usb' : 'Local', _subdirectory);
         await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
-        
+
         // Clean up cached thumbnails for deleted files
         final currentPaths = provider.items
             .whereType<OrionApiFile>()
             .map((f) => f.path)
             .toList();
-        ThumbnailCache.instance.validateAndCleanup(
-            _isUSB ? 'Usb' : 'Local', currentPaths);
+        ThumbnailCache.instance
+            .validateAndCleanup(_isUSB ? 'Usb' : 'Local', currentPaths);
       }
       setState(() {
         _isLoading = false;
@@ -438,7 +440,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
     // If it's a subdirectory of the default directory, only show the relative path
     if (_apiErrorState) return 'Odyssey API Error';
-    
+
     try {
       final relativePath = path.relative(directory, from: _defaultDirectory);
       if (relativePath == '.') {
@@ -519,9 +521,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         }
         // For LocalFilesProvider, always show parent card for directory navigation
         final crossCount =
-            MediaQuery.of(context).orientation == Orientation.landscape
-                ? 4
-                : 2;
+            MediaQuery.of(context).orientation == Orientation.landscape ? 4 : 2;
         return Padding(
           padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
           child: GridView.builder(
@@ -569,9 +569,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         // For NanoDLP without LocalFilesProvider available, hide the card
         final hideParentCard = _isNanoDlp && !_useLocalFilesProvider;
         final crossCount =
-            MediaQuery.of(context).orientation == Orientation.landscape
-                ? 4
-                : 2;
+            MediaQuery.of(context).orientation == Orientation.landscape ? 4 : 2;
         return Padding(
           padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
           child: GridView.builder(
@@ -653,12 +651,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                         _isNavigating = true;
                         _directory = parentDirectory;
                       });
-                        final localBase = _isUSB && _useLocalFilesProvider
+                      final localBase = _isUSB && _useLocalFilesProvider
                           ? Provider.of<LocalFilesProvider>(context,
-                              listen: false)
-                            .baseDirectory
+                                  listen: false)
+                              .baseDirectory
                           : _defaultDirectory;
-                        final rawSubdir = parentDirectory == localBase
+                      final rawSubdir = parentDirectory == localBase
                           ? ''
                           : path.relative(parentDirectory, from: localBase);
                       final subdir = rawSubdir == '.' ? '' : rawSubdir;
@@ -670,11 +668,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                         await provider.loadItems('Usb', subdir);
                         await _syncAfterLoad(provider, 'Usb');
                       } else {
-                        final provider = Provider.of<FilesProvider>(context,
-                            listen: false);
+                        final provider =
+                            Provider.of<FilesProvider>(context, listen: false);
                         await provider.loadItems(
                             _isUSB ? 'Usb' : 'Local', subdir);
-                        await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
+                        await _syncAfterLoad(
+                            provider, _isUSB ? 'Usb' : 'Local');
                       }
                       setState(() {
                         _isNavigating = false;
@@ -731,18 +730,18 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     );
   }
 
-  Widget _buildLocalItemCard(BuildContext context, OrionApiItem item,
-      LocalFilesProvider provider) {
+  Widget _buildLocalItemCard(
+      BuildContext context, OrionApiItem item, LocalFilesProvider provider) {
     final String fileName = path.basename(item.path);
     final String displayName = fileName;
     final bool isFile = item is OrionApiFile;
     final OrionApiFile? fileItem = item is OrionApiFile ? item : null;
     final String fileSubdirectory = fileItem != null
-      ? _resolveLocalSubdirectoryForFile(fileItem, provider)
-      : '';
+        ? _resolveLocalSubdirectoryForFile(fileItem, provider)
+        : '';
     final String fileExt = path.extension(fileName).toLowerCase();
     final bool shouldShowLocalThumbnail =
-      fileItem != null && fileExt == '.nanodlp';
+        fileItem != null && fileExt == '.nanodlp';
 
     return GlassCard(
       elevation: 2,
@@ -755,7 +754,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             // Calculate the relative path from the local base directory
             final baseDir = provider.baseDirectory;
             final relativeSubdir = path.relative(item.path, from: baseDir);
-            final normalizedSubdir = relativeSubdir == '.' ? '' : relativeSubdir;
+            final normalizedSubdir =
+                relativeSubdir == '.' ? '' : relativeSubdir;
 
             setState(() {
               _isNavigating = true;
@@ -827,7 +827,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                                     return const Padding(
                                         padding: EdgeInsets.all(20),
                                         child: Center(
-                                            child: CircularProgressIndicator()));
+                                            child:
+                                                CircularProgressIndicator()));
                                   } else if (snapshot.hasError) {
                                     return _buildFileIcon(fileName);
                                   }
@@ -839,7 +840,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
                                   return ClipRRect(
                                     borderRadius: BorderRadius.circular(7.75),
-                                    child: Image.memory(bytes, fit: BoxFit.cover),
+                                    child:
+                                        Image.memory(bytes, fit: BoxFit.cover),
                                   );
                                 },
                               )
@@ -928,7 +930,13 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                 ),
               ),
             ).then((result) {
-              if (result == true) refresh();
+              if (result == true) {
+                refresh();
+                return;
+              }
+              if (result is Map && result['refresh'] == true) {
+                refresh();
+              }
             });
           }
         },
