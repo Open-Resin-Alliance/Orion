@@ -17,9 +17,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path;
 import 'package:orion/backend_service/nanodlp/models/nano_file.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_manual.dart';
@@ -27,6 +29,7 @@ import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_machine.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_import_request.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
@@ -422,6 +425,116 @@ class NanoDlpHttpClient implements BackendClient {
         _thumbnailInFlight.remove(cacheKey);
       }
     }
+  }
+
+  /// Import a file from USB/local storage to NanoDLP's internal storage.
+  ///
+  /// When connecting to localhost, sends the file path directly (USBFile field).
+  /// When connecting to a remote NanoDLP, uploads the file content (ZipFile multipart).
+  /// Returns true if successful.
+  ///
+  /// Throws an exception if the request fails.
+  /// Returns the plate ID if successful, null if ID couldn't be determined.
+  Future<int?> importFile(NanoImportRequest request) async {
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/plate/add');
+      _log.info('NanoDLP importFile request: $uri (file: ${request.usbFilePath}, job: ${request.jobName})');
+      
+      final httpRequest = http.MultipartRequest('POST', uri);
+      
+      // Determine if we're connecting to localhost
+      final isLocalhost = uri.host == 'localhost' || 
+                         uri.host == '127.0.0.1' ||
+                         uri.host.startsWith('127.');
+      
+      if (isLocalhost) {
+        // For localhost, send the file path directly (NanoDLP can access it locally)
+        httpRequest.fields['USBFile'] = request.usbFilePath;
+      } else {
+        // For remote instances, upload the file content
+        final file = File(request.usbFilePath);
+        if (!await file.exists()) {
+          throw Exception('File not found: ${request.usbFilePath}');
+        }
+        
+        final fileBytes = await file.readAsBytes();
+        final fileName = path.basename(request.usbFilePath);
+        
+        // Use "ZipFile" as the field name, matching the WebUI form for remote uploads
+        httpRequest.files.add(
+          http.MultipartFile.fromBytes(
+            'ZipFile',
+            fileBytes,
+            filename: fileName,
+          ),
+        );
+      }
+      
+      // Add form fields: Path (job name) and ProfileID
+      httpRequest.fields['Path'] = request.jobName;
+      httpRequest.fields['ProfileID'] = request.profileId;
+      
+      // Set Accept header to match WebUI behavior
+      httpRequest.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
+      
+      final client = _createClient();
+      try {
+        // Use longer timeout for file uploads (default 5s is too short for large files)
+        const uploadTimeout = Duration(seconds: 60);
+        final response = await httpRequest.send().timeout(uploadTimeout);
+        final statusCode = response.statusCode;
+        final responseBody = await response.stream.bytesToString();
+        
+        _log.info('NanoDLP importFile response: $statusCode');
+        if (responseBody.isNotEmpty) {
+          _log.fine('NanoDLP importFile response body: $responseBody');
+        }
+        
+        if (statusCode == 200 || statusCode == 302) {
+          // 200 = success, 302 = redirect (also indicates success)
+          int? plateId;
+          
+          // Try to extract plate ID from Location header for 302 redirects
+          if (statusCode == 302) {
+            final location = response.headers['location'];
+            if (location != null) {
+              // Location typically contains the plate ID, e.g., "/plate/1" or similar
+              final match = RegExp(r'/(\d+)').firstMatch(location);
+              if (match != null) {
+                plateId = int.tryParse(match.group(1)!);
+                _log.info('NanoDLP importFile successful, plateId: $plateId');
+              }
+            }
+          }
+          
+          // Invalidate plates cache so the new file appears in listings
+          _platesCacheData = null;
+          _platesCacheTime = null;
+          _platesCacheFuture = null;
+          
+          return plateId;
+        } else {
+          _log.warning(
+              'NanoDLP importFile failed: $statusCode $responseBody');
+          throw Exception('Import failed: HTTP $statusCode');
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.severe('NanoDLP importFile error', e, st);
+      rethrow;
+    }
+  }
+
+  /// Invalidate the plates (files) cache to force a fresh fetch on next request.
+  /// Use this when files have been added, deleted, or modified externally (e.g., via WebUI).
+  void invalidatePlatesCache() {
+    _platesCacheData = null;
+    _platesCacheTime = null;
+    _platesCacheFuture = null;
+    _log.fine('Plates cache invalidated');
   }
 
   // --- Unimplemented / TODOs ---
