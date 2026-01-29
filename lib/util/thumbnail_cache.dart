@@ -70,10 +70,11 @@ class ThumbnailCache {
       final inFlight = _inFlight[key];
       if (inFlight != null) return inFlight;
 
-      final future = ThumbnailUtil.extractThumbnailBytes(
-        location,
-        subdirectory,
-        fileName,
+      final future = _extractBytesForFile(
+        location: location,
+        subdirectory: subdirectory,
+        fileName: fileName,
+        file: file,
         size: size,
       ).then<Uint8List?>((bytes) {
         _store(key, bytes);
@@ -151,10 +152,11 @@ class ThumbnailCache {
 
     _evictAlternateVersions(location, file.path, keepKey: key);
 
-    final future = ThumbnailUtil.extractThumbnailBytes(
-      location,
-      subdirectory,
-      fileName,
+    final future = _extractBytesForFile(
+      location: location,
+      subdirectory: subdirectory,
+      fileName: fileName,
+      file: file,
       size: size,
     ).then<Uint8List?>((bytes) {
       _store(key, bytes);
@@ -171,6 +173,40 @@ class ThumbnailCache {
     return future;
   }
 
+  Future<Uint8List> _extractBytesForFile({
+    required String location,
+    required String subdirectory,
+    required String fileName,
+    required OrionApiFile file,
+    required String size,
+  }) async {
+    try {
+      final lower = fileName.toLowerCase();
+      if (lower.endsWith('.nanodlp')) {
+        final localPath = file.path;
+        if (localPath.isNotEmpty) {
+          final f = File(localPath);
+          if (await f.exists()) {
+            _log.fine('Using local NanoDLP zip thumbnail: $localPath');
+            return ThumbnailUtil.extractNanodlpThumbnailBytesFromFile(
+              localPath,
+              size: size,
+            );
+          }
+        }
+      }
+    } catch (_) {
+      // fall back to API-based thumbnails
+    }
+
+    return ThumbnailUtil.extractThumbnailBytes(
+      location,
+      subdirectory,
+      fileName,
+      size: size,
+    );
+  }
+
   /// Expose the resolved disk cache directory path for diagnostics.
   Future<String> getDiskCacheDirPath() async {
     final dir = await _ensureDiskCacheDir();
@@ -182,13 +218,52 @@ class ThumbnailCache {
     _inFlight.clear();
   }
 
+  /// Remove thumbnails for a specific file from memory and disk cache.
+  /// Use this when a file is deleted to clean up its cached thumbnails.
+  void removeFile(String location, String filePath) {
+    // Remove all versions (different sizes, timestamps) of this file from cache
+    final prefix = '$location|$filePath|';
+    final removeKeys = _cache.keys
+        .where((key) => key.startsWith(prefix))
+        .toList(growable: false);
+    for (final key in removeKeys) {
+      final entry = _cache.remove(key);
+      if (entry?.bytes != null) {
+        _memoryCacheBytes -= entry!.bytes!.length;
+      }
+      _inFlight.remove(key);
+    }
+    // Also remove disk cache files for this file asynchronously
+    scheduleMicrotask(() async {
+      try {
+        final dir = await _ensureDiskCacheDir();
+        final files = dir.listSync().whereType<File>();
+        for (final f in files) {
+          final decoded = Uri.decodeComponent(p.basename(f.path));
+          if (decoded.startsWith(prefix)) {
+            try {
+              await f.delete();
+            } catch (_) {
+              // ignore individual delete failures
+            }
+          }
+        }
+      } catch (_) {
+        // ignore disk errors
+      }
+    });
+  }
+
   void clearLocation(String location) {
     final prefix = '$location|';
     final removeKeys = _cache.keys
         .where((key) => key.startsWith(prefix))
         .toList(growable: false);
     for (final key in removeKeys) {
-      _cache.remove(key);
+      final entry = _cache.remove(key);
+      if (entry?.bytes != null) {
+        _memoryCacheBytes -= entry!.bytes!.length;
+      }
       _inFlight.remove(key);
     }
     // Also remove any disk cache files for this location asynchronously.
@@ -236,6 +311,60 @@ class ThumbnailCache {
   Future<void> clearAll() async {
     clear();
     await clearDisk();
+  }
+
+  /// Validate cached thumbnails against current file list and remove orphaned entries.
+  /// Call this after refreshing file listings to clean up thumbnails for deleted files.
+  void validateAndCleanup(String location, List<String> currentFilePaths) {
+    final locationPrefix = '$location|';
+    final currentPathsSet = currentFilePaths.toSet();
+    final removeKeys = <String>[];
+    
+    for (final key in _cache.keys) {
+      if (!key.startsWith(locationPrefix)) continue;
+      
+      // Parse: location|path|timestamp|size
+      final parts = key.split('|');
+      if (parts.length < 2) continue;
+      
+      final cachedPath = parts[1];
+      if (!currentPathsSet.contains(cachedPath)) {
+        removeKeys.add(key);
+      }
+    }
+    
+    if (removeKeys.isNotEmpty) {
+      _log.fine('Removing ${removeKeys.length} cached thumbnails for deleted files');
+      for (final key in removeKeys) {
+        final entry = _cache.remove(key);
+        if (entry?.bytes != null) {
+          _memoryCacheBytes -= entry!.bytes!.length;
+        }
+        _inFlight.remove(key);
+      }
+      
+      // Clean up disk cache asynchronously
+      scheduleMicrotask(() async {
+        try {
+          final dir = await _ensureDiskCacheDir();
+          final files = dir.listSync().whereType<File>();
+          for (final f in files) {
+            final decoded = Uri.decodeComponent(p.basename(f.path));
+            if (!decoded.startsWith(locationPrefix)) continue;
+            
+            final parts = decoded.split('|');
+            if (parts.length >= 2) {
+              final cachedPath = parts[1];
+              if (!currentPathsSet.contains(cachedPath)) {
+                try {
+                  await f.delete();
+                } catch (_) {}
+              }
+            }
+          }
+        } catch (_) {}
+      });
+    }
   }
 
   String _cacheKey(String location, OrionApiFile file, String size) {
