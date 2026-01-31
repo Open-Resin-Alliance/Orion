@@ -253,84 +253,92 @@ class StatusScreenState extends State<StatusScreen> {
       final provider = context.read<StatusProvider>();
       final status = provider.status;
       final fileData = status?.printData?.fileData;
+      final calibrationProvider = context.read<CalibrationContextProvider>();
+      final calibrationContext = calibrationProvider.context;
+      int? plateId;
 
       if (fileData != null) {
-        final meta = await BackendService().getFileMetadata(
-            fileData.locationCategory ?? 'Local', fileData.path);
-        final plateId = meta['plate_id'] as int?;
-
-        // PlateID 0 is calibration print in NanoDLP
-        if (plateId == 0) {
-          _log.info(
-              'Detected calibration print completion, showing post-calibration overlay');
-
-          // Get calibration context provider and navigator before popping
-          final calibrationProvider =
-              context.read<CalibrationContextProvider>();
-          final calibrationContext = calibrationProvider.context;
-          final nav = Navigator.of(context);
-
-          if (!mounted) return;
-
-          // Navigate home first
-          nav.popUntil(ModalRoute.withName('/'));
-
-          // Show post-calibration overlay if we have context
-          if (calibrationContext != null) {
-            nav.push(
-              PageRouteBuilder(
-                opaque: false,
-                barrierDismissible: false,
-                transitionDuration: const Duration(milliseconds: 300),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  );
-                },
-                pageBuilder: (context, _, __) => PostCalibrationOverlay(
-                  calibrationModelName: calibrationContext.calibrationModelName,
-                  resinProfileName: calibrationContext.resinProfileName,
-                  startExposure: calibrationContext.startExposure,
-                  exposureIncrement: calibrationContext.exposureIncrement,
-                  profileId: calibrationContext.profileId,
-                  calibrationModelId: calibrationContext.calibrationModelId,
-                  evaluationGuideUrl: calibrationContext.evaluationGuideUrl,
-                  onComplete: () {
-                    // Pop everything: overlay, StatusScreen, CalibrationScreen, progress overlay
-                    nav.popUntil(ModalRoute.withName('/'));
-                    // Clear context after evaluation is complete
-                    calibrationProvider.clearContext();
-                  },
-                ),
-              ),
-            );
-          } else {
-            _log.warning(
-                'Calibration print detected (plateId == 0) but no context available. '
-                'This may indicate the context was lost after idle time. '
-                'Returning to home.');
-          }
-
-          // Reset status after navigation settles
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            try {
-              context.read<StatusProvider>().resetStatus();
-            } catch (_) {
-              // Provider no longer in tree
-            }
-          });
-
-          return;
+        try {
+          final meta = await BackendService().getFileMetadata(
+              fileData.locationCategory ?? 'Local', fileData.path);
+          plateId = meta['plate_id'] as int?;
+        } catch (e) {
+          _log.fine('Failed to resolve plate id for calibration check: $e');
         }
+      }
+
+      // PlateID 0 is calibration print in NanoDLP. Fall back to the UI
+      // detection signal and stored context when metadata is unavailable.
+      // In reuse mode (debug), the context alone is sufficient since fileData
+      // may not be available but the calibration context persists.
+      final isCalibrationPrint = (plateId == 0) ||
+          (_isCalibrationPrint == true) ||
+          (calibrationContext != null);
+
+      if (isCalibrationPrint) {
+        _log.info(
+            'Detected calibration print completion, showing post-calibration overlay');
+
+        final nav = Navigator.of(context);
+        if (!mounted) return;
+
+        // Navigate home first (use isFirst to avoid named route mismatch)
+        nav.popUntil((route) => route.isFirst);
+
+        // Show post-calibration overlay if we have context
+        if (calibrationContext != null) {
+          nav.push(
+            PageRouteBuilder(
+              opaque: false,
+              barrierDismissible: false,
+              transitionDuration: const Duration(milliseconds: 300),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+              pageBuilder: (context, _, __) => PostCalibrationOverlay(
+                calibrationModelName: calibrationContext.calibrationModelName,
+                resinProfileName: calibrationContext.resinProfileName,
+                startExposure: calibrationContext.startExposure,
+                exposureIncrement: calibrationContext.exposureIncrement,
+                profileId: calibrationContext.profileId,
+                calibrationModelId: calibrationContext.calibrationModelId,
+                evaluationGuideUrl: calibrationContext.evaluationGuideUrl,
+                onComplete: () {
+                  // Pop everything: overlay, StatusScreen, CalibrationScreen, progress overlay
+                  nav.popUntil((route) => route.isFirst);
+                  // Clear context after evaluation is complete
+                  calibrationProvider.clearContext();
+                },
+              ),
+            ),
+          );
+        } else {
+          _log.warning('Calibration print detected but no context available. '
+              'This may indicate the context was lost after idle time. '
+              'Returning to home.');
+        }
+
+        // Reset status after navigation settles
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            context.read<StatusProvider>().resetStatus();
+          } catch (_) {
+            // Provider no longer in tree
+          }
+        });
+
+        return;
       }
     } catch (e) {
       _log.warning('Error checking for calibration print: $e');
     }
 
     // Not a calibration print, proceed with normal home navigation
-    Navigator.popUntil(context, ModalRoute.withName('/'));
+    Navigator.of(context).popUntil((route) => route.isFirst);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         context.read<StatusProvider>().resetStatus();
@@ -1387,31 +1395,39 @@ class StatusScreenState extends State<StatusScreen> {
         const SizedBox(width: 20),
         Expanded(
           flex: 1,
-          child: GlassButton(
-            tint: GlassButtonTint.neutral,
-            onPressed: () {
-              // Keep original return behavior but use a clearer label
-              if (widget.onReturnHome != null) {
-                widget.onReturnHome!();
-                return;
-              }
-              _checkAndShowCalibrationOverlay();
+          child: Consumer<CalibrationContextProvider>(
+            builder: (ctx, calibrationProvider, _) {
+              final hasCalibrationContext = calibrationProvider.context != null;
+              final showFinalizeButton =
+                  _isCalibrationPrint == true || hasCalibrationContext;
+
+              return GlassButton(
+                tint: GlassButtonTint.neutral,
+                onPressed: () {
+                  // Keep original return behavior but use a clearer label
+                  if (widget.onReturnHome != null) {
+                    widget.onReturnHome!();
+                    return;
+                  }
+                  _checkAndShowCalibrationOverlay();
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(120, 65),
+                  maximumSize: const Size(120, 65),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                child: AutoSizeText(
+                  minFontSize: 16,
+                  maxLines: 1,
+                  showFinalizeButton
+                      ? 'Finalize Calibration'
+                      : 'Return to Menu',
+                  style: const TextStyle(fontSize: 24),
+                ),
+              );
             },
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(120, 65),
-              maximumSize: const Size(120, 65),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-            ),
-            child: AutoSizeText(
-              minFontSize: 16,
-              maxLines: 1,
-              _isCalibrationPrint == true
-                  ? 'Finalize Calibration'
-                  : 'Return to Menu',
-              style: const TextStyle(fontSize: 24),
-            ),
           ),
         ),
       ]);
