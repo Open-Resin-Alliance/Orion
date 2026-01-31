@@ -10,23 +10,28 @@ import 'package:orion/widgets/version_comparison.dart';
 
 class UpdateNotificationWatcher {
   final BuildContext context;
-  final UpdateManager _updateManager;
-  final StatusProvider _statusProvider;
   bool _isDialogShown = false;
   Timer? _cooldownTimer;
 
-  UpdateNotificationWatcher._(
-    this.context,
-    this._updateManager,
-    this._statusProvider,
-  ) {
-    _updateManager.addListener(_check);
-    _statusProvider.addListener(_check);
+  UpdateNotificationWatcher._(this.context) {
+    // Get the current providers and add listeners
+    final updateManager = Provider.of<UpdateManager>(context, listen: false);
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+
+    updateManager.addListener(_check);
+    statusProvider.addListener(_check);
   }
 
   void dispose() {
-    _updateManager.removeListener(_check);
-    _statusProvider.removeListener(_check);
+    try {
+      final updateManager = Provider.of<UpdateManager>(context, listen: false);
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      updateManager.removeListener(_check);
+      statusProvider.removeListener(_check);
+    } catch (e) {
+      // Providers might not be available during cleanup
+    }
     _cooldownTimer?.cancel();
   }
 
@@ -37,7 +42,13 @@ class UpdateNotificationWatcher {
     // might still return '/status' while the screen is actually disposing,
     // causing a race condition where the notification remains blocked.
     // Relying on the provider flag (managed by StatusScreen state) is safer.
-    return _statusProvider.isStatusScreenOpen;
+    try {
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      return statusProvider.isStatusScreenOpen;
+    } catch (e) {
+      return false;
+    }
   }
 
   void _check() {
@@ -45,143 +56,165 @@ class UpdateNotificationWatcher {
     if (!context.mounted) return;
     if (_isDialogShown) return;
 
-    final updateManager = _updateManager;
-    final statusProvider = _statusProvider;
+    try {
+      final updateManager = Provider.of<UpdateManager>(context, listen: false);
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
 
-    if (updateManager.shouldShowNotification) {
-      final isPrinting = statusProvider.status?.isPrinting ?? false;
-      final isPaused = statusProvider.status?.isPaused ?? false;
-      final isStatusScreen = _isOnStatusScreen();
+      if (updateManager.shouldShowNotification) {
+        final isPrinting = statusProvider.status?.isPrinting ?? false;
+        final isPaused = statusProvider.status?.isPaused ?? false;
+        final isStatusScreen = _isOnStatusScreen();
 
-      if (!isPrinting && !isPaused && !isStatusScreen) {
-        // If a timer is already running, let it finish (don't reset it)
-        if (_cooldownTimer?.isActive ?? false) return;
+        if (!isPrinting && !isPaused && !isStatusScreen) {
+          // If a timer is already running, let it finish (don't reset it)
+          if (_cooldownTimer?.isActive ?? false) return;
 
-        // Start a cooldown before showing the dialog
-        _cooldownTimer = Timer(const Duration(seconds: 3), () {
-          if (_isDialogShown) return;
-          // Re-check conditions as they might have changed during delay
-          if (!context.mounted) return;
+          // Start a cooldown before showing the dialog
+          _cooldownTimer = Timer(const Duration(seconds: 3), () {
+            if (_isDialogShown) return;
+            // Re-check conditions as they might have changed during delay
+            if (!context.mounted) return;
 
-          if (_updateManager.shouldShowNotification) {
-            final curIsPrinting = _statusProvider.status?.isPrinting ?? false;
-            final curIsPaused = _statusProvider.status?.isPaused ?? false;
-            final curIsStatusScreen = _isOnStatusScreen();
+            try {
+              if (Provider.of<UpdateManager>(context, listen: false)
+                  .shouldShowNotification) {
+                final curIsPrinting =
+                    Provider.of<StatusProvider>(context, listen: false)
+                            .status
+                            ?.isPrinting ??
+                        false;
+                final curIsPaused =
+                    Provider.of<StatusProvider>(context, listen: false)
+                            .status
+                            ?.isPaused ??
+                        false;
+                final curIsStatusScreen = _isOnStatusScreen();
 
-            if (!curIsPrinting && !curIsPaused && !curIsStatusScreen) {
-              _showDialog();
+                if (!curIsPrinting && !curIsPaused && !curIsStatusScreen) {
+                  _showDialog();
+                }
+              }
+            } catch (e) {
+              // Providers might not be available
             }
-          }
-        });
+          });
+        } else {
+          // If we started printing/paused, cancel any pending notification
+          _cooldownTimer?.cancel();
+          _cooldownTimer = null;
+        }
       } else {
-        // If we started printing/paused, cancel any pending notification
         _cooldownTimer?.cancel();
         _cooldownTimer = null;
       }
-    } else {
-      _cooldownTimer?.cancel();
-      _cooldownTimer = null;
+    } catch (e) {
+      // Providers not available, skip this check
     }
   }
 
   void _showDialog() {
-    _isDialogShown = true;
-    final orion = _updateManager.orionProvider;
-    final athena = _updateManager.athenaProvider;
+    try {
+      final updateManager = Provider.of<UpdateManager>(context, listen: false);
+      _isDialogShown = true;
+      final orion = updateManager.orionProvider;
+      final athena = updateManager.athenaProvider;
 
-    showDialog(
-      context: context,
-      builder: (ctx) => GlassAlertDialog(
-        title: const Text(
-          'Update Available',
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-        ),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (orion.isUpdateAvailable)
-                VersionComparison(
-                  title: 'Orion',
-                  branch: orion.release,
-                  currentVersion: orion.currentVersion,
-                  newVersion: orion.latestVersion,
+      showDialog(
+        context: context,
+        builder: (ctx) => GlassAlertDialog(
+          title: const Text(
+            'Update Available',
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (orion.isUpdateAvailable)
+                  VersionComparison(
+                    title: 'Orion',
+                    branch: orion.release,
+                    currentVersion: orion.currentVersion,
+                    newVersion: orion.latestVersion,
+                  ),
+                if (orion.isUpdateAvailable && athena.updateAvailable)
+                  const SizedBox(height: 12),
+                if (athena.updateAvailable)
+                  VersionComparison(
+                    title: 'AthenaOS',
+                    branch: athena.channel,
+                    currentVersion: athena.currentVersion,
+                    newVersion: athena.latestVersion,
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  'Would you like to update now?',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey.shade400,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              if (orion.isUpdateAvailable && athena.updateAvailable)
-                const SizedBox(height: 12),
-              if (athena.updateAvailable)
-                VersionComparison(
-                  title: 'AthenaOS',
-                  branch: athena.channel,
-                  currentVersion: athena.currentVersion,
-                  newVersion: athena.latestVersion,
-                ),
-              const SizedBox(height: 16),
-              Text(
-                'Would you like to update now?',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey.shade400,
-                ),
-                textAlign: TextAlign.center,
+              ],
+            ),
+          ),
+          actions: [
+            GlassButton(
+              tint: GlassButtonTint.neutral,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(140, 60),
               ),
-            ],
-          ),
+              onPressed: () {
+                updateManager.acknowledgeUpdatePrompt();
+                updateManager.remindLater();
+                Navigator.of(ctx).pop();
+              },
+              child: const Text(
+                'Remind Later',
+                style: TextStyle(fontSize: 22),
+              ),
+            ),
+            GlassButton(
+              tint: GlassButtonTint.positive,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(140, 60),
+              ),
+              onPressed: () {
+                updateManager.acknowledgeUpdatePrompt();
+                Navigator.of(ctx).pop();
+                context.go('/updates');
+              },
+              child: const Text(
+                'Update Now',
+                style: TextStyle(fontSize: 22),
+              ),
+            ),
+          ],
         ),
-        actions: [
-          GlassButton(
-            tint: GlassButtonTint.neutral,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(140, 60),
-            ),
-            onPressed: () {
-              _updateManager.acknowledgeUpdatePrompt();
-              _updateManager.remindLater();
-              Navigator.of(ctx).pop();
-            },
-            child: const Text(
-              'Remind Later',
-              style: TextStyle(fontSize: 22),
-            ),
-          ),
-          GlassButton(
-            tint: GlassButtonTint.positive,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(140, 60),
-            ),
-            onPressed: () {
-              _updateManager.acknowledgeUpdatePrompt();
-              Navigator.of(ctx).pop();
-              context.go('/updates');
-            },
-            child: const Text(
-              'Update Now',
-              style: TextStyle(fontSize: 22),
-            ),
-          ),
-        ],
-      ),
-    ).then((_) {
+      ).then((_) {
+        _isDialogShown = false;
+        // If the dialog was dismissed without pressing a button (barrier/back),
+        // still acknowledge so we don't spam the user in this session.
+        try {
+          updateManager.acknowledgeUpdatePrompt();
+        } catch (e) {
+          // Provider might not be available during cleanup
+        }
+      });
+    } catch (e) {
       _isDialogShown = false;
-      // If the dialog was dismissed without pressing a button (barrier/back),
-      // still acknowledge so we don't spam the user in this session.
-      _updateManager.acknowledgeUpdatePrompt();
-    });
+    }
   }
 
   static UpdateNotificationWatcher? install(BuildContext context) {
     // Try to get the providers - if they're not available in this context,
     // return null rather than throwing an error
     try {
-      final updateManager = Provider.of<UpdateManager>(context, listen: false);
-      final statusProvider =
-          Provider.of<StatusProvider>(context, listen: false);
-      return UpdateNotificationWatcher._(
-        context,
-        updateManager,
-        statusProvider,
-      );
+      Provider.of<UpdateManager>(context, listen: false);
+      Provider.of<StatusProvider>(context, listen: false);
+      return UpdateNotificationWatcher._(context);
     } catch (e) {
       // Providers not available in this context
       return null;

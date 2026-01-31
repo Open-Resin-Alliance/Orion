@@ -247,17 +247,17 @@ class OrionRoot extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => OrionUpdateProvider(),
-          lazy: true,
+          lazy: false,
         ),
         ChangeNotifierProvider(
           create: (_) => AthenaUpdateProvider(),
-          lazy: true,
+          lazy: false,
         ),
         ChangeNotifierProxyProvider2<OrionUpdateProvider, AthenaUpdateProvider,
             UpdateManager>(
           create: (context) => UpdateManager(
-            Provider.of<OrionUpdateProvider>(context, listen: false),
-            Provider.of<AthenaUpdateProvider>(context, listen: false),
+            context.read<OrionUpdateProvider>(),
+            context.read<AthenaUpdateProvider>(),
           ),
           update: (context, orion, athena, previous) =>
               previous ?? UpdateManager(orion, athena),
