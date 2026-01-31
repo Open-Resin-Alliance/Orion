@@ -15,6 +15,8 @@
 * limitations under the License.
 */
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
@@ -246,15 +248,14 @@ class _UIScreenState extends State<UIScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Minus button (left)
-            SizedBox(
-              width: 56,
-              height: 56,
-              child: IconButton(
-                iconSize: 28,
-                padding: EdgeInsets.zero,
-                onPressed: value > 0 ? () => onChanged(value - 1) : null,
-                icon: const Icon(Icons.remove),
-              ),
+            _HoldToAccelerateButton(
+              icon: Icons.remove,
+              enabled: value > 0,
+              onTap: () => onChanged(value - 1),
+              onHold: (increment) {
+                final newValue = (value - increment).clamp(0, max);
+                onChanged(newValue);
+              },
             ),
             // Number with suffix (center)
             Expanded(
@@ -268,15 +269,14 @@ class _UIScreenState extends State<UIScreen> {
               ),
             ),
             // Plus button (right)
-            SizedBox(
-              width: 56,
-              height: 56,
-              child: IconButton(
-                iconSize: 28,
-                padding: EdgeInsets.zero,
-                onPressed: value < max ? () => onChanged(value + 1) : null,
-                icon: const Icon(Icons.add),
-              ),
+            _HoldToAccelerateButton(
+              icon: Icons.add,
+              enabled: value < max,
+              onTap: () => onChanged(value + 1),
+              onHold: (increment) {
+                final newValue = (value + increment).clamp(0, max);
+                onChanged(newValue);
+              },
             ),
           ],
         ),
@@ -397,6 +397,91 @@ class _BacklightDeviceSelectorState extends State<_BacklightDeviceSelector> {
           ),
         );
       },
+    );
+  }
+}
+
+/// A button that accelerates when held down
+class _HoldToAccelerateButton extends StatefulWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+  final Function(int increment) onHold;
+
+  const _HoldToAccelerateButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+    required this.onHold,
+  });
+
+  @override
+  State<_HoldToAccelerateButton> createState() =>
+      _HoldToAccelerateButtonState();
+}
+
+class _HoldToAccelerateButtonState extends State<_HoldToAccelerateButton> {
+  Timer? _holdTimer;
+  int _holdTicks = 0;
+
+  void _startHolding() {
+    if (!widget.enabled) return;
+
+    _holdTicks = 0;
+    _holdTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      _holdTicks++;
+
+      // Calculate increment with acceleration
+      // Start at 1, then increase every 10 ticks
+      int increment = 1;
+      if (_holdTicks > 30) {
+        increment = 5; // Fast after 3 seconds
+      } else if (_holdTicks > 10) {
+        increment = 2; // Medium after 1 second
+      }
+
+      widget.onHold(increment);
+    });
+  }
+
+  void _stopHolding() {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    _holdTicks = 0;
+  }
+
+  @override
+  void dispose() {
+    _stopHolding();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: GestureDetector(
+        onTap: widget.enabled ? widget.onTap : null,
+        onLongPressStart: (_) => _startHolding(),
+        onLongPressEnd: (_) => _stopHolding(),
+        onLongPressCancel: () => _stopHolding(),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: widget.enabled
+                ? theme.colorScheme.primary.withOpacity(0.1)
+                : Colors.transparent,
+          ),
+          child: Icon(
+            widget.icon,
+            size: 28,
+            color: widget.enabled ? theme.iconTheme.color : theme.disabledColor,
+          ),
+        ),
+      ),
     );
   }
 }
