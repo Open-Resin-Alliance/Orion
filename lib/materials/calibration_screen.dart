@@ -28,6 +28,7 @@ import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/widgets/zoom_value_editor_dialog.dart';
+import 'package:orion/util/orion_config.dart';
 
 class CalibrationScreen extends StatefulWidget {
   const CalibrationScreen({super.key});
@@ -971,6 +972,20 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         // Show progress
         messageNotifier.value = 'Submitting calibration job...';
         progressNotifier.value = 0.1;
+
+        final reuseCalibrationPlate = OrionConfig()
+            .getFlag('reuseCalibrationPlate', category: 'developer');
+        if (reuseCalibrationPlate) {
+          _log.info(
+              'Developer mode: reusing existing calibration plate, skipping slicer');
+          messageNotifier.value =
+              'Starting existing calibration plate (debug)...';
+          progressNotifier.value = 0.6;
+          await BackendService().startPrint('Local', '0');
+          showReadyNotifier.value = true;
+          _log.info('Calibration print started (reuse mode)');
+          return;
+        }
 
         // Submit calibration job to backend
         final success = await BackendService().startCalibrationPrint(
