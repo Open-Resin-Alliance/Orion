@@ -15,9 +15,11 @@ class UpdateNotificationWatcher {
   bool _isDialogShown = false;
   Timer? _cooldownTimer;
 
-  UpdateNotificationWatcher(this.context)
-      : _updateManager = Provider.of<UpdateManager>(context, listen: false),
-        _statusProvider = Provider.of<StatusProvider>(context, listen: false) {
+  UpdateNotificationWatcher._(
+    this.context,
+    this._updateManager,
+    this._statusProvider,
+  ) {
     _updateManager.addListener(_check);
     _statusProvider.addListener(_check);
   }
@@ -169,6 +171,20 @@ class UpdateNotificationWatcher {
   }
 
   static UpdateNotificationWatcher? install(BuildContext context) {
-    return UpdateNotificationWatcher(context);
+    // Try to get the providers - if they're not available in this context,
+    // return null rather than throwing an error
+    try {
+      final updateManager = Provider.of<UpdateManager>(context, listen: false);
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      return UpdateNotificationWatcher._(
+        context,
+        updateManager,
+        statusProvider,
+      );
+    } catch (e) {
+      // Providers not available in this context
+      return null;
+    }
   }
 }
