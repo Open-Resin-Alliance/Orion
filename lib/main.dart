@@ -64,6 +64,7 @@ import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 import 'package:orion/util/standby_overlay.dart';
+import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -271,6 +272,10 @@ class OrionRoot extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => CalibrationContextProvider(),
           lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StandbySettingsProvider(),
+          lazy: false,
         )
       ],
       child: const OrionMainApp(),
@@ -506,7 +511,9 @@ class OrionMainAppState extends State<OrionMainApp> {
             });
             // Wrap the built subtree with the StandbyOverlay so it can
             // access Theme/Directionality provided by MaterialApp.
+            // The StandbyOverlay will read actual settings from StandbySettingsProvider
             return StandbyOverlay(
+              enabled: true,
               child: child ?? const SizedBox.shrink(),
             );
           },
