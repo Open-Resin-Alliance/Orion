@@ -265,7 +265,8 @@ class StatusScreenState extends State<StatusScreen> {
               'Detected calibration print completion, showing post-calibration overlay');
 
           // Get calibration context provider and navigator before popping
-          final calibrationProvider = context.read<CalibrationContextProvider>();
+          final calibrationProvider =
+              context.read<CalibrationContextProvider>();
           final calibrationContext = calibrationProvider.context;
           final nav = Navigator.of(context);
 
@@ -306,7 +307,10 @@ class StatusScreenState extends State<StatusScreen> {
               ),
             );
           } else {
-            _log.warning('Calibration print detected but no context available');
+            _log.warning(
+                'Calibration print detected (plateId == 0) but no context available. '
+                'This may indicate the context was lost after idle time. '
+                'Returning to home.');
           }
 
           // Reset status after navigation settles
