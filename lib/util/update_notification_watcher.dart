@@ -10,22 +10,21 @@ import 'package:orion/widgets/version_comparison.dart';
 
 class UpdateNotificationWatcher {
   final BuildContext context;
+  final UpdateManager _updateManager;
+  final StatusProvider _statusProvider;
   bool _isDialogShown = false;
   Timer? _cooldownTimer;
 
-  UpdateNotificationWatcher(this.context) {
-    final updateManager = Provider.of<UpdateManager>(context, listen: false);
-    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
-
-    updateManager.addListener(_check);
-    statusProvider.addListener(_check);
+  UpdateNotificationWatcher(this.context)
+      : _updateManager = Provider.of<UpdateManager>(context, listen: false),
+        _statusProvider = Provider.of<StatusProvider>(context, listen: false) {
+    _updateManager.addListener(_check);
+    _statusProvider.addListener(_check);
   }
 
   void dispose() {
-    final updateManager = Provider.of<UpdateManager>(context, listen: false);
-    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
-    updateManager.removeListener(_check);
-    statusProvider.removeListener(_check);
+    _updateManager.removeListener(_check);
+    _statusProvider.removeListener(_check);
     _cooldownTimer?.cancel();
   }
 
@@ -36,15 +35,16 @@ class UpdateNotificationWatcher {
     // might still return '/status' while the screen is actually disposing,
     // causing a race condition where the notification remains blocked.
     // Relying on the provider flag (managed by StatusScreen state) is safer.
-    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
-    return statusProvider.isStatusScreenOpen;
+    return _statusProvider.isStatusScreenOpen;
   }
 
   void _check() {
+    // Safety check: don't proceed if the widget is disposed
+    if (!context.mounted) return;
     if (_isDialogShown) return;
 
-    final updateManager = Provider.of<UpdateManager>(context, listen: false);
-    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    final updateManager = _updateManager;
+    final statusProvider = _statusProvider;
 
     if (updateManager.shouldShowNotification) {
       final isPrinting = statusProvider.status?.isPrinting ?? false;
@@ -61,15 +61,9 @@ class UpdateNotificationWatcher {
           // Re-check conditions as they might have changed during delay
           if (!context.mounted) return;
 
-          final curUpdateManager =
-              Provider.of<UpdateManager>(context, listen: false);
-          final curStatusProvider =
-              Provider.of<StatusProvider>(context, listen: false);
-
-          if (curUpdateManager.shouldShowNotification) {
-            final curIsPrinting =
-                curStatusProvider.status?.isPrinting ?? false;
-            final curIsPaused = curStatusProvider.status?.isPaused ?? false;
+          if (_updateManager.shouldShowNotification) {
+            final curIsPrinting = _statusProvider.status?.isPrinting ?? false;
+            final curIsPaused = _statusProvider.status?.isPaused ?? false;
             final curIsStatusScreen = _isOnStatusScreen();
 
             if (!curIsPrinting && !curIsPaused && !curIsStatusScreen) {
@@ -90,9 +84,8 @@ class UpdateNotificationWatcher {
 
   void _showDialog() {
     _isDialogShown = true;
-    final updateManager = Provider.of<UpdateManager>(context, listen: false);
-    final orion = updateManager.orionProvider;
-    final athena = updateManager.athenaProvider;
+    final orion = _updateManager.orionProvider;
+    final athena = _updateManager.athenaProvider;
 
     showDialog(
       context: context,
@@ -141,8 +134,8 @@ class UpdateNotificationWatcher {
               minimumSize: const Size(140, 60),
             ),
             onPressed: () {
-              updateManager.acknowledgeUpdatePrompt();
-              updateManager.remindLater();
+              _updateManager.acknowledgeUpdatePrompt();
+              _updateManager.remindLater();
               Navigator.of(ctx).pop();
             },
             child: const Text(
@@ -156,7 +149,7 @@ class UpdateNotificationWatcher {
               minimumSize: const Size(140, 60),
             ),
             onPressed: () {
-              updateManager.acknowledgeUpdatePrompt();
+              _updateManager.acknowledgeUpdatePrompt();
               Navigator.of(ctx).pop();
               context.go('/updates');
             },
@@ -171,7 +164,7 @@ class UpdateNotificationWatcher {
       _isDialogShown = false;
       // If the dialog was dismissed without pressing a button (barrier/back),
       // still acknowledge so we don't spam the user in this session.
-      updateManager.acknowledgeUpdatePrompt();
+      _updateManager.acknowledgeUpdatePrompt();
     });
   }
 
