@@ -435,9 +435,9 @@ class OrionMainAppState extends State<OrionMainApp> {
                 if (_notifWatcher == null && navCtx != null) {
                   _notifWatcher = NotificationWatcher.install(navCtx);
                 }
-                if (_updateWatcher == null && navCtx != null) {
-                  _updateWatcher = UpdateNotificationWatcher.install(navCtx);
-                }
+                // Use ctx (builder context) for UpdateNotificationWatcher since it
+                // needs access to providers which aren't available in navCtx
+                _updateWatcher ??= UpdateNotificationWatcher.install(ctx);
                 // Attach a listener to StatusProvider so we can auto-open
                 // the StatusScreen when a print becomes active (remote start).
                 try {
