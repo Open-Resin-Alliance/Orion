@@ -104,6 +104,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   int _activeThumbnailFetches = 0;
   final Queue<_QueuedThumb> _thumbQueue = Queue<_QueuedThumb>();
   final Map<String, Future<Uint8List?>> _queuedInFlight = {};
+  final Map<String, Future<Uint8List?>> _thumbnailFutureCache = {};
 
   @override
   void initState() {
@@ -183,6 +184,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   void dispose() {
     _thumbQueue.clear();
     _queuedInFlight.clear();
+    _thumbnailFutureCache.clear();
     super.dispose();
   }
 
@@ -235,6 +237,33 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     scheduleMicrotask(_processThumbnailQueue);
 
     return completer.future;
+  }
+
+  Future<Uint8List?> _getThumbnailFuture({
+    required String location,
+    required String subdirectory,
+    required String fileName,
+    required OrionApiFile file,
+    String size = 'Small',
+  }) {
+    final key = _thumbCacheKey(location, file, size);
+    return _thumbnailFutureCache.putIfAbsent(
+      key,
+      () => _queuedGetThumbnail(
+        location: location,
+        subdirectory: subdirectory,
+        fileName: fileName,
+        file: file,
+        size: size,
+      ),
+    );
+  }
+
+  void _pruneThumbnailFutureCache(
+      String location, Iterable<OrionApiFile> files) {
+    final allowed =
+        files.map((f) => _thumbCacheKey(location, f, 'Small')).toSet();
+    _thumbnailFutureCache.removeWhere((key, _) => !allowed.contains(key));
   }
 
   void _processThumbnailQueue() {
@@ -354,23 +383,21 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         await _syncAfterLoad(provider, 'Usb');
 
         // Clean up cached thumbnails for deleted files
-        final currentPaths = provider.items
-            .whereType<OrionApiFile>()
-            .map((f) => f.path)
-            .toList();
+        final currentFiles = provider.items.whereType<OrionApiFile>().toList();
+        final currentPaths = currentFiles.map((f) => f.path).toList();
         ThumbnailCache.instance.validateAndCleanup('Usb', currentPaths);
+        _pruneThumbnailFutureCache('Usb', currentFiles);
       } else {
         final provider = Provider.of<FilesProvider>(context, listen: false);
         await provider.loadItems(_isUSB ? 'Usb' : 'Local', _subdirectory);
         await _syncAfterLoad(provider, _isUSB ? 'Usb' : 'Local');
 
         // Clean up cached thumbnails for deleted files
-        final currentPaths = provider.items
-            .whereType<OrionApiFile>()
-            .map((f) => f.path)
-            .toList();
+        final currentFiles = provider.items.whereType<OrionApiFile>().toList();
+        final currentPaths = currentFiles.map((f) => f.path).toList();
         ThumbnailCache.instance
             .validateAndCleanup(_isUSB ? 'Usb' : 'Local', currentPaths);
+        _pruneThumbnailFutureCache(_isUSB ? 'Usb' : 'Local', currentFiles);
       }
       setState(() {
         _isLoading = false;
@@ -1021,7 +1048,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                           padding: const EdgeInsets.all(4.5),
                           child: shouldShowLocalThumbnail
                               ? FutureBuilder<Uint8List?>(
-                                  future: _queuedGetThumbnail(
+                                  future: _getThumbnailFuture(
                                     location: provider.location,
                                     subdirectory: fileSubdirectory,
                                     fileName: fileName,
@@ -1185,7 +1212,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                       : Padding(
                           padding: const EdgeInsets.all(4.5),
                           child: FutureBuilder<Uint8List?>(
-                            future: _queuedGetThumbnail(
+                            future: _getThumbnailFuture(
                               location: provider.location,
                               subdirectory: fileSubdirectory,
                               fileName: fileName,
