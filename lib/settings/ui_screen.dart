@@ -135,6 +135,7 @@ class _UIScreenState extends State<UIScreen> {
                     final standbyMinutes =
                         standbySettings.durationSeconds ~/ 60;
                     final standbySeconds = standbySettings.durationSeconds % 60;
+                    const minStandbySeconds = 10;
 
                     return GlassCard(
                       outlined: true,
@@ -181,11 +182,19 @@ class _UIScreenState extends State<UIScreen> {
                                         child: _buildDurationInput(
                                           suffix: 'm',
                                           value: standbyMinutes,
+                                          totalSeconds:
+                                              standbySettings.durationSeconds,
+                                          minTotalSeconds: minStandbySeconds,
+                                          accentColor: null,
                                           onChanged: (val) {
                                             final newSeconds =
                                                 (val * 60) + standbySeconds;
+                                            final clamped =
+                                                newSeconds < minStandbySeconds
+                                                    ? minStandbySeconds
+                                                    : newSeconds;
                                             standbySettings
-                                                .setDurationSeconds(newSeconds);
+                                                .setDurationSeconds(clamped);
                                           },
                                           max: 59,
                                         ),
@@ -195,11 +204,23 @@ class _UIScreenState extends State<UIScreen> {
                                         child: _buildDurationInput(
                                           suffix: 's',
                                           value: standbySeconds,
+                                          totalSeconds:
+                                              standbySettings.durationSeconds,
+                                          minTotalSeconds: minStandbySeconds,
+                                          accentColor:
+                                              standbySettings.durationSeconds <
+                                                      30
+                                                  ? Colors.redAccent
+                                                  : null,
                                           onChanged: (val) {
                                             final newSeconds =
                                                 (standbyMinutes * 60) + val;
+                                            final clamped =
+                                                newSeconds < minStandbySeconds
+                                                    ? minStandbySeconds
+                                                    : newSeconds;
                                             standbySettings
-                                                .setDurationSeconds(newSeconds);
+                                                .setDurationSeconds(clamped);
                                           },
                                           max: 59,
                                         ),
@@ -209,10 +230,10 @@ class _UIScreenState extends State<UIScreen> {
                                   const SizedBox(height: 8.0),
                                   Center(
                                     child: Text(
-                                      'Screen will enter standby after ${standbyMinutes}m ${standbySeconds}s of inactivity',
+                                      'Screen will enter standby after ${standbyMinutes}m ${standbySeconds}s of inactivity${standbyMinutes == 0 && standbySeconds < 30 ? '\nWarning: Minimum recommended duration is 30 seconds.' : ''}',
                                       textAlign: TextAlign.center,
                                       style: const TextStyle(
-                                        fontSize: 14.0,
+                                        fontSize: 16.0,
                                         color: Colors.grey,
                                       ),
                                     ),
@@ -236,11 +257,16 @@ class _UIScreenState extends State<UIScreen> {
   Widget _buildDurationInput({
     required String suffix,
     required int value,
+    required int totalSeconds,
+    required int minTotalSeconds,
+    Color? accentColor,
     required Function(int) onChanged,
     required int max,
   }) {
+    final canDecrement = value > 0 && totalSeconds > minTotalSeconds;
     return GlassCard(
       outlined: true,
+      accentColor: accentColor,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
@@ -250,7 +276,7 @@ class _UIScreenState extends State<UIScreen> {
             // Minus button (left)
             _HoldToAccelerateButton(
               icon: Icons.remove,
-              enabled: value > 0,
+              enabled: canDecrement,
               onTap: () => onChanged(value - 1),
               onHold: (increment) {
                 final newValue = (value - increment).clamp(0, max);
