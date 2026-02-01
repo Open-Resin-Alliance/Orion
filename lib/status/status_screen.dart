@@ -268,12 +268,10 @@ class StatusScreenState extends State<StatusScreen> {
       }
 
       // PlateID 0 is calibration print in NanoDLP. Fall back to the UI
-      // detection signal and stored context when metadata is unavailable.
-      // In reuse mode (debug), the context alone is sufficient since fileData
-      // may not be available but the calibration context persists.
+      // detection signal combined with stored context when metadata is unavailable.
+      // Require either plateId == 0 OR the UI flag + context to avoid false positives.
       final isCalibrationPrint = (plateId == 0) ||
-          (_isCalibrationPrint == true) ||
-          (calibrationContext != null);
+          (_isCalibrationPrint == true && calibrationContext != null);
 
       if (isCalibrationPrint) {
         _log.info(
@@ -1395,39 +1393,31 @@ class StatusScreenState extends State<StatusScreen> {
         const SizedBox(width: 20),
         Expanded(
           flex: 1,
-          child: Consumer<CalibrationContextProvider>(
-            builder: (ctx, calibrationProvider, _) {
-              final hasCalibrationContext = calibrationProvider.context != null;
-              final showFinalizeButton =
-                  _isCalibrationPrint == true || hasCalibrationContext;
-
-              return GlassButton(
-                tint: GlassButtonTint.neutral,
-                onPressed: () {
-                  // Keep original return behavior but use a clearer label
-                  if (widget.onReturnHome != null) {
-                    widget.onReturnHome!();
-                    return;
-                  }
-                  _checkAndShowCalibrationOverlay();
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(120, 65),
-                  maximumSize: const Size(120, 65),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                child: AutoSizeText(
-                  minFontSize: 16,
-                  maxLines: 1,
-                  showFinalizeButton
-                      ? 'Finalize Calibration'
-                      : 'Return to Menu',
-                  style: const TextStyle(fontSize: 24),
-                ),
-              );
+          child: GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () {
+              // Keep original return behavior but use a clearer label
+              if (widget.onReturnHome != null) {
+                widget.onReturnHome!();
+                return;
+              }
+              _checkAndShowCalibrationOverlay();
             },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(120, 65),
+              maximumSize: const Size(120, 65),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            child: AutoSizeText(
+              minFontSize: 16,
+              maxLines: 1,
+              _isCalibrationPrint == true
+                  ? 'Finalize Calibration'
+                  : 'Return to Menu',
+              style: const TextStyle(fontSize: 24),
+            ),
           ),
         ),
       ]);
