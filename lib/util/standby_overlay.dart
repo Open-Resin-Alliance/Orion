@@ -57,6 +57,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   int _originalBrightness = 255;
   static const int _minBrightness = 13; // 5% of 255
 
+  // Track previous settings to detect changes
+  bool? _prevStandbyEnabled;
+  int? _prevDurationSeconds;
+
   @override
   void initState() {
     super.initState();
@@ -281,10 +285,17 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     // Also consume StandbySettingsProvider to react to setting changes
     return Consumer2<StatusProvider, StandbySettingsProvider>(
       builder: (ctx, statusProvider, standbySettings, child) {
-        // If standby settings change, reset the inactivity timer
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _resetInactivityTimer();
-        });
+        // Check if standby settings have changed, and only reset timer if so
+        if (_prevStandbyEnabled != standbySettings.standbyEnabled ||
+            _prevDurationSeconds != standbySettings.durationSeconds) {
+          _prevStandbyEnabled = standbySettings.standbyEnabled;
+          _prevDurationSeconds = standbySettings.durationSeconds;
+
+          // Reset timer on next frame when settings change
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _resetInactivityTimer();
+          });
+        }
 
         final isPrinting = statusProvider.status?.isPrinting ?? false;
         final progress = statusProvider.status?.progress ?? 0.0;
@@ -343,7 +354,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
           _currentTime,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontFamily: 'AtkinsonHyperlegibleNext',
+            fontFamily: 'AtkinsonHyperlegible',
             fontSize: 150,
             fontWeight: FontWeight.w500,
             color: Colors.white,
@@ -378,18 +389,18 @@ class _StandbyOverlayState extends State<StandbyOverlay>
           child: CircularProgressIndicator(
             value: progress,
             strokeWidth: 14,
+            strokeCap: StrokeCap.round,
             valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-            backgroundColor: Color.lerp(primaryColor, Colors.black, 0.6)!,
+            backgroundColor: Color.lerp(primaryColor, Colors.black, 0.9)!,
           ),
         ),
         Text(
           '$percentage%',
           style: TextStyle(
-            fontFamily: 'AtkinsonHyperlegibleNext',
+            fontFamily: 'AtkinsonHyperlegible',
             fontSize: 100,
             fontWeight: FontWeight.w500,
             color: primaryColor,
-            letterSpacing: 2,
             decoration: TextDecoration.none,
             fontFeatures: const [ui.FontFeature.tabularFigures()],
             shadows: [
