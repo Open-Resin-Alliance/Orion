@@ -48,10 +48,13 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   @override
   void initState() {
     super.initState();
-    // Set default model after first frame when provider is available
+    // Refresh data and set default model after first frame when provider is available
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final resinsProvider =
           Provider.of<ResinsProvider>(context, listen: false);
+
+      // Refresh to get latest data from backend
+      await resinsProvider.refresh();
 
       // Initialize the screen selection from the provider's selected
       // calibration model (the provider guarantees one will be selected
@@ -85,20 +88,6 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     // (e.g. NanoDLP AFP templates) are hidden from calibration flows.
     final resins = resinsProvider.userResins;
     final isLoading = resinsProvider.isLoading;
-
-    if (_selectedModel == null) {
-      final providerModel = resinsProvider.selectedCalibrationModel;
-      if (providerModel != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          if (_selectedModel != null) return;
-          setState(() {
-            _selectedModel = providerModel;
-            _selectedResin = resinsProvider.getRecommendedResin(_selectedModel);
-          });
-        });
-      }
-    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -178,9 +167,12 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                   Expanded(
                     flex: 11,
                     child: _buildLargeModelSelectorCard(
-                      context: context,
                       model: _selectedModel,
                       isLoading: isLoading,
+                      imageUrl: _selectedModel != null
+                          ? resinsProvider
+                              .calibrationImageUrl(_selectedModel!.id)
+                          : null,
                       onTap: isLoading
                           ? () {}
                           : () => _selectCalibrationModel(
@@ -324,12 +316,11 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   }
 
   Widget _buildLargeModelSelectorCard({
-    required BuildContext context,
     required CalibrationModel? model,
     required VoidCallback onTap,
     required bool isLoading,
+    String? imageUrl,
   }) {
-    final resinsProvider = Provider.of<ResinsProvider>(context, listen: false);
     return GlassCard(
       outlined: true,
       child: InkWell(
@@ -370,38 +361,32 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: () {
-                      final imageBytes =
-                          resinsProvider.calibrationImageBytes(model.id);
-                      if (imageBytes != null) {
-                        return Image.memory(
-                          imageBytes,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade800,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.image,
-                                    size: 64, color: Colors.grey),
-                              ),
-                            );
-                          },
-                        );
-                      } else {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade800,
-                            borderRadius: BorderRadius.circular(12),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade800,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.image,
+                                      size: 64, color: Colors.grey),
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade800,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                           ),
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
-                    }(),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -569,6 +554,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                       final isSelected = _selectedModel == model;
                       final resinsProvider =
                           Provider.of<ResinsProvider>(context, listen: false);
+                      final imageUrl =
+                          resinsProvider.calibrationImageUrl(model.id);
 
                       return Expanded(
                         child: Padding(
@@ -609,32 +596,26 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                                     child: ClipRRect(
                                       borderRadius: const BorderRadius.vertical(
                                           top: Radius.circular(16)),
-                                      child: () {
-                                        final imageBytes = resinsProvider
-                                            .calibrationImageBytes(model.id);
-                                        if (imageBytes != null) {
-                                          return Image.memory(
-                                            imageBytes,
-                                            fit: BoxFit.contain,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Container(
-                                                color: Colors.grey.shade800,
-                                                child: const Icon(Icons.image,
-                                                    size: 64,
-                                                    color: Colors.grey),
-                                              );
-                                            },
-                                          );
-                                        } else {
-                                          return Container(
-                                            color: Colors.grey.shade800,
-                                            child: const Center(
-                                                child:
-                                                    CircularProgressIndicator()),
-                                          );
-                                        }
-                                      }(),
+                                      child: imageUrl != null
+                                          ? Image.network(
+                                              imageUrl,
+                                              fit: BoxFit.contain,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return Container(
+                                                  color: Colors.grey.shade800,
+                                                  child: const Icon(Icons.image,
+                                                      size: 64,
+                                                      color: Colors.grey),
+                                                );
+                                              },
+                                            )
+                                          : Container(
+                                              color: Colors.grey.shade800,
+                                              child: const Center(
+                                                  child:
+                                                      CircularProgressIndicator()),
+                                            ),
                                     ),
                                   ),
 

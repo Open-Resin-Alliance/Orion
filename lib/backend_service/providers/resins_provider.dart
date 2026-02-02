@@ -1,8 +1,6 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_service.dart';
-import 'package:http/http.dart' as http;
 
 class ResinProfile {
   final String name;
@@ -49,7 +47,6 @@ class ResinsProvider extends ChangeNotifier {
   final BackendService _service;
 
   bool _loading = true;
-  bool _refreshing = false;
   bool get isLoading => _loading;
 
   Object? _error;
@@ -76,19 +73,12 @@ class ResinsProvider extends ChangeNotifier {
 
   // Cached calibration model images keyed by model id. We prefetch
   // these during refresh so UI can display thumbnails without issuing
-  // additional backend calls. Store actual image bytes for reliable caching.
+  // additional backend calls.
   final Map<int, String?> _calibrationImageUrls = {};
-  final Map<int, Uint8List?> _calibrationImageBytes = {};
 
   /// Returns the prefetched calibration image URL for [modelId], or null
   /// if not available yet or the backend didn't provide one.
   String? calibrationImageUrl(int modelId) => _calibrationImageUrls[modelId];
-
-  /// Returns the prefetched calibration image bytes for [modelId], or null
-  /// if not available yet. This provides reliable caching without relying
-  /// on Flutter's default network image cache.
-  Uint8List? calibrationImageBytes(int modelId) =>
-      _calibrationImageBytes[modelId];
 
   int? _selectedCalibrationModelId;
 
@@ -214,11 +204,6 @@ class ResinsProvider extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    if (_refreshing) {
-      _log.fine('Refresh already in progress, skipping');
-      return;
-    }
-    _refreshing = true;
     _log.info('Refreshing resin profiles');
     _loading = true;
     _error = null;
@@ -239,31 +224,13 @@ class ResinsProvider extends ChangeNotifier {
       }
 
       // Prefetch calibration model images concurrently and cache them.
-      // Fetch actual bytes for solid caching instead of relying on Image.network.
       try {
         final futures = _calibrationModels.map((m) async {
           try {
             final url = await _service.getCalibrationImageUrl(m.id);
             _calibrationImageUrls[m.id] = url;
-
-            // Fetch the image bytes and cache them
-            if (url != null) {
-              try {
-                final response = await http.get(Uri.parse(url));
-                if (response.statusCode == 200) {
-                  _calibrationImageBytes[m.id] = response.bodyBytes;
-                } else {
-                  _calibrationImageBytes[m.id] = null;
-                }
-              } catch (_) {
-                _calibrationImageBytes[m.id] = null;
-              }
-            } else {
-              _calibrationImageBytes[m.id] = null;
-            }
           } catch (_) {
             _calibrationImageUrls[m.id] = null;
-            _calibrationImageBytes[m.id] = null;
           }
         }).toList();
         await Future.wait(futures);
@@ -381,7 +348,6 @@ class ResinsProvider extends ChangeNotifier {
       _resins = [];
       _loading = false;
     } finally {
-      _refreshing = false;
       notifyListeners();
     }
   }
