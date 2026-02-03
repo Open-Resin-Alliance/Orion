@@ -15,6 +15,8 @@
 * limitations under the License.
 */
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -42,6 +44,7 @@ class _StartupGateState extends State<StartupGate> {
   bool _isSimulated = false;
   bool _athenaReady = false;
   bool _checkingAthena = false;
+  Timer? _startupStatusProbeTimer;
 
   // Startup sequence state
   bool _animationsComplete = false;
@@ -58,6 +61,21 @@ class _StartupGateState extends State<StartupGate> {
       final updateManager = Provider.of<UpdateManager>(context, listen: false);
       updateManager.suppressNotifications = true;
       _checkForUpdates();
+      _startStartupStatusProbe();
+    });
+  }
+
+  void _startStartupStatusProbe() {
+    _startupStatusProbeTimer?.cancel();
+    _startupStatusProbeTimer =
+        Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (!mounted) return;
+      final prov = Provider.of<StatusProvider>(context, listen: false);
+      if (prov.hasEverConnected) {
+        timer.cancel();
+        return;
+      }
+      prov.refresh(force: true);
     });
   }
 
@@ -72,8 +90,7 @@ class _StartupGateState extends State<StartupGate> {
       final cfg = OrionConfig();
       _isSimulated = cfg.getFlag('simulated', category: 'developer') ||
           cfg.getFlag('simulated', category: 'advanced');
-      _isAthena = cfg.isNanoDlpMode() &&
-          cfg.getMachineModelName().toLowerCase().contains('athena');
+      _isAthena = cfg.isAthenaMode();
     } catch (_) {
       _isAthena = false;
     }
@@ -110,7 +127,10 @@ class _StartupGateState extends State<StartupGate> {
     // When we see the backend become available, kick off Athena IoT checks
     try {
       final prov = Provider.of<StatusProvider>(context, listen: false);
-      if (_isAthena && !_isSimulated && !_athenaReady && prov.hasEverConnected) {
+      if (_isAthena &&
+          !_isSimulated &&
+          !_athenaReady &&
+          prov.hasEverConnected) {
         _ensureAthenaReady();
       }
     } catch (_) {}
@@ -159,6 +179,7 @@ class _StartupGateState extends State<StartupGate> {
   void dispose() {
     try {
       _statusProv.removeListener(_onStatusChange);
+      _startupStatusProbeTimer?.cancel();
       // Ensure notifications are unsuppressed when leaving startup
       Provider.of<UpdateManager>(context, listen: false).suppressNotifications =
           false;
@@ -173,7 +194,7 @@ class _StartupGateState extends State<StartupGate> {
 
     final requireAthenaReady = _isAthena && !_isSimulated;
     final backendReady =
-      prov.hasEverConnected && (!requireAthenaReady || _athenaReady);
+        prov.hasEverConnected && (!requireAthenaReady || _athenaReady);
     final isReadyToProceed =
         _animationsComplete && backendReady && _checkForUpdatesComplete;
 
