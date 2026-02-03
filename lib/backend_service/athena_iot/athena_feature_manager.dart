@@ -42,7 +42,7 @@ class AthenaFeatureManager {
 
   Future<void> fetchAndApplyFeatureFlags() async {
     try {
-      if (!_config.isNanoDlpMode()) return;
+      if (!_config.isAthenaMode()) return;
       final base = _resolveBaseUrl();
       final athena = AthenaIotClient(base);
 

@@ -65,6 +65,13 @@ class AthenaUpdateProvider extends ChangeNotifier {
 
     try {
       final cfg = OrionConfig();
+
+      // Only check Athena updates when in Athena mode
+      if (!cfg.isAthenaMode()) {
+        isChecking = false;
+        notifyListeners();
+        return;
+      }
       // Determine Athena IoT base URL. Prefer explicit nanodlp.base_url, but
       // fall back to the customUrl if useCustomUrl is set (mirrors
       // NanoDlpHttpClient/AthenaFeatureManager resolution logic).
