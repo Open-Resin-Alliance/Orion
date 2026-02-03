@@ -59,6 +59,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool verboseLogging;
   late bool selfDestructMode;
   late String machineName;
+  late String backendMode;
 
   late String originalRotation;
 
@@ -102,6 +103,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     verboseLogging = config.getFlag('verboseLogging', category: 'developer');
     selfDestructMode =
         config.getFlag('selfDestructMode', category: 'topsecret');
+    backendMode = config.getString('backend', category: 'advanced').isEmpty
+        ? 'odyssey'
+        : config.getString('backend', category: 'advanced').toLowerCase();
     screenRotation = screenRotation == '' ? '0' : screenRotation;
     config.setString('screenRotation', screenRotation, category: 'advanced');
     originalRotation = screenRotation;
@@ -202,6 +206,183 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     ),
                   ),
                 ),
+              // API Backend Selection - Developer Only
+              GlassCard(
+                accentColor: Colors.orangeAccent.shade100,
+                outlined: true,
+                elevation: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Internal Settings',
+                        style: TextStyle(
+                            fontSize: 28.0, color: Colors.orangeAccent),
+                      ),
+                      const SizedBox(height: 12.0),
+                      Text(
+                        'Switch between NanoDLP and Odyssey API backends. Current: ${backendMode.toLowerCase()}. Requires restart.',
+                        style: TextStyle(
+                            fontSize: 20, color: Colors.orangeAccent.shade100),
+                      ),
+                      const SizedBox(height: 20.0),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GlassButton(
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(0, 60),
+                              ),
+                              tint: GlassButtonTint.warn,
+                              onPressed: backendMode == 'nanodlp'
+                                  ? null
+                                  : () async {
+                                      final confirmed = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => GlassAlertDialog(
+                                              title: const Text(
+                                                  'Switch to NanoDLP?'),
+                                              content: const Text(
+                                                  'This will switch to NanoDLP API backend. The app will restart automatically. Continue?',
+                                                  style: TextStyle(
+                                                      fontSize: 18.0)),
+                                              actions: [
+                                                GlassButton(
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      minimumSize:
+                                                          const Size(0, 60),
+                                                    ),
+                                                    tint:
+                                                        GlassButtonTint.neutral,
+                                                    onPressed: () =>
+                                                        Navigator.of(ctx)
+                                                            .pop(false),
+                                                    child: const Text('Cancel',
+                                                        style: TextStyle(
+                                                            fontSize: 22.0))),
+                                                GlassButton(
+                                                    tint: GlassButtonTint.warn,
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      minimumSize:
+                                                          const Size(0, 60),
+                                                    ),
+                                                    onPressed: () =>
+                                                        Navigator.of(ctx)
+                                                            .pop(true),
+                                                    child: const Text('Switch',
+                                                        style: TextStyle(
+                                                            fontSize: 22.0))),
+                                              ],
+                                            ),
+                                          ) ??
+                                          false;
+
+                                      if (confirmed) {
+                                        setState(() {
+                                          backendMode = 'nanodlp';
+                                          config.setString('backend', 'nanodlp',
+                                              category: 'advanced');
+                                          config.setFlag('needsRestart', true,
+                                              category: 'internal');
+                                          final settingsScreenState =
+                                              context.findAncestorStateOfType<
+                                                  SettingsScreenState>();
+                                          settingsScreenState
+                                              ?.setRestartStatus(true);
+                                        });
+                                      }
+                                    },
+                              child: const Text(
+                                'NanoDLP',
+                                style: TextStyle(fontSize: 22),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12.0),
+                          Expanded(
+                            child: GlassButton(
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(0, 60),
+                              ),
+                              tint: GlassButtonTint.positive,
+                              onPressed: backendMode == 'odyssey'
+                                  ? null
+                                  : () async {
+                                      final confirmed = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => GlassAlertDialog(
+                                              title: const Text(
+                                                  'Switch to Odyssey?'),
+                                              content: const Text(
+                                                  'This will switch to Odyssey API backend. The app will restart automatically. Continue?',
+                                                  style: TextStyle(
+                                                      fontSize: 18.0)),
+                                              actions: [
+                                                GlassButton(
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      minimumSize:
+                                                          const Size(0, 60),
+                                                    ),
+                                                    tint:
+                                                        GlassButtonTint.neutral,
+                                                    onPressed: () =>
+                                                        Navigator.of(ctx)
+                                                            .pop(false),
+                                                    child: const Text('Cancel',
+                                                        style: TextStyle(
+                                                            fontSize: 22.0))),
+                                                GlassButton(
+                                                    tint: GlassButtonTint
+                                                        .positive,
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      minimumSize:
+                                                          const Size(0, 60),
+                                                    ),
+                                                    onPressed: () =>
+                                                        Navigator.of(ctx)
+                                                            .pop(true),
+                                                    child: const Text('Switch',
+                                                        style: TextStyle(
+                                                            fontSize: 22.0))),
+                                              ],
+                                            ),
+                                          ) ??
+                                          false;
+
+                                      if (confirmed) {
+                                        setState(() {
+                                          backendMode = 'odyssey';
+                                          config.setString('backend', 'odyssey',
+                                              category: 'advanced');
+                                          config.setFlag('needsRestart', true,
+                                              category: 'internal');
+                                          final settingsScreenState =
+                                              context.findAncestorStateOfType<
+                                                  SettingsScreenState>();
+                                          settingsScreenState
+                                              ?.setRestartStatus(true);
+                                        });
+                                      }
+                                    },
+                              child: const Text(
+                                'Odyssey',
+                                style: TextStyle(fontSize: 22),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12.0),
               GlassCard(
                 outlined: true,
                 elevation: 1,
