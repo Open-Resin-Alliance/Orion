@@ -20,6 +20,7 @@ import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_simulated_client.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_import_request.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// BackendService is a small façade that selects a concrete
@@ -99,6 +100,15 @@ class BackendService implements BackendClient {
   @override
   Future<bool> usbAvailable() => _delegate.usbAvailable();
 
+  /// Invalidate cached file listings (NanoDLP plates cache).
+  /// Call this when files may have been modified externally (e.g., deleted via WebUI).
+  void invalidateFilesCache() {
+    if (_delegate is NanoDlpHttpClient) {
+      (_delegate as NanoDlpHttpClient).invalidatePlatesCache();
+    }
+    // Other backends don't cache, so no action needed
+  }
+
   @override
   Future<Map<String, dynamic>> getFileMetadata(
           String location, String filePath) =>
@@ -122,6 +132,20 @@ class BackendService implements BackendClient {
   @override
   Future<Map<String, dynamic>> deleteFile(String location, String filePath) =>
       _delegate.deleteFile(location, filePath);
+
+  /// Import a file from USB/local storage to NanoDLP's internal storage.
+  ///
+  /// This is a NanoDLP-specific feature. If the current backend is not NanoDLP,
+  /// this will throw an UnsupportedError.
+  ///
+  /// Returns the plate ID if successful, null if ID couldn't be determined.
+  Future<int?> importFile(NanoImportRequest request) async {
+    if (_delegate is NanoDlpHttpClient) {
+      return (_delegate as NanoDlpHttpClient).importFile(request);
+    }
+    throw UnsupportedError(
+        'File import is only supported with NanoDLP backend');
+  }
 
   @override
   Future<Map<String, dynamic>> getStatus() => _delegate.getStatus();

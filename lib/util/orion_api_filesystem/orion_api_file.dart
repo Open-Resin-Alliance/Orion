@@ -32,6 +32,7 @@ class OrionApiFile implements OrionApiItem {
   final double? printTime;
   final double? layerHeight;
   final int? layerCount;
+  final int? plateId;
 
   OrionApiFile({
     this.file,
@@ -44,6 +45,7 @@ class OrionApiFile implements OrionApiItem {
     this.printTime,
     this.layerHeight,
     this.layerCount,
+    this.plateId,
   });
 
   factory OrionApiFile.fromJson(Map<String, dynamic> json) {
@@ -60,6 +62,7 @@ class OrionApiFile implements OrionApiItem {
       printTime: json['print_time'] ?? 0.0,
       layerHeight: json['layer_height'] ?? 0.0,
       layerCount: json['layer_count'] ?? 0,
+      plateId: json['plate_id'] ?? json['PlateID'],
     );
   }
 }

@@ -23,6 +23,7 @@ import 'package:flutter/foundation.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:archive/archive.dart';
 
 class ThumbnailUtil {
   static final _logger = Logger('ThumbnailUtil');
@@ -131,6 +132,89 @@ class ThumbnailUtil {
 
   static bool _isDefaultDir(String subdirectory) {
     return subdirectory == '';
+  }
+
+  /// Extract thumbnail bytes from a local .nanodlp file (zip) containing 3d.png.
+  /// Uses the same resize mechanism as API thumbnails.
+  static Future<Uint8List> extractNanodlpThumbnailBytesFromFile(
+    String filePath, {
+    String size = "Small",
+  }) async {
+    File? tempCopy;
+    try {
+      File file = File(filePath);
+      if (Platform.isLinux && filePath.startsWith('/media/')) {
+        try {
+          final tempDir = await getTemporaryDirectory();
+          final tmpRoot = Directory(p.join(tempDir.path, 'orion_nanodlp_tmp'));
+          if (!await tmpRoot.exists()) {
+            await tmpRoot.create(recursive: true);
+          }
+          final tmpPath = p.join(
+            tmpRoot.path,
+            '${p.basename(filePath)}_${DateTime.now().millisecondsSinceEpoch}',
+          );
+          final staged = await file.copy(tmpPath);
+          tempCopy = staged;
+          file = staged;
+        } catch (e) {
+          _logger.fine('Failed to stage NanoDLP file in temp dir', e);
+        }
+      }
+      if (!await file.exists()) {
+        return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
+      }
+
+      final bytes = await file.readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes, verify: true);
+
+      ArchiveFile? pngEntry;
+      ArchiveFile? anyPngEntry;
+      for (final entry in archive) {
+        if (!entry.isFile) continue;
+        final name = entry.name.toLowerCase();
+        if (name.endsWith('.png')) {
+          anyPngEntry ??= entry;
+          if (name.endsWith('3d.png')) {
+            pngEntry = entry;
+            break;
+          }
+        }
+      }
+
+      pngEntry ??= anyPngEntry;
+      if (pngEntry == null) {
+        _logger.info('NanoDLP zip thumbnail missing PNG: $filePath');
+        return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
+      }
+
+      final pngBytes = pngEntry.content;
+
+      int width = 400, height = 400;
+      if (size == 'Large') {
+        width = NanoDlpThumbnailGenerator.largeWidth;
+        height = NanoDlpThumbnailGenerator.largeHeight;
+      }
+
+      final resized = await compute(_resizeBytesEntry, {
+        'bytes': pngBytes,
+        'width': width,
+        'height': height,
+      });
+
+      return resized as Uint8List;
+    } catch (e) {
+      _logger.warning('Failed to extract NanoDLP zip thumbnail', e);
+    } finally {
+      // Best-effort cleanup of temp copy if we created one.
+      try {
+        if (tempCopy != null && await tempCopy.exists()) {
+          await tempCopy.delete();
+        }
+      } catch (_) {}
+    }
+
+    return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
   }
 
   /// Returns thumbnail bytes (PNG) resized for the requested size.

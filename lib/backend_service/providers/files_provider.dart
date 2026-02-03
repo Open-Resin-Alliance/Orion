@@ -45,11 +45,26 @@ class FilesProvider extends ChangeNotifier {
 
   FilesProvider({BackendClient? client}) : _client = client ?? BackendService();
 
+  /// Invalidate backend file cache (NanoDLP plates cache) if supported.
+  void invalidateFilesCache() {
+    final client = _client;
+    if (client is BackendService) {
+      client.invalidateFilesCache();
+    }
+  }
+
   /// Load items into provider state (convenience wrapper around listItemsAsOrionApiItems)
   Future<void> loadItems(String location, String subdirectory,
       {int pageSize = 100, int pageIndex = 0}) async {
     _log.info(
         'loadItems: location=$location subdirectory=$subdirectory pageSize=$pageSize pageIndex=$pageIndex');
+    
+    // Invalidate backend cache to ensure fresh data (important after external changes)
+    final client = _client;
+    if (client is BackendService) {
+      client.invalidateFilesCache();
+    }
+    
     _loading = true;
     _error = null;
     notifyListeners();

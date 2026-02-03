@@ -47,6 +47,7 @@ import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/files_provider.dart';
+import 'package:orion/backend_service/providers/local_files_provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/backend_service/providers/print_provider.dart';
 import 'package:orion/backend_service/providers/notification_provider.dart';
@@ -231,6 +232,10 @@ class OrionRoot extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => FilesProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => LocalFilesProvider(),
           lazy: true,
         ),
         ChangeNotifierProvider(
