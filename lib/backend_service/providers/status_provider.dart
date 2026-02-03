@@ -190,6 +190,9 @@ class StatusProvider extends ChangeNotifier {
   static const int _maxPollIntervalSeconds = 60;
   // SSE reconnect tuning: aggressive base retry for local devices + small jitter.
   static const int _sseReconnectBaseSeconds = 3;
+  // While waiting for the first SSE payload, use a slower polling interval
+  // to avoid spamming the backend if the stream is silent.
+  static const int _sseAwaitingPollIntervalSeconds = 5;
   // Don't attempt SSE if polling is repeatedly failing. If polling shows
   // consecutive errors above this threshold, skip SSE reconnect attempts
   // until polls recover.
@@ -201,6 +204,10 @@ class StatusProvider extends ChangeNotifier {
 
   /// True once we've successfully established an SSE subscription at least once
   bool _sseEverConnected = false;
+
+  /// True while waiting for the first SSE payload. We keep polling until a
+  /// real event arrives so startup can proceed even if SSE is silent.
+  bool _sseAwaitingFirstPayload = false;
 
   /// True once we've attempted an SSE subscription (even if it failed)
   // bool _sseAttempted = false; // reserved for future introspection
@@ -293,18 +300,24 @@ class StatusProvider extends ChangeNotifier {
     // Start an async polling loop that adapts interval on errors.
     // The loop is cancelable via [_polling] so that when an SSE stream
     // becomes active we can stop polling to avoid duplicate requests.
-    if (_polling || _sseConnected || _disposed) return;
+    if (_polling || _disposed) return;
     _polling = true;
     Future<void>(() async {
       try {
         await refresh();
-        while (!_disposed && _polling && !_sseConnected) {
+        while (!_disposed && _polling) {
+          final shouldPoll = !_sseConnected || _sseAwaitingFirstPayload;
+          if (!shouldPoll) break;
           try {
-            await Future.delayed(Duration(seconds: _pollIntervalSeconds));
+            final intervalSeconds = _sseAwaitingFirstPayload && _sseConnected
+                ? _sseAwaitingPollIntervalSeconds
+                : _pollIntervalSeconds;
+            await Future.delayed(Duration(seconds: intervalSeconds));
           } catch (_) {
             // ignore
           }
-          if (_disposed || !_polling || _sseConnected) break;
+          if (_disposed || !_polling) break;
+          if (_sseConnected && !_sseAwaitingFirstPayload) break;
           await refresh();
         }
       } finally {
@@ -358,6 +371,8 @@ class StatusProvider extends ChangeNotifier {
       _sseEverConnected = true;
       _sseSupported = true;
       _polling = false;
+      _sseAwaitingFirstPayload = true;
+      _startPolling();
 
       // Reset SSE error counter on successful subscription
       _sseConsecutiveErrors = 0;
@@ -590,6 +605,12 @@ class StatusProvider extends ChangeNotifier {
           _status = parsed;
           _error = null;
           _loading = false;
+          _everHadSuccessfulStatus = true;
+          if (_sseAwaitingFirstPayload) {
+            _sseAwaitingFirstPayload = false;
+            _log.fine('SSE first payload received; stopping polling');
+            _polling = false;
+          }
           _consecutiveErrors = 0;
           _pollIntervalSeconds = _minPollIntervalSeconds;
           // If we were previously awaiting a new print, consider the print
@@ -636,6 +657,7 @@ class StatusProvider extends ChangeNotifier {
       }, onError: (err, st) {
         _log.warning('SSE stream error, falling back to polling', err, st);
         _closeSse();
+        _sseAwaitingFirstPayload = false;
         if (!_disposed) _startPolling();
         // If we previously had a working SSE subscription, retry with
         // exponential backoff because we know the backend supported SSE.
@@ -671,6 +693,7 @@ class StatusProvider extends ChangeNotifier {
       }, onDone: () {
         _log.info('SSE stream closed by server; falling back to polling');
         _closeSse();
+        _sseAwaitingFirstPayload = false;
         if (!_disposed) _startPolling();
         if (_sseEverConnected) {
           _sseConsecutiveErrors =
@@ -699,6 +722,7 @@ class StatusProvider extends ChangeNotifier {
     } catch (e, st) {
       _log.info('SSE subscription failed; using polling', e, st);
       _sseConnected = false;
+      _sseAwaitingFirstPayload = false;
       // mark that we've attempted SSE (implicit via logs)
       if (!_disposed) _startPolling();
       // If polling is healthy, the server likely doesn't support SSE;
