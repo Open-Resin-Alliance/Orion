@@ -158,15 +158,26 @@ class OdysseyHttpClient implements BackendClient {
   Stream<Map<String, dynamic>> getStatusStream() async* {
     final uri = _dynUri(apiUrl, '/status/stream', {});
     final request = http.Request('GET', uri);
+    request.headers['Accept'] = 'text/event-stream';
+    request.headers['Cache-Control'] = 'no-cache';
+    request.headers['Connection'] = 'keep-alive';
 
     final client = _createClient();
     try {
+      _log.fine('SSE connect -> $uri');
       final streamed = await client.send(request);
+      _log.fine(
+          'SSE status=${streamed.statusCode} content-type=${streamed.headers['content-type'] ?? 'unknown'}');
       final stream = streamed.stream
           .transform(utf8.decoder)
           .transform(const LineSplitter());
 
+      var lineCount = 0;
       await for (final line in stream) {
+        if (lineCount < 10) {
+          _log.fine('SSE line[$lineCount]: $line');
+        }
+        lineCount++;
         if (line.startsWith('data:')) {
           final payload = line.substring(5).trim();
           if (payload.isEmpty) continue;
@@ -174,10 +185,37 @@ class OdysseyHttpClient implements BackendClient {
             final jsonObj = json.decode(payload) as Map<String, dynamic>;
             yield jsonObj;
           } catch (e) {
+            if (lineCount <= 10) {
+              _log.fine('SSE parse error: $e payload=$payload');
+            }
             continue;
           }
+        } else if (line.startsWith(':')) {
+          // SSE keepalive/comment line
+          continue;
+        } else if (line.startsWith('event:') ||
+            line.startsWith('id:') ||
+            line.startsWith('retry:') ||
+            line.isEmpty) {
+          continue;
+        } else if (line.trim().startsWith('{')) {
+          final payload = line.trim();
+          try {
+            final jsonObj = json.decode(payload) as Map<String, dynamic>;
+            yield jsonObj;
+          } catch (e) {
+            if (lineCount <= 10) {
+              _log.fine('SSE raw JSON parse error: $e payload=$payload');
+            }
+            continue;
+          }
+        } else if (lineCount <= 10) {
+          _log.fine('SSE non-data line: $line');
         }
       }
+      _log.fine('SSE stream ended after $lineCount lines');
+    } catch (e, st) {
+      _log.fine('SSE stream error: $e', e, st);
     } finally {
       client.close();
     }
