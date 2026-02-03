@@ -282,18 +282,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           false;
 
                                       if (confirmed) {
-                                        setState(() {
-                                          backendMode = 'nanodlp';
-                                          config.setString('backend', 'nanodlp',
-                                              category: 'advanced');
-                                          config.setFlag('needsRestart', true,
-                                              category: 'internal');
-                                          final settingsScreenState =
-                                              context.findAncestorStateOfType<
-                                                  SettingsScreenState>();
-                                          settingsScreenState
-                                              ?.setRestartStatus(true);
-                                        });
+                                        await _switchBackendService('nanodlp');
                                       }
                                     },
                               child: const Text(
@@ -356,18 +345,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           false;
 
                                       if (confirmed) {
-                                        setState(() {
-                                          backendMode = 'odyssey';
-                                          config.setString('backend', 'odyssey',
-                                              category: 'advanced');
-                                          config.setFlag('needsRestart', true,
-                                              category: 'internal');
-                                          final settingsScreenState =
-                                              context.findAncestorStateOfType<
-                                                  SettingsScreenState>();
-                                          settingsScreenState
-                                              ?.setRestartStatus(true);
-                                        });
+                                        await _switchBackendService('odyssey');
                                       }
                                     },
                               child: const Text(
@@ -1263,6 +1241,85 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _switchBackendService(String target) async {
+    if (!Platform.isLinux) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => GlassAlertDialog(
+          title: const Text('Unsupported'),
+          content: const Text(
+              'Backend switching is only supported on Linux devices.'),
+          actions: [
+            GlassButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      backendMode = target;
+      config.setString('backend', target, category: 'advanced');
+    });
+
+    final stopService = target == 'nanodlp' ? 'odyssey' : 'nanodlp';
+    final enableService = target;
+
+    try {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const GlassAlertDialog(
+          title: Text('Switching Backend'),
+          content: Text('Applying service changes...'),
+        ),
+      );
+
+      await Process.run('sudo', ['systemctl', 'disable', stopService]);
+      await Process.run('sudo', ['systemctl', 'stop', stopService]);
+      await Process.run('sudo', ['systemctl', 'enable', enableService]);
+      await Process.run('sudo', ['systemctl', 'start', enableService]);
+
+      if (mounted) Navigator.of(context).pop();
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const GlassAlertDialog(
+          title: Text('Rebooting'),
+          content: Text('Rebooting now to apply backend changes.'),
+        ),
+      );
+
+      await Process.run('sudo', ['reboot', 'now']);
+    } catch (e) {
+      if (mounted) {
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+        showDialog(
+          context: context,
+          builder: (ctx) => GlassAlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to switch backend: $e'),
+            actions: [
+              GlassButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   @override
