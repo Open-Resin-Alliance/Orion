@@ -66,9 +66,16 @@ import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 import 'package:orion/util/standby_overlay.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
+import 'package:orion/util/orion_config.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Restore screen brightness to full on startup (in case the app was
+  // closed while standby dimming was active)
+  if (Platform.isLinux) {
+    await _restoreFullBrightness();
+  }
 
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     setWindowTitle('Orion - Open Resin Alliance');
@@ -148,6 +155,69 @@ void main() {
   });
 
   runApp(const OrionRoot());
+}
+
+/// Restore screen brightness to 255 on startup.
+/// This ensures the screen is at full brightness even if the app was closed
+/// while standby dimming was active.
+Future<void> _restoreFullBrightness() async {
+  try {
+    // Try to read the backlight device from config
+    final config = OrionConfig();
+    final backlightDevice = config.getString('backlightDevice', category: 'ui');
+
+    if (backlightDevice.isEmpty) {
+      // No backlight device configured, try to auto-detect
+      final backlightDir = Directory('/sys/class/backlight');
+      if (!await backlightDir.exists()) return;
+
+      // Find first available device
+      await for (final entry in backlightDir.list()) {
+        if (entry is Directory) {
+          final brightnessFile = File('${entry.path}/brightness');
+          if (await brightnessFile.exists()) {
+            await _writeBrightness(brightnessFile.path, 255);
+            return;
+          }
+        }
+      }
+    } else {
+      // Use configured device
+      final brightnessPath = '/sys/class/backlight/$backlightDevice/brightness';
+      final file = File(brightnessPath);
+      if (await file.exists()) {
+        await _writeBrightness(brightnessPath, 255);
+      }
+    }
+  } catch (e) {
+    print('Could not restore full brightness on startup: $e');
+  }
+}
+
+/// Write brightness value to the specified path
+Future<void> _writeBrightness(String path, int level) async {
+  try {
+    // Try direct write first
+    try {
+      final file = File(path);
+      await file.writeAsString(level.toString());
+      return;
+    } catch (_) {
+      // Direct write failed, try with sudo
+    }
+
+    // Fall back to sudo method
+    try {
+      final process = await Process.start('sudo', ['tee', path]);
+      process.stdin.writeln(level.toString());
+      await process.stdin.close();
+      await process.exitCode;
+    } catch (e) {
+      print('Brightness write skipped: $e');
+    }
+  } catch (e) {
+    print('Error writing brightness: $e');
+  }
 }
 
 /// Resolve the most likely log file location for this runtime.
