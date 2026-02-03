@@ -859,6 +859,19 @@ class OrionConfig {
     }
   }
 
+  /// Convenience check for whether the app should operate in Athena mode.
+  /// Athena mode is only valid when NanoDLP backend is selected and the
+  /// machine model name contains 'athena'.
+  bool isAthenaMode() {
+    try {
+      if (!isNanoDlpMode()) return false;
+      final model = getMachineModelName();
+      return model.toLowerCase().contains('athena');
+    } catch (_) {
+      return false;
+    }
+  }
+
   Map<String, dynamic> _getConfig() {
     var fullPath = path.join(_configPath, 'orion.cfg');
     var configFile = File(fullPath);
