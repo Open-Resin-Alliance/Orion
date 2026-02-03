@@ -62,6 +62,14 @@ class ImportScreenState extends State<ImportScreen> {
   @override
   void initState() {
     super.initState();
+    // Ensure resin profiles are fetched when import screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<ResinsProvider>(context, listen: false);
+      // If list is empty and not currently loading, trigger a refresh
+      if (provider.resins.isEmpty && !provider.isLoading) {
+        provider.refresh();
+      }
+    });
   }
 
   String _defaultJobName() {
@@ -491,6 +499,11 @@ class ImportScreenState extends State<ImportScreen> {
               const SizedBox(height: 8),
               const Text('No material profiles found',
                   style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const SizedBox(height: 16),
+              GlassButton(
+                onPressed: provider.refresh,
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
