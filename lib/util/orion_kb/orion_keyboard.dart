@@ -19,11 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import 'package:provider/provider.dart';
-
-import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/localization.dart';
-import 'package:orion/util/providers/theme_provider.dart';
 
 class OrionKeyboard extends StatefulWidget {
   final TextEditingController controller;
@@ -110,12 +106,15 @@ class OrionKeyboardState extends State<OrionKeyboard> {
   }
 
   Widget buildRow(String rowCharacters, {bool hasShiftAndBackspace = false}) {
+    final sideKeyFlex = hasShiftAndBackspace ? 3 : 1;
+    final letterKeyFlex = hasShiftAndBackspace ? 2 : 1;
     return Expanded(
       child: Row(
         children: [
           SizedBox(width: hasShiftAndBackspace ? 10 : 0),
           if (hasShiftAndBackspace)
             Expanded(
+              flex: sideKeyFlex,
               child: ValueListenableBuilder<bool>(
                 valueListenable: _isCapsEnabled,
                 builder: (context, isCapsEnabled, child) {
@@ -159,6 +158,7 @@ class OrionKeyboardState extends State<OrionKeyboard> {
               .split('')
               .expand((char) => [
                     Expanded(
+                      flex: letterKeyFlex,
                       child: ValueListenableBuilder<bool>(
                         valueListenable: _isShiftEnabled,
                         builder: (context, isShiftEnabled, child) {
@@ -183,6 +183,7 @@ class OrionKeyboardState extends State<OrionKeyboard> {
           SizedBox(width: hasShiftAndBackspace ? 10 : 0),
           if (hasShiftAndBackspace)
             Expanded(
+              flex: sideKeyFlex,
               child: KeyboardButton(
                 text: "BACKSPACE",
                 isShiftEnabled: _isShiftEnabled,
@@ -291,82 +292,57 @@ class _KeyboardButtonState extends State<KeyboardButton> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isGlassTheme = themeProvider.isGlassTheme;
-    final borderRadius = BorderRadius.circular(16);
-
-    // Match GlassButton visual parameters but disable blur to avoid many
-    // expensive backdrop filter passes on small interactive keys.
-    final double fillOpacity = GlassPlatformConfig.surfaceOpacity(
-      0.14,
-      emphasize: true,
-    );
-    final double borderWidth = 1.5;
-    final bool borderEmphasis = true;
-    final shadow = GlassPlatformConfig.interactiveShadow(
-      enabled: true,
-      blurRadius: 12.0,
-      yOffset: 3.0,
-      alpha: 0.12,
-    );
+    final isPrimary = widget.text == 'return' || widget.text == 'ENTER';
+    final isShiftKey = widget.text == '⇧';
+    final isCapsKey = widget.text == '⇪';
+    final isShiftActive = widget.isShiftEnabled.value;
+    final isCapsActive = widget.isCapsEnabled.value;
+    final isEmphasized = isPrimary ||
+        (isShiftKey && isShiftActive) ||
+        (isCapsKey && isCapsActive);
+    final colorScheme = Theme.of(context).colorScheme;
+    final backgroundColor = isPrimary
+        ? colorScheme.primary.withValues(alpha: 0.8)
+        : colorScheme.onPrimaryContainer.withValues(alpha: 0.12);
+    final borderColor = isPrimary
+        ? colorScheme.primary.withValues(alpha: 0.3)
+        : Colors.white.withValues(alpha: 0.1);
+    final labelColor =
+        (isPrimary || (isShiftKey && isShiftActive && !isCapsActive))
+            ? Theme.of(context).canvasColor
+            : Colors.white;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
-      child: SizedBox(
-        height: double.infinity,
-        child: isGlassTheme
-            ? Container(
-                decoration: BoxDecoration(
-                  borderRadius: borderRadius,
-                  boxShadow: shadow,
-                ),
-                child: GlassEffect(
-                  borderRadius: borderRadius,
-                  sigma: glassBlurSigma,
-                  opacity: fillOpacity,
-                  borderWidth: borderWidth,
-                  emphasizeBorder: borderEmphasis,
-                  interactiveSurface: true,
-                  disableBlur: true,
-                  child: Material(
-                    color: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: borderRadius),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => _handleKey(widget.text, context),
-                      borderRadius: borderRadius,
-                      splashColor: Colors.white.withValues(alpha: 0.18),
-                      highlightColor: Colors.white.withValues(alpha: 0.1),
-                      child: Center(
-                        child: _buildLabel(
-                          context,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            : TextButton(
-                style: TextButton.styleFrom(
-                  backgroundColor: _getButtonBackgroundColor(context),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(15)),
-                  ),
-                ),
-                onPressed: () {
-                  _handleKey(widget.text, context);
-                },
-                child: Container(
-                  alignment: Alignment.center,
-                  child: _buildLabel(
-                    context,
-                    color: Theme.of(context).textTheme.bodyLarge?.color ??
-                        Colors.black,
-                    fontWeight: FontWeight.normal,
-                  ),
-                ),
+      child: Material(
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isEmphasized
+                ? colorScheme.primary.withValues(alpha: 0.8)
+                : backgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isEmphasized
+                  ? colorScheme.primary.withValues(alpha: 0.3)
+                  : borderColor,
+              width: 1.0,
+            ),
+          ),
+          child: InkWell(
+            onTap: () => _handleKey(widget.text, context),
+            splashColor: Colors.white.withValues(alpha: 0.2),
+            highlightColor: Colors.white.withValues(alpha: 0.1),
+            child: Center(
+              child: _buildLabel(
+                context,
+                color: labelColor,
               ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -396,11 +372,11 @@ class _KeyboardButtonState extends State<KeyboardButton> {
 
   void _handleShiftKey() {
     final now = DateTime.now();
-    
+
     // Check for double-tap: only if shift is currently enabled
-    if (widget.isShiftEnabled.value && 
+    if (widget.isShiftEnabled.value &&
         !widget.isCapsEnabled.value &&
-        _lastShiftTapTime != null && 
+        _lastShiftTapTime != null &&
         now.difference(_lastShiftTapTime!) < _doubleTapWindow) {
       // Quick double-tap detected: enable caps lock
       widget.isCapsEnabled.value = true;
@@ -431,9 +407,10 @@ class _KeyboardButtonState extends State<KeyboardButton> {
   }
 
   void _handleBackspaceKey() {
-    if (widget.controller.text.isNotEmpty && widget.controller.text != '\u200B') {
-      widget.controller.text =
-          widget.controller.text.substring(0, widget.controller.text.length - 1);
+    if (widget.controller.text.isNotEmpty &&
+        widget.controller.text != '\u200B') {
+      widget.controller.text = widget.controller.text
+          .substring(0, widget.controller.text.length - 1);
     }
   }
 
@@ -457,49 +434,6 @@ class _KeyboardButtonState extends State<KeyboardButton> {
     }
   }
 
-  // This method returns the background color for the keyboard button based on the text value.
-  // The brightness of the color is determined by the theme mode.
-  Color? _getButtonBackgroundColor(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    const lightBrightness = {
-      'stdKey': 0.100,
-      'altKey': 0.200,
-      'highlight': 0.300,
-    };
-
-    const darkBrightness = {
-      'stdKey': 0.080,
-      'altKey': 0.050,
-      'highlight': 0.200,
-    };
-
-    final brightnessMap = isDarkMode ? darkBrightness : lightBrightness;
-
-    final lookupTable = {
-      '⇧': widget.isShiftEnabled.value
-          ? brightnessMap['highlight']
-          : brightnessMap['altKey'],
-      '⇪': widget.isCapsEnabled.value
-          ? brightnessMap['highlight']
-          : brightnessMap['altKey'],
-      'BACKSPACE': brightnessMap['altKey'],
-      '123': brightnessMap['altKey'],
-      'abc': brightnessMap['altKey'],
-      'return': brightnessMap['altKey'],
-      'ENTER': brightnessMap['altKey'],
-      '#+=': brightnessMap['altKey'],
-      '123\u200B': brightnessMap['altKey'],
-    };
-
-    final brightness =
-        (lookupTable[widget.text] ?? brightnessMap['stdKey']!).clamp(0.0, 1.0);
-    return Theme.of(context)
-        .colorScheme
-        .onPrimaryContainer
-        .withValues(alpha: brightness);
-  }
-
   Widget _buildLabel(
     BuildContext context, {
     required Color color,
@@ -521,71 +455,35 @@ class _KeyboardButtonState extends State<KeyboardButton> {
       );
     }
     if (widget.text == '⇧') {
-      // Show different icons based on shift/caps state
-      return ValueListenableBuilder<bool>(
-        valueListenable: widget.isCapsEnabled,
-        builder: (context, isCaps, _) {
-          return ValueListenableBuilder<bool>(
-            valueListenable: widget.isShiftEnabled,
-            builder: (context, isShift, _) {
-              if (isCaps) {
-                // Caps lock engaged -> filled double caret
-                return Icon(
-                  PhosphorIcons.caretDoubleUp(PhosphorIconsStyle.fill),
-                  color: color,
-                  size: 24,
-                );
-              }
-
-              if (isShift) {
-                // Shift engaged -> double caret outline
-                return Icon(
-                  PhosphorIcons.caretDoubleUp(),
-                  color: color,
-                  size: 24,
-                );
-              }
-
-              // Not engaged -> single caret outline
-              return Icon(
-                PhosphorIcons.caretUp(),
-                color: color,
-                size: 24,
-              );
-            },
-          );
-        },
+      return Icon(
+        PhosphorIcons.caretUp(),
+        color: color,
+        size: 24,
       );
     }
     if (widget.text == '⇪') {
-      // Caps lock key shows state (outline vs filled)
-      return ValueListenableBuilder<bool>(
-        valueListenable: widget.isCapsEnabled,
-        builder: (context, isCaps, _) {
-          return Icon(
-            isCaps
-                ? PhosphorIcons.caretDoubleUp(PhosphorIconsStyle.fill)
-                : PhosphorIcons.caretDoubleUp(),
-            color: color,
-            size: 24,
-          );
-        },
+      return Icon(
+        PhosphorIcons.caretDoubleUp(),
+        color: color,
+        size: 24,
       );
     }
-    
+
     return ValueListenableBuilder<bool>(
       valueListenable: widget.isShiftEnabled,
       builder: (context, isShiftActive, child) {
         final bool lockCase = _isFunctionKey(widget.text);
         final String displayText = lockCase
             ? widget.text
-            : (isShiftActive ? widget.text.toUpperCase() : widget.text.toLowerCase());
+            : (isShiftActive
+                ? widget.text.toUpperCase()
+                : widget.text.toLowerCase());
         return FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
             displayText,
             style: TextStyle(
-              fontSize: 23,
+              fontSize: 24,
               color: color,
               fontWeight: fontWeight,
             ),
@@ -595,5 +493,6 @@ class _KeyboardButtonState extends State<KeyboardButton> {
     );
   }
 
-  bool _isFunctionKey(String keyLabel) => KeyboardButton._functionKeyLabels.contains(keyLabel);
+  bool _isFunctionKey(String keyLabel) =>
+      KeyboardButton._functionKeyLabels.contains(keyLabel);
 }
