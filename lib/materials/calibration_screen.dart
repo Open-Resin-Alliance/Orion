@@ -575,13 +575,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                               onTap: () {
                                 // Update both the screen state and provider's
                                 // selected calibration model so the choice is
-                                // visible app-wide. Also pre-select the
-                                // recommended resin for the newly selected
-                                // model.
+                                // visible app-wide. Keep the user's resin
+                                // selection (don't reset it).
                                 setState(() {
                                   _selectedModel = model;
-                                  _selectedResin =
-                                      resinsProvider.getRecommendedResin(model);
                                 });
                                 resinsProvider
                                     .setSelectedCalibrationModelId(model.id);
