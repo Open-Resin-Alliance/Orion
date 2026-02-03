@@ -65,6 +65,7 @@ import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 import 'package:orion/util/standby_overlay.dart';
+import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -251,17 +252,17 @@ class OrionRoot extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => OrionUpdateProvider(),
-          lazy: true,
+          lazy: false,
         ),
         ChangeNotifierProvider(
           create: (_) => AthenaUpdateProvider(),
-          lazy: true,
+          lazy: false,
         ),
         ChangeNotifierProxyProvider2<OrionUpdateProvider, AthenaUpdateProvider,
             UpdateManager>(
           create: (context) => UpdateManager(
-            Provider.of<OrionUpdateProvider>(context, listen: false),
-            Provider.of<AthenaUpdateProvider>(context, listen: false),
+            context.read<OrionUpdateProvider>(),
+            context.read<AthenaUpdateProvider>(),
           ),
           update: (context, orion, athena, previous) =>
               previous ?? UpdateManager(orion, athena),
@@ -276,6 +277,10 @@ class OrionRoot extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => CalibrationContextProvider(),
           lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StandbySettingsProvider(),
+          lazy: false,
         )
       ],
       child: const OrionMainApp(),
@@ -435,9 +440,9 @@ class OrionMainAppState extends State<OrionMainApp> {
                 if (_notifWatcher == null && navCtx != null) {
                   _notifWatcher = NotificationWatcher.install(navCtx);
                 }
-                if (_updateWatcher == null && navCtx != null) {
-                  _updateWatcher = UpdateNotificationWatcher.install(navCtx);
-                }
+                // Use ctx (builder context) for UpdateNotificationWatcher since it
+                // needs access to providers which aren't available in navCtx
+                _updateWatcher ??= UpdateNotificationWatcher.install(ctx);
                 // Attach a listener to StatusProvider so we can auto-open
                 // the StatusScreen when a print becomes active (remote start).
                 try {
@@ -511,7 +516,9 @@ class OrionMainAppState extends State<OrionMainApp> {
             });
             // Wrap the built subtree with the StandbyOverlay so it can
             // access Theme/Directionality provided by MaterialApp.
+            // The StandbyOverlay will read actual settings from StandbySettingsProvider
             return StandbyOverlay(
+              enabled: true,
               child: child ?? const SizedBox.shrink(),
             );
           },

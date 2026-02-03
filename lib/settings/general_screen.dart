@@ -54,6 +54,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool releaseOverride;
   late bool overrideUpdateCheck;
   late bool overrideRawForceSensorValues;
+  late bool reuseCalibrationPlate;
   late String overrideRelease;
   late bool verboseLogging;
   late bool selfDestructMode;
@@ -94,6 +95,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         config.getFlag('overrideUpdateCheck', category: 'developer');
     overrideRawForceSensorValues =
         config.getFlag('overrideRawForceSensorValues', category: 'developer');
+    reuseCalibrationPlate =
+        config.getFlag('reuseCalibrationPlate', category: 'developer');
     overrideRelease =
         config.getString('overrideRelease', category: 'developer');
     verboseLogging = config.getFlag('verboseLogging', category: 'developer');
@@ -937,6 +940,19 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
               },
             ),
             const SizedBox(height: 20.0),
+            OrionListTile(
+              title: 'Reuse Calibration Plate (Debug)',
+              icon: PhosphorIcons.flask(),
+              value: reuseCalibrationPlate,
+              onChanged: (bool value) {
+                setState(() {
+                  reuseCalibrationPlate = value;
+                  config.setFlag('reuseCalibrationPlate', value,
+                      category: 'developer');
+                });
+              },
+            ),
+            const SizedBox(height: 20.0),
             Row(
               children: [
                 Expanded(
@@ -1017,8 +1033,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     style: ElevatedButton.styleFrom(
                                       minimumSize: const Size(0, 60),
                                     ),
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(),
+                                    onPressed: () => Navigator.of(ctx).pop(),
                                     child: const Text('OK',
                                         style: TextStyle(fontSize: 22)),
                                   ),
@@ -1044,8 +1059,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     style: ElevatedButton.styleFrom(
                                       minimumSize: const Size(0, 60),
                                     ),
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(),
+                                    onPressed: () => Navigator.of(ctx).pop(),
                                     child: const Text('OK',
                                         style: TextStyle(fontSize: 22)),
                                   ),
