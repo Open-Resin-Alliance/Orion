@@ -46,6 +46,7 @@ import 'package:orion/util/orion_api_filesystem/orion_api_item.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/thumbnail_cache.dart';
+import 'package:orion/util/stl_thumbnail.dart';
 import 'dart:typed_data';
 
 ScrollController _scrollController = ScrollController();
@@ -190,11 +191,29 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
   // Build a cache key similar to ThumbnailCache._cacheKey so we can
   // de-duplicate requests at this layer too.
-  String _thumbCacheKey(String location, OrionApiFile file, String size) {
+  String _thumbCacheKey(String location, OrionApiFile file, String size,
+      {String? variant}) {
     final lastModified = file.lastModified ?? 0;
     // Match the format used by ThumbnailCache._cacheKey so we can
     // de-duplicate identical requests at this layer.
-    return '$location|${file.path}|$lastModified|$size';
+    final base = '$location|${file.path}|$lastModified|$size';
+    if (variant == null || variant.isEmpty) return base;
+    return '$base|$variant';
+  }
+
+  String? _resolveStlVariantForCache(String fileName, OrionApiFile file,
+      {bool advanceCycle = false}) {
+    final lower = fileName.toLowerCase();
+    if (!lower.endsWith('.stl')) return null;
+    final localPath = file.path;
+    if (localPath.isEmpty) return null;
+    try {
+      final f = File(localPath);
+      if (!f.existsSync()) return null;
+    } catch (_) {
+      return null;
+    }
+    return StlThumbnailUtil.chooseRenderMode(advanceCycle: advanceCycle);
   }
 
   Future<Uint8List?> _queuedGetThumbnail({
@@ -203,8 +222,10 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     required String fileName,
     required OrionApiFile file,
     String size = 'Small',
+    String? stlVariant,
+    Color? themeColor,
   }) {
-    final key = _thumbCacheKey(location, file, size);
+    final key = _thumbCacheKey(location, file, size, variant: stlVariant);
 
     // If we already started or queued this request, return the existing future
     final existing = _queuedInFlight[key];
@@ -223,6 +244,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             fileName: fileName,
             file: file,
             size: size,
+            stlMode: stlVariant,
+            themeColor: themeColor,
           );
           if (!completer.isCompleted) completer.complete(bytes);
         } catch (e, st) {
@@ -246,7 +269,10 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     required OrionApiFile file,
     String size = 'Small',
   }) {
-    final key = _thumbCacheKey(location, file, size);
+    final stlVariant =
+        _resolveStlVariantForCache(fileName, file, advanceCycle: true);
+    final themeColor = Theme.of(context).colorScheme.primary;
+    final key = _thumbCacheKey(location, file, size, variant: stlVariant);
     return _thumbnailFutureCache.putIfAbsent(
       key,
       () => _queuedGetThumbnail(
@@ -255,14 +281,20 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         fileName: fileName,
         file: file,
         size: size,
+        stlVariant: stlVariant,
+        themeColor: themeColor,
       ),
     );
   }
 
   void _pruneThumbnailFutureCache(
       String location, Iterable<OrionApiFile> files) {
-    final allowed =
-        files.map((f) => _thumbCacheKey(location, f, 'Small')).toSet();
+    final allowed = files.map((f) {
+      final fileName = f.name;
+      final stlVariant =
+          _resolveStlVariantForCache(fileName, f, advanceCycle: false);
+      return _thumbCacheKey(location, f, 'Small', variant: stlVariant);
+    }).toSet();
     _thumbnailFutureCache.removeWhere((key, _) => !allowed.contains(key));
   }
 
@@ -958,7 +990,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         : '';
     final String fileExt = path.extension(fileName).toLowerCase();
     final bool shouldShowLocalThumbnail =
-        fileItem != null && fileExt == '.nanodlp';
+        fileItem != null && (fileExt == '.nanodlp' || fileExt == '.stl');
 
     return GlassCard(
       elevation: 2,
