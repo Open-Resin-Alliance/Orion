@@ -19,12 +19,14 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:typed_data';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'package:logging/logging.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 import 'package:orion/util/sl1_thumbnail.dart';
+import 'package:orion/util/stl_thumbnail.dart';
 import 'package:orion/util/orion_config.dart';
 
 class ThumbnailCache {
@@ -53,8 +55,12 @@ class ThumbnailCache {
     required OrionApiFile file,
     String size = 'Small',
     bool forceRefresh = false,
+    String? stlMode,
+    Color? themeColor,
   }) async {
     _pruneExpired();
+
+    final stlVariant = stlMode ?? _resolveStlVariant(fileName, file);
 
     // If the disk cache was empty on startup, prefer fetching fresh bytes
     // for the first set of thumbnails so the UI can repopulate the cache
@@ -66,7 +72,8 @@ class ThumbnailCache {
     if (forceRefresh) {
       // Bypass memory/disk caches and fetch fresh bytes. Still dedupe in-flight
       // requests by key to avoid duplicate network work.
-      final key = _cacheKey(location, file, size);
+      final key = _cacheKey(location, file, size,
+          variant: stlVariant, themeColor: themeColor);
       final inFlight = _inFlight[key];
       if (inFlight != null) return inFlight;
 
@@ -76,6 +83,8 @@ class ThumbnailCache {
         fileName: fileName,
         file: file,
         size: size,
+        stlMode: stlVariant,
+        themeColor: themeColor,
       ).then<Uint8List?>((bytes) {
         _store(key, bytes);
         _inFlight.remove(key);
@@ -93,7 +102,8 @@ class ThumbnailCache {
 
     // First, try exact match with the current cache key (includes lastModified)
     // to avoid serving stale thumbnails when files are replaced with same path.
-    final exactKey = _cacheKey(location, file, size);
+    final exactKey = _cacheKey(location, file, size,
+        variant: stlVariant, themeColor: themeColor);
     final exactMatch = _cache[exactKey];
     if (exactMatch != null) {
       if (!_isExpired(exactMatch.timestamp)) {
@@ -118,7 +128,8 @@ class ThumbnailCache {
       final prefix = '$location|${file.path}|';
       String? fallbackKey;
       for (final k in _cache.keys) {
-        if (k.startsWith(prefix) && k.endsWith('|$size')) {
+        if (k.startsWith(prefix) &&
+            k.endsWith(_cacheKeySuffix(size, stlVariant, themeColor))) {
           fallbackKey = k;
           break;
         }
@@ -135,10 +146,12 @@ class ThumbnailCache {
 
     // If nothing found in memory, try disk cache before fetching.
     try {
-      final diskBytes = await _readFromDiskIfFresh(location, file, size);
+      final diskBytes = await _readFromDiskIfFresh(
+          location, file, size, stlVariant, themeColor);
       if (diskBytes != null) {
         // store in memory LRU and return
-        final key = _cacheKey(location, file, size);
+        final key = _cacheKey(location, file, size,
+            variant: stlVariant, themeColor: themeColor);
         _store(key, diskBytes);
         return Future.value(diskBytes);
       }
@@ -146,7 +159,8 @@ class ThumbnailCache {
       // ignore disk errors and continue to fetch
     }
 
-    final key = _cacheKey(location, file, size);
+    final key = _cacheKey(location, file, size,
+        variant: stlVariant, themeColor: themeColor);
     final inFlight = _inFlight[key];
     if (inFlight != null) return inFlight;
 
@@ -158,6 +172,8 @@ class ThumbnailCache {
       fileName: fileName,
       file: file,
       size: size,
+      stlMode: stlVariant,
+      themeColor: themeColor,
     ).then<Uint8List?>((bytes) {
       _store(key, bytes);
       _inFlight.remove(key);
@@ -179,9 +195,26 @@ class ThumbnailCache {
     required String fileName,
     required OrionApiFile file,
     required String size,
+    String? stlMode,
+    Color? themeColor,
   }) async {
     try {
       final lower = fileName.toLowerCase();
+      if (lower.endsWith('.stl')) {
+        final localPath = file.path;
+        if (localPath.isNotEmpty) {
+          final f = File(localPath);
+          if (await f.exists()) {
+            _log.fine('Using local STL thumbnail: $localPath');
+            return StlThumbnailUtil.extractStlThumbnailBytesFromFile(
+              localPath,
+              size: size,
+              mode: stlMode,
+              themeColor: themeColor,
+            );
+          }
+        }
+      }
       if (lower.endsWith('.nanodlp')) {
         final localPath = file.path;
         if (localPath.isNotEmpty) {
@@ -319,22 +352,23 @@ class ThumbnailCache {
     final locationPrefix = '$location|';
     final currentPathsSet = currentFilePaths.toSet();
     final removeKeys = <String>[];
-    
+
     for (final key in _cache.keys) {
       if (!key.startsWith(locationPrefix)) continue;
-      
+
       // Parse: location|path|timestamp|size
       final parts = key.split('|');
       if (parts.length < 2) continue;
-      
+
       final cachedPath = parts[1];
       if (!currentPathsSet.contains(cachedPath)) {
         removeKeys.add(key);
       }
     }
-    
+
     if (removeKeys.isNotEmpty) {
-      _log.fine('Removing ${removeKeys.length} cached thumbnails for deleted files');
+      _log.fine(
+          'Removing ${removeKeys.length} cached thumbnails for deleted files');
       for (final key in removeKeys) {
         final entry = _cache.remove(key);
         if (entry?.bytes != null) {
@@ -342,7 +376,7 @@ class ThumbnailCache {
         }
         _inFlight.remove(key);
       }
-      
+
       // Clean up disk cache asynchronously
       scheduleMicrotask(() async {
         try {
@@ -351,7 +385,7 @@ class ThumbnailCache {
           for (final f in files) {
             final decoded = Uri.decodeComponent(p.basename(f.path));
             if (!decoded.startsWith(locationPrefix)) continue;
-            
+
             final parts = decoded.split('|');
             if (parts.length >= 2) {
               final cachedPath = parts[1];
@@ -367,9 +401,22 @@ class ThumbnailCache {
     }
   }
 
-  String _cacheKey(String location, OrionApiFile file, String size) {
+  String _cacheKey(String location, OrionApiFile file, String size,
+      {String? variant, Color? themeColor}) {
     final lastModified = file.lastModified ?? 0;
-    return '$location|${file.path}|$lastModified|$size';
+    final colorSuffix =
+        themeColor != null ? '|${themeColor.value.toRadixString(16)}' : '';
+    final base = '$location|${file.path}|$lastModified|$size$colorSuffix';
+    if (variant == null || variant.isEmpty) return base;
+    return '$base|$variant';
+  }
+
+  String _cacheKeySuffix(String size, String? variant, Color? themeColor) {
+    final colorSuffix =
+        themeColor != null ? '|${themeColor.value.toRadixString(16)}' : '';
+    final base = size.isEmpty ? '' : '|$size';
+    if (variant == null || variant.isEmpty) return '$base$colorSuffix';
+    return '$base$colorSuffix|$variant';
   }
 
   void _store(String key, Uint8List? bytes) {
@@ -648,16 +695,17 @@ class ThumbnailCache {
     }
   }
 
-  Future<Uint8List?> _readFromDiskIfFresh(
-      String location, OrionApiFile file, String size) async {
+  Future<Uint8List?> _readFromDiskIfFresh(String location, OrionApiFile file,
+      String size, String? variant, Color? themeColor) async {
     try {
       // First, try exact key match (includes lastModified) to avoid
       // serving stale disk cache entries when files are replaced.
-      final exactKey = _cacheKey(location, file, size);
+      final exactKey = _cacheKey(location, file, size,
+          variant: variant, themeColor: themeColor);
       final dir = await _ensureDiskCacheDir();
       final exactKeyEncoded = Uri.encodeComponent(exactKey);
       final exactFile = File(p.join(dir.path, exactKeyEncoded));
-      
+
       if (await exactFile.exists()) {
         try {
           if (_diskEntryTtl != null) {
@@ -690,7 +738,8 @@ class ThumbnailCache {
         final candidates = dir.listSync().whereType<File>();
         for (final f in candidates) {
           final decoded = Uri.decodeComponent(p.basename(f.path));
-          if (decoded.startsWith(keyPrefix) && decoded.endsWith('|$size')) {
+          if (decoded.startsWith(keyPrefix) &&
+              decoded.endsWith(_cacheKeySuffix(size, variant, themeColor))) {
             try {
               // If TTL is enabled, check file age and treat as stale if older
               // than configured TTL. Stale files are scheduled for deletion
@@ -756,6 +805,20 @@ class ThumbnailCache {
   }
 
   // _dateFromCacheKey removed (unused)
+
+  String? _resolveStlVariant(String fileName, OrionApiFile file) {
+    final lower = fileName.toLowerCase();
+    if (!lower.endsWith('.stl')) return null;
+    final localPath = file.path;
+    if (localPath.isEmpty) return null;
+    try {
+      final f = File(localPath);
+      if (!f.existsSync()) return null;
+    } catch (_) {
+      return null;
+    }
+    return StlThumbnailUtil.chooseRenderMode();
+  }
 }
 
 class _CacheEntry {
