@@ -17,11 +17,15 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
+import 'package:orion/util/orion_config.dart';
 import 'dart:ui' as ui;
 
 /// A fullscreen standby overlay that appears after a period of inactivity.
@@ -50,6 +54,17 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   late Animation<double> _fadeAnimation;
   Timer? _clockUpdateTimer;
   String _currentTime = '';
+
+  // DVD-logo bounce state
+  Ticker? _bounceTicker;
+  double _logoX = 0;
+  double _logoY = 0;
+  double _logoDx = 0.6; // pixels per frame at ~60fps
+  double _logoDy = 0.45;
+  bool _bounceInitialized = false;
+  static const double _logoSize = 180;
+  Color _logoTint = Colors.white;
+  late String _logoAssetPath;
 
   // Dimming variables
   late AnimationController _dimmingController;
@@ -85,12 +100,14 @@ class _StandbyOverlayState extends State<StandbyOverlay>
 
     _updateTime();
     _resetInactivityTimer();
+    _resolveLogoAsset();
   }
 
   @override
   void dispose() {
     _inactivityTimer?.cancel();
     _clockUpdateTimer?.cancel();
+    _bounceTicker?.dispose();
     _fadeController.dispose();
     _dimmingController.dispose();
     super.dispose();
@@ -122,6 +139,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       });
       _fadeController.forward();
       _startClockUpdate();
+      _startBounce();
       _startDimming(); // Will check dimming config internally
     }
   }
@@ -141,9 +159,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
             _isStandbyActive = false;
           });
         }
+        _stopDimming();
       });
       _stopClockUpdate();
-      _stopDimming();
+      _stopBounce();
       _resetInactivityTimer();
     }
   }
@@ -314,11 +333,14 @@ class _StandbyOverlayState extends State<StandbyOverlay>
                     onTap: _deactivateStandby,
                     child: Container(
                       color: Colors.black,
-                      child: Center(
-                        child: isPrinting
-                            ? _buildProgressIndicator(ctx, progress)
-                            : _buildClockDisplay(ctx),
-                      ),
+                      child: isPrinting
+                          ? Center(
+                              child:
+                                  _buildProgressIndicator(ctx, progress),
+                            )
+                          : standbySettings.standbyMode == 'logo'
+                              ? _buildLogoDisplay(ctx)
+                              : Center(child: _buildClockDisplay(ctx)),
                     ),
                   ),
                 ),
@@ -326,6 +348,124 @@ class _StandbyOverlayState extends State<StandbyOverlay>
           ),
         );
       },
+    );
+  }
+
+  void _resolveLogoAsset() {
+    try {
+      final config = OrionConfig();
+      final vendorLogo =
+          config.getString('vendorLogo', category: 'vendor').toLowerCase().trim();
+      switch (vendorLogo) {
+        case 'c3d':
+          _logoAssetPath = 'assets/images/concepts_3d/c3d.svg';
+          break;
+        case 'athena':
+          _logoAssetPath = 'assets/images/concepts_3d/athena_logo.svg';
+          break;
+        case 'ora':
+        default:
+          _logoAssetPath = 'assets/images/ora/open_resin_alliance_logo_darkmode.png';
+      }
+    } catch (_) {
+      _logoAssetPath = 'assets/images/ora/open_resin_alliance_logo_darkmode.png';
+    }
+  }
+
+  void _startBounce() {
+    _bounceInitialized = false;
+    _bounceTicker?.dispose();
+    _bounceTicker = createTicker(_onBounceTick)..start();
+  }
+
+  void _stopBounce() {
+    _bounceTicker?.stop();
+    _bounceTicker?.dispose();
+    _bounceTicker = null;
+    _bounceInitialized = false;
+  }
+
+  Color _randomAccentColor() {
+    final rand = math.Random();
+    // Softer pastel colors: lower saturation, higher lightness
+    final hue = rand.nextDouble() * 360;
+    return HSLColor.fromAHSL(1.0, hue, 0.45, 0.78).toColor();
+  }
+
+  void _onBounceTick(Duration elapsed) {
+    if (!mounted) return;
+
+    final size = MediaQuery.of(context).size;
+    final maxX = size.width - _logoSize;
+    final maxY = size.height - _logoSize;
+
+    if (!_bounceInitialized) {
+      // Start from a random position
+      final rand = math.Random();
+      _logoX = rand.nextDouble() * maxX.clamp(0, double.infinity);
+      _logoY = rand.nextDouble() * maxY.clamp(0, double.infinity);
+      _logoTint = _randomAccentColor();
+      _bounceInitialized = true;
+    }
+
+    _logoX += _logoDx;
+    _logoY += _logoDy;
+
+    bool bounced = false;
+    if (_logoX <= 0) {
+      _logoX = 0;
+      _logoDx = _logoDx.abs();
+      bounced = true;
+    } else if (_logoX >= maxX) {
+      _logoX = maxX;
+      _logoDx = -_logoDx.abs();
+      bounced = true;
+    }
+
+    if (_logoY <= 0) {
+      _logoY = 0;
+      _logoDy = _logoDy.abs();
+      bounced = true;
+    } else if (_logoY >= maxY) {
+      _logoY = maxY;
+      _logoDy = -_logoDy.abs();
+      bounced = true;
+    }
+
+    if (bounced) {
+      _logoTint = _randomAccentColor();
+    }
+
+    setState(() {});
+  }
+
+  Widget _buildLogoDisplay(BuildContext context) {
+    final logoWidget = _logoAssetPath.endsWith('.svg')
+        ? SvgPicture.asset(
+            _logoAssetPath,
+            width: _logoSize,
+            height: _logoSize,
+            colorFilter: ColorFilter.mode(_logoTint, BlendMode.srcIn),
+          )
+        : Image.asset(
+            _logoAssetPath,
+            width: _logoSize,
+            height: _logoSize,
+            color: _logoTint,
+          );
+
+    return Stack(
+      children: [
+        Positioned(
+          left: _logoX,
+          top: _logoY,
+          child: SizedBox(
+            width: _logoSize,
+            height: _logoSize,
+            child: logoWidget,
+          ),
+        ),
+      ],
     );
   }
 
