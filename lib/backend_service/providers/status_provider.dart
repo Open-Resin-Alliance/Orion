@@ -28,6 +28,7 @@ import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'package:orion/backend_service/athena_iot/models/athena_kinematic_status.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
+import 'package:orion/util/sl1_thumbnail.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
@@ -1489,13 +1490,32 @@ class StatusProvider extends ChangeNotifier {
   }) async {
     final pathKey = file.path;
     try {
-      final bytes = await ThumbnailCache.instance.getThumbnail(
-        location: location,
-        subdirectory: subdirectory,
-        fileName: fileName,
-        file: file,
-        size: size,
-      );
+      bool bypassCache = false;
+      try {
+        final meta = await BackendService().getFileMetadata(
+            location, file.path);
+        final plateId = meta['plate_id'] as int?;
+        if (plateId == 0) {
+          bypassCache = true;
+        }
+      } catch (_) {
+        // ignore metadata failures; fall back to cached path
+      }
+
+      final bytes = bypassCache
+          ? await ThumbnailUtil.extractThumbnailBytes(
+              location,
+              subdirectory,
+              fileName,
+              size: size,
+            )
+          : await ThumbnailCache.instance.getThumbnail(
+              location: location,
+              subdirectory: subdirectory,
+              fileName: fileName,
+              file: file,
+              size: size,
+            );
 
       if (bytes == null) {
         _thumbnailBytes = null;

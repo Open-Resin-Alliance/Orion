@@ -1133,28 +1133,33 @@ class StatusScreenState extends State<StatusScreen> {
       plateId = widget.initialPlateId;
     }
     if (plateId == null) return;
+    final isCalibrationPlate = plateId == 0;
 
     final filePath = status.printData?.fileData?.path ?? widget.initialFilePath;
-    final cached =
-        LayerPreviewCache.instance.get(plateId, layerIndex, filePath: filePath);
-    if (cached != null) {
-      setState(() {
-        _layer2DBytes = cached;
-        _layer2DImageProvider = ResizeImage(MemoryImage(cached), width: 800);
-        _showLayer2D = true;
-      });
-      LayerPreviewCache.instance.preload(BackendService(), plateId, layerIndex,
-          count: 1, filePath: filePath);
-      return;
+    if (!isCalibrationPlate) {
+      final cached = LayerPreviewCache.instance
+          .get(plateId, layerIndex, filePath: filePath);
+      if (cached != null) {
+        setState(() {
+          _layer2DBytes = cached;
+          _layer2DImageProvider = ResizeImage(MemoryImage(cached), width: 800);
+          _showLayer2D = true;
+        });
+        LayerPreviewCache.instance.preload(BackendService(), plateId, layerIndex,
+            count: 1, filePath: filePath);
+        return;
+      }
     }
 
     setState(() {
       _layer2DLoading = true;
     });
     try {
-      final bytes = await LayerPreviewCache.instance.fetchAndCache(
-          BackendService(), plateId, layerIndex,
-          filePath: filePath);
+      final bytes = isCalibrationPlate
+          ? await BackendService().getPlateLayerImage(plateId, layerIndex)
+          : await LayerPreviewCache.instance.fetchAndCache(
+              BackendService(), plateId, layerIndex,
+              filePath: filePath);
       if (bytes.isNotEmpty) {
         final imgProv = ResizeImage(MemoryImage(bytes), width: 800);
         // Start precaching but don't await it — decoding can be expensive
@@ -1165,9 +1170,11 @@ class StatusScreenState extends State<StatusScreen> {
           _layer2DImageProvider = imgProv;
           _showLayer2D = true;
         });
-        LayerPreviewCache.instance.preload(
-            BackendService(), plateId, layerIndex,
-            count: 1, filePath: filePath);
+        if (!isCalibrationPlate) {
+          LayerPreviewCache.instance.preload(
+              BackendService(), plateId, layerIndex,
+              count: 1, filePath: filePath);
+        }
       }
     } catch (_) {
       // ignore
@@ -1227,6 +1234,7 @@ class StatusScreenState extends State<StatusScreen> {
         plateId = widget.initialPlateId;
       }
       if (plateId == null) return;
+      if (plateId == 0) return;
 
       // Use fetchAndCache to dedupe concurrent fetches.
       try {
@@ -1299,6 +1307,7 @@ class StatusScreenState extends State<StatusScreen> {
       }
     }
     if (plateId == null) return;
+    if (plateId == 0) return;
 
     try {
       // Ensure current layer is cached (deduped) then fetch+precache next two.
