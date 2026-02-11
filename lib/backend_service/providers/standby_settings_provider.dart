@@ -28,11 +28,13 @@ class StandbySettingsProvider extends ChangeNotifier {
   bool _dimmingEnabled = false;
   int _durationSeconds = 150; // Default: 2m30s
   String _backlightDevice = '';
+  String _standbyMode = 'clock'; // 'clock' or 'logo'
 
   bool get standbyEnabled => _standbyEnabled;
   bool get dimmingEnabled => _dimmingEnabled;
   int get durationSeconds => _durationSeconds;
   String get backlightDevice => _backlightDevice;
+  String get standbyMode => _standbyMode;
 
   StandbySettingsProvider() {
     _loadSettings();
@@ -49,6 +51,8 @@ class StandbySettingsProvider extends ChangeNotifier {
             _config.getString('standbyDurationSeconds', category: 'ui')) ??
         150;
     _backlightDevice = _config.getString('backlightDevice', category: 'ui');
+    final mode = _config.getString('standbyMode', category: 'ui');
+    _standbyMode = (mode == 'logo') ? 'logo' : 'clock';
   }
 
   void setStandbyEnabled(bool value) {
@@ -80,6 +84,14 @@ class StandbySettingsProvider extends ChangeNotifier {
     if (_backlightDevice != value) {
       _backlightDevice = value;
       _config.setString('backlightDevice', value, category: 'ui');
+      notifyListeners();
+    }
+  }
+
+  void setStandbyMode(String value) {
+    if (_standbyMode != value) {
+      _standbyMode = value;
+      _config.setString('standbyMode', value, category: 'ui');
       notifyListeners();
     }
   }
