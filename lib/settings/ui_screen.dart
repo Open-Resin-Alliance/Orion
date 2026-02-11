@@ -162,6 +162,50 @@ class _UIScreenState extends State<UIScreen> {
                             ),
                             if (standbySettings.standbyEnabled) ...[
                               const SizedBox(height: 16.0),
+                              GlassCard(
+                                outlined: true,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () =>
+                                      _showStandbyModeDialog(standbySettings),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16.0, vertical: 12.0),
+                                    child: Row(
+                                      children: [
+                                        const Text(
+                                          'Standby Mode',
+                                          style: TextStyle(
+                                            fontFamily: 'AtkinsonHyperlegible',
+                                            fontSize: 24.0,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          standbySettings.standbyMode == 'logo'
+                                              ? 'Logo'
+                                              : 'Clock',
+                                          style: TextStyle(
+                                            fontSize: 20.0,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8.0),
+                                        Icon(
+                                          Icons.chevron_right,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withValues(alpha: 0.7),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16.0),
                               OrionListTile(
                                 title: 'Dim Screen in Standby',
                                 value: standbySettings.dimmingEnabled,
@@ -248,6 +292,137 @@ class _UIScreenState extends State<UIScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showStandbyModeDialog(
+      StandbySettingsProvider standbySettings) async {
+    final optionTextStyle = TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.w600,
+      color: Theme.of(context).colorScheme.primary,
+    );
+
+    final subtitleStyle = TextStyle(
+      fontSize: 14,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+    );
+
+    Widget buildOption({
+      required String value,
+      required String title,
+      required String subtitle,
+    }) {
+      final isSelected = standbySettings.standbyMode == value;
+      return GlassCard(
+        elevation: isSelected ? 2.0 : 1.0,
+        outlined: true,
+        color: isSelected
+            ? Theme.of(context)
+                .colorScheme
+                .primaryContainer
+                .withValues(alpha: 0.3)
+            : null,
+        child: InkWell(
+          onTap: () {
+            standbySettings.setStandbyMode(value);
+            Navigator.of(context).pop();
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: optionTextStyle),
+                      const SizedBox(height: 4),
+                      Text(subtitle, style: subtitleStyle),
+                    ],
+                  ),
+                ),
+                if (isSelected)
+                  Icon(
+                    Icons.check_circle,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) => GlassDialog(
+        padding: EdgeInsets.zero,
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.6,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context)
+                          .dividerColor
+                          .withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.nightlight_round, size: 22),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Select Standby Mode',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, size: 20),
+                      padding: const EdgeInsets.all(4),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      tooltip: 'Close',
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    buildOption(
+                      value: 'clock',
+                      title: 'Clock',
+                      subtitle: 'Show the large time display',
+                    ),
+                    const SizedBox(height: 12),
+                    buildOption(
+                      value: 'logo',
+                      title: 'Logo',
+                      subtitle: 'Bouncing logo screensaver',
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
