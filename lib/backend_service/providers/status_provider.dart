@@ -186,8 +186,8 @@ class StatusProvider extends ChangeNotifier {
   Timer? _timer;
   Timer? _backoffTimer;
   bool _polling = false;
-  int _pollIntervalSeconds = 1;
-  static const int _minPollIntervalSeconds = 1;
+  int _pollIntervalSeconds = 2;
+  static const int _minPollIntervalSeconds = 2;
   static const int _maxPollIntervalSeconds = 60;
   // SSE reconnect tuning: aggressive base retry for local devices + small jitter.
   static const int _sseReconnectBaseSeconds = 3;
