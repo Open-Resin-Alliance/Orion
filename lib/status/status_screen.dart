@@ -246,6 +246,10 @@ class StatusScreenState extends State<StatusScreen> {
   // null = unknown, true = this finished/canceled print is a calibration print
   bool? _isCalibrationPrint;
   VoidCallback? _analyticsListener;
+  // Throttle 2D layer prefetch/precache work during printing. We only
+  // prefetch on every Nth layer to reduce CPU usage when NanoDLP polls
+  // status frequently.
+  static const int _layerPrefetchStride = 3;
 
   /// Check if current print is a calibration print and show post-calibration overlay
   Future<void> _checkAndShowCalibrationOverlay() async {
@@ -1287,6 +1291,10 @@ class StatusScreenState extends State<StatusScreen> {
 
     final layerIndex = status.layer;
     if (layerIndex == null) return;
+    // Throttle prefetching to every Nth layer to reduce CPU load.
+    if (_layerPrefetchStride > 1 && (layerIndex % _layerPrefetchStride) != 0) {
+      return;
+    }
 
     // Resolve plate id if not already resolved for current file path.
     int? plateId = _resolvedPlateIdForPrefetch;
