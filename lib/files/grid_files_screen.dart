@@ -1298,7 +1298,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     if (themeProvider.isGlassTheme) {
-      // Glassmorphic styling for glass theme
+      // Lightweight gradient footer (no blur) for glass theme.
       return Padding(
         padding: const EdgeInsets.only(
           left: 4.0,
@@ -1312,34 +1312,34 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             bottomLeft: Radius.circular(12),
             bottomRight: Radius.circular(12),
           ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.7),
+                  Colors.black.withValues(alpha: 0.15),
+                ],
+              ),
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.12),
                   width: 1,
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(6),
-                  topRight: Radius.circular(6),
-                  bottomLeft: Radius.circular(12),
-                  bottomRight: Radius.circular(12),
-                ),
               ),
-              child: GridTileBar(
-                title: AutoSizeText(
-                  displayName,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  minFontSize: 20,
-                  style: const TextStyle(
-                      fontSize: 24,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'AtkinsonHyperlegible'),
-                ),
+            ),
+            child: GridTileBar(
+              title: AutoSizeText(
+                displayName,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                minFontSize: 20,
+                style: const TextStyle(
+                    fontSize: 24,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'AtkinsonHyperlegible'),
               ),
             ),
           ),
