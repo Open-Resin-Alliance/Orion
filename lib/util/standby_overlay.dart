@@ -50,6 +50,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     with TickerProviderStateMixin {
   Timer? _inactivityTimer;
   bool _isStandbyActive = false;
+  bool _standbyThrottled = false;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   Timer? _clockUpdateTimer;
@@ -141,6 +142,11 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _startClockUpdate();
       _startBounce();
       _startDimming(); // Will check dimming config internally
+      // Throttle background status polling while in standby if not printing.
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      final isPrinting = statusProvider.status?.isPrinting ?? false;
+      _syncStandbyThrottling(statusProvider, isPrinting);
     }
   }
 
@@ -163,7 +169,32 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       });
       _stopClockUpdate();
       _stopBounce();
+      // Resume status polling when leaving standby.
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      _syncStandbyThrottling(statusProvider, false, forceResume: true);
       _resetInactivityTimer();
+    }
+  }
+
+  void _syncStandbyThrottling(StatusProvider statusProvider, bool isPrinting,
+      {bool forceResume = false}) {
+    if (!_isStandbyActive || forceResume) {
+      if (_standbyThrottled) {
+        statusProvider.resumePolling();
+        _standbyThrottled = false;
+      }
+      return;
+    }
+
+    // Only pause polling in standby when not printing.
+    if (!isPrinting && !_standbyThrottled) {
+      statusProvider.pausePolling();
+      _standbyThrottled = true;
+    } else if (isPrinting && _standbyThrottled) {
+      // If a print starts while in standby, resume polling so progress updates.
+      statusProvider.resumePolling();
+      _standbyThrottled = false;
     }
   }
 
@@ -318,6 +349,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
 
         final isPrinting = statusProvider.status?.isPrinting ?? false;
         final progress = statusProvider.status?.progress ?? 0.0;
+        _syncStandbyThrottling(statusProvider, isPrinting);
 
         return Listener(
           onPointerDown: (_) => _handleUserInteraction(),
