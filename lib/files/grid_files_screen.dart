@@ -101,7 +101,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   // devices. We queue requests and allow only [_maxConcurrentThumbnails]
   // active at a time. ThumbnailCache itself dedupes identical keys so this
   // is just a client-side throttle.
-  final int _maxConcurrentThumbnails = 4;
+  final int _maxConcurrentThumbnails = 2;
   int _activeThumbnailFetches = 0;
   final Queue<_QueuedThumb> _thumbQueue = Queue<_QueuedThumb>();
   final Map<String, Future<Uint8List?>> _queuedInFlight = {};
@@ -270,7 +270,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     String size = 'Small',
   }) {
     final stlVariant =
-        _resolveStlVariantForCache(fileName, file, advanceCycle: true);
+        _resolveStlVariantForCache(fileName, file, advanceCycle: false);
     final themeColor = Theme.of(context).colorScheme.primary;
     final key = _thumbCacheKey(location, file, size, variant: stlVariant);
     return _thumbnailFutureCache.putIfAbsent(
@@ -773,6 +773,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
           padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
           child: GridView.builder(
             controller: _scrollController,
+            cacheExtent: 300,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               childAspectRatio: 1.03,
               mainAxisSpacing: 5,
@@ -821,6 +822,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
           padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
           child: GridView.builder(
             controller: _scrollController,
+            cacheExtent: 300,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               childAspectRatio: 1.03,
               mainAxisSpacing: 5,
@@ -1106,8 +1108,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
                                     return ClipRRect(
                                       borderRadius: BorderRadius.circular(7.75),
-                                      child: Image.memory(bytes,
-                                          fit: BoxFit.cover),
+                                      child: Image.memory(
+                                        bytes,
+                                        fit: BoxFit.cover,
+                                        cacheWidth: 512,
+                                        cacheHeight: 512,
+                                      ),
                                     );
                                   },
                                 )
@@ -1271,7 +1277,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                                 borderRadius: themeProvider.isGlassTheme
                                     ? BorderRadius.circular(10.5)
                                     : BorderRadius.circular(7.75),
-                                child: Image.memory(bytes, fit: BoxFit.cover),
+                                child: Image.memory(
+                                  bytes,
+                                  fit: BoxFit.cover,
+                                  cacheWidth: 512,
+                                  cacheHeight: 512,
+                                ),
                               );
                             },
                           ),
