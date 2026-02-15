@@ -72,7 +72,6 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   late Animation<double> _dimmingAnimation;
   int _originalBrightness = 255;
   int _dimmingStartBrightness = 255;
-  bool _capturedOriginalBrightness = false;
   static const int _minBrightness = 13; // 5% of 255
 
   // Finished celebration state
@@ -247,6 +246,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
 
   void _deactivateStandby() {
     if (_isStandbyActive) {
+      // Restore brightness immediately so screen and UI return together.
+      _stopDimming();
       // Speed up the fade-out (return to app) significantly
       _fadeController
           .animateTo(
@@ -262,7 +263,6 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         }
         _resetCelebrationState(resetCompleted: true);
         _resetCanceledState(resetCompleted: true);
-        _stopDimming();
       });
       _stopClockUpdate();
       _stopBounce();
@@ -405,11 +405,6 @@ class _StandbyOverlayState extends State<StandbyOverlay>
 
       // Read current brightness for this dimming pass
       _dimmingStartBrightness = await _readBrightness();
-      if (!_capturedOriginalBrightness) {
-        _originalBrightness = _dimmingStartBrightness;
-        _capturedOriginalBrightness = true;
-      }
-
       // Start the dimming animation
       await _dimmingController.forward(from: 0.0);
     } catch (e) {
@@ -424,8 +419,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _dimmingController.reset();
 
       // Instantly restore brightness
+      _originalBrightness = 255;
       await _writeBrightness(_originalBrightness);
-      _capturedOriginalBrightness = false;
     } catch (e) {
       print('Error stopping dimming: $e');
     }
