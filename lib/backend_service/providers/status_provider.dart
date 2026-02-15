@@ -189,6 +189,8 @@ class StatusProvider extends ChangeNotifier {
   int _pollIntervalSeconds = 2;
   static const int _minPollIntervalSeconds = 2;
   static const int _maxPollIntervalSeconds = 60;
+  static const int _standbyPollIntervalSeconds = 30;
+  bool _standbyMode = false;
   // SSE reconnect tuning: aggressive base retry for local devices + small jitter.
   static const int _sseReconnectBaseSeconds = 3;
   // Don't attempt SSE if polling is repeatedly failing. If polling shows
@@ -1421,6 +1423,33 @@ class StatusProvider extends ChangeNotifier {
   void resumePolling() {
     if (!_polling && !_disposed) {
       _startPolling();
+    }
+  }
+
+  /// Enter standby mode: switch to slow polling (30s) instead of pausing
+  /// entirely, so we can still detect remotely-started prints.
+  void enterStandbyMode() {
+    if (_standbyMode) return;
+    _standbyMode = true;
+    // Tear down SSE to save resources; fall back to slow polling.
+    _sseStreamSub?.cancel();
+    _sseStreamSub = null;
+    _sseConnected = false;
+    _pollIntervalSeconds = _standbyPollIntervalSeconds;
+    // Restart polling loop with the new interval if not already running.
+    if (!_polling && !_disposed) {
+      _startPolling();
+    }
+  }
+
+  /// Exit standby mode: restore normal polling interval and reconnect SSE.
+  void exitStandbyMode() {
+    if (!_standbyMode) return;
+    _standbyMode = false;
+    _pollIntervalSeconds = _minPollIntervalSeconds;
+    // Reconnect SSE for real-time updates.
+    if (!_disposed) {
+      _tryStartSse();
     }
   }
 
