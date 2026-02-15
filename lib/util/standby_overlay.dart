@@ -97,8 +97,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   late Animation<double> _cancelIconScale;
   late Animation<double> _cancelIconFade;
   late AnimationController _cancelShakeController;
-  late AnimationController _cancelLayersController;
-  final List<_CancelLayerSlice> _cancelLayerSlices = [];
+  late AnimationController _cancelResinController;
+  List<_BloodDrip> _bloodDrips = [];
+  late AnimationController _cancelBrickController;
+  List<_LayerBrick> _layerBricks = [];
 
   // Paused pulse
   late AnimationController _pausePulseController;
@@ -164,12 +166,18 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    // Falling cancel layers animation (loops for duration of cancel display)
-    _cancelLayersController = AnimationController(
+    // Resin drip animation (single forward pass over total display time)
+    _cancelResinController = AnimationController(
+      duration: const Duration(seconds: 10),
+      vsync: this,
+    );
+    _initBloodDrips();
+    // Brick wall crumble animation
+    _cancelBrickController = AnimationController(
       duration: const Duration(seconds: 4),
       vsync: this,
     );
-    _initCancelLayers();
+    _initLayerBricks();
 
     // Pause pulse
     _pausePulseController = AnimationController(
@@ -195,7 +203,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     _checkmarkController.dispose();
     _cancelIconController.dispose();
     _cancelShakeController.dispose();
-    _cancelLayersController.dispose();
+    _cancelResinController.dispose();
+    _cancelBrickController.dispose();
     _pausePulseController.dispose();
     super.dispose();
   }
@@ -561,7 +570,12 @@ class _StandbyOverlayState extends State<StandbyOverlay>
 
   void _startCanceled() {
     if (!mounted) return;
-    _initCancelLayers(); // re-randomise each time
+    final funMode = OrionConfig().getFlag('funMode', category: 'ui');
+    if (funMode) {
+      _initBloodDrips(); // re-randomise each time
+    } else {
+      _initLayerBricks(); // generate brick wall
+    }
     setState(() {
       _canceledActive = true;
       _canceledCompleted = false;
@@ -569,7 +583,12 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     _canceledTimer?.cancel();
     _cancelIconController.forward(from: 0.0);
     _cancelShakeController.forward(from: 0.0);
-    _cancelLayersController.repeat();
+    if (funMode) {
+      _cancelResinController.forward(from: 0.0);
+    } else {
+      _cancelBrickController.forward(from: 0.0);
+    }
+    _boostBrightnessForCelebration();
     // Show for 10 seconds then crossfade to clock
     _canceledTimer = Timer(const Duration(seconds: 10), _endCanceled);
   }
@@ -594,8 +613,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     _canceledTimer?.cancel();
     _cancelIconController.reset();
     _cancelShakeController.reset();
-    _cancelLayersController.stop();
-    _cancelLayersController.reset();
+    _cancelResinController.stop();
+    _cancelResinController.reset();
+    _cancelBrickController.stop();
+    _cancelBrickController.reset();
     _canceledStartScheduled = false;
     if (!mounted) return;
     setState(() {
@@ -1009,99 +1030,145 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     );
   }
 
-  void _initCancelLayers() {
-    _cancelLayerSlices.clear();
+  void _initBloodDrips() {
     final rand = math.Random();
 
-    // Colour palette: reds, dark greys, and dull oranges — like charred layers
-    final colors = <Color>[
-      const Color(0xFFD32F2F),
-      const Color(0xFFB71C1C),
-      const Color(0xFFFF5252),
-      const Color(0xFF424242),
-      const Color(0xFF616161),
-      const Color(0xFFBF360C),
-      const Color(0xFF8D6E63),
-      const Color(0xFF455A64),
-    ];
+    // 14-20 drips spread across the screen, varied sizes and speeds.
+    final count = 14 + rand.nextInt(7);
+    _bloodDrips = List.generate(count, (i) {
+      final fx = 0.03 + rand.nextDouble() * 0.94;
 
-    // Generate 35-45 layer slices that originate near the top
-    final count = 35 + rand.nextInt(11);
-    for (var i = 0; i < count; i++) {
-      // Horizontal spread across the screen
-      final fx = 0.05 + rand.nextDouble() * 0.9;
-      // Originate in the upper 15% of the screen
-      final fy = 0.02 + rand.nextDouble() * 0.13;
+      // Varied speed: some drips rush, some creep
+      final speed = 0.4 + rand.nextDouble() * 0.8;
 
-      // Horizontal velocity: gentle drift left or right
-      final vx = (rand.nextDouble() - 0.5) * 120.0;
-      // Downward velocity: varied so slices spread out vertically
-      final vy = 60.0 + rand.nextDouble() * 200.0;
+      // Width at origin (narrow) and max spread width
+      final startWidth = 4.0 + rand.nextDouble() * 10.0;
+      final maxWidth = startWidth + 6.0 + rand.nextDouble() * 20.0;
 
-      // Rotation speed (radians/sec equivalent across 0..1 anim)
-      final rotSpeed = (rand.nextDouble() - 0.5) * 8.0;
-
-      // Slice dimensions: thin rectangles of varied width
-      final width = 18.0 + rand.nextDouble() * 50.0;
-      final height = 3.0 + rand.nextDouble() * 8.0;
-
-      // Stagger: delay before this slice starts falling (0..0.35)
+      // Stagger start (0..0.35 of animation)
       final delay = rand.nextDouble() * 0.35;
 
-      // Individual fade-out start: 0.45..0.75 through the cycle
-      final fadeStart = 0.45 + rand.nextDouble() * 0.3;
+      // Slight horizontal drift
+      final drift = (rand.nextDouble() - 0.5) * 15.0;
 
-      _cancelLayerSlices.add(_CancelLayerSlice(
+      // Asymmetry: left and right sides aren't equal
+      // 0.3..0.7 means 30-70% of width goes to the left side
+      final asymmetry = 0.3 + rand.nextDouble() * 0.4;
+
+      // Edge wobble: per-drip waviness amplitude
+      final wobble = 0.5 + rand.nextDouble() * 2.0;
+
+      return _BloodDrip(
         fractionalX: fx,
-        fractionalY: fy,
-        velocityX: vx,
-        velocityY: vy,
-        rotationSpeed: rotSpeed,
-        width: width,
-        height: height,
-        color: colors[rand.nextInt(colors.length)],
+        speed: speed,
+        startWidth: startWidth,
+        maxWidth: maxWidth,
         delay: delay,
-        fadeStart: fadeStart,
-      ));
+        drift: drift,
+        asymmetry: asymmetry,
+        wobble: wobble,
+      );
+    });
+  }
+
+  /// Generate a grid of layer bricks arranged like a brick wall.
+  /// Each brick knows which side of the crack it's on and gets per-brick
+  /// randomised rotation, fall speed, and drift.
+  void _initLayerBricks() {
+    final rand = math.Random();
+    _layerBricks = [];
+
+    // We build a virtual wall that will be rendered relative to screen size.
+    // Using fractional coordinates (0..1) for both x and y.
+    const rows = 12;
+    const cols = 8;
+    const brickH = 1.0 / rows;
+    const brickW = 1.0 / cols;
+    // Brick-wall offset: every other row is shifted by half a brick
+    for (var r = 0; r < rows; r++) {
+      final rowOffset = (r.isOdd) ? brickW * 0.5 : 0.0;
+      for (var c = -1; c <= cols; c++) {
+        final fx = c * brickW + rowOffset;
+        final fy = r * brickH;
+
+        // Skip bricks fully outside screen
+        if (fx + brickW < -0.01 || fx > 1.01) continue;
+
+        // Which side of center? Left half falls left, right half falls right.
+        // Bricks straddling the center crack get split visually by the painter.
+        final centerX = fx + brickW / 2;
+        final isLeft = centerX < 0.5;
+
+        // Per-brick randomness for organic breakup
+        final fallDelay = 0.05 + rand.nextDouble() * 0.25;
+        // Bricks near the crack start moving first
+        final distFromCrack = (centerX - 0.5).abs();
+        final crackDelay = distFromCrack * 0.3;
+        final totalDelay = (fallDelay + crackDelay).clamp(0.0, 0.5);
+
+        final rotationSpeed = 0.5 + rand.nextDouble() * 2.0;
+        final fallSpeed = 0.8 + rand.nextDouble() * 0.6;
+        // Drift away from center
+        final driftDir = isLeft ? -1.0 : 1.0;
+        final drift = driftDir * (0.02 + rand.nextDouble() * 0.08);
+
+        // Slight size and position jitter for organic feel
+        final jitterX = (rand.nextDouble() - 0.5) * 0.003;
+        final jitterY = (rand.nextDouble() - 0.5) * 0.003;
+
+        _layerBricks.add(_LayerBrick(
+          fx: fx + jitterX,
+          fy: fy + jitterY,
+          fw: brickW,
+          fh: brickH,
+          isLeft: isLeft,
+          delay: totalDelay,
+          fallSpeed: fallSpeed,
+          rotationSpeed: rotationSpeed,
+          drift: drift,
+          // Colour variation: alternating warm greys like cured resin layers
+          shade: 0.25 + rand.nextDouble() * 0.15 + (r.isEven ? 0.05 : 0.0),
+        ));
+      }
     }
   }
 
   Widget _buildCanceledDisplay(BuildContext context) {
+    final funMode = OrionConfig().getFlag('funMode', category: 'ui');
     return Stack(
       children: [
-        // Falling layer slices behind everything
-        Positioned.fill(
-          child: AnimatedBuilder(
-            animation: _cancelLayersController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: _CancelLayersPainter(
-                  animation: _cancelLayersController,
-                  slices: _cancelLayerSlices,
-                ),
-                size: Size.infinite,
-              );
-            },
-          ),
-        ),
-        // Subtle dark vignette behind the icon
-        Center(
-          child: Container(
-            width: 260,
-            height: 260,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  Colors.black,
-                  Colors.black.withValues(alpha: 0.85),
-                  Colors.black.withValues(alpha: 0.0),
-                ],
-                stops: const [0.0, 0.55, 1.0],
-              ),
+        if (funMode)
+          // Blood drips smearing down the screen (fun mode)
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _cancelResinController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: _BloodDripPainter(
+                    animation: _cancelResinController,
+                    drips: _bloodDrips,
+                  ),
+                  size: Size.infinite,
+                );
+              },
+            ),
+          )
+        else
+          // Layer bricks cracking and falling apart
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _cancelBrickController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: _BrickWallPainter(
+                    animation: _cancelBrickController,
+                    bricks: _layerBricks,
+                  ),
+                  size: Size.infinite,
+                );
+              },
             ),
           ),
-        ),
         // Cancel icon with shake
         AnimatedBuilder(
           animation: _cancelShakeController,
@@ -1254,121 +1321,388 @@ class _FireworkBurst {
   });
 }
 
-class _CancelLayerSlice {
+class _BloodDrip {
   final double fractionalX;
-  final double fractionalY;
-  final double velocityX;
-  final double velocityY;
-  final double rotationSpeed;
-  final double width;
-  final double height;
-  final Color color;
+  final double speed;
+  final double startWidth;
+  final double maxWidth;
   final double delay;
-  final double fadeStart;
+  final double drift;
+  /// 0..1 — fraction of width on the left side (0.5 = symmetric)
+  final double asymmetry;
+  /// Amplitude of organic edge waviness
+  final double wobble;
 
-  const _CancelLayerSlice({
+  const _BloodDrip({
     required this.fractionalX,
-    required this.fractionalY,
-    required this.velocityX,
-    required this.velocityY,
-    required this.rotationSpeed,
-    required this.width,
-    required this.height,
-    required this.color,
-    this.delay = 0.0,
-    this.fadeStart = 0.6,
+    required this.speed,
+    required this.startWidth,
+    required this.maxWidth,
+    required this.delay,
+    this.drift = 0.0,
+    this.asymmetry = 0.5,
+    this.wobble = 1.5,
   });
 }
 
-class _CancelLayersPainter extends CustomPainter {
+class _BloodDripPainter extends CustomPainter {
   final Animation<double> animation;
-  final List<_CancelLayerSlice> slices;
+  final List<_BloodDrip> drips;
 
-  _CancelLayersPainter({required this.animation, required this.slices})
+  static const _bloodDark = Color(0xFF3D0000);
+  static const _bloodMid = Color(0xFF6B0000);
+  static const _bloodBright = Color(0xFF8B0000);
+
+  _BloodDripPainter({required this.animation, required this.drips})
       : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
     final t = animation.value;
-    final center = size.center(Offset.zero);
-    const exclusionRadius = 130.0;
+    if (t <= 0.0) return;
 
-    for (final s in slices) {
-      // Each slice has a staggered delay
-      final localT = ((t - s.delay) % 1.0).clamp(0.0, 1.0);
-      if (t < s.delay && t + 1.0 - s.delay > 1.0) continue;
+    // --- 1. Draw individual drip smears ---
+    for (final drip in drips) {
+      if (t < drip.delay) continue;
+      final localT =
+          ((t - drip.delay) / (1.0 - drip.delay)).clamp(0.0, 1.0);
 
-      // Starting position
-      final originX = size.width * s.fractionalX;
-      final originY = size.height * s.fractionalY;
+      // Viscous ease: slow start, accelerates
+      final flowT = localT * localT * drip.speed;
 
-      // Apply velocity + gravity (accelerating downward)
-      final gravity = 350.0; // pixels/sec² equivalent
-      final posX = originX + s.velocityX * localT;
-      final posY = originY + s.velocityY * localT + gravity * localT * localT;
+      // Tip position (leading edge)
+      final tipY = (size.height + 40) * flowT.clamp(0.0, 3.0);
+      if (tipY < 1) continue;
+      final visibleTipY = tipY.clamp(0.0, size.height + 60.0);
 
-      // Skip if off-screen
-      if (posY > size.height + 50 || posX < -80 || posX > size.width + 80) {
-        continue;
+      final baseX = size.width * drip.fractionalX;
+      final driftX = drip.drift * localT;
+      final x = baseX + driftX;
+
+      // Widths: narrow streak at top, widens gradually, rounded bulb at bottom
+      final maxW = drip.startWidth +
+          (drip.maxWidth - drip.startWidth) *
+              (visibleTipY / size.height).clamp(0.0, 1.0);
+
+      final topLeftW = drip.startWidth * drip.asymmetry;
+      final topRightW = drip.startWidth * (1.0 - drip.asymmetry);
+      final maxLeftW = maxW * drip.asymmetry;
+      final maxRightW = maxW * (1.0 - drip.asymmetry);
+
+      // The bottom of the drip is at visibleTipY.
+      // The bulb occupies roughly the bottom 25-35% of the drip length.
+      final bulbH = maxW * 0.8; // bulb height proportional to width
+      final bulbTopY = visibleTipY - bulbH;
+
+      // Build teardrop: narrow streak top → gradually widens →
+      // rounded bulb at bottom
+      final smearPath = ui.Path();
+      smearPath.moveTo(x - topLeftW, -2);
+
+      // --- Left edge: narrow streak widens smoothly into the bulb ---
+      final wL1 = drip.wobble *
+          math.sin(localT * 7 + drip.fractionalX * 20);
+      final wL2 = drip.wobble *
+          math.sin(localT * 11 + drip.fractionalX * 30);
+      // Streak portion: top → where bulb starts, gradually widening
+      smearPath.cubicTo(
+        x - topLeftW + wL1, bulbTopY * 0.3,
+        x - topLeftW - (maxLeftW - topLeftW) * 0.4 + wL2, bulbTopY * 0.7,
+        x - maxLeftW, bulbTopY,
+      );
+
+      // --- Left side of bulb: continues outward slightly, then curves
+      //     around the bottom ---
+      smearPath.cubicTo(
+        x - maxLeftW * 1.05, bulbTopY + bulbH * 0.3,
+        x - maxLeftW * 1.05, bulbTopY + bulbH * 0.7,
+        x - maxLeftW * 0.5, visibleTipY,
+      );
+
+      // --- Bottom curve: rounded across the bottom of the bulb ---
+      smearPath.cubicTo(
+        x - maxLeftW * 0.15, visibleTipY + bulbH * 0.15,
+        x + maxRightW * 0.15, visibleTipY + bulbH * 0.15,
+        x + maxRightW * 0.5, visibleTipY,
+      );
+
+      // --- Right side of bulb: curves back up ---
+      final wR1 = drip.wobble *
+          math.sin(localT * 9 + drip.fractionalX * 25);
+      smearPath.cubicTo(
+        x + maxRightW * 1.05, bulbTopY + bulbH * 0.7,
+        x + maxRightW * 1.05, bulbTopY + bulbH * 0.3,
+        x + maxRightW, bulbTopY,
+      );
+
+      // --- Right edge: bulb top back up to narrow streak ---
+      final wR2 = drip.wobble *
+          math.sin(localT * 6 + drip.fractionalX * 15);
+      smearPath.cubicTo(
+        x + topRightW + (maxRightW - topRightW) * 0.4 + wR1, bulbTopY * 0.7,
+        x + topRightW + wR2, bulbTopY * 0.3,
+        x + topRightW, -2,
+      );
+
+      smearPath.close();
+
+      // Vertical gradient: darker at top, brighter near the tip
+      final smearPaint = Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(x, 0),
+          Offset(x, visibleTipY.clamp(1.0, size.height)),
+          [
+            _bloodDark.withValues(alpha: 0.7),
+            _bloodMid.withValues(alpha: 0.8),
+            _bloodBright.withValues(alpha: 0.85),
+          ],
+          [0.0, 0.6, 1.0],
+        )
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(smearPath, smearPaint);
+
+      // Subtle wet highlight: off-center, asymmetric
+      final hlOffsetX = (drip.asymmetry - 0.5) * maxW * 0.3;
+      final highlightHalfW = drip.startWidth * 0.15;
+      final hlPath = ui.Path();
+      hlPath.moveTo(x + hlOffsetX - highlightHalfW, 2);
+      hlPath.lineTo(x + hlOffsetX - highlightHalfW, visibleTipY * 0.7);
+      hlPath.lineTo(x + hlOffsetX + highlightHalfW, visibleTipY * 0.7);
+      hlPath.lineTo(x + hlOffsetX + highlightHalfW, 2);
+      hlPath.close();
+      final hlPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.05)
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(hlPath, hlPaint);
+    }
+
+    // --- 2. Pooling at the bottom ---
+    // Pool grows continuously as drips reach the bottom.
+    double poolCoverage = 0;
+    for (final drip in drips) {
+      if (t < drip.delay) continue;
+      final localT =
+          ((t - drip.delay) / (1.0 - drip.delay)).clamp(0.0, 1.0);
+      final flowT = localT * localT * drip.speed;
+      final overshoot = (flowT - 0.85).clamp(0.0, 2.0);
+      poolCoverage += overshoot * drip.maxWidth / size.width * 0.6;
+    }
+    poolCoverage = poolCoverage.clamp(0.0, 0.55);
+
+    if (poolCoverage > 0.001) {
+      final poolHeight = size.height * poolCoverage;
+      final poolTop = size.height - poolHeight;
+
+      final poolPath = ui.Path();
+      poolPath.moveTo(0, size.height);
+      poolPath.lineTo(size.width, size.height);
+      poolPath.lineTo(size.width, poolTop);
+
+      // Gentle sine wave along the pool surface
+      const waveSegs = 24;
+      final segW = size.width / waveSegs;
+      final waveAmp = 2.0 + poolCoverage * 6.0;
+      for (var i = waveSegs; i >= 0; i--) {
+        final px = i * segW;
+        final waveY = poolTop +
+            math.sin(t * math.pi * 4 + i * 0.6) * waveAmp * 0.5 +
+            math.sin(t * math.pi * 2.5 + i * 1.1) * waveAmp * 0.3;
+        poolPath.lineTo(px, waveY);
       }
+      poolPath.close();
 
-      // Skip slices inside the icon exclusion zone
-      final pos = Offset(posX, posY);
-      if ((pos - center).distance < exclusionRadius) continue;
+      final poolPaint = Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(0, poolTop),
+          Offset(0, size.height),
+          [
+            _bloodBright.withValues(alpha: 0.9),
+            _bloodMid,
+            _bloodDark,
+          ],
+          [0.0, 0.3, 1.0],
+        )
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(poolPath, poolPaint);
+    }
+  }
 
-      // Rotation
-      final rotation = s.rotationSpeed * localT;
+  @override
+  bool shouldRepaint(covariant _BloodDripPainter oldDelegate) => true;
+}
 
-      // Fade: fully visible until fadeStart, then fade out
-      final fadeProgress = localT < s.fadeStart
+// ---------------------------------------------------------------------------
+//  Layer-brick wall crack animation (non-fun-mode cancel)
+// ---------------------------------------------------------------------------
+
+class _LayerBrick {
+  final double fx; // fractional x (0..1)
+  final double fy; // fractional y (0..1)
+  final double fw; // fractional width
+  final double fh; // fractional height
+  final bool isLeft; // which side of the crack
+  final double delay; // animation delay (0..~0.5)
+  final double fallSpeed; // gravity multiplier
+  final double rotationSpeed; // tumble rate
+  final double drift; // horizontal drift (negative = left)
+  final double shade; // 0..1 brightness for the brick colour
+
+  const _LayerBrick({
+    required this.fx,
+    required this.fy,
+    required this.fw,
+    required this.fh,
+    required this.isLeft,
+    required this.delay,
+    required this.fallSpeed,
+    required this.rotationSpeed,
+    required this.drift,
+    required this.shade,
+  });
+}
+
+class _BrickWallPainter extends CustomPainter {
+  final Animation<double> animation;
+  final List<_LayerBrick> bricks;
+
+  _BrickWallPainter({required this.animation, required this.bricks})
+      : super(repaint: animation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = animation.value;
+
+    // Phase 0..0.12: wall is static, crack line appears
+    // Phase 0.12..1.0: bricks separate and fall
+    final crackT = (t / 0.12).clamp(0.0, 1.0);
+    final fallT = ((t - 0.12) / 0.88).clamp(0.0, 1.0);
+
+    // Draw the crack line — fades out as bricks start falling
+    if (crackT > 0.0 && fallT < 0.5) {
+      final crackFade = (1.0 - fallT * 2.0).clamp(0.0, 1.0);
+      _drawCrackLine(canvas, size, crackT, crackFade);
+    }
+
+    // Gap between bricks (pixels)
+    const gap = 1.5;
+
+    for (final brick in bricks) {
+      final bx = brick.fx * size.width;
+      final by = brick.fy * size.height;
+      final bw = brick.fw * size.width - gap;
+      final bh = brick.fh * size.height - gap;
+
+      if (bw <= 0 || bh <= 0) continue;
+
+      // Per-brick animation progress (accounts for delay)
+      final brickFallT =
+          ((fallT - brick.delay) / (1.0 - brick.delay)).clamp(0.0, 1.0);
+
+      // Eased fall with gravity (quadratic ease-in)
+      final gravity = brickFallT * brickFallT;
+
+      // Horizontal drift away from centre crack
+      final dx = brick.drift * size.width * gravity;
+      // Vertical fall — 1.5x screen height so every brick clears the bottom
+      final dy = gravity * brick.fallSpeed * size.height * 1.5;
+      // Rotation: tumble increases as brick falls
+      final rotation =
+          gravity * brick.rotationSpeed * (brick.isLeft ? -1.0 : 1.0);
+
+      // Slight separation at the crack even before full fall begins
+      final crackGap = crackT * (brick.isLeft ? -2.0 : 2.0);
+
+      // Final position
+      final finalX = bx + dx + crackGap;
+      final finalY = by + dy;
+
+      // Fade out near the bottom of the screen
+      final fadeStart = size.height * 0.7;
+      final opacity = finalY < fadeStart
           ? 1.0
-          : 1.0 - ((localT - s.fadeStart) / (1.0 - s.fadeStart));
-      final alpha = fadeProgress.clamp(0.0, 1.0);
-      if (alpha <= 0.01) continue;
+          : (1.0 -
+                  ((finalY - fadeStart) / (size.height * 0.5))
+                      .clamp(0.0, 1.0))
+              .clamp(0.0, 1.0);
+      if (opacity <= 0.0) continue;
 
       canvas.save();
-      canvas.translate(posX, posY);
+
+      // Translate to brick centre, rotate, then draw
+      final cx = finalX + bw / 2;
+      final cy = finalY + bh / 2;
+      canvas.translate(cx, cy);
       canvas.rotate(rotation);
 
-      // Glow/shadow beneath the slice
-      final glowPaint = Paint()
-        ..color = s.color.withValues(alpha: 0.15 * alpha)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-      canvas.drawRect(
-        Rect.fromCenter(center: Offset.zero, width: s.width + 4, height: s.height + 4),
-        glowPaint,
+      // Brick colour — very dim dark red, subtle background effect
+      final base = (brick.shade * 255).round().clamp(0, 255);
+      final brickColor = Color.fromARGB(
+        (opacity * 180).round(), // reduced overall opacity
+        (base * 0.35 + 30).round().clamp(0, 255), // dim red
+        (base * 0.08).round().clamp(0, 255), // very muted green
+        (base * 0.06).round().clamp(0, 255), // very muted blue
       );
 
-      // Core slice rectangle
-      final slicePaint = Paint()
-        ..color = s.color.withValues(alpha: 0.85 * alpha)
+      final paint = Paint()
+        ..color = brickColor
         ..style = PaintingStyle.fill;
-      final rect = Rect.fromCenter(
-        center: Offset.zero,
-        width: s.width,
-        height: s.height,
-      );
-      // Rounded corners to look like resin layers
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(1.5)),
-        slicePaint,
-      );
 
-      // Subtle lighter edge highlight on top
-      final highlightPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.12 * alpha)
-        ..style = PaintingStyle.fill;
-      canvas.drawRect(
-        Rect.fromLTWH(-s.width / 2, -s.height / 2, s.width, s.height * 0.3),
-        highlightPaint,
+      // Rounded rect for each brick piece
+      final rrect = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset.zero, width: bw, height: bh),
+        const Radius.circular(2.0),
       );
+      canvas.drawRRect(rrect, paint);
+
+      // Subtle edge highlight on top of each brick for depth
+      final edgePaint = Paint()
+        ..color = Colors.red.withValues(alpha: 0.05 * opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5;
+      canvas.drawRRect(rrect, edgePaint);
 
       canvas.restore();
     }
   }
 
+  /// Draw a jagged crack line down the vertical centre of the screen.
+  void _drawCrackLine(
+      Canvas canvas, Size size, double crackProgress, double fade) {
+    final crackPath = ui.Path();
+    final centerX = size.width / 2;
+    final rand = math.Random(42); // deterministic seed for consistent crack
+
+    // Crack grows from top to bottom
+    final crackBottom = size.height * crackProgress;
+
+    crackPath.moveTo(centerX, 0);
+    const segments = 30;
+    final segH = size.height / segments;
+    for (var i = 1; i <= segments; i++) {
+      final sy = i * segH;
+      if (sy > crackBottom) break;
+      final jag = (rand.nextDouble() - 0.5) * 16.0;
+      crackPath.lineTo(centerX + jag, sy);
+    }
+
+    final crackPaint = Paint()
+      ..color = Colors.red.withValues(alpha: 0.35 * crackProgress * fade)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(crackPath, crackPaint);
+
+    // Faint glow around the crack
+    final glowPaint = Paint()
+      ..color = Colors.redAccent.withValues(alpha: 0.1 * crackProgress * fade)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6.0
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
+    canvas.drawPath(crackPath, glowPaint);
+  }
+
   @override
-  bool shouldRepaint(covariant _CancelLayersPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _BrickWallPainter oldDelegate) => true;
 }
 
 class _FireworksPainter extends CustomPainter {
