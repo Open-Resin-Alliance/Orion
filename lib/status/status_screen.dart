@@ -263,8 +263,10 @@ class StatusScreenState extends State<StatusScreen> {
 
       if (fileData != null) {
         try {
-          final meta = await BackendService().getFileMetadata(
-              fileData.locationCategory ?? 'Local', fileData.path);
+          final meta = await BackendService()
+              .getFileMetadata(
+                  fileData.locationCategory ?? 'Local', fileData.path)
+              .timeout(const Duration(seconds: 2));
           plateId = meta['plate_id'] as int?;
         } catch (e) {
           _log.fine('Failed to resolve plate id for calibration check: $e');
