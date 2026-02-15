@@ -15,38 +15,59 @@
 * limitations under the License.
 */
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 
 import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 
+// Variable fonts seem broken on Linux, so use Regular on Linux
+String get _primaryFontFamily {
+  if (Platform.isLinux) {
+    return 'AtkinsonHyperlegible';
+  }
+  return 'AtkinsonHyperlegible';
+}
+
 ThemeData createLightTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
+    fontFamily: _primaryFontFamily,
+    // Keep classic Atkinson as secondary fallback, then CJK
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.light,
       variant: FlexSchemeVariant.soft,
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.black,
       ),
-      centerTitle: true,
+      centerTitle: false,
+      titleSpacing: 16.0,
       toolbarHeight: 65,
       iconTheme: IconThemeData(size: 30),
     ),
-    textTheme: const TextTheme(
-      bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
+    // Ensure the TextTheme entries include the CJK fallback
+    textTheme: _withCjkFallback(TextTheme(
+      bodyMedium:
+        TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
       titleLarge: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
-    ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      selectedLabelStyle:
-          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-      unselectedLabelStyle:
-          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
+        fontFamily: _primaryFontFamily,
+        fontSize: 20), // For AppBar title
+    )),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      selectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontSize: 18),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
     ),
@@ -67,32 +88,41 @@ ThemeData createLightTheme(Color seedColor) {
 
 ThemeData createDarkTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
+    fontFamily: _primaryFontFamily,
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.dark,
       variant: FlexSchemeVariant.soft,
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.white,
       ),
-      centerTitle: true,
+      centerTitle: false,
+      titleSpacing: 16.0,
       toolbarHeight: 65,
-      iconTheme: IconThemeData(size: 30),
+      iconTheme: IconThemeData(size: 30, color: Colors.white),
     ),
-    textTheme: const TextTheme(
-      bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
+    textTheme: _withCjkFallback(TextTheme(
+      bodyMedium:
+        TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
       titleLarge: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
-    ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      selectedLabelStyle:
-          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-      unselectedLabelStyle:
-          TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
+        fontFamily: _primaryFontFamily,
+        fontSize: 20), // For AppBar title
+    )),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      selectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontSize: 18),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
     ),
@@ -113,7 +143,8 @@ ThemeData createDarkTheme(Color seedColor) {
 
 ThemeData createGlassTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
+    fontFamily: _primaryFontFamily,
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.dark,
@@ -130,40 +161,42 @@ ThemeData createGlassTheme(Color seedColor) {
         TargetPlatform.windows: _OpaquePageTransitionsBuilder(),
       },
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.white,
       ),
-      centerTitle: true,
+      centerTitle: false,
+      titleSpacing: 16.0,
       toolbarHeight: 65,
       iconTheme: IconThemeData(size: 30, color: Colors.white),
       foregroundColor: Colors.white,
     ),
-    textTheme: const TextTheme(
+    textTheme: _withCjkFallback(TextTheme(
       bodyMedium: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
         fontSize: 20,
         color: Colors.white,
       ),
       titleLarge: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
         fontSize: 20,
         color: Colors.white,
       ),
-    ),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    )),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: Colors.transparent,
       selectedLabelStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
         fontSize: 18,
         color: Colors.white,
       ),
       unselectedLabelStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
         fontSize: 18,
         color: Colors.white70,
       ),
@@ -189,6 +222,35 @@ ThemeData createGlassTheme(Color seedColor) {
       elevation: 0,
     ),
     useMaterial3: true,
+  );
+}
+
+// Helper to inject CJK fallback into every non-null TextStyle of a TextTheme.
+TextTheme _withCjkFallback(TextTheme t) {
+  TextStyle? applyFallback(TextStyle? s) {
+    if (s == null) return null;
+    // If already has fallback, keep it; otherwise add NotoSansCJK.
+    final existing = s.fontFamilyFallback ?? const <String>[];
+    if (existing.contains('NotoSansCJK')) return s;
+    return s.copyWith(fontFamilyFallback: [...existing, 'NotoSansCJK']);
+  }
+
+  return TextTheme(
+    displayLarge: applyFallback(t.displayLarge),
+    displayMedium: applyFallback(t.displayMedium),
+    displaySmall: applyFallback(t.displaySmall),
+    headlineLarge: applyFallback(t.headlineLarge),
+    headlineMedium: applyFallback(t.headlineMedium),
+    headlineSmall: applyFallback(t.headlineSmall),
+    titleLarge: applyFallback(t.titleLarge),
+    titleMedium: applyFallback(t.titleMedium),
+    titleSmall: applyFallback(t.titleSmall),
+    bodyLarge: applyFallback(t.bodyLarge),
+    bodyMedium: applyFallback(t.bodyMedium),
+    bodySmall: applyFallback(t.bodySmall),
+    labelLarge: applyFallback(t.labelLarge),
+    labelMedium: applyFallback(t.labelMedium),
+    labelSmall: applyFallback(t.labelSmall),
   );
 }
 

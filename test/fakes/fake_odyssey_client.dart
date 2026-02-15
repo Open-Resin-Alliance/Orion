@@ -281,4 +281,34 @@ class FakeBackendClient implements BackendClient {
     // TODO: implement startCalibrationPrint
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> preheatAndMixStandalone() {
+    // TODO: implement preheatAndMixStandalone
+    throw UnimplementedError();
+  }
+
+  @override
+  Future updateBackend() {
+    // TODO: implement updateBackend
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getKinematicStatus() {
+    // TODO: implement getKinematicStatus
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> resetZOffset() {
+    // TODO: implement resetZOffset
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> setZOffset(double offset) {
+    // TODO: implement setZOffset
+    throw UnimplementedError();
+  }
 }

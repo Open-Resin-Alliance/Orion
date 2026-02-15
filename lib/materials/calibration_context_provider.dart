@@ -15,7 +15,9 @@
 * limitations under the License.
 */
 
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:orion/util/orion_config.dart';
 
 /// Holds calibration context data for post-print evaluation
 /// This allows us to pass calibration parameters from CalibrationScreen
@@ -23,20 +25,79 @@ import 'package:flutter/foundation.dart';
 class CalibrationContextProvider extends ChangeNotifier {
   CalibrationContext? _context;
 
-  CalibrationContext? get context => _context;
+  CalibrationContextProvider() {
+    _loadFromConfig();
+  }
 
-  bool get hasContext => _context != null;
+  CalibrationContext? get context {
+    // Always try to load from config if in-memory context is null
+    // This ensures we don't lose context after long waits or app lifecycle events
+    if (_context == null) {
+      _loadFromConfig();
+    }
+    return _context;
+  }
+
+  bool get hasContext {
+    // Check both in-memory and persistent storage
+    if (_context != null) return true;
+    _loadFromConfig();
+    return _context != null;
+  }
 
   /// Store calibration context when starting a calibration print
   void setContext(CalibrationContext context) {
     _context = context;
+    _saveToConfig();
     notifyListeners();
   }
 
   /// Clear context after post-calibration evaluation is complete
   void clearContext() {
     _context = null;
+    _clearConfig();
     notifyListeners();
+  }
+
+  void _saveToConfig() {
+    if (_context != null) {
+      try {
+        final jsonString = jsonEncode(_context!.toJson());
+        OrionConfig()
+            .setString('activeContext', jsonString, category: 'calibration');
+        debugPrint('Saved calibration context to config');
+      } catch (e) {
+        debugPrint('Failed to save calibration context: $e');
+      }
+    }
+  }
+
+  void _clearConfig() {
+    try {
+      OrionConfig().setString('activeContext', '', category: 'calibration');
+      debugPrint('Cleared calibration context from config');
+    } catch (e) {
+      debugPrint('Failed to clear calibration context from config: $e');
+    }
+  }
+
+  void _loadFromConfig() {
+    try {
+      final jsonString =
+          OrionConfig().getString('activeContext', category: 'calibration');
+      if (jsonString.isNotEmpty) {
+        final map = jsonDecode(jsonString);
+        _context = CalibrationContext.fromJson(map);
+        debugPrint(
+            'Loaded calibration context from config: ${_context?.calibrationModelName}');
+      } else {
+        _context = null;
+        debugPrint('No calibration context found in config');
+      }
+    } catch (e) {
+      debugPrint('Failed to load calibration context: $e');
+      _context = null;
+    }
   }
 }
 
@@ -59,4 +120,28 @@ class CalibrationContext {
     required this.calibrationModelId,
     this.evaluationGuideUrl,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'calibrationModelName': calibrationModelName,
+      'resinProfileName': resinProfileName,
+      'startExposure': startExposure,
+      'exposureIncrement': exposureIncrement,
+      'profileId': profileId,
+      'calibrationModelId': calibrationModelId,
+      'evaluationGuideUrl': evaluationGuideUrl,
+    };
+  }
+
+  factory CalibrationContext.fromJson(Map<String, dynamic> json) {
+    return CalibrationContext(
+      calibrationModelName: json['calibrationModelName'] ?? '',
+      resinProfileName: json['resinProfileName'],
+      startExposure: (json['startExposure'] as num?)?.toDouble() ?? 0.0,
+      exposureIncrement: (json['exposureIncrement'] as num?)?.toDouble() ?? 0.0,
+      profileId: json['profileId'] ?? 0,
+      calibrationModelId: json['calibrationModelId'] ?? 0,
+      evaluationGuideUrl: json['evaluationGuideUrl'],
+    );
+  }
 }

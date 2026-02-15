@@ -24,13 +24,16 @@ class LayerPreviewCache {
   LayerPreviewCache._private();
   static final LayerPreviewCache instance = LayerPreviewCache._private();
 
-  // Key format: '$plateId:$layer'
+  // Key format: '$plateId:$filePath:$layer' (filePath may be empty)
   final _map = <String, Uint8List>{};
   final _order = <String>[]; // keys in insertion order for simple LRU
   final int _maxEntries = 100;
 
   // Use proper string interpolation so each plate/layer gets a unique key.
-  String _key(int plateId, int layer) => '$plateId:$layer';
+  String _key(int plateId, int layer, [String? filePath]) {
+    final fp = filePath ?? '';
+    return '$plateId:$fp:$layer';
+  }
 
   // Track in-flight fetches so concurrent requests for the same
   // plate/layer are deduped and only one network call is made.
@@ -40,15 +43,16 @@ class LayerPreviewCache {
   /// Concurrent callers for the same plate/layer will await the same
   /// in-flight future.
   Future<Uint8List> fetchAndCache(
-      BackendService backend, int plateId, int layer) async {
-    final k = _key(plateId, layer);
+      BackendService backend, int plateId, int layer,
+      {String? filePath}) async {
+    final k = _key(plateId, layer, filePath);
     final existing = _map[k];
     if (existing != null) return existing;
     final inflight = _inflight[k];
     if (inflight != null) return await inflight;
 
     final future = backend.getPlateLayerImage(plateId, layer).then((bytes) {
-      if (bytes.isNotEmpty) set(plateId, layer, bytes);
+      if (bytes.isNotEmpty) set(plateId, layer, bytes, filePath: filePath);
       return bytes;
     }).whenComplete(() {
       _inflight.remove(k);
@@ -58,8 +62,8 @@ class LayerPreviewCache {
     return await future;
   }
 
-  Uint8List? get(int plateId, int layer) {
-    final k = _key(plateId, layer);
+  Uint8List? get(int plateId, int layer, {String? filePath}) {
+    final k = _key(plateId, layer, filePath);
     final v = _map[k];
     if (v == null) return null;
     // Refresh order (move to end)
@@ -68,8 +72,8 @@ class LayerPreviewCache {
     return v;
   }
 
-  void set(int plateId, int layer, Uint8List bytes) {
-    final k = _key(plateId, layer);
+  void set(int plateId, int layer, Uint8List bytes, {String? filePath}) {
+    final k = _key(plateId, layer, filePath);
     if (_map.containsKey(k)) {
       _order.remove(k);
     }
@@ -93,15 +97,15 @@ class LayerPreviewCache {
   /// Preload [count] layers starting at [layer+1]. Runs best-effort in
   /// background using the provided backend service instance.
   void preload(BackendService backend, int plateId, int layer,
-      {int count = 2}) async {
+      {int count = 2, String? filePath}) async {
     for (int i = 1; i <= count; i++) {
       final target = layer + i;
-      final k = _key(plateId, target);
+      final k = _key(plateId, target, filePath);
       if (_map.containsKey(k)) continue;
       try {
         // Use fetchAndCache which dedupes inflight requests and ensures
         // resizing is performed off the main isolate where supported.
-        await fetchAndCache(backend, plateId, target);
+        await fetchAndCache(backend, plateId, target, filePath: filePath);
       } catch (_) {
         // ignore preload failures
       }

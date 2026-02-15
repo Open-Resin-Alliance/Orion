@@ -104,6 +104,13 @@ class OdysseyHttpClient implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>?> getKinematicStatus() async {
+    // Odyssey backend does not expose a kinematic status endpoint.
+    _log.fine('getKinematicStatus not supported on Odyssey');
+    return null;
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getAnalytics(int n) async {
     // Odyssey doesn't currently define a standard analytics endpoint. As a
     // best-effort, try '/analytic/data/<n>' on Odyssey host; otherwise return
@@ -366,6 +373,12 @@ class OdysseyHttpClient implements BackendClient {
   }
 
   @override
+  Future updateBackend() {
+    // TODO: implement updateBackend
+    throw UnimplementedError();
+  }
+
+  @override
   Future setChamberTemperature(double temperature) {
     // TODO: implement setChamberTemperature
     throw UnimplementedError();
@@ -511,6 +524,18 @@ class OdysseyHttpClient implements BackendClient {
     _log.fine(
         'isCalibrationPlateProcessed called on OdysseyHttpClient (unsupported)');
     return null;
+  }
+
+  @override
+  Future<bool> resetZOffset() {
+    // TODO: implement resetZOffset
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> setZOffset(double offset) {
+    // TODO: implement setZOffset
+    throw UnimplementedError();
   }
 }
 

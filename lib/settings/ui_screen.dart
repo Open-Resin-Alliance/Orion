@@ -15,13 +15,19 @@
 * limitations under the License.
 */
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/theme_color_selector.dart';
+import 'package:orion/util/orion_list_tile.dart';
+import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 
 class UIScreen extends StatefulWidget {
   const UIScreen({super.key});
@@ -43,13 +49,22 @@ class _UIScreenState extends State<UIScreen> {
   }
 
   @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
+        appBar: OrionAppBar(
           title: const Text('User Interface'),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+          actions: <Widget>[
+            SystemStatusWidget(),
+          ],
         ),
         body: SingleChildScrollView(
           child: Padding(
@@ -69,11 +84,10 @@ class _UIScreenState extends State<UIScreen> {
                         const Text(
                           'Theme Mode',
                           style: TextStyle(
-                            fontSize: 24.0,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 26.0,
                           ),
                         ),
-                        const SizedBox(height: 20.0),
+                        const SizedBox(height: 16.0),
                         GlassThemeSelector(
                           selectedTheme: themeProvider.orionThemeMode,
                           onThemeChanged: (OrionThemeMode newMode) {
@@ -102,11 +116,10 @@ class _UIScreenState extends State<UIScreen> {
                           const Text(
                             'Theme Color',
                             style: TextStyle(
-                              fontSize: 24.0,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 26.0,
                             ),
                           ),
-                          const SizedBox(height: 20.0),
+                          const SizedBox(height: 16.0),
                           ThemeColorSelector(
                             config: config,
                           ),
@@ -114,8 +127,559 @@ class _UIScreenState extends State<UIScreen> {
                       ),
                     ),
                   ),
+                const SizedBox(height: 16.0),
+
+                // Standby Screen Settings
+                Consumer<StandbySettingsProvider>(
+                  builder: (ctx, standbySettings, _) {
+                    final standbyMinutes =
+                        standbySettings.durationSeconds ~/ 60;
+                    final standbySeconds = standbySettings.durationSeconds % 60;
+                    const minStandbySeconds = 10;
+
+                    return GlassCard(
+                      outlined: true,
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Standby Screen',
+                              style: TextStyle(
+                                fontSize: 26.0,
+                              ),
+                            ),
+                            const SizedBox(height: 16.0),
+                            OrionListTile(
+                              title: 'Enable Standby Screen',
+                              value: standbySettings.standbyEnabled,
+                              onChanged: (bool value) {
+                                standbySettings.setStandbyEnabled(value);
+                              },
+                              icon: null,
+                            ),
+                            if (standbySettings.standbyEnabled) ...[
+                              const SizedBox(height: 16.0),
+                              GlassCard(
+                                outlined: true,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () =>
+                                      _showStandbyModeDialog(standbySettings),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16.0, vertical: 12.0),
+                                    child: Row(
+                                      children: [
+                                        const Text(
+                                          'Standby Mode',
+                                          style: TextStyle(
+                                            fontFamily: 'AtkinsonHyperlegible',
+                                            fontSize: 24.0,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          standbySettings.standbyMode == 'logo'
+                                              ? 'Logo'
+                                              : 'Clock',
+                                          style: TextStyle(
+                                            fontSize: 20.0,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8.0),
+                                        Icon(
+                                          Icons.chevron_right,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withValues(alpha: 0.7),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16.0),
+                              OrionListTile(
+                                title: 'Dim Screen in Standby',
+                                value: standbySettings.dimmingEnabled,
+                                onChanged: (bool value) {
+                                  standbySettings.setDimmingEnabled(value);
+                                },
+                                icon: null,
+                              ),
+                              const SizedBox(height: 16.0),
+                            ],
+                            if (standbySettings.standbyEnabled)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: _buildDurationInput(
+                                          suffix: 'm',
+                                          value: standbyMinutes,
+                                          totalSeconds:
+                                              standbySettings.durationSeconds,
+                                          minTotalSeconds: minStandbySeconds,
+                                          accentColor: null,
+                                          onChanged: (val) {
+                                            final newSeconds =
+                                                (val * 60) + standbySeconds;
+                                            final clamped =
+                                                newSeconds < minStandbySeconds
+                                                    ? minStandbySeconds
+                                                    : newSeconds;
+                                            standbySettings
+                                                .setDurationSeconds(clamped);
+                                          },
+                                          max: 59,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12.0),
+                                      Flexible(
+                                        child: _buildDurationInput(
+                                          suffix: 's',
+                                          value: standbySeconds,
+                                          totalSeconds:
+                                              standbySettings.durationSeconds,
+                                          minTotalSeconds: minStandbySeconds,
+                                          accentColor:
+                                              standbySettings.durationSeconds <
+                                                      30
+                                                  ? Colors.redAccent
+                                                  : null,
+                                          onChanged: (val) {
+                                            final newSeconds =
+                                                (standbyMinutes * 60) + val;
+                                            final clamped =
+                                                newSeconds < minStandbySeconds
+                                                    ? minStandbySeconds
+                                                    : newSeconds;
+                                            standbySettings
+                                                .setDurationSeconds(clamped);
+                                          },
+                                          max: 59,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8.0),
+                                  Center(
+                                    child: Text(
+                                      'Screen will enter standby after ${standbyMinutes}m ${standbySeconds}s of inactivity${standbyMinutes == 0 && standbySeconds < 30 ? '\nWarning: Minimum recommended duration is 30 seconds.' : ''}',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 16.0,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showStandbyModeDialog(
+      StandbySettingsProvider standbySettings) async {
+    final optionTextStyle = TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.w600,
+      color: Theme.of(context).colorScheme.primary,
+    );
+
+    final subtitleStyle = TextStyle(
+      fontSize: 14,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+    );
+
+    Widget buildOption({
+      required String value,
+      required String title,
+      required String subtitle,
+    }) {
+      final isSelected = standbySettings.standbyMode == value;
+      return GlassCard(
+        elevation: isSelected ? 2.0 : 1.0,
+        outlined: true,
+        color: isSelected
+            ? Theme.of(context)
+                .colorScheme
+                .primaryContainer
+                .withValues(alpha: 0.3)
+            : null,
+        child: InkWell(
+          onTap: () {
+            standbySettings.setStandbyMode(value);
+            Navigator.of(context).pop();
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: optionTextStyle),
+                      const SizedBox(height: 4),
+                      Text(subtitle, style: subtitleStyle),
+                    ],
+                  ),
+                ),
+                if (isSelected)
+                  Icon(
+                    Icons.check_circle,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) => GlassDialog(
+        padding: EdgeInsets.zero,
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.6,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context)
+                          .dividerColor
+                          .withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.nightlight_round, size: 22),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Select Standby Mode',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, size: 20),
+                      padding: const EdgeInsets.all(4),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      tooltip: 'Close',
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    buildOption(
+                      value: 'clock',
+                      title: 'Clock',
+                      subtitle: 'Show the large time display',
+                    ),
+                    const SizedBox(height: 12),
+                    buildOption(
+                      value: 'logo',
+                      title: 'Logo',
+                      subtitle: 'Bouncing logo screensaver',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDurationInput({
+    required String suffix,
+    required int value,
+    required int totalSeconds,
+    required int minTotalSeconds,
+    Color? accentColor,
+    required Function(int) onChanged,
+    required int max,
+  }) {
+    final canDecrement = value > 0 && totalSeconds > minTotalSeconds;
+    return GlassCard(
+      outlined: true,
+      accentColor: accentColor,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Minus button (left)
+            _HoldToAccelerateButton(
+              icon: Icons.remove,
+              enabled: canDecrement,
+              onTap: () => onChanged(value - 1),
+              onHold: (increment) {
+                final newValue = (value - increment).clamp(0, max);
+                onChanged(newValue);
+              },
+            ),
+            // Number with suffix (center)
+            Expanded(
+              child: Text(
+                '${value.toString().padLeft(2, '0')}$suffix',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 48.0,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            // Plus button (right)
+            _HoldToAccelerateButton(
+              icon: Icons.add,
+              enabled: value < max,
+              onTap: () => onChanged(value + 1),
+              onHold: (increment) {
+                final newValue = (value + increment).clamp(0, max);
+                onChanged(newValue);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Widget for selecting backlight device with auto-detection
+class _BacklightDeviceSelector extends StatefulWidget {
+  final StandbySettingsProvider standbySettings;
+
+  const _BacklightDeviceSelector({required this.standbySettings});
+
+  @override
+  State<_BacklightDeviceSelector> createState() =>
+      _BacklightDeviceSelectorState();
+}
+
+class _BacklightDeviceSelectorState extends State<_BacklightDeviceSelector> {
+  late Future<List<String>> _devicesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _devicesFuture = widget.standbySettings.detectBacklightDevices();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<String>>(
+      future: _devicesFuture,
+      builder: (context, snapshot) {
+        final devices = snapshot.data ?? [];
+        final currentDevice = widget.standbySettings.backlightDevice;
+        final selectedDevice = devices.contains(currentDevice)
+            ? currentDevice
+            : (devices.isNotEmpty ? devices.first : null);
+
+        return GlassCard(
+          outlined: true,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  const SizedBox(
+                    height: 50,
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (devices.isEmpty)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'No backlight devices detected',
+                        style: TextStyle(
+                          fontSize: 14.0,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 12.0),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _devicesFuture = widget.standbySettings
+                                  .detectBacklightDevices();
+                            });
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry Detection'),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DropdownButton<String>(
+                        isExpanded: true,
+                        value: selectedDevice,
+                        items: devices
+                            .map((device) => DropdownMenuItem(
+                                  value: device,
+                                  child: Text(device),
+                                ))
+                            .toList(),
+                        onChanged: (device) {
+                          if (device != null) {
+                            widget.standbySettings.setBacklightDevice(device);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12.0),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _devicesFuture = widget.standbySettings
+                                  .detectBacklightDevices();
+                            });
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Rescan Devices'),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A button that accelerates when held down
+class _HoldToAccelerateButton extends StatefulWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+  final Function(int increment) onHold;
+
+  const _HoldToAccelerateButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+    required this.onHold,
+  });
+
+  @override
+  State<_HoldToAccelerateButton> createState() =>
+      _HoldToAccelerateButtonState();
+}
+
+class _HoldToAccelerateButtonState extends State<_HoldToAccelerateButton> {
+  Timer? _holdTimer;
+  int _holdTicks = 0;
+
+  void _startHolding() {
+    if (!widget.enabled) return;
+
+    _holdTicks = 0;
+    _holdTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      _holdTicks++;
+
+      // Calculate increment with acceleration
+      // Start at 1, then increase every 10 ticks
+      int increment = 1;
+      if (_holdTicks > 30) {
+        increment = 5; // Fast after 3 seconds
+      } else if (_holdTicks > 10) {
+        increment = 2; // Medium after 1 second
+      }
+
+      widget.onHold(increment);
+    });
+  }
+
+  void _stopHolding() {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    _holdTicks = 0;
+  }
+
+  @override
+  void dispose() {
+    _stopHolding();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: GestureDetector(
+        onTap: widget.enabled ? widget.onTap : null,
+        onLongPressStart: (_) => _startHolding(),
+        onLongPressEnd: (_) => _stopHolding(),
+        onLongPressCancel: () => _stopHolding(),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: widget.enabled
+                ? theme.colorScheme.primary.withOpacity(0.1)
+                : Colors.transparent,
+          ),
+          child: Icon(
+            widget.icon,
+            size: 28,
+            color: widget.enabled ? theme.iconTheme.color : theme.disabledColor,
           ),
         ),
       ),

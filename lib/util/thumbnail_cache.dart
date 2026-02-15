@@ -19,12 +19,14 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:typed_data';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'package:logging/logging.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 import 'package:orion/util/sl1_thumbnail.dart';
+import 'package:orion/util/stl_thumbnail.dart';
 import 'package:orion/util/orion_config.dart';
 
 class ThumbnailCache {
@@ -39,6 +41,7 @@ class ThumbnailCache {
   Directory? _diskCacheDir;
   Duration?
       _diskEntryTtl; // null = disabled, otherwise time-based expiry for disk entries
+  bool _startupNeedsPrefetch = false;
   bool _pruning = false;
   static const int _diskCacheMaxBytes =
       512 * 1024 * 1024; // 512 MiB rolling cache
@@ -52,21 +55,36 @@ class ThumbnailCache {
     required OrionApiFile file,
     String size = 'Small',
     bool forceRefresh = false,
+    String? stlMode,
+    Color? themeColor,
   }) async {
     _pruneExpired();
+
+    final stlVariant = stlMode ?? _resolveStlVariant(fileName, file);
+
+    // If the disk cache was empty on startup, prefer fetching fresh bytes
+    // for the first set of thumbnails so the UI can repopulate the cache
+    // without waiting for user interaction to individually refresh items.
+    if (_startupNeedsPrefetch) {
+      forceRefresh = true;
+    }
 
     if (forceRefresh) {
       // Bypass memory/disk caches and fetch fresh bytes. Still dedupe in-flight
       // requests by key to avoid duplicate network work.
-      final key = _cacheKey(location, file, size);
+      final key = _cacheKey(location, file, size,
+          variant: stlVariant, themeColor: themeColor);
       final inFlight = _inFlight[key];
       if (inFlight != null) return inFlight;
 
-      final future = ThumbnailUtil.extractThumbnailBytes(
-        location,
-        subdirectory,
-        fileName,
+      final future = _extractBytesForFile(
+        location: location,
+        subdirectory: subdirectory,
+        fileName: fileName,
+        file: file,
         size: size,
+        stlMode: stlVariant,
+        themeColor: themeColor,
       ).then<Uint8List?>((bytes) {
         _store(key, bytes);
         _inFlight.remove(key);
@@ -82,74 +100,58 @@ class ThumbnailCache {
       return future;
     }
 
-    // Try to find any cached entry for the same path+size regardless of
-    // lastModified. This avoids cache misses when the provider recreates
-    // OrionApiFile instances with differing lastModified values while the
-    // file itself hasn't changed on disk. We'll return the cached bytes
-    // immediately (if not expired) and schedule a background refresh if
-    // the reported lastModified differs.
-    final prefix = '$location|${file.path}|';
-    String? foundKey;
-    for (final k in _cache.keys) {
-      if (k.startsWith(prefix) && k.endsWith('|$size')) {
-        foundKey = k;
-        break;
+    // First, try exact match with the current cache key (includes lastModified)
+    // to avoid serving stale thumbnails when files are replaced with same path.
+    final exactKey = _cacheKey(location, file, size,
+        variant: stlVariant, themeColor: themeColor);
+    final exactMatch = _cache[exactKey];
+    if (exactMatch != null) {
+      if (!_isExpired(exactMatch.timestamp)) {
+        // refresh LRU order by reinserting at tail
+        _cache.remove(exactKey);
+        _cache[exactKey] = exactMatch;
+        return Future.value(exactMatch.bytes);
+      } else {
+        _cache.remove(exactKey);
+        _inFlight.remove(exactKey);
       }
     }
-    if (foundKey != null) {
-      final existing = _cache.remove(foundKey);
-      if (existing != null) {
-        if (!_isExpired(existing.timestamp)) {
-          // refresh LRU order by reinserting at tail
-          _cache[foundKey] = existing;
 
-          // If the cached entry's lastModified differs from the current
-          // file.lastModified, schedule a background refresh so we update
-          // the cache without delaying the UI.
-          try {
-            final parts = foundKey.split('|');
-            int existingLm = 0;
-            if (parts.length >= 3) {
-              existingLm = int.tryParse(parts[2]) ?? 0;
-            }
-            final currentLm = file.lastModified ?? 0;
-            if (currentLm != 0 && existingLm != currentLm) {
-              final newKey = _cacheKey(location, file, size);
-              if (!_inFlight.containsKey(newKey)) {
-                // start but don't await
-                _inFlight[newKey] = ThumbnailUtil.extractThumbnailBytes(
-                  location,
-                  subdirectory,
-                  fileName,
-                  size: size,
-                ).then<Uint8List?>((bytes) {
-                  _store(newKey, bytes);
-                  _inFlight.remove(newKey);
-                  return bytes;
-                }).catchError((_, __) {
-                  _inFlight.remove(newKey);
-                  return null;
-                });
-              }
-            }
-          } catch (_) {
-            // ignore parsing errors and continue returning cached bytes
-          }
-
-          // Intentionally suppress memory-load debug logs to keep runtime logs concise.
-
-          return Future.value(existing.bytes);
+    // Fallback: Try to find cached entries for same path+size with different
+    // lastModified. This handles the case where the provider recreates
+    // OrionApiFile instances with slightly different lastModified values
+    // (e.g., millisecond precision differences) while the file content
+    // hasn't actually changed. Only use this as a fallback if the exact
+    // match above failed, and only if lastModified is zero or very small
+    // (indicating the file's actual mtime might not be reliably available).
+    if ((file.lastModified ?? 0) == 0) {
+      final prefix = '$location|${file.path}|';
+      String? fallbackKey;
+      for (final k in _cache.keys) {
+        if (k.startsWith(prefix) &&
+            k.endsWith(_cacheKeySuffix(size, stlVariant, themeColor))) {
+          fallbackKey = k;
+          break;
         }
-        _inFlight.remove(foundKey);
+      }
+      if (fallbackKey != null) {
+        final fallback = _cache[fallbackKey];
+        if (fallback != null && !_isExpired(fallback.timestamp)) {
+          _cache.remove(fallbackKey);
+          _cache[fallbackKey] = fallback;
+          return Future.value(fallback.bytes);
+        }
       }
     }
 
     // If nothing found in memory, try disk cache before fetching.
     try {
-      final diskBytes = await _readFromDiskIfFresh(location, file, size);
+      final diskBytes = await _readFromDiskIfFresh(
+          location, file, size, stlVariant, themeColor);
       if (diskBytes != null) {
         // store in memory LRU and return
-        final key = _cacheKey(location, file, size);
+        final key = _cacheKey(location, file, size,
+            variant: stlVariant, themeColor: themeColor);
         _store(key, diskBytes);
         return Future.value(diskBytes);
       }
@@ -157,17 +159,21 @@ class ThumbnailCache {
       // ignore disk errors and continue to fetch
     }
 
-    final key = _cacheKey(location, file, size);
+    final key = _cacheKey(location, file, size,
+        variant: stlVariant, themeColor: themeColor);
     final inFlight = _inFlight[key];
     if (inFlight != null) return inFlight;
 
     _evictAlternateVersions(location, file.path, keepKey: key);
 
-    final future = ThumbnailUtil.extractThumbnailBytes(
-      location,
-      subdirectory,
-      fileName,
+    final future = _extractBytesForFile(
+      location: location,
+      subdirectory: subdirectory,
+      fileName: fileName,
+      file: file,
       size: size,
+      stlMode: stlVariant,
+      themeColor: themeColor,
     ).then<Uint8List?>((bytes) {
       _store(key, bytes);
       _inFlight.remove(key);
@@ -183,9 +189,102 @@ class ThumbnailCache {
     return future;
   }
 
+  Future<Uint8List> _extractBytesForFile({
+    required String location,
+    required String subdirectory,
+    required String fileName,
+    required OrionApiFile file,
+    required String size,
+    String? stlMode,
+    Color? themeColor,
+  }) async {
+    try {
+      final lower = fileName.toLowerCase();
+      if (lower.endsWith('.stl')) {
+        final localPath = file.path;
+        if (localPath.isNotEmpty) {
+          final f = File(localPath);
+          if (await f.exists()) {
+            _log.fine('Using local STL thumbnail: $localPath');
+            return StlThumbnailUtil.extractStlThumbnailBytesFromFile(
+              localPath,
+              size: size,
+              mode: stlMode,
+              themeColor: themeColor,
+            );
+          }
+        }
+      }
+      if (lower.endsWith('.nanodlp')) {
+        final localPath = file.path;
+        if (localPath.isNotEmpty) {
+          final f = File(localPath);
+          if (await f.exists()) {
+            _log.fine('Using local NanoDLP zip thumbnail: $localPath');
+            return ThumbnailUtil.extractNanodlpThumbnailBytesFromFile(
+              localPath,
+              size: size,
+            );
+          }
+        }
+      }
+    } catch (_) {
+      // fall back to API-based thumbnails
+    }
+
+    return ThumbnailUtil.extractThumbnailBytes(
+      location,
+      subdirectory,
+      fileName,
+      size: size,
+    );
+  }
+
+  /// Expose the resolved disk cache directory path for diagnostics.
+  Future<String> getDiskCacheDirPath() async {
+    final dir = await _ensureDiskCacheDir();
+    return dir.path;
+  }
+
   void clear() {
     _cache.clear();
     _inFlight.clear();
+  }
+
+  /// Remove thumbnails for a specific file from memory and disk cache.
+  /// Use this when a file is deleted to clean up its cached thumbnails.
+  void removeFile(String location, String filePath) {
+    // Remove all versions (different sizes, timestamps) of this file from cache
+    final prefix = '$location|$filePath|';
+    final removeKeys = _cache.keys
+        .where((key) => key.startsWith(prefix))
+        .toList(growable: false);
+    for (final key in removeKeys) {
+      final entry = _cache.remove(key);
+      if (entry?.bytes != null) {
+        _memoryCacheBytes -= entry!.bytes!.length;
+      }
+      _inFlight.remove(key);
+    }
+    // Also remove disk cache files for this file asynchronously
+    scheduleMicrotask(() async {
+      try {
+        final dir = await _ensureDiskCacheDir();
+        final files = dir.listSync().whereType<File>();
+        for (final f in files) {
+          final decoded = Uri.decodeComponent(p.basename(f.path));
+          if (decoded.startsWith(prefix)) {
+            try {
+              await f.delete();
+            } catch (_) {
+              // ignore individual delete failures
+            }
+          }
+        }
+      } catch (_) {
+        // ignore disk errors
+      }
+    });
   }
 
   void clearLocation(String location) {
@@ -194,7 +293,10 @@ class ThumbnailCache {
         .where((key) => key.startsWith(prefix))
         .toList(growable: false);
     for (final key in removeKeys) {
-      _cache.remove(key);
+      final entry = _cache.remove(key);
+      if (entry?.bytes != null) {
+        _memoryCacheBytes -= entry!.bytes!.length;
+      }
       _inFlight.remove(key);
     }
     // Also remove any disk cache files for this location asynchronously.
@@ -244,9 +346,77 @@ class ThumbnailCache {
     await clearDisk();
   }
 
-  String _cacheKey(String location, OrionApiFile file, String size) {
+  /// Validate cached thumbnails against current file list and remove orphaned entries.
+  /// Call this after refreshing file listings to clean up thumbnails for deleted files.
+  void validateAndCleanup(String location, List<String> currentFilePaths) {
+    final locationPrefix = '$location|';
+    final currentPathsSet = currentFilePaths.toSet();
+    final removeKeys = <String>[];
+
+    for (final key in _cache.keys) {
+      if (!key.startsWith(locationPrefix)) continue;
+
+      // Parse: location|path|timestamp|size
+      final parts = key.split('|');
+      if (parts.length < 2) continue;
+
+      final cachedPath = parts[1];
+      if (!currentPathsSet.contains(cachedPath)) {
+        removeKeys.add(key);
+      }
+    }
+
+    if (removeKeys.isNotEmpty) {
+      _log.fine(
+          'Removing ${removeKeys.length} cached thumbnails for deleted files');
+      for (final key in removeKeys) {
+        final entry = _cache.remove(key);
+        if (entry?.bytes != null) {
+          _memoryCacheBytes -= entry!.bytes!.length;
+        }
+        _inFlight.remove(key);
+      }
+
+      // Clean up disk cache asynchronously
+      scheduleMicrotask(() async {
+        try {
+          final dir = await _ensureDiskCacheDir();
+          final files = dir.listSync().whereType<File>();
+          for (final f in files) {
+            final decoded = Uri.decodeComponent(p.basename(f.path));
+            if (!decoded.startsWith(locationPrefix)) continue;
+
+            final parts = decoded.split('|');
+            if (parts.length >= 2) {
+              final cachedPath = parts[1];
+              if (!currentPathsSet.contains(cachedPath)) {
+                try {
+                  await f.delete();
+                } catch (_) {}
+              }
+            }
+          }
+        } catch (_) {}
+      });
+    }
+  }
+
+  String _cacheKey(String location, OrionApiFile file, String size,
+      {String? variant, Color? themeColor}) {
     final lastModified = file.lastModified ?? 0;
-    return '$location|${file.path}|$lastModified|$size';
+    final colorSuffix =
+        themeColor != null ? '|${themeColor.value.toRadixString(16)}' : '';
+    final base = '$location|${file.path}|$lastModified|$size$colorSuffix';
+    if (variant == null || variant.isEmpty) return base;
+    return '$base|$variant';
+  }
+
+  String _cacheKeySuffix(String size, String? variant, Color? themeColor) {
+    final colorSuffix =
+        themeColor != null ? '|${themeColor.value.toRadixString(16)}' : '';
+    final base = size.isEmpty ? '' : '|$size';
+    if (variant == null || variant.isEmpty) return '$base$colorSuffix';
+    return '$base$colorSuffix|$variant';
   }
 
   void _store(String key, Uint8List? bytes) {
@@ -274,6 +444,9 @@ class ThumbnailCache {
     // Persist to disk asynchronously (best-effort).
     if (bytes != null) {
       _writeToDiskSafe(key, bytes);
+      // If we were in a startup-prefetch state, consider the cache
+      // repopulated after successfully storing at least one thumbnail.
+      if (_startupNeedsPrefetch) _startupNeedsPrefetch = false;
     }
   }
 
@@ -293,61 +466,11 @@ class ThumbnailCache {
   Future<Directory> _ensureDiskCacheDir() async {
     if (_diskCacheDir != null) return _diskCacheDir!;
     try {
-      // Prefer native per-user cache directories.
-      Directory dir;
-      if (Platform.isLinux) {
-        final xdg = Platform.environment['XDG_CACHE_HOME'] ??
-            (Platform.environment['HOME'] != null
-                ? p.join(Platform.environment['HOME']!, '.cache')
-                : null);
-        if (xdg != null && xdg.isNotEmpty) {
-          dir = Directory(p.join(xdg, 'orion_thumbnail_cache'));
-        } else {
-          final tmp = await getTemporaryDirectory();
-          dir = Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
-        }
-      } else if (Platform.isMacOS) {
-        final home = Platform.environment['HOME'] ?? '.';
-        dir = Directory(
-            p.join(home, 'Library', 'Caches', 'orion_thumbnail_cache'));
-      } else if (Platform.isWindows) {
-        final local = Platform.environment['LOCALAPPDATA'] ??
-            Platform.environment['USERPROFILE'] ??
-            '.';
-        dir = Directory(p.join(local, 'orion_thumbnail_cache'));
-      } else {
-        // Unknown platform: use temporary directory
-        final tmp = await getTemporaryDirectory();
-        dir = Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
-      }
-
-      if (!await dir.exists()) await dir.create(recursive: true);
+      final dir = await _findWritableCacheDir();
+      await _migrateLegacyCaches(dir);
+      _updateStartupPrefetchState(dir);
       _diskCacheDir = dir;
-      // Suppress disk cache directory log to avoid noisy startup logs.
-      // Read TTL from OrionConfig (category: 'cache', key: 'thumbnailDiskTtlDays')
-      // If the config key is missing or empty, default to 7 days. If the
-      // config value parses to 0 or a negative number, TTL is disabled.
-      try {
-        final cfg = OrionConfig();
-        final ttlStr = cfg.getString('thumbnailDiskTtlDays', category: 'cache');
-        if (ttlStr.isEmpty) {
-          _diskEntryTtl = Duration(days: 7);
-        } else {
-          final days = int.tryParse(ttlStr);
-          if (days == null) {
-            _diskEntryTtl = Duration(days: 7);
-          } else if (days <= 0) {
-            _diskEntryTtl = null; // disabled
-          } else {
-            _diskEntryTtl = Duration(days: days);
-          }
-        }
-        // TTL configuration read; suppressing output for cleanliness.
-      } catch (e) {
-        // Failed to read config; fall back to default silently.
-        _diskEntryTtl = Duration(days: 7);
-      }
-      // Ensure disk size constraints on startup (best-effort).
+      _loadDiskEntryTtl();
       scheduleMicrotask(() => _enforceDiskCacheSizeLimit());
       return dir;
     } catch (e, st) {
@@ -355,11 +478,155 @@ class ThumbnailCache {
           'Failed to ensure disk cache dir, falling back to system temp: $e',
           e,
           st);
-      // fallback to system temp directory
       final dir = Directory.systemTemp;
       _diskCacheDir = dir;
       return dir;
     }
+  }
+
+  Future<Directory> _findWritableCacheDir() async {
+    final resolvers = <Future<Directory?> Function()>[
+      _tryConfigAdjacentDir,
+      _tryAppSupportDir,
+      _platformFallbackDir,
+    ];
+
+    for (final resolver in resolvers) {
+      final candidate = await resolver();
+      if (candidate == null) continue;
+      try {
+        if (!await candidate.exists()) {
+          await candidate.create(recursive: true);
+        }
+        return candidate;
+      } catch (_) {
+        // If we cannot materialize this directory, continue to the next resolver.
+      }
+    }
+
+    throw StateError('Unable to create a writable thumbnail cache directory');
+  }
+
+  Future<Directory?> _tryConfigAdjacentDir() async {
+    if (!Platform.isLinux) return null;
+    try {
+      final cfg = OrionConfig();
+      final cfgPath = cfg.getConfigPath();
+      if (cfgPath.isEmpty) return null;
+      return Directory(p.join(cfgPath, 'thumbnail_cache'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Directory?> _tryAppSupportDir() async {
+    try {
+      final appSupport = await getApplicationSupportDirectory();
+      return Directory(p.join(appSupport.path, 'orion_thumbnail_cache'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Directory> _platformFallbackDir() async {
+    if (Platform.isLinux) {
+      final dataHome = Platform.environment['XDG_DATA_HOME'] ??
+          (Platform.environment['HOME'] != null
+              ? p.join(Platform.environment['HOME']!, '.local', 'share')
+              : null);
+      if (dataHome?.isNotEmpty == true) {
+        return Directory(p.join(dataHome!, 'orion', 'thumbnail_cache'));
+      }
+      final xdg = Platform.environment['XDG_CACHE_HOME'] ??
+          (Platform.environment['HOME'] != null
+              ? p.join(Platform.environment['HOME']!, '.cache')
+              : null);
+      if (xdg?.isNotEmpty == true) {
+        return Directory(p.join(xdg!, 'orion_thumbnail_cache'));
+      }
+      final tmp = await getTemporaryDirectory();
+      return Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
+    } else if (Platform.isMacOS) {
+      final home = Platform.environment['HOME'] ?? '.';
+      return Directory(
+          p.join(home, 'Library', 'Caches', 'orion_thumbnail_cache'));
+    } else if (Platform.isWindows) {
+      final local = Platform.environment['LOCALAPPDATA'] ??
+          Platform.environment['USERPROFILE'] ??
+          '.';
+      return Directory(p.join(local, 'orion_thumbnail_cache'));
+    }
+    final tmp = await getTemporaryDirectory();
+    return Directory(p.join(tmp.path, 'orion_thumbnail_cache'));
+  }
+
+  Future<void> _migrateLegacyCaches(Directory dir) async {
+    if (!Platform.isLinux) return;
+    final legacyCandidates = <String>[];
+    final home = Platform.environment['HOME'];
+    final legacyXdg = Platform.environment['XDG_CACHE_HOME'] ??
+        (home != null ? p.join(home, '.cache') : null);
+    if (legacyXdg?.isNotEmpty == true) {
+      legacyCandidates.add(p.join(legacyXdg!, 'orion_thumbnail_cache'));
+    }
+    final legacyTmp = (await getTemporaryDirectory()).path;
+    legacyCandidates.add(p.join(legacyTmp, 'orion_thumbnail_cache'));
+
+    for (final cand in legacyCandidates) {
+      try {
+        final oldDir = Directory(cand);
+        if (!await oldDir.exists()) continue;
+        final files = oldDir.listSync().whereType<File>().toList();
+        for (final f in files) {
+          try {
+            final dest = File(p.join(dir.path, p.basename(f.path)));
+            if (!await dest.exists()) {
+              await f.rename(dest.path);
+            } else {
+              try {
+                await f.delete();
+              } catch (_) {}
+            }
+          } catch (_) {
+            // ignore individual file migration errors
+          }
+        }
+        try {
+          if (oldDir.listSync().isEmpty) await oldDir.delete();
+        } catch (_) {}
+      } catch (_) {
+        // ignore candidate errors
+      }
+    }
+  }
+
+  void _updateStartupPrefetchState(Directory dir) {
+    try {
+      final files = dir.listSync().whereType<File>();
+      if (files.isEmpty) {
+        _startupNeedsPrefetch = true;
+      }
+    } catch (_) {
+      // ignore listing errors
+    }
+  }
+
+  void _loadDiskEntryTtl() {
+    try {
+      final cfg = OrionConfig();
+      final ttlStr = cfg.getString('thumbnailDiskTtlDays', category: 'cache');
+      _diskEntryTtl = _parseTtl(ttlStr);
+    } catch (_) {
+      _diskEntryTtl = Duration(days: 7);
+    }
+  }
+
+  Duration? _parseTtl(String value) {
+    if (value.isEmpty) return Duration(days: 7);
+    final days = int.tryParse(value);
+    if (days == null) return Duration(days: 7);
+    if (days <= 0) return null;
+    return Duration(days: days);
   }
 
   String _diskFileNameForKey(String key) {
@@ -428,48 +695,84 @@ class ThumbnailCache {
     }
   }
 
-  Future<Uint8List?> _readFromDiskIfFresh(
-      String location, OrionApiFile file, String size) async {
+  Future<Uint8List?> _readFromDiskIfFresh(String location, OrionApiFile file,
+      String size, String? variant, Color? themeColor) async {
     try {
-      final keyPrefix = '$location|${file.path}|';
-      // Attempt to find any matching disk entry for this path+size.
+      // First, try exact key match (includes lastModified) to avoid
+      // serving stale disk cache entries when files are replaced.
+      final exactKey = _cacheKey(location, file, size,
+          variant: variant, themeColor: themeColor);
       final dir = await _ensureDiskCacheDir();
-      final candidates = dir.listSync().whereType<File>();
-      for (final f in candidates) {
-        final decoded = Uri.decodeComponent(p.basename(f.path));
-        if (decoded.startsWith(keyPrefix) && decoded.endsWith('|$size')) {
-          try {
-            // If TTL is enabled, check file age and treat as stale if older
-            // than configured TTL. Stale files are scheduled for deletion
-            // asynchronously and ignored for serving.
-            if (_diskEntryTtl != null) {
-              try {
-                final mtime = f.lastModifiedSync();
-                if (DateTime.now().difference(mtime) > _diskEntryTtl!) {
-                  // schedule background deletion of the stale file
-                  scheduleMicrotask(() async {
-                    try {
-                      await f.delete();
-                    } catch (_) {
-                      // ignore deletion errors
-                    }
-                  });
-                  // skip this file and continue searching
+      final exactKeyEncoded = Uri.encodeComponent(exactKey);
+      final exactFile = File(p.join(dir.path, exactKeyEncoded));
+
+      if (await exactFile.exists()) {
+        try {
+          if (_diskEntryTtl != null) {
+            final mtime = exactFile.lastModifiedSync();
+            if (DateTime.now().difference(mtime) > _diskEntryTtl!) {
+              // stale file, delete and continue
+              scheduleMicrotask(() async {
+                try {
+                  await exactFile.delete();
+                } catch (_) {}
+              });
+            } else {
+              // Fresh exact match found
+              return await exactFile.readAsBytes();
+            }
+          } else {
+            // No TTL, return the exact match
+            return await exactFile.readAsBytes();
+          }
+        } catch (e, st) {
+          _log.fine('Failed to read exact thumbnail from disk: $e', e, st);
+        }
+      }
+
+      // Fallback: Search for entries with same path+size but different lastModified.
+      // This handles cases where file lastModified isn't reliably available (zero value).
+      // Only use this if current file's lastModified is zero/unavailable.
+      if ((file.lastModified ?? 0) == 0) {
+        final keyPrefix = '$location|${file.path}|';
+        final candidates = dir.listSync().whereType<File>();
+        for (final f in candidates) {
+          final decoded = Uri.decodeComponent(p.basename(f.path));
+          if (decoded.startsWith(keyPrefix) &&
+              decoded.endsWith(_cacheKeySuffix(size, variant, themeColor))) {
+            try {
+              // If TTL is enabled, check file age and treat as stale if older
+              // than configured TTL. Stale files are scheduled for deletion
+              // asynchronously and ignored for serving.
+              if (_diskEntryTtl != null) {
+                try {
+                  final mtime = f.lastModifiedSync();
+                  if (DateTime.now().difference(mtime) > _diskEntryTtl!) {
+                    // schedule background deletion of the stale file
+                    scheduleMicrotask(() async {
+                      try {
+                        await f.delete();
+                      } catch (_) {
+                        // ignore deletion errors
+                      }
+                    });
+                    // skip this file and continue searching
+                    continue;
+                  }
+                } catch (_) {
+                  // If we cannot stat the file, skip it and continue
                   continue;
                 }
-              } catch (_) {
-                // If we cannot stat the file, skip it and continue
-                continue;
               }
-            }
 
-            final bytes = await f.readAsBytes();
-            return bytes;
-          } catch (e, st) {
-            _log.fine(
-                'Failed to read thumbnail from disk ${f.path}: $e', e, st);
-            // continue searching other candidates
-            continue;
+              final bytes = await f.readAsBytes();
+              return bytes;
+            } catch (e, st) {
+              _log.fine(
+                  'Failed to read thumbnail from disk ${f.path}: $e', e, st);
+              // continue searching other candidates
+              continue;
+            }
           }
         }
       }
@@ -502,6 +805,20 @@ class ThumbnailCache {
   }
 
   // _dateFromCacheKey removed (unused)
+
+  String? _resolveStlVariant(String fileName, OrionApiFile file) {
+    final lower = fileName.toLowerCase();
+    if (!lower.endsWith('.stl')) return null;
+    final localPath = file.path;
+    if (localPath.isEmpty) return null;
+    try {
+      final f = File(localPath);
+      if (!f.existsSync()) return null;
+    } catch (_) {
+      return null;
+    }
+    return StlThumbnailUtil.chooseRenderMode();
+  }
 }
 
 class _CacheEntry {

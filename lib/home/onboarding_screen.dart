@@ -23,7 +23,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'package:logging/logging.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
@@ -40,7 +39,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
-import 'package:orion/util/providers/wifi_provider.dart';
+import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -115,6 +114,9 @@ class OnboardingScreenState extends State<OnboardingScreen>
   // Add this to the existing class variables
   late String _currentLocale;
 
+  // Cache for prebuilt pages to avoid expensive rebuilds during transition
+  final Map<int, Widget> _prebuiltPages = {};
+
   // Add these to class variables
   final Random _random = Random();
   final List<WelcomeBubble> _welcomeBubbles = [];
@@ -139,11 +141,19 @@ class OnboardingScreenState extends State<OnboardingScreen>
   late Animation<Offset> _titleSlideInAnimation;
   late Animation<double> _titleOpacityAnimation;
 
+  // Add animation controller for the hole reveal effect
+  late AnimationController _holeAnimationController;
+  late Animation<double> _holeAnimation;
+
   // Add field to track previous page
   late int _previousPage = 0;
 
   // Add this field to track appBar transparency
   late bool _isAppBarTransparent = true;
+
+  // Add fields for welcome overlay transition
+  bool _showWelcomeOverlay = true;
+  bool _fabVisible = true;
 
   @override
   void initState() {
@@ -162,6 +172,23 @@ class OnboardingScreenState extends State<OnboardingScreen>
     final timezone = await OnboardingUtils.getSystemTimezone();
     if (timezone != null) {
       config.setString('timezone', timezone, category: 'machine');
+    }
+
+    // Fetch printer name and serial from Athena as soon as onboarding loads
+    if (config.isNanoDlpMode()) {
+      try {
+        final mgr = AthenaFeatureManager();
+        await mgr.fetchAndApplyFeatureFlags();
+        // Reload printer name from config in case it was updated
+        final name = config.getString('machineName', category: 'machine');
+        if (name.isNotEmpty && mounted) {
+          setState(() {
+            _printerName = name;
+          });
+        }
+      } catch (e) {
+        _logger.fine('Failed to fetch initial printer data: $e');
+      }
     }
   }
 
@@ -189,6 +216,16 @@ class OnboardingScreenState extends State<OnboardingScreen>
     _transitionController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
+    );
+
+    _holeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    _holeAnimation = CurvedAnimation(
+      parent: _holeAnimationController,
+      curve: Curves.easeInOut,
     );
 
     // Initialize the page transition animation here
@@ -317,66 +354,58 @@ class OnboardingScreenState extends State<OnboardingScreen>
     _titleAnimationController.dispose();
     _transitionController.dispose();
     _titleSlideController.dispose();
+    _holeAnimationController.dispose();
     super.dispose();
   }
 
   void _handlePageChange(int index) {
-    if (index >= 0 && index <= 7) {
+    int targetPage = index;
+    // Skip Machine Name page (4) if custom name is disabled
+    if (targetPage == 4 && !config.enableCustomName()) {
+      if (targetPage > _currentPage) {
+        targetPage = 5;
+      } else {
+        targetPage = 3;
+      }
+    }
+
+    if (targetPage >= 0 && targetPage <= 7) {
       // Store previous page before updating current
       _previousPage = _currentPage;
 
       // Reset the text field key when moving to or from the name page
-      if (_currentPage == 4 || index == 4) {
+      if (_currentPage == 4 || targetPage == 4) {
         _nameTextFieldKey = GlobalKey<SpawnOrionTextFieldState>();
       }
 
-      // Special handling for welcome->language transition
-      if (_currentPage == 0 && index == 1) {
-        _fadeOutBubbles();
-        _transitionController.forward();
-        _titleSlideController.forward();
-        _isAppBarTransparent = true;
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            setState(() {
-              _isAppBarTransparent = false;
-            });
-          }
-        });
-      } else if (_currentPage == 1 && index == 0) {
-        _fadeInBubbles();
-        _transitionController.reverse();
-        _titleSlideController.reverse();
-        setState(() {
-          _isAppBarTransparent = true;
-        });
-      }
+      // Other transitions will be handled by callers; keep this method
+      // focused on updating page state.
 
       // Initialize WiFi when needed
-      if (index == 6 && !_wifiInitialized) {
+      if (targetPage == 6 && !_wifiInitialized) {
         _initializeWifiScreen();
       }
 
       setState(() {
-        _currentPage = index;
+        _currentPage = targetPage;
       });
+
+      // Fade FAB back in on the Region selection page (page 2)
+      if (targetPage == 2 && !_fabVisible) {
+        // slight delay so the page content settles before the FAB appears
+        Future.delayed(const Duration(milliseconds: 120), () {
+          if (mounted) {
+            setState(() {
+              _fabVisible = true;
+            });
+          }
+        });
+      }
     }
   }
 
-  // Add these methods to handle bubble transitions
-  Future<void> _fadeOutBubbles() async {
-    for (var bubble in _welcomeBubbles) {
-      bubble.opacity = 0.0;
-    }
-    // Allow time for opacity animation to complete
-    await Future.delayed(const Duration(milliseconds: 200));
-  }
-
-  void _fadeInBubbles() {
-    for (var bubble in _welcomeBubbles) {
-      bubble.opacity = 1.0;
-    }
-  }
+  // Bubble transition helpers removed; exit sequence is handled via
+  // OnboardingPages.startExitSequence to avoid duplicate logic.
 
   Widget _buildPageView(AppLocalizations l10n) {
     return PageTransitionSwitcher(
@@ -384,6 +413,12 @@ class OnboardingScreenState extends State<OnboardingScreen>
           _currentPage < _previousPage, // true when going back
       duration: const Duration(milliseconds: 800),
       transitionBuilder: (child, animation, secondaryAnimation) {
+        // No animation when transitioning from Welcome (0) to Language (1)
+        // as they are visually identical underneath the overlay
+        if (_currentPage == 1 && _previousPage == 0) {
+          return child;
+        }
+
         // Special zoom transition only for welcome->language
         if (_currentPage <= 1) {
           return FadeScaleTransition(
@@ -413,10 +448,13 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
   // Replace existing page building methods with calls to OnboardingPages
   Widget _buildPage(AppLocalizations l10n, int page) {
+    if (_prebuiltPages.containsKey(page)) return _prebuiltPages[page]!;
+
     switch (page) {
       case 0:
-        return OnboardingPages.buildWelcomePage(
-            context, _bubbleController, _welcomeBubbles);
+        // Page 0 is now visually the Language Page, but covered by the Welcome Overlay
+        return OnboardingPages.buildLanguagePage(
+            context, _handleLanguageSelection);
       case 1:
         return OnboardingPages.buildLanguagePage(
             context, _handleLanguageSelection);
@@ -454,21 +492,24 @@ class OnboardingScreenState extends State<OnboardingScreen>
     });
 
     context.read<LocaleProvider>().setLocale(locale);
-    _currentPage++;
+    // Use _handlePageChange so transitions and FAB logic run consistently
+    _handlePageChange(_currentPage + 1);
   }
 
   void _handleCountrySelection(String name) {
     setState(() {
       _selectedCountry = name;
-      _currentPage++;
     });
+    // Attempt to set WiFi regulatory region based on selected country
+    OnboardingUtils.setWifiRegion(name);
+    _handlePageChange(_currentPage + 1);
   }
 
   void _handleTimezoneSelection(String timezone) async {
     // Store timezone before advancing
     config.setString('timezone', timezone, category: 'machine');
     await OnboardingUtils.setSystemTimezone(timezone);
-    setState(() => _currentPage++);
+    _handlePageChange(_currentPage + 1);
   }
 
   void _handleNameChange(String name) {
@@ -488,10 +529,29 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
     return GlassApp(
       child: Scaffold(
+        // Only extend body behind the app bar when the app bar is transparent
+        // This lets us switch off the overlap after the reveal transition by
+        // setting `_isAppBarTransparent = false`.
         extendBodyBehindAppBar:
-            _currentPage <= 1, // Only for welcome and language pages
+            _currentPage <= 1 && _isAppBarTransparent, // welcome/lang only
         appBar: _buildAppBar(l10n),
-        body: _buildPageView(l10n),
+        body: Stack(
+          children: [
+            IgnorePointer(
+              ignoring: _showWelcomeOverlay,
+              child: _buildPageView(l10n),
+            ),
+            if (_showWelcomeOverlay)
+              Positioned.fill(
+                child: OnboardingPages.buildWelcomePage(
+                  context,
+                  _bubbleController,
+                  _welcomeBubbles,
+                  _holeAnimation,
+                ),
+              ),
+          ],
+        ),
         floatingActionButton: _buildFloatingActionButton(l10n),
       ),
     );
@@ -499,6 +559,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
   PreferredSizeWidget _buildAppBar(AppLocalizations l10n) {
     return AppBar(
+      centerTitle: true,
       backgroundColor: _isAppBarTransparent ? Colors.transparent : null,
       title: SlideTransition(
         position: _titleSlideInAnimation,
@@ -512,21 +573,6 @@ class OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _buildAppBarActions(AppLocalizations l10n) {
-    if (_currentPage == 6) {
-      return ValueListenableBuilder<bool>(
-        valueListenable: isConnected,
-        builder: (context, value, child) {
-          return value
-              ? IconButton(
-                  onPressed: () {
-                    launchDisconnectDialog();
-                  },
-                  icon: PhosphorIcon(PhosphorIcons.xCircle(), size: 40),
-                )
-              : const SizedBox.shrink();
-        },
-      );
-    }
     return const SizedBox.shrink();
   }
 
@@ -539,44 +585,48 @@ class OnboardingScreenState extends State<OnboardingScreen>
         _currentPage == 2 ||
         (_currentPage == 3 && !isTimezonePageWithNoData);
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const SizedBox(width: 32),
-        if (_currentPage > 0)
-          _buildButton(
-            hide: hideBackButton,
-            label: l10n.commonBack,
-            icon: Icons.arrow_back,
-            onPressed: () {
-              _handlePageChange(_currentPage - 1);
-            },
-            iconAfter: false,
-          ),
-        const Spacer(),
-        // Next button
-        ValueListenableBuilder<bool>(
-          valueListenable: isConnected,
-          builder: (context, connected, _) {
-            return _buildButton(
-              hide: hideNextButton,
-              label: _currentPage == 6 && !connected
-                  ? l10n.commonSkip
-                  : _getBtnTitles(l10n)[_currentPage],
-              icon: _currentPage < 6 ? Icons.arrow_forward : Icons.check,
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 300),
+      opacity: _fabVisible ? 1.0 : 0.0,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const SizedBox(width: 32),
+          if (_currentPage > 0)
+            _buildButton(
+              hide: hideBackButton,
+              label: l10n.commonBack,
+              icon: Icons.arrow_back,
               onPressed: () {
-                if (isTimezonePageWithNoData) {
-                  _handleTimezoneSelection('UTC');
-                } else {
-                  _handleNextButtonPressed();
-                }
+                _handlePageChange(_currentPage - 1);
               },
-              disable: _currentPage == 6 && !_wifiInitialized,
-              iconAfter: true,
-            );
-          },
-        ),
-      ],
+              iconAfter: false,
+            ),
+          const Spacer(),
+          // Next button
+          ValueListenableBuilder<bool>(
+            valueListenable: isConnected,
+            builder: (context, connected, _) {
+              return _buildButton(
+                hide: hideNextButton,
+                label: _currentPage == 6 && !connected
+                    ? l10n.commonSkip
+                    : _getBtnTitles(l10n)[_currentPage],
+                icon: _currentPage < 6 ? Icons.arrow_forward : Icons.check,
+                onPressed: () {
+                  if (isTimezonePageWithNoData) {
+                    _handleTimezoneSelection('UTC');
+                  } else {
+                    _handleNextButtonPressed();
+                  }
+                },
+                disable: _currentPage == 6 && !_wifiInitialized,
+                iconAfter: true,
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -588,8 +638,10 @@ class OnboardingScreenState extends State<OnboardingScreen>
     bool disable = false,
     bool iconAfter = false,
   }) {
-    return Opacity(
-      opacity: hide ? 0 : 1,
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      opacity: hide ? 0.0 : 1.0,
       child: IgnorePointer(
         ignoring: hide || disable,
         child: GlassFloatingActionButton.extended(
@@ -597,8 +649,10 @@ class OnboardingScreenState extends State<OnboardingScreen>
           onPressed: onPressed,
           label: label,
           icon: Icon(icon),
-          scale: 1.2,
+          scale: 1.3,
           iconAfterLabel: iconAfter,
+          doForceBlur: true,
+          tint: iconAfter ? GlassButtonTint.positive : GlassButtonTint.neutral,
         ),
       ),
     );
@@ -608,6 +662,40 @@ class OnboardingScreenState extends State<OnboardingScreen>
     if (_currentPage < 7) {
       if (_currentPage == 6 && !isConnected.value) {
         _showSkipWifiDialog();
+      } else if (_currentPage == 0) {
+        // Fade out FAB
+        setState(() {
+          _fabVisible = false;
+        });
+
+        // Run exit sequence and then advance
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) {
+            _holeAnimationController.forward();
+            // Start title animation slightly after hole starts opening
+            Future.delayed(const Duration(milliseconds: 200), () {
+              if (mounted) {
+                setState(() {
+                  _previousPage = _currentPage;
+                  _currentPage = 1;
+                });
+                _titleSlideController.forward();
+              }
+            });
+          }
+        });
+        OnboardingPages.startExitSequence(context, _welcomeBubbles,
+            stagger: const Duration(milliseconds: 60), onComplete: () {
+          if (mounted) {
+            // play page transition animations
+            _transitionController.forward();
+            setState(() {
+              _isAppBarTransparent = false;
+              _showWelcomeOverlay = false;
+              // FAB remains hidden on language page
+            });
+          }
+        });
       } else {
         _handlePageChange(_currentPage + 1);
       }
@@ -649,6 +737,13 @@ class OnboardingScreenState extends State<OnboardingScreen>
   void _completeSetup() {
     final printerName = _printerName;
     config.setString('machineName', printerName, category: 'machine');
+    // Fire-and-forget: run initial check but don't block the UI long.
+    try {
+      final mgr = AthenaFeatureManager();
+      mgr.runInitialCheck();
+      mgr.startPeriodicPolling();
+    } catch (_) {}
+
     config.setFlag('firstRun', false, category: 'machine');
 
     Navigator.of(context).push(
@@ -656,41 +751,5 @@ class OnboardingScreenState extends State<OnboardingScreen>
         builder: (context) => const HomeScreen(),
       ),
     );
-  }
-
-  Future<void> launchDisconnectDialog() async {
-    final l10n = AppLocalizations.of(context);
-    bool shouldDisconnect = await showDialog(
-      barrierDismissible: false,
-      context: context,
-      builder: (BuildContext context) {
-        return GlassAlertDialog(
-          title: Text(l10n!.wifiDisconnectTitle),
-          content: Text(l10n.wifiDisconnectMessage),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-              child: Text(l10n.wifiStayConnected),
-            ),
-            const SizedBox(width: 20),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: Text(l10n.wifiDisconnect),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldDisconnect && mounted) {
-      await context.read<WiFiProvider>().disconnect();
-      setState(() {
-        isConnected.value = false;
-      });
-    }
   }
 }

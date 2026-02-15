@@ -1,5 +1,5 @@
 /*
-* Orion - Status Screen
+* Glasser - Status Screen
 * Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/materials/post_calibration_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
@@ -38,6 +39,11 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/layer_preview_cache.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/backend_service/providers/analytics_provider.dart';
+import 'package:orion/home/home_screen.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'dart:math';
 
 class StatusScreen extends StatefulWidget {
   final bool newPrint;
@@ -67,6 +73,8 @@ class StatusScreenState extends State<StatusScreen> {
   // a clean spinner instead of flashing the prior job.
   bool _suppressOldStatus = false;
   String? _frozenFileName;
+  // View toggle state - false = main status view, true = analytics view
+  bool _showAnalytics = false;
   // Presentation-local state (derived values computed per build instead of storing)
   bool get _isLandscape =>
       MediaQuery.of(context).orientation == Orientation.landscape;
@@ -78,6 +86,13 @@ class StatusScreenState extends State<StatusScreen> {
     super.initState();
 
     _log.info('StatusScreen opened - newPrint: ${widget.newPrint}');
+
+    // Mark status screen as open so we can block notifications
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<StatusProvider>().setStatusScreenOpen(true);
+      }
+    });
 
     // Mark calibration overlay as hidden so it doesn't reappear
     CalibrationProgressOverlay.markAsHidden();
@@ -94,6 +109,121 @@ class StatusScreenState extends State<StatusScreen> {
         setState(() => _suppressOldStatus = false);
       });
     }
+
+    // Set up analytics provider listener for force sensor updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        final analyticsProv = context.read<AnalyticsProvider>();
+        analyticsProv.refresh();
+        _analyticsListener = () {
+          if (mounted && _showAnalytics) setState(() {});
+        };
+        analyticsProv.addListener(_analyticsListener!);
+      } catch (_) {
+        // Analytics provider not available
+      }
+    });
+
+    // Listen for status provider changes so we can detect when a finished
+    // print is replaced by a new print without leaving the StatusScreen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        final sp = context.read<StatusProvider>();
+        _statusProviderListener = () {
+          if (!mounted) return;
+          final provider = context.read<StatusProvider>();
+          final status = provider.status;
+          final currentPath = status?.printData?.fileData?.path;
+          final currentFinished =
+              status?.isIdle == true && status?.layer != null;
+
+          // If we were previously showing a finished snapshot (final state)
+          // mark the status screen as stale so that subsequent starts will
+          // either reset the UI or respawn the screen entirely.
+          if (currentFinished) {
+            _statusScreenStale = true;
+          }
+
+          // If a new active job begins (printing/paused) after a finished
+          // snapshot we should present a fresh StatusScreen experience.
+          if (_wasFinishedSnapshot &&
+              (status?.isPrinting == true || status?.isPaused == true)) {
+            if (_statusScreenStale) {
+              // Respawn the StatusScreen route so the entire UI is rebuilt
+              // just like when opening a new print from elsewhere. Use a
+              // post-frame callback to avoid navigating during provider
+              // notifications.
+              _statusScreenStale = false;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                try {
+                  final initialThumb = provider.thumbnailBytes;
+                  final initialPath =
+                      provider.status?.printData?.fileData?.path;
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (ctx) => StatusScreen(
+                        newPrint: true,
+                        initialThumbnailBytes: initialThumb,
+                        initialFilePath: initialPath,
+                        initialPlateId: null,
+                      ),
+                    ),
+                  );
+                } catch (_) {}
+              });
+            } else {
+              provider.resetStatus();
+              setState(() {
+                _frozenFileName = null;
+                _showLayer2D = false;
+                _layer2DBytes = null;
+                _layer2DImageProvider = null;
+                _prefetched = false;
+                _lastPrefetchedLayer = null;
+                _resolvedFilePathForPrefetch = null;
+                _resolvedPlateIdForPrefetch = null;
+              });
+            }
+          }
+
+          _wasFinishedSnapshot = currentFinished;
+          _lastSeenFilePath = currentPath ?? _lastSeenFilePath;
+        };
+        sp.addListener(_statusProviderListener!);
+      } catch (_) {}
+    });
+  }
+
+  @override
+  void dispose() {
+    try {
+      if (mounted) {
+        context.read<StatusProvider>().setStatusScreenOpen(false);
+      } else {
+        // Use the context directly even if unmounted because we need to clear the flag
+        Provider.of<StatusProvider>(context, listen: false)
+            .setStatusScreenOpen(false);
+      }
+    } catch (_) {
+      // Provider might be disposed or unavailable
+    }
+
+    if (_analyticsListener != null) {
+      try {
+        context.read<AnalyticsProvider>().removeListener(_analyticsListener!);
+      } catch (_) {
+        // Provider already disposed
+      }
+    }
+    if (_statusProviderListener != null) {
+      try {
+        context.read<StatusProvider>().removeListener(_statusProviderListener!);
+      } catch (_) {}
+    }
+    super.dispose();
   }
 
   // Local UI state for toggling 2D layer preview
@@ -106,9 +236,20 @@ class StatusScreenState extends State<StatusScreen> {
   int? _lastPrefetchedLayer;
   int? _resolvedPlateIdForPrefetch;
   String? _resolvedFilePathForPrefetch;
+  // Track last observed file path and finished state to detect new-print
+  // transitions while the StatusScreen is still mounted.
+  String? _lastSeenFilePath;
+  bool _wasFinishedSnapshot = false;
+  bool _statusScreenStale = false;
+  VoidCallback? _statusProviderListener;
   final Logger _log = Logger('StatusScreen');
   // null = unknown, true = this finished/canceled print is a calibration print
   bool? _isCalibrationPrint;
+  VoidCallback? _analyticsListener;
+  // Throttle 2D layer prefetch/precache work during printing. We only
+  // prefetch on every Nth layer to reduce CPU usage when NanoDLP polls
+  // status frequently.
+  static const int _layerPrefetchStride = 3;
 
   /// Check if current print is a calibration print and show post-calibration overlay
   Future<void> _checkAndShowCalibrationOverlay() async {
@@ -116,79 +257,92 @@ class StatusScreenState extends State<StatusScreen> {
       final provider = context.read<StatusProvider>();
       final status = provider.status;
       final fileData = status?.printData?.fileData;
+      final calibrationProvider = context.read<CalibrationContextProvider>();
+      final calibrationContext = calibrationProvider.context;
+      int? plateId;
 
       if (fileData != null) {
-        final meta = await BackendService().getFileMetadata(
-            fileData.locationCategory ?? 'Local', fileData.path);
-        final plateId = meta['plate_id'] as int?;
-
-        // PlateID 0 is calibration print in NanoDLP
-        if (plateId == 0) {
-          _log.info(
-              'Detected calibration print completion, showing post-calibration overlay');
-
-          // Get calibration context
-          final calibrationContext =
-              context.read<CalibrationContextProvider>().context;
-
-          if (!mounted) return;
-
-          // Navigate home first
-          Navigator.popUntil(context, ModalRoute.withName('/'));
-
-          // Show post-calibration overlay if we have context
-          if (calibrationContext != null) {
-            Navigator.of(context).push(
-              PageRouteBuilder(
-                opaque: false,
-                barrierDismissible: false,
-                transitionDuration: const Duration(milliseconds: 300),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  );
-                },
-                pageBuilder: (context, _, __) => PostCalibrationOverlay(
-                  calibrationModelName: calibrationContext.calibrationModelName,
-                  resinProfileName: calibrationContext.resinProfileName,
-                  startExposure: calibrationContext.startExposure,
-                  exposureIncrement: calibrationContext.exposureIncrement,
-                  profileId: calibrationContext.profileId,
-                  calibrationModelId: calibrationContext.calibrationModelId,
-                  evaluationGuideUrl: calibrationContext.evaluationGuideUrl,
-                  onComplete: () {
-                    // Pop everything: overlay, StatusScreen, CalibrationScreen, progress overlay
-                    Navigator.of(context).popUntil(ModalRoute.withName('/'));
-                    // Clear context after evaluation is complete
-                    context.read<CalibrationContextProvider>().clearContext();
-                  },
-                ),
-              ),
-            );
-          } else {
-            _log.warning('Calibration print detected but no context available');
-          }
-
-          // Reset status after navigation settles
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            try {
-              context.read<StatusProvider>().resetStatus();
-            } catch (_) {
-              // Provider no longer in tree
-            }
-          });
-
-          return;
+        try {
+          final meta = await BackendService()
+              .getFileMetadata(
+                  fileData.locationCategory ?? 'Local', fileData.path)
+              .timeout(const Duration(seconds: 2));
+          plateId = meta['plate_id'] as int?;
+        } catch (e) {
+          _log.fine('Failed to resolve plate id for calibration check: $e');
         }
+      }
+
+      // PlateID 0 is calibration print in NanoDLP. Fall back to the UI
+      // detection signal combined with stored context when metadata is unavailable.
+      // Require either plateId == 0 OR the UI flag + context to avoid false positives.
+      final isCalibrationPrint = (plateId == 0) ||
+          (_isCalibrationPrint == true && calibrationContext != null);
+
+      if (isCalibrationPrint) {
+        _log.info(
+            'Detected calibration print completion, showing post-calibration overlay');
+
+        final nav = Navigator.of(context);
+        if (!mounted) return;
+
+        // Navigate home first (use isFirst to avoid named route mismatch)
+        nav.popUntil((route) => route.isFirst);
+
+        // Show post-calibration overlay if we have context
+        if (calibrationContext != null) {
+          nav.push(
+            PageRouteBuilder(
+              opaque: false,
+              barrierDismissible: false,
+              transitionDuration: const Duration(milliseconds: 300),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+              pageBuilder: (context, _, __) => PostCalibrationOverlay(
+                calibrationModelName: calibrationContext.calibrationModelName,
+                resinProfileName: calibrationContext.resinProfileName,
+                startExposure: calibrationContext.startExposure,
+                exposureIncrement: calibrationContext.exposureIncrement,
+                profileId: calibrationContext.profileId,
+                calibrationModelId: calibrationContext.calibrationModelId,
+                evaluationGuideUrl: calibrationContext.evaluationGuideUrl,
+                onComplete: () {
+                  // Pop everything: overlay, StatusScreen, CalibrationScreen, progress overlay
+                  nav.popUntil((route) => route.isFirst);
+                  // Clear context after evaluation is complete
+                  calibrationProvider.clearContext();
+                },
+              ),
+            ),
+          );
+        } else {
+          _log.warning('Calibration print detected but no context available. '
+              'This may indicate the context was lost after idle time. '
+              'Returning to home.');
+        }
+
+        // Reset status after navigation settles
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            context.read<StatusProvider>().resetStatus();
+          } catch (_) {
+            // Provider no longer in tree
+          }
+        });
+
+        return;
       }
     } catch (e) {
       _log.warning('Error checking for calibration print: $e');
     }
 
     // Not a calibration print, proceed with normal home navigation
-    Navigator.popUntil(context, ModalRoute.withName('/'));
+    Navigator.of(context).popUntil((route) => route.isFirst);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         context.read<StatusProvider>().resetStatus();
@@ -205,6 +359,16 @@ class StatusScreenState extends State<StatusScreen> {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  // Format force sensor readings: use grams below 1000 g, switch to kg above
+  String _formatForceValue(double v) {
+    final absV = v.abs();
+    if (absV >= 1000.0) {
+      final kg = v / 1000.0;
+      return '${kg.toStringAsFixed(2)} kg';
+    }
+    return '${v.toStringAsFixed(1)} g';
   }
 
   @override
@@ -394,11 +558,102 @@ class StatusScreenState extends State<StatusScreen> {
 
         return GlassApp(
           child: Scaffold(
-            appBar: AppBar(
+            appBar: OrionAppBar(
               automaticallyImplyLeading: false,
-              centerTitle: true,
+              toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+              // Use the live clock on the simple/main view, but when the
+              // advanced (analytics) view is active show the overall print
+              // percentage in the same leading slot so the top-left remains
+              // informative.
+              leadingWidget: Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 24),
+                  child: SizedBox(
+                    // Ensure the leading slot keeps consistent size by
+                    // rendering the clock (possibly hidden) and overlaying
+                    // the percentage when analytics view is active.
+                    height: 36,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Keep both the clock and percentage in the tree to
+                        // preserve layout; toggle visibility via Opacity to
+                        // avoid any shift when switching views.
+                        Opacity(
+                          opacity: _showAnalytics ? 0.0 : 1.0,
+                          // Use Baseline alignment so the clock and percent
+                          // share the same alphabetic baseline even though
+                          // they are rendered in a Stack. This avoids tiny
+                          // vertical shifts introduced by differing text
+                          // metrics while preserving the overlay behavior.
+                          child: const Baseline(
+                            baseline: 22.0,
+                            baselineType: TextBaseline.alphabetic,
+                            child: LiveClock(),
+                          ),
+                        ),
+                        // Percentage is always built but its opacity is toggled.
+                        Opacity(
+                          opacity: _showAnalytics ? 1.0 : 0.0,
+                          child: Builder(builder: (ctx) {
+                            final pct =
+                                (provider.progress * 100).clamp(0.0, 100.0);
+                            final pctInt = pct.toInt().clamp(0, 100);
+                            final pctIntStr = pctInt.toString();
+                            final pctStr = pctIntStr.padLeft(3, '0');
+                            final greyCount =
+                                (3 - pctIntStr.length).clamp(0, 3);
+                            final greyPart = pctStr.substring(0, greyCount);
+                            final normalPart = pctStr.substring(greyCount);
+                            final baseStyle = Theme.of(ctx)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                    fontSize: 28, fontWeight: FontWeight.bold);
+                            final lowOpacityColor =
+                                baseStyle?.color?.withValues(alpha: 0.45) ??
+                                    Theme.of(ctx)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.45);
+                            final normalColor = baseStyle?.color ??
+                                Theme.of(ctx).colorScheme.onSurface;
+
+                            return Baseline(
+                              baseline: 22.0,
+                              baselineType: TextBaseline.alphabetic,
+                              child: RichText(
+                                text: TextSpan(
+                                  style: baseStyle,
+                                  children: [
+                                    if (greyPart.isNotEmpty)
+                                      TextSpan(
+                                        text: greyPart,
+                                        style: baseStyle?.copyWith(
+                                            color: lowOpacityColor),
+                                      ),
+                                    TextSpan(
+                                      text: '${normalPart}%',
+                                      style: baseStyle?.copyWith(
+                                          color: normalColor),
+                                    ),
+                                  ],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               actions: const [SystemStatusWidget()],
-              title: Builder(builder: (context) {
+              // Center the main status/title column using centerWidget so the
+              // visual balance matches other screens (e.g. Details screen).
+              title: const Text(''),
+              centerWidget: Builder(builder: (context) {
                 final deviceMsg = provider.deviceStatusMessage;
                 final statusText =
                     (deviceMsg != null && deviceMsg.trim().isNotEmpty)
@@ -474,6 +729,18 @@ class StatusScreenState extends State<StatusScreen> {
             body: Center(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  // Show analytics view or main status view based on toggle
+                  if (_showAnalytics) {
+                    return Padding(
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        bottom: 20,
+                      ),
+                      child: _buildAnalyticsView(context, provider, status),
+                    );
+                  }
+
                   return _isLandscape
                       ? Padding(
                           padding: const EdgeInsets.only(
@@ -613,11 +880,16 @@ class StatusScreenState extends State<StatusScreen> {
     ]);
   }
 
-  Widget _buildInfoCard(String title, String subtitle) {
+  // temperature is optional; default to 0.0 when not provided
+  Widget _buildInfoCard(String title, String subtitle,
+      [double temperature = 0.0]) {
     Provider.of<ThemeProvider>(context); // theming
     return GlassCard(
       outlined: true,
       elevation: 1.0,
+      // If temperature is NaN treat as unspecified; otherwise choose an
+      // accent color based on the value.
+      accentColor: temperature == 0 ? null : _colorForTemperature(temperature),
       child: ListTile(
         title: Text(title),
         subtitle: Text(subtitle),
@@ -867,27 +1139,35 @@ class StatusScreenState extends State<StatusScreen> {
       plateId = widget.initialPlateId;
     }
     if (plateId == null) return;
+    final isCalibrationPlate = plateId == 0;
 
-    final cached = LayerPreviewCache.instance.get(plateId, layerIndex);
-    if (cached != null) {
-      setState(() {
-        _layer2DBytes = cached;
-        _layer2DImageProvider = MemoryImage(cached);
-        _showLayer2D = true;
-      });
-      LayerPreviewCache.instance
-          .preload(BackendService(), plateId, layerIndex, count: 2);
-      return;
+    final filePath = status.printData?.fileData?.path ?? widget.initialFilePath;
+    if (!isCalibrationPlate) {
+      final cached = LayerPreviewCache.instance
+          .get(plateId, layerIndex, filePath: filePath);
+      if (cached != null) {
+        setState(() {
+          _layer2DBytes = cached;
+          _layer2DImageProvider = ResizeImage(MemoryImage(cached), width: 800);
+          _showLayer2D = true;
+        });
+        LayerPreviewCache.instance.preload(BackendService(), plateId, layerIndex,
+            count: 1, filePath: filePath);
+        return;
+      }
     }
 
     setState(() {
       _layer2DLoading = true;
     });
     try {
-      final bytes = await LayerPreviewCache.instance
-          .fetchAndCache(BackendService(), plateId, layerIndex);
+      final bytes = isCalibrationPlate
+          ? await BackendService().getPlateLayerImage(plateId, layerIndex)
+          : await LayerPreviewCache.instance.fetchAndCache(
+              BackendService(), plateId, layerIndex,
+              filePath: filePath);
       if (bytes.isNotEmpty) {
-        final imgProv = MemoryImage(bytes);
+        final imgProv = ResizeImage(MemoryImage(bytes), width: 800);
         // Start precaching but don't await it — decoding can be expensive
         // and awaiting here can cause UI jank. Fire-and-forget instead.
         precacheImage(imgProv, context).catchError((_) {});
@@ -896,8 +1176,11 @@ class StatusScreenState extends State<StatusScreen> {
           _layer2DImageProvider = imgProv;
           _showLayer2D = true;
         });
-        LayerPreviewCache.instance
-            .preload(BackendService(), plateId, layerIndex, count: 2);
+        if (!isCalibrationPlate) {
+          LayerPreviewCache.instance.preload(
+              BackendService(), plateId, layerIndex,
+              count: 1, filePath: filePath);
+        }
       }
     } catch (_) {
       // ignore
@@ -934,6 +1217,9 @@ class StatusScreenState extends State<StatusScreen> {
       // ignore
     }
 
+    // If 2D preview is not shown, skip fetching layer images to save CPU/Network
+    if (!_showLayer2D) return;
+
     // Prefetch current layer via LayerPreviewCache.fetchAndCache and
     // then preload n+1/n+2 layers.
     try {
@@ -954,11 +1240,15 @@ class StatusScreenState extends State<StatusScreen> {
         plateId = widget.initialPlateId;
       }
       if (plateId == null) return;
+      if (plateId == 0) return;
 
       // Use fetchAndCache to dedupe concurrent fetches.
       try {
-        final bytes = await LayerPreviewCache.instance
-            .fetchAndCache(BackendService(), plateId, layerIndex);
+        final filePath =
+            status.printData?.fileData?.path ?? widget.initialFilePath;
+        final bytes = await LayerPreviewCache.instance.fetchAndCache(
+            BackendService(), plateId, layerIndex,
+            filePath: filePath);
         if (bytes.isNotEmpty) {
           // If user already enabled 2D preview, immediately display the
           // prefetched current layer so the preview reflects the active
@@ -968,19 +1258,22 @@ class StatusScreenState extends State<StatusScreen> {
                 _bytesEqual(_layer2DBytes!, bytes))) {
               setState(() {
                 _layer2DBytes = bytes;
-                _layer2DImageProvider = MemoryImage(bytes);
+                _layer2DImageProvider =
+                    ResizeImage(MemoryImage(bytes), width: 800);
               });
             }
           }
-          // Fire off preloads for the next two layers in parallel; do not
+          // Fire off preloads for the next layer in parallel; do not
           // await to avoid blocking the UI thread.
-          for (int i = 1; i <= 2; i++) {
+          for (int i = 1; i <= 1; i++) {
             final target = layerIndex + i;
             LayerPreviewCache.instance
-                .fetchAndCache(BackendService(), plateId, target)
+                .fetchAndCache(BackendService(), plateId, target,
+                    filePath: filePath)
                 .then((nextBytes) {
               if (nextBytes.isNotEmpty) {
-                precacheImage(MemoryImage(nextBytes), context)
+                precacheImage(ResizeImage(MemoryImage(nextBytes), width: 800),
+                        context)
                     .catchError((_) {});
               }
             }).catchError((_) {});
@@ -995,8 +1288,15 @@ class StatusScreenState extends State<StatusScreen> {
   }
 
   Future<void> _maybePreloadNextLayers(StatusModel status) async {
+    // If the 2D preview is hidden, don't waste resources fetching/decoding layers
+    if (!_showLayer2D) return;
+
     final layerIndex = status.layer;
     if (layerIndex == null) return;
+    // Throttle prefetching to every Nth layer to reduce CPU load.
+    if (_layerPrefetchStride > 1 && (layerIndex % _layerPrefetchStride) != 0) {
+      return;
+    }
 
     // Resolve plate id if not already resolved for current file path.
     int? plateId = _resolvedPlateIdForPrefetch;
@@ -1017,16 +1317,19 @@ class StatusScreenState extends State<StatusScreen> {
       }
     }
     if (plateId == null) return;
+    if (plateId == 0) return;
 
     try {
       // Ensure current layer is cached (deduped) then fetch+precache next two.
       // Fetch current layer (deduped) but don't block on any decoding.
       LayerPreviewCache.instance
-          .fetchAndCache(BackendService(), plateId, layerIndex)
+          .fetchAndCache(BackendService(), plateId, layerIndex,
+              filePath: _resolvedFilePathForPrefetch)
           .then((curBytes) {
         if (curBytes.isNotEmpty) {
           // Precache decoded image for faster rendering (fire-and-forget).
-          precacheImage(MemoryImage(curBytes), context).catchError((_) {});
+          precacheImage(ResizeImage(MemoryImage(curBytes), width: 800), context)
+              .catchError((_) {});
           // If the user currently has the 2D preview visible, immediately
           // update the displayed image so the preview follows the layer.
           if (mounted && _showLayer2D) {
@@ -1035,21 +1338,25 @@ class StatusScreenState extends State<StatusScreen> {
                 _bytesEqual(_layer2DBytes!, curBytes))) {
               setState(() {
                 _layer2DBytes = curBytes;
-                _layer2DImageProvider = MemoryImage(curBytes);
+                _layer2DImageProvider =
+                    ResizeImage(MemoryImage(curBytes), width: 800);
               });
             }
           }
         }
       }).catchError((_) {});
 
-      // Launch preloads for the next two layers in parallel.
-      for (int i = 1; i <= 2; i++) {
+      // Launch preloads for the next layer in parallel.
+      for (int i = 1; i <= 1; i++) {
         final target = layerIndex + i;
         LayerPreviewCache.instance
-            .fetchAndCache(BackendService(), plateId, target)
+            .fetchAndCache(BackendService(), plateId, target,
+                filePath: _resolvedFilePathForPrefetch)
             .then((nextBytes) {
           if (nextBytes.isNotEmpty) {
-            precacheImage(MemoryImage(nextBytes), context).catchError((_) {});
+            precacheImage(
+                    ResizeImage(MemoryImage(nextBytes), width: 800), context)
+                .catchError((_) {});
           }
         }).catchError((_) {});
       }
@@ -1078,8 +1385,66 @@ class StatusScreenState extends State<StatusScreen> {
         !provider.isCanceling &&
         !(provider.isPausing && !isPaused);
 
+    // If the print has finished successfully, present two equal-width
+    // actions: Raise Plate (left) and Finish/Return (right).
+    if (isFinished && !isCanceled) {
+      return Row(children: [
+        Expanded(
+          flex: 1,
+          child: GlassButton(
+            tint: GlassButtonTint.positive,
+            onPressed: () async {
+              try {
+                final manual = ManualProvider();
+                await manual.moveToTop();
+              } catch (_) {}
+            },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(120, 65),
+              maximumSize: const Size(120, 65),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            child: const Text('Raise Plate', style: TextStyle(fontSize: 24)),
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          flex: 1,
+          child: GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () {
+              // Keep original return behavior but use a clearer label
+              if (widget.onReturnHome != null) {
+                widget.onReturnHome!();
+                return;
+              }
+              _checkAndShowCalibrationOverlay();
+            },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(120, 65),
+              maximumSize: const Size(120, 65),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            child: AutoSizeText(
+              minFontSize: 16,
+              maxLines: 1,
+              _isCalibrationPrint == true
+                  ? 'Finalize Calibration'
+                  : 'Return to Menu',
+              style: const TextStyle(fontSize: 24),
+            ),
+          ),
+        ),
+      ]);
+    }
+
     return Row(children: [
       Expanded(
+        flex: 1,
         child: GlassButton(
           tint: GlassButtonTint.neutral,
           onPressed: (!canShowOptions || provider.isCanceling)
@@ -1162,6 +1527,29 @@ class StatusScreenState extends State<StatusScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: SizedBox(
+                                height: 65,
+                                width: 450,
+                                child: HoldButton(
+                                  tint: GlassButtonTint.negative,
+                                  style: buttonStyle,
+                                  duration: const Duration(seconds: 2),
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    final manualProvider = ManualProvider();
+                                    await manualProvider.emergencyStop();
+                                  },
+                                  child: const Text(
+                                    'Force Stop',
+                                    style: TextStyle(fontSize: 24),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
                           ],
                         ),
                       );
@@ -1180,6 +1568,30 @@ class StatusScreenState extends State<StatusScreen> {
       ),
       const SizedBox(width: 20),
       Expanded(
+        flex: 1,
+        child: GlassButton(
+          tint: GlassButtonTint.neutral,
+          onPressed: () {
+            setState(() {
+              _showAnalytics = !_showAnalytics;
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(120, 65),
+            maximumSize: const Size(120, 65),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+          child: Text(
+            _showAnalytics ? 'Simple' : 'Advanced',
+            style: const TextStyle(fontSize: 24),
+          ),
+        ),
+      ),
+      const SizedBox(width: 20),
+      Expanded(
+        flex: 1,
         child: GlassButton(
           tint: isCanceled || isFinished
               ? GlassButtonTint.neutral
@@ -1248,5 +1660,912 @@ class StatusScreenState extends State<StatusScreen> {
       _log.fine('Failed to detect calibration print: $e');
       if (mounted) setState(() => _isCalibrationPrint = false);
     }
+  }
+
+  Widget _buildAnalyticsView(
+      BuildContext context, StatusProvider provider, StatusModel? status) {
+    if (status == null) {
+      return const Center(child: Text('No print data available'));
+    }
+
+    final layerCurrent = status.layer;
+    final layerTotal = status.printData?.layerCount;
+
+    return _isLandscape
+        ? _buildAnalyticsLandscape(
+            context, provider, status, layerCurrent, layerTotal)
+        : _buildAnalyticsPortrait(
+            context, provider, status, layerCurrent, layerTotal);
+  }
+
+  Widget _buildAnalyticsPortrait(BuildContext context, StatusProvider provider,
+      StatusModel status, int? layerCurrent, int? layerTotal) {
+    // Build stats for force sensor to display in the second column bottom row
+    final analyticsProv = Provider.of<AnalyticsProvider>(context);
+    final series = analyticsProv.pressureSeries.isNotEmpty
+        ? analyticsProv.pressureSeries
+        : analyticsProv.getSeriesForKey('Pressure');
+
+    List<double> values = [];
+    try {
+      values = series
+          .map((m) {
+            final vRaw = m['v'];
+            if (vRaw is num) return vRaw.toDouble();
+            return double.tryParse(vRaw?.toString() ?? '');
+          })
+          .where((v) => v != null)
+          .cast<double>()
+          .toList();
+    } catch (_) {
+      values = [];
+    }
+
+    final hasData = values.isNotEmpty;
+    final currentVal = hasData ? values.last : 0.0;
+    final maxVal = hasData ? values.reduce(max) : 0.0;
+    final minVal = hasData ? values.reduce(min) : 0.0;
+
+    // Use class helper to format force values (g vs kg)
+
+    Widget statsCard() {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                  child: _buildStatItem(
+                      context, 'Current', _formatForceValue(currentVal),
+                      isLarge: true)),
+              Container(width: 1, color: Theme.of(context).dividerColor),
+              Expanded(
+                  child: _buildStatItem(
+                      context, 'Max', _formatForceValue(maxVal))),
+              Container(width: 1, color: Theme.of(context).dividerColor),
+              Expanded(
+                  child: _buildStatItem(
+                      context, 'Min', _formatForceValue(minVal))),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 16),
+            Expanded(
+              child: Column(
+                children: [
+                  // Top half: two-column layout where left column is the
+                  // force sensor spanning the full height and the right column
+                  // has three rows; the bottom row displays current/min/max.
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // Left column: force sensor (spans all three rows)
+                        Expanded(
+                          child: _buildPlaceholderCard(
+                            context,
+                            'Force Sensor',
+                            Icons.compress,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        // Right column: three vertical rows, last one shows stats
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const Expanded(child: SizedBox()),
+                              const SizedBox(height: 8),
+                              const Expanded(child: SizedBox()),
+                              const SizedBox(height: 8),
+                              // Bottom row: stats
+                              Expanded(child: statsCard()),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  // Bottom info cards
+                  Row(children: [
+                    Expanded(
+                      child: _buildInfoCard(
+                        'Print Progress',
+                        layerCurrent == null || layerTotal == null
+                            ? '- / -'
+                            : '$layerCurrent / $layerTotal',
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildInfoCard(
+                        'CPU Temp',
+                        provider.cpuTemperature != null
+                            ? '${provider.cpuTemperature!.toStringAsFixed(1)}°C'
+                            : 'N/A',
+                        provider.cpuTemperature ?? 0.0,
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 5),
+                  Row(children: [
+                    Expanded(
+                      child: _buildInfoCard(
+                        'Vat Temperature',
+                        provider.resinTemperature != null
+                            ? '${provider.resinTemperature}°C'
+                            : 'N/A',
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildInfoCard(
+                        'Resin Name',
+                        'N/A', // TODO: Connect to resin profile data
+                      ),
+                    ),
+                  ]),
+                  const Spacer(),
+                  _buildButtons(provider, status),
+                ],
+              ),
+            ),
+          ],
+        ),
+      )
+    ]);
+  }
+
+  Widget _buildAnalyticsLandscape(BuildContext context, StatusProvider provider,
+      StatusModel status, int? layerCurrent, int? layerTotal) {
+    return Column(children: [
+      Expanded(
+        child: Row(children: [
+          Expanded(
+            flex: 1,
+            child: Column(children: [
+              Spacer(),
+              _buildInfoCard(
+                'Print Progress',
+                layerCurrent == null || layerTotal == null
+                    ? '- / -'
+                    : '$layerCurrent / $layerTotal',
+              ),
+              _buildInfoCard(
+                'Last Layer Time',
+                // Prefer live analytics LayerTime (currentLayerSeconds), then
+                // the provider-parsed PrevLayerTime (provider.prevLayerSeconds),
+                // finally fall back to the model field when present.
+                (provider.currentLayerSeconds ??
+                            provider.prevLayerSeconds ??
+                            status.prevLayerSeconds) !=
+                        null
+                    ?
+                    // display whichever value we picked
+                    '${(provider.currentLayerSeconds ?? provider.prevLayerSeconds ?? status.prevLayerSeconds)!.toStringAsFixed(1)} s'
+                    : 'N/A',
+              ),
+              _buildInfoCard(
+                  'Resin Temp.',
+                  provider.resinTemperature != null
+                      ? '${provider.resinTemperature}°C'
+                      : 'N/A', // TODO: Connect to actual data
+                  provider.resinTemperature!.toDouble()),
+              // UV LED Temp is provided via analytics (TemperatureOutside)
+              Builder(builder: (ctx) {
+                final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
+                final dynamic uvRaw =
+                    analyticsProv.getLatestForKey('TemperatureOutside');
+                final String uvText = uvRaw != null ? '${uvRaw}°C' : 'N/A';
+                final double uvVal = uvRaw is num
+                    ? uvRaw.toDouble()
+                    : (double.tryParse(uvRaw?.toString() ?? '') ?? 0.0);
+                return _buildInfoCard('UV LED Temp.', uvText, uvVal);
+              }),
+              Spacer(),
+            ]),
+          ),
+          const SizedBox(width: 4.0),
+          Expanded(
+            flex: 1,
+            child: Column(children: [
+              Spacer(),
+              Builder(builder: (ctx) {
+                final analyticsProv =
+                    Provider.of<AnalyticsProvider>(ctx, listen: false);
+                final dynamic waitRaw =
+                    analyticsProv.getLatestForKey('DynamicWait');
+                String waitText;
+                if (waitRaw == null) {
+                  waitText = 'N/A';
+                } else if (waitRaw is num) {
+                  waitText = '${waitRaw.toStringAsFixed(2)} s';
+                } else {
+                  final parsed = double.tryParse(waitRaw.toString());
+                  if (parsed != null) {
+                    waitText = '${parsed.toStringAsFixed(2)} s';
+                  } else {
+                    waitText = waitRaw.toString();
+                  }
+                }
+                return _buildInfoCard('Last Wait Time', waitText);
+              }),
+              Builder(builder: (ctx) {
+                final analyticsProv =
+                    Provider.of<AnalyticsProvider>(ctx, listen: false);
+                final dynamic liftRaw =
+                    analyticsProv.getLatestForKey('LiftHeight');
+                String liftText;
+                if (liftRaw == null) {
+                  liftText = 'N/A';
+                } else if (liftRaw is num) {
+                  liftText = '${liftRaw.toStringAsFixed(2)} mm';
+                } else {
+                  final parsed = double.tryParse(liftRaw.toString());
+                  if (parsed != null) {
+                    liftText = '${parsed.toStringAsFixed(2)} mm';
+                  } else {
+                    liftText = liftRaw.toString();
+                  }
+                }
+                return _buildInfoCard('Last Lift Height', liftText);
+              }),
+              Builder(builder: (ctx) {
+                final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
+                final dynamic mcuRaw =
+                    analyticsProv.getLatestForKey('TemperatureMCU');
+                final String mcuText = mcuRaw != null ? '${mcuRaw}°C' : 'N/A';
+                final double mcuVal = mcuRaw is num
+                    ? mcuRaw.toDouble()
+                    : (double.tryParse(mcuRaw?.toString() ?? '') ?? 0.0);
+                return _buildInfoCard('MCU Temp.', mcuText, mcuVal);
+              }),
+              _buildInfoCard(
+                  'CPU Temp.',
+                  provider.cpuTemperature != null
+                      ? '${provider.cpuTemperature!.toStringAsFixed(1)}°C'
+                      : 'N/A',
+                  provider.cpuTemperature ?? 0.0),
+              Spacer(),
+            ]),
+          ),
+          const SizedBox(width: 12.0),
+          // Right column: force sensor and stats (temperature graph removed)
+          Expanded(
+            flex: 2,
+            child: Column(
+              children: [
+                // Make force sensor taller by giving it more flex
+                Expanded(
+                  flex: 3,
+                  child: _buildPlaceholderCard(
+                    context,
+                    'Force Sensor',
+                    Icons.compress,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Bottom row displays Current / Max / Min
+                Expanded(
+                  flex: 1,
+                  child: Builder(builder: (ctx) {
+                    final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
+                    final series = analyticsProv.pressureSeries.isNotEmpty
+                        ? analyticsProv.pressureSeries
+                        : analyticsProv.getSeriesForKey('Pressure');
+
+                    List<double> values = [];
+                    try {
+                      values = series
+                          .map((m) {
+                            final vRaw = m['v'];
+                            if (vRaw is num) return vRaw.toDouble();
+                            return double.tryParse(vRaw?.toString() ?? '');
+                          })
+                          .where((v) => v != null)
+                          .cast<double>()
+                          .toList();
+                    } catch (_) {
+                      values = [];
+                    }
+
+                    final hasData = values.isNotEmpty;
+                    final currentVal = hasData ? values.last : 0.0;
+                    final maxVal = hasData ? values.reduce(max) : 0.0;
+                    final minVal = hasData ? values.reduce(min) : 0.0;
+
+                    return GlassCard(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Expanded(
+                                  child: _buildStatItem(ctx, 'Current',
+                                      _formatForceValue(currentVal),
+                                      isLarge: true)),
+                              Container(
+                                  width: 1,
+                                  color: Theme.of(context).dividerColor),
+                              Expanded(
+                                  child: _buildStatItem(
+                                      ctx, 'Max', _formatForceValue(maxVal))),
+                              Container(
+                                  width: 1,
+                                  color: Theme.of(context).dividerColor),
+                              Expanded(
+                                  child: _buildStatItem(
+                                      ctx, 'Min', _formatForceValue(minVal))),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 20),
+      Padding(
+        padding: const EdgeInsets.only(left: 5, right: 5),
+        child: _buildButtons(provider, status),
+      ),
+    ]);
+  }
+
+  Widget _buildPlaceholderCard(
+      BuildContext context, String title, IconData icon) {
+    Provider.of<ThemeProvider>(context); // theming
+
+    // Special handling for Force Sensor card
+    if (title == 'Force Sensor') {
+      return _buildForceSensorCard(context);
+    }
+
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      outlined: true,
+      elevation: 1.0,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 64,
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
+                  ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForceSensorCard(BuildContext context) {
+    try {
+      final analyticsProv =
+          Provider.of<AnalyticsProvider>(context, listen: false);
+      final series = analyticsProv.pressureSeries.isNotEmpty
+          ? analyticsProv.pressureSeries
+          : analyticsProv.getSeriesForKey('Pressure');
+
+      return GlassCard(
+        margin: EdgeInsets.only(left: 0, right: 0, top: 4, bottom: 4),
+        outlined: true,
+        elevation: 1.0,
+        child: series.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.compress,
+                      size: 64,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Force Sensor',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.6),
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No Data',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.4),
+                          ),
+                    ),
+                  ],
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: IgnorePointer(
+                  child: _ForceSensorMiniChart(series: series),
+                ),
+              ),
+      );
+    } catch (e) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading force sensor data',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              e.toString(),
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildStatItem(BuildContext context, String label, String value,
+      {bool isLarge = false}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: isLarge ? 20 : 18,
+                color: isLarge ? Theme.of(context).colorScheme.primary : null,
+              ),
+        ),
+      ],
+    );
+  }
+
+  // Produce a smooth, visually-pleasing MaterialColor for a given
+  // temperature. We interpolate between a set of warm color stops
+  // and synthesize a MaterialColor swatch so the result can be used
+  // anywhere a MaterialColor is expected.
+  MaterialColor _colorForTemperature(double temperature) {
+    // Clamp to range 20..70
+    final tClamped = temperature.clamp(20.0, 70.0);
+
+    // Stops for a warm gradient (pale yellow -> amber -> orange -> deepOrange -> red)
+    final stops = <double>[20.0, 30.0, 40.0, 55.0, 70.0];
+    final colors = <Color>[
+      const Color(0xFFFDF3BF), // pale butter
+      const Color(0xFFFCD34D), // amber-300
+      const Color(0xFFFB923C), // orange-400
+      const Color(0xFFF97316), // deep orange-500
+      const Color(0xFFEF4444), // red-500
+    ];
+
+    // Find segment and local interpolation factor
+    Color base;
+    if (tClamped <= stops.first) {
+      base = colors.first;
+    } else if (tClamped >= stops.last) {
+      base = colors.last;
+    } else {
+      int idx = 0;
+      for (int i = 0; i < stops.length - 1; i++) {
+        if (tClamped >= stops[i] && tClamped <= stops[i + 1]) {
+          idx = i;
+          break;
+        }
+      }
+      final localT = (tClamped - stops[idx]) / (stops[idx + 1] - stops[idx]);
+      base = Color.lerp(colors[idx], colors[idx + 1], localT) ?? colors[idx];
+    }
+
+    return _createMaterialColor(base);
+  }
+
+  // Create a MaterialColor swatch from a single Color. This is the
+  // common utility pattern used to synthesize a swatch for theming.
+  MaterialColor _createMaterialColor(Color color) {
+    final strengths = <double>[.05];
+    for (int i = 1; i < 10; i++) {
+      strengths.add(0.1 * i);
+    }
+    final swatch = <int, Color>{};
+    final int r = color.red, g = color.green, b = color.blue;
+    for (var strength in strengths) {
+      final double ds = 0.5 - strength;
+      swatch[(strength * 1000).round()] = Color.fromRGBO(
+        r + ((ds < 0 ? r : (255 - r)) * ds).round(),
+        g + ((ds < 0 ? g : (255 - g)) * ds).round(),
+        b + ((ds < 0 ? b : (255 - b)) * ds).round(),
+        1,
+      );
+    }
+    // Map typical MaterialColor keys (50..900) to the generated strengths
+    final mapped = <int, Color>{
+      50: swatch[50]!,
+      100: swatch[100]!,
+      200: swatch[200]!,
+      300: swatch[300]!,
+      400: swatch[400]!,
+      500: swatch[500]!,
+      600: swatch[600]!,
+      700: swatch[700]!,
+      800: swatch[800]!,
+      900: swatch[900]!,
+    };
+    return MaterialColor(color.value, mapped);
+  }
+}
+
+// Chart widget for force sensor dialog (replicates force_screen.dart chart logic)
+class _ForceSensorDialogChart extends StatefulWidget {
+  final List<Map<String, dynamic>> series;
+  const _ForceSensorDialogChart({required this.series});
+
+  @override
+  State<_ForceSensorDialogChart> createState() =>
+      _ForceSensorDialogChartState();
+}
+
+class _ForceSensorDialogChartState extends State<_ForceSensorDialogChart> {
+  static const int _windowSize = 900;
+  double? _displayMin;
+  double? _displayMax;
+  double _windowMaxX = 0.0;
+  final Map<Object, double> _idToX = {};
+  double _lastX = -1.0;
+
+  List<FlSpot> _toSpots(List<Map<String, dynamic>> serie) {
+    final last = serie.length;
+    final start = last - _windowSize < 0 ? 0 : last - _windowSize;
+    final window = serie.sublist(start, last);
+    final spots = <FlSpot>[];
+    final currentIds = <Object>{};
+
+    for (var i = 0; i < window.length; i++) {
+      final item = window[i];
+      final idRaw = item['id'] ?? i;
+      final key = idRaw is Object ? idRaw : idRaw.toString();
+      currentIds.add(key);
+
+      final vRaw = item['v'];
+      final v = vRaw is num
+          ? vRaw.toDouble()
+          : double.tryParse(vRaw?.toString() ?? '');
+      if (v == null) continue;
+
+      double x;
+      if (_idToX.containsKey(key)) {
+        x = _idToX[key]!;
+      } else {
+        _lastX = _lastX + 1.0;
+        x = _lastX;
+        _idToX[key] = x;
+      }
+      spots.add(FlSpot(x, v));
+    }
+
+    final toRemove = <Object>[];
+    _idToX.forEach((k, v) {
+      if (!currentIds.contains(k)) toRemove.add(k);
+    });
+    for (final k in toRemove) {
+      _idToX.remove(k);
+    }
+
+    _windowMaxX = _lastX <= 0 ? (_windowSize - 1).toDouble() : _lastX;
+    final windowStart = _windowMaxX <= 0
+        ? 0.0
+        : max(0.0, _windowMaxX - (_windowSize - 1).toDouble());
+
+    final remapped = spots
+        .map((s) => FlSpot(s.x - windowStart, s.y))
+        .toList(growable: false);
+    return remapped;
+  }
+
+  void _updateDisplayRange(List<FlSpot> spots) {
+    if (spots.isEmpty) return;
+    final minY = spots.map((s) => s.y).reduce(min);
+    final maxY = spots.map((s) => s.y).reduce(max);
+    final span = maxY - minY;
+    final pad = span == 0 ? (maxY.abs() * 0.05 + 1.0) : (span * 0.05);
+
+    double targetMin;
+    double targetMax;
+    const double hardLimit = 60000.0;
+
+    if (minY >= -100.0 && maxY <= 100.0) {
+      targetMin = -100.0;
+      targetMax = 100.0;
+    } else {
+      targetMin = max(minY - pad, -hardLimit);
+      targetMax = min(maxY + pad, hardLimit);
+      if (targetMin > 0) targetMin = 0;
+      if (targetMax < 0) targetMax = 0;
+    }
+
+    const double immediateFraction = 0.25;
+    const double immediateAbs = 200.0;
+    const double smoothAlpha = 0.6;
+
+    if (_displayMin == null || _displayMax == null) {
+      _displayMin = targetMin;
+      _displayMax = targetMax;
+    } else {
+      final curSpan = (_displayMax! - _displayMin!).abs();
+      final needImmediate = (minY <
+              _displayMin! - max(immediateAbs, curSpan * immediateFraction)) ||
+          (maxY >
+              _displayMax! + max(immediateAbs, curSpan * immediateFraction));
+
+      if (needImmediate) {
+        _displayMin = targetMin;
+        _displayMax = targetMax;
+      } else {
+        _displayMin = _displayMin! + (targetMin - _displayMin!) * smoothAlpha;
+        _displayMax = _displayMax! + (targetMax - _displayMax!) * smoothAlpha;
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ForceSensorDialogChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final spots = _toSpots(widget.series);
+    _updateDisplayRange(spots);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final spots = _toSpots(widget.series);
+    if (spots.isEmpty) return const Center(child: Text('No data'));
+
+    _updateDisplayRange(spots);
+    final displayMin = _displayMin ?? spots.map((s) => s.y).reduce(min) - 1.0;
+    final displayMax = _displayMax ?? spots.map((s) => s.y).reduce(max) + 1.0;
+
+    return LineChart(
+      duration: Duration.zero,
+      LineChartData(
+        borderData: FlBorderData(
+          border: Border.all(color: Colors.transparent),
+        ),
+        gridData: FlGridData(show: true),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        minY: displayMin,
+        maxY: displayMax,
+        maxX: (_windowSize + 10.0).toDouble(),
+        minX: -10.0,
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            gradient: LinearGradient(
+              colors: [
+                Colors.greenAccent,
+                Colors.redAccent,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            isCurved: true,
+            isStrokeCapRound: true,
+            dotData: FlDotData(show: false),
+            color: Theme.of(context).colorScheme.primary,
+            barWidth: 1.5,
+          )
+        ],
+      ),
+    );
+  }
+}
+
+// Mini force sensor chart widget for analytics view
+class _ForceSensorMiniChart extends StatefulWidget {
+  final List<Map<String, dynamic>> series;
+  const _ForceSensorMiniChart({required this.series});
+
+  @override
+  State<_ForceSensorMiniChart> createState() => _ForceSensorMiniChartState();
+}
+
+class _ForceSensorMiniChartState extends State<_ForceSensorMiniChart> {
+  static const int _windowSize = 300; // Smaller window for mini chart
+  double? _displayMin;
+  double? _displayMax;
+  final Map<Object, double> _idToX = {};
+  double _lastX = -1.0;
+
+  List<FlSpot> _toSpots(List<Map<String, dynamic>> serie) {
+    final last = serie.length;
+    final start = last - _windowSize < 0 ? 0 : last - _windowSize;
+    final window = serie.sublist(start, last);
+    final spots = <FlSpot>[];
+    final currentIds = <Object>{};
+
+    for (var i = 0; i < window.length; i++) {
+      final item = window[i];
+      final idRaw = item['id'] ?? i;
+      final key = idRaw is Object ? idRaw : idRaw.toString();
+      currentIds.add(key);
+
+      final vRaw = item['v'];
+      final v = vRaw is num
+          ? vRaw.toDouble()
+          : double.tryParse(vRaw?.toString() ?? '');
+      if (v == null) continue;
+
+      double x;
+      if (_idToX.containsKey(key)) {
+        x = _idToX[key]!;
+      } else {
+        _lastX = _lastX + 1.0;
+        x = _lastX;
+        _idToX[key] = x;
+      }
+      spots.add(FlSpot(x, v));
+    }
+
+    // Clean up old mappings
+    final toRemove = <Object>[];
+    _idToX.forEach((k, v) {
+      if (!currentIds.contains(k)) toRemove.add(k);
+    });
+    for (final k in toRemove) {
+      _idToX.remove(k);
+    }
+
+    final windowMaxX = _lastX <= 0 ? (_windowSize - 1).toDouble() : _lastX;
+    final windowStart =
+        windowMaxX <= 0 ? 0.0 : max(0.0, windowMaxX - (_windowSize - 1));
+
+    return spots
+        .map((s) => FlSpot(s.x - windowStart, s.y))
+        .toList(growable: false);
+  }
+
+  void _updateDisplayRange(List<FlSpot> spots) {
+    if (spots.isEmpty) return;
+    final minY = spots.map((s) => s.y).reduce(min);
+    final maxY = spots.map((s) => s.y).reduce(max);
+    final span = maxY - minY;
+    final pad = span == 0 ? (maxY.abs() * 0.05 + 1.0) : (span * 0.05);
+
+    double targetMin;
+    double targetMax;
+
+    if (minY >= -100.0 && maxY <= 100.0) {
+      targetMin = -100.0;
+      targetMax = 100.0;
+    } else {
+      targetMin = max(minY - pad, -60000.0);
+      targetMax = min(maxY + pad, 60000.0);
+      if (targetMin > 0) targetMin = 0;
+      if (targetMax < 0) targetMax = 0;
+    }
+
+    if (_displayMin == null || _displayMax == null) {
+      _displayMin = targetMin;
+      _displayMax = targetMax;
+    } else {
+      const smoothAlpha = 0.6;
+      _displayMin = _displayMin! + (targetMin - _displayMin!) * smoothAlpha;
+      _displayMax = _displayMax! + (targetMax - _displayMax!) * smoothAlpha;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final spots = _toSpots(widget.series);
+    if (spots.isEmpty) return const Center(child: Text('No data'));
+
+    _updateDisplayRange(spots);
+    final displayMin = _displayMin ?? -100.0;
+    final displayMax = _displayMax ?? 100.0;
+
+    return LineChart(
+      duration: Duration.zero,
+      LineChartData(
+        borderData: FlBorderData(border: Border.all(color: Colors.transparent)),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: true,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
+            strokeWidth: 0.5,
+          ),
+          getDrawingVerticalLine: (value) => FlLine(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.45),
+            strokeWidth: 0.5,
+          ),
+        ),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        minY: displayMin,
+        maxY: displayMax,
+        maxX: (_windowSize + 10.0).toDouble(),
+        minX: -10.0,
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            gradient: LinearGradient(
+              colors: [Colors.greenAccent, Colors.redAccent],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            isCurved: true,
+            isStrokeCapRound: true,
+            dotData: FlDotData(show: false),
+            barWidth: 2.0,
+          )
+        ],
+      ),
+    );
   }
 }

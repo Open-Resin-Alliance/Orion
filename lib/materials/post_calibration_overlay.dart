@@ -20,6 +20,8 @@ import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
@@ -83,9 +85,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final isGlass =
+        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+
     return GlassApp(
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: isGlass
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.surface,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -365,7 +372,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   crossAxisCount: 3,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 2.2,
+                  childAspectRatio: 2.3,
                 ),
                 itemCount: 6,
                 itemBuilder: (context, index) {
@@ -478,12 +485,9 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     try {
       final profileJson =
           await _backendService.getProfileJson(widget.profileId);
-      if (profileJson != null) {
-        final normalized = NanoProfile.normalizeForEdit(profileJson);
-        previousExposure =
-            (normalized['normal_cure_time'] as num?)?.toDouble() ??
-                widget.startExposure;
-      }
+      final normalized = NanoProfile.normalizeForEdit(profileJson);
+      previousExposure = (normalized['normal_cure_time'] as num?)?.toDouble() ??
+          widget.startExposure;
     } catch (e) {
       _logger.warning('Failed to fetch current profile for comparison: $e');
       // Continue with widget.startExposure as fallback
@@ -680,14 +684,11 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   try {
                     final profileJson =
                         await _backendService.getProfileJson(widget.profileId);
-                    if (profileJson != null) {
-                      final normalized =
-                          NanoProfile.normalizeForEdit(profileJson);
-                      previousExposure =
-                          (normalized['normal_cure_time'] as num?)
-                                  ?.toDouble() ??
-                              widget.startExposure;
-                    }
+                    final normalized =
+                        NanoProfile.normalizeForEdit(profileJson);
+                    previousExposure =
+                        (normalized['normal_cure_time'] as num?)?.toDouble() ??
+                            widget.startExposure;
                   } catch (e) {
                     _logger.warning(
                         'Failed to fetch current profile for comparison: $e');

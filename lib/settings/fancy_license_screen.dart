@@ -24,6 +24,8 @@ import 'package:flutter/foundation.dart'
 
 import 'package:orion/glasser/src/widgets/glass_app.dart';
 import 'package:orion/glasser/src/widgets/glass_card.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 
 // Data structure for license information
 class _LicenseData {
@@ -46,7 +48,7 @@ class _AboutHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20.0),
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -61,7 +63,7 @@ class _AboutHeader extends StatelessWidget {
                       ? IconTheme(
                           data: Theme.of(context).iconTheme, child: icon!)
                       : Image.asset(
-                          'assets/images/open_resin_alliance_logo_darkmode.png',
+                          'assets/images/ora/open_resin_alliance_logo_darkmode.png',
                           width: 65,
                           height: 65,
                           fit: BoxFit.contain,
@@ -134,7 +136,13 @@ class _PackageLicenseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(title: Text(packageName)),
+        appBar: OrionAppBar(
+            title: Text(packageName),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            actions: <Widget>[
+              SystemStatusWidget(),
+            ],
+          ),
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
@@ -211,27 +219,25 @@ class _FancyLicensePageState extends State<FancyLicensePage> {
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Scaffold(
-              appBar: AppBar(
-                title: const Text('Loading Licenses...'),
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-              ),
+              appBar: OrionAppBar(
+            title: const Text('Loading Licenses...'),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            actions: <Widget>[
+              SystemStatusWidget(),
+            ],
+          ),
               body: Center(child: CircularProgressIndicator()),
             );
           }
           final data = snapshot.data!;
           return Scaffold(
-            appBar: AppBar(
-              title: Text('Licenses'),
-              leading: Navigator.of(context).canPop()
-                  ? IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    )
-                  : null,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-            ),
+            appBar: OrionAppBar(
+            title: const Text('Open-Source Licenses'),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            actions: <Widget>[
+              SystemStatusWidget(),
+            ],
+          ),
             body: ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: data.packages.length + 1,

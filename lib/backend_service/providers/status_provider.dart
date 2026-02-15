@@ -25,9 +25,12 @@ import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_kinematic_status.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
+import 'package:orion/util/sl1_thumbnail.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
+import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 
 /// Polls the backend `/status` endpoint and exposes a typed [StatusModel].
@@ -40,10 +43,40 @@ import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 class StatusProvider extends ChangeNotifier {
   final BackendClient _client;
   final _log = Logger('StatusProvider');
+  // Optional analytics provider used to expose convenience getters for
+  // time-series metrics (e.g. MCU / outside temperature). This is an
+  // optional, non-critical dependency — callers may prefer to read
+  // AnalyticsProvider directly from the widget tree. Keep this nullable
+  // to avoid hard coupling during construction in tests.
+  AnalyticsProvider? _analyticsProvider;
 
   StatusModel? _status;
+  AthenaKinematicStatus? _kinematicStatus;
   String? _deviceStatusMessage;
   int? _resinTemperature;
+  double? _cpuTemperature;
+  Duration? _prevLayerDuration;
+
+  // When true, kinematic status is polled continuously (useful for wizard
+  // screens that need to detect when homing/moving completes). When false,
+  // kinematic status is only fetched on-demand via refreshKinematicStatus().
+  bool _continuousKinematicPolling = false;
+  Timer? _kinematicPollTimer;
+  static const Duration _kinematicPollInterval = Duration(milliseconds: 500);
+
+  /// When printing, we may surface the live current-layer time reported via
+  /// NanoDLP analytics (key: 'LayerTime'). When available, we prefer this
+  /// value for UI responsiveness during an active print. This is stored
+  /// separately for clarity but may be applied to `_prevLayerDuration` as a
+  /// proxy while printing so existing UI bindings continue to work.
+  Duration? _currentLayerDuration;
+
+  // Track observed layer numbers and timestamps so we can compute a
+  // previous-layer duration when the backend does not provide PrevLayerTime
+  // reliably on every snapshot. When we detect the layer number increase we
+  // compute the elapsed time since the previous layer observation.
+  int? _lastObservedLayer;
+  DateTime? _lastObservedLayerTime;
 
   /// Optional raw device-provided status message (e.g. NanoDLP "Status"
   /// field). When present this may be used to override the app bar title
@@ -51,9 +84,38 @@ class StatusProvider extends ChangeNotifier {
   /// "Peel Detection Started" are surfaced directly.
   String? get deviceStatusMessage => _deviceStatusMessage;
   StatusModel? get status => _status;
+  AthenaKinematicStatus? get kinematicStatus => _kinematicStatus;
 
   /// Current resin temperature reported by the backend (degrees Celsius).
   int? get resinTemperature => _resinTemperature;
+
+  /// CPU temperature reported by the backend `temp` field (degrees Celsius).
+  /// May be fractional so exposed as a double. Null when unavailable.
+  double? get cpuTemperature => _cpuTemperature;
+
+  /// Duration of the previous layer as reported by the backend. The backend
+  /// reports `PrevLayerTime` in nanoseconds; we convert it to [Duration].
+  Duration? get prevLayerDuration => _prevLayerDuration;
+
+  /// Current (ongoing) layer duration while printing, if available from
+  /// analytics (key: 'LayerTime'). This differs from `prevLayerDuration`
+  /// which represents the previous completed layer; however, we may proxy
+  /// `LayerTime` into `prevLayerDuration` while printing to simplify UI.
+  Duration? get currentLayerDuration => _currentLayerDuration;
+
+  /// Previous layer time in seconds as a double (null when unavailable).
+  double? get prevLayerSeconds => _prevLayerDuration == null
+      ? null
+      : _prevLayerDuration!.inMilliseconds / 1000.0;
+
+  double? get currentLayerSeconds => _currentLayerDuration == null
+      ? null
+      : _currentLayerDuration!.inMilliseconds / 1000.0;
+
+  // Note: MCU and UV/outside temperatures are provided via the NanoDLP
+  // analytics time-series. Consumers should use `AnalyticsProvider` and
+  // request `getLatestForKey('TemperatureMCU')` or
+  // `getLatestForKey('TemperatureOutside')` as appropriate.
 
   bool _loading = true;
   bool get isLoading => _loading;
@@ -67,6 +129,21 @@ class StatusProvider extends ChangeNotifier {
   bool _isPausing =
       false; // UI transitional state until backend reflects pause/resume
   bool get isPausing => _isPausing;
+
+  // Track if the Status Screen is currently open/visible to the user.
+  // This allows other components (like update notifications) to avoid
+  // interrupting the user while they are viewing print status/results.
+  bool _isStatusScreenOpen = false;
+  bool get isStatusScreenOpen => _isStatusScreenOpen;
+
+  /// Update the visibility state of the Status Screen.
+  void setStatusScreenOpen(bool isOpen) {
+    if (_isStatusScreenOpen == isOpen) return;
+    _isStatusScreenOpen = isOpen;
+    // We notify listeners so watchers can react to screen transitions
+    // (e.g. enabling/disabling notifications).
+    notifyListeners();
+  }
 
   // Awaiting state: after a cancel/finish & reset, we keep the UI in a loading
   // spinner until we observe a NEW active print (Printing or Paused) AND the
@@ -109,9 +186,11 @@ class StatusProvider extends ChangeNotifier {
   Timer? _timer;
   Timer? _backoffTimer;
   bool _polling = false;
-  int _pollIntervalSeconds = 1;
-  static const int _minPollIntervalSeconds = 1;
+  int _pollIntervalSeconds = 2;
+  static const int _minPollIntervalSeconds = 2;
   static const int _maxPollIntervalSeconds = 60;
+  static const int _standbyPollIntervalSeconds = 30;
+  bool _standbyMode = false;
   // SSE reconnect tuning: aggressive base retry for local devices + small jitter.
   static const int _sseReconnectBaseSeconds = 3;
   // Don't attempt SSE if polling is repeatedly failing. If polling shows
@@ -172,12 +251,45 @@ class StatusProvider extends ChangeNotifier {
 
   bool? get sseSupported => _sseSupported;
 
-  StatusProvider({BackendClient? client})
+  StatusProvider({BackendClient? client, AnalyticsProvider? analytics})
       : _client = client ?? BackendService() {
+    _analyticsProvider = analytics;
     // Prefer an SSE subscription when the backend supports it. If the
     // connection fails we fall back to the existing polling loop. See
     // comments in _tryStartSse for detailed reconnect / fallback behavior.
     _tryStartSse();
+  }
+
+  /// Attach or replace the AnalyticsProvider after construction. This is
+  /// useful when the provider is created via DI and the AnalyticsProvider
+  /// becomes available afterwards (or in tests).
+  void setAnalyticsProvider(AnalyticsProvider? analytics) {
+    _analyticsProvider = analytics;
+  }
+
+  /// Convenience getter: latest MCU temperature from analytics (degrees C).
+  /// Returns null if analytics aren't available or the value is missing.
+  double? get mcuTemperature {
+    try {
+      final v = _analyticsProvider?.getLatestForKey('TemperatureMCU');
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Convenience getter: latest outside/UV temperature from analytics.
+  double? get uvTemperature {
+    try {
+      final v = _analyticsProvider?.getLatestForKey('TemperatureOutside');
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    } catch (_) {
+      return null;
+    }
   }
 
   void _startPolling() {
@@ -289,7 +401,155 @@ class StatusProvider extends ChangeNotifier {
           } catch (_) {
             // ignore parsing errors and leave _resinTemperature unchanged
           }
+          // Capture CPU temperature from `temp` field if present. Exposed as
+          // a double since some backends report fractional CPU temps.
+          try {
+            final maybeCpu = raw['temp'] ?? raw['Temp'] ?? raw['cpu_temp'];
+            double? parsedCpu;
+            if (maybeCpu == null) {
+              parsedCpu = null;
+            } else if (maybeCpu is num) {
+              parsedCpu = maybeCpu.toDouble();
+            } else {
+              final s = maybeCpu
+                  .toString()
+                  .trim()
+                  .toLowerCase()
+                  .replaceAll('°', '')
+                  .replaceAll('c', '')
+                  .trim();
+              final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+              parsedCpu = double.tryParse(numStr);
+            }
+            _cpuTemperature = parsedCpu;
+          } catch (_) {
+            // ignore
+          }
+          // PrevLayerTime parsing deferred until after we parse the StatusModel
+          // so the provider can prefer a normalized model field when present.
+          // MCU and UV/outside temperatures are provided by NanoDLP analytics
+          // time-series. Consumers should use AnalyticsProvider.getLatestForKey
+          // to read `TemperatureMCU` and `TemperatureOutside`.
           final parsed = StatusModel.fromJson(raw);
+
+          // Compute prev-layer time from observed layer changes when the
+          // backend does not include PrevLayerTime frequently. This is a
+          // best-effort heuristic: when we observe the layer number change
+          // (increment), record the time delta as the previous-layer duration.
+          try {
+            final now = DateTime.now();
+            final observedLayer = parsed.layer;
+            if (observedLayer != null) {
+              if (_lastObservedLayer == null) {
+                _lastObservedLayer = observedLayer;
+                _lastObservedLayerTime = now;
+              } else if (observedLayer != _lastObservedLayer) {
+                // If layer increased, compute delta; if it decreased or reset
+                // (e.g. new job), just re-seed the timestamp.
+                if (observedLayer > (_lastObservedLayer ?? -999999)) {
+                  final prevTime = _lastObservedLayerTime ?? now;
+                  final delta = now.difference(prevTime);
+                  // Only accept reasonable durations (e.g., >0s and <24h)
+                  if (delta.inSeconds > 0 && delta.inHours < 24) {
+                    _prevLayerDuration = delta;
+                    _log.fine(
+                        'Computed PrevLayerTime from layer change (ms): ${_prevLayerDuration!.inMilliseconds}');
+                  }
+                }
+                _lastObservedLayer = observedLayer;
+                _lastObservedLayerTime = now;
+              }
+            }
+          } catch (e, st) {
+            _log.fine(
+                'Failed to compute PrevLayerTime from layer change: $e', e, st);
+          }
+          // Prefer the raw NanoDLP `PrevLayerTime` when present. Some adapters
+          // expose this field with differing units/format, so parse it first
+          // and fall back to the model-normalized `prev_layer_seconds` when
+          // the raw key is absent.
+          try {
+            final maybePrevRaw =
+                raw['PrevLayerTime'] ?? raw['prev_layer_seconds'];
+            if (maybePrevRaw != null) {
+              if (maybePrevRaw is num) {
+                final n = maybePrevRaw.toDouble();
+                if (n >= 1e9) {
+                  // nanoseconds -> microseconds
+                  final micros = (n / 1000).round();
+                  _prevLayerDuration = Duration(microseconds: micros);
+                } else if (n >= 1e3) {
+                  // already microseconds
+                  _prevLayerDuration = Duration(microseconds: n.round());
+                } else {
+                  // seconds -> microseconds
+                  _prevLayerDuration =
+                      Duration(microseconds: (n * 1e6).round());
+                }
+              } else {
+                final s = maybePrevRaw
+                    .toString()
+                    .trim()
+                    .replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+                final asDouble = double.tryParse(s);
+                if (asDouble != null) {
+                  if (asDouble >= 1e9) {
+                    final micros = (asDouble / 1000).round();
+                    _prevLayerDuration = Duration(microseconds: micros);
+                  } else if (asDouble >= 1e3) {
+                    _prevLayerDuration =
+                        Duration(microseconds: asDouble.round());
+                  } else {
+                    _prevLayerDuration =
+                        Duration(microseconds: (asDouble * 1e6).round());
+                  }
+                } else {
+                  // leave previous _prevLayerDuration unchanged when the raw
+                  // value can't be parsed — prefer retaining the last-seen
+                  // completed-layer time so the UI doesn't flash to N/A.
+                }
+              }
+              try {
+                // _log.fine('SSE PrevLayerTime raw value: $maybePrevRaw');
+              } catch (_) {}
+            } else if (parsed.prevLayerSeconds != null) {
+              final micros = (parsed.prevLayerSeconds! * 1e6).round();
+              _prevLayerDuration = Duration(microseconds: micros);
+            } else {
+              // Do not clear _prevLayerDuration when the payload omits the
+              // PrevLayerTime field; keep the last known value until an
+              // explicit reset occurs. This prevents flicker when some
+              // NanoDLP snapshots omit the key intermittently.
+            }
+          } catch (e, st) {
+            _log.warning('Error parsing PrevLayerTime (SSE)', e, st);
+          }
+          // While printing, prefer live LayerTime from analytics (if available)
+          // as it represents the ongoing layer duration. If present, apply it
+          // as the current layer duration and proxy it into _prevLayerDuration
+          // so existing UI bindings continue to work.
+          try {
+            if (parsed.isPrinting && _analyticsProvider != null) {
+              final lv = _analyticsProvider!.getLatestForKey('LayerTime');
+              if (lv != null) {
+                double? secs;
+                if (lv is num) secs = lv.toDouble();
+                if (secs == null) secs = double.tryParse(lv.toString());
+                if (secs != null) {
+                  final micros = (secs * 1e6).round();
+                  _currentLayerDuration = Duration(microseconds: micros);
+                  // Proxy into prev-layer for UI simplicity during active print
+                  _prevLayerDuration = _currentLayerDuration;
+                  _log.finer(
+                      'SSE LayerTime from analytics (ms): ${_currentLayerDuration!.inMilliseconds}');
+                }
+              }
+            } else {
+              _currentLayerDuration = null;
+            }
+          } catch (e, st) {
+            _log.fine('Failed to read LayerTime from analytics', e, st);
+          }
           // (previous snapshot removed) transitional clears now rely on the
           // parsed payload directly.
 
@@ -475,6 +735,105 @@ class StatusProvider extends ChangeNotifier {
     // Event buffer removed; nothing to clear here.
   }
 
+  bool _kinematicFetchInFlight = false;
+
+  /// Enable or disable continuous kinematic polling.
+  ///
+  /// When enabled, kinematic status is polled every 500ms automatically.
+  /// Use this for wizard screens that need to detect when homing/moving
+  /// completes. When disabled (default), use [refreshKinematicStatus] to
+  /// fetch status on-demand (e.g., after button presses).
+  void setContinuousKinematicPolling(bool enabled) {
+    if (_continuousKinematicPolling == enabled) return;
+    _continuousKinematicPolling = enabled;
+    _log.fine('Continuous kinematic polling: $enabled');
+    if (enabled) {
+      _startKinematicPolling();
+    } else {
+      _stopKinematicPolling();
+    }
+  }
+
+  /// Whether continuous kinematic polling is currently enabled.
+  bool get isContinuousKinematicPollingEnabled => _continuousKinematicPolling;
+
+  void _startKinematicPolling() {
+    if (_kinematicPollTimer != null || _disposed) return;
+    _log.fine('Starting kinematic polling timer');
+    // Fetch immediately, then on interval
+    refreshKinematicStatus();
+    _kinematicPollTimer =
+        Timer.periodic(_kinematicPollInterval, (_) => refreshKinematicStatus());
+  }
+
+  void _stopKinematicPolling() {
+    _kinematicPollTimer?.cancel();
+    _kinematicPollTimer = null;
+    _log.fine('Stopped kinematic polling timer');
+  }
+
+  /// Manually clears the homed status. This is useful when an emergency stop
+  /// or other event is known to invalidate the homed state, even if the
+  /// backend hasn't reported it yet.
+  void clearHomedStatus() {
+    if (_kinematicStatus != null) {
+      _kinematicStatus = AthenaKinematicStatus(
+        homed: false,
+        offset: _kinematicStatus!.offset,
+        position: _kinematicStatus!.position,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      notifyListeners();
+    }
+  }
+
+  /// Explicitly refresh kinematic status (Z position, offset, homed state).
+  /// Call this after button presses that affect Z position instead of relying
+  /// on continuous polling. Returns the updated status or null on error.
+  Future<AthenaKinematicStatus?> refreshKinematicStatus(
+      {int maxAttempts = 3}) async {
+    if (_kinematicFetchInFlight || _disposed) return _kinematicStatus;
+    _kinematicFetchInFlight = true;
+
+    int attempts = 0;
+
+    try {
+      while (attempts < maxAttempts) {
+        attempts++;
+        try {
+          final kinMap = await _client.getKinematicStatus();
+          if (_disposed) return _kinematicStatus;
+
+          if (kinMap != null) {
+            final kin = AthenaKinematicStatus.fromJson(
+                Map<String, dynamic>.from(kinMap));
+            _kinematicStatus = kin;
+            notifyListeners();
+            return kin;
+          }
+          _log.warning(
+              'Kinematic status fetch attempt $attempts/$maxAttempts returned null');
+        } catch (e, st) {
+          _log.warning(
+              'Kinematic status fetch attempt $attempts/$maxAttempts failed',
+              e,
+              st);
+        }
+
+        if (attempts < maxAttempts) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (_disposed) return _kinematicStatus;
+        }
+      }
+
+      _log.warning(
+          'All $maxAttempts kinematic status fetch attempts failed; keeping last known status.');
+      return _kinematicStatus;
+    } finally {
+      _kinematicFetchInFlight = false;
+    }
+  }
+
   /// Fetch the latest status snapshot from the backend. This method is
   /// re-entrancy guarded and performs the following at a high level:
   /// - parses the payload into `StatusModel`
@@ -561,7 +920,163 @@ class StatusProvider extends ChangeNotifier {
       } catch (_) {
         // ignore
       }
+      // Capture CPU temperature from `temp` field if present.
+      try {
+        final maybeCpu = raw['temp'] ?? raw['Temp'] ?? raw['cpu_temp'];
+        double? parsedCpu;
+        if (maybeCpu == null) {
+          parsedCpu = null;
+        } else if (maybeCpu is num) {
+          parsedCpu = maybeCpu.toDouble();
+        } else {
+          final s = maybeCpu
+              .toString()
+              .trim()
+              .toLowerCase()
+              .replaceAll('°', '')
+              .replaceAll('c', '')
+              .trim();
+          final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+          parsedCpu = double.tryParse(numStr);
+        }
+        _cpuTemperature = parsedCpu;
+      } catch (_) {
+        // ignore
+      }
+      // PrevLayerTime parsing will be handled after parsing StatusModel so
+      // we can prefer the model's normalized 'prev_layer_seconds' when present.
+      // Capture CPU temperature from `temp` field if present.
+      try {
+        final maybeCpu = raw['temp'] ?? raw['Temp'] ?? raw['cpu_temp'];
+        double? parsedCpu;
+        if (maybeCpu == null) {
+          parsedCpu = null;
+        } else if (maybeCpu is num) {
+          parsedCpu = maybeCpu.toDouble();
+        } else {
+          final s = maybeCpu
+              .toString()
+              .trim()
+              .toLowerCase()
+              .replaceAll('°', '')
+              .replaceAll('c', '')
+              .trim();
+          final numStr = s.replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+          parsedCpu = double.tryParse(numStr);
+        }
+        _cpuTemperature = parsedCpu;
+      } catch (_) {
+        // ignore
+      }
+      // UV / outside temperature is sourced from NanoDLP analytics.
+      // Consumers should query AnalyticsProvider.getLatestForKey('TemperatureOutside').
       final parsed = StatusModel.fromJson(raw);
+
+      // Compute prev-layer time from observed layer changes when the
+      // backend does not include PrevLayerTime frequently. This is a
+      // best-effort heuristic: when we observe the layer number change
+      // (increment), record the time delta as the previous-layer duration.
+      try {
+        final now = DateTime.now();
+        final observedLayer = parsed.layer;
+        if (observedLayer != null) {
+          if (_lastObservedLayer == null) {
+            _lastObservedLayer = observedLayer;
+            _lastObservedLayerTime = now;
+          } else if (observedLayer != _lastObservedLayer) {
+            // If layer increased, compute delta; if it decreased or reset
+            // (e.g. new job), just re-seed the timestamp.
+            if (observedLayer > (_lastObservedLayer ?? -999999)) {
+              final prevTime = _lastObservedLayerTime ?? now;
+              final delta = now.difference(prevTime);
+              // Only accept reasonable durations (e.g., >0s and <24h)
+              if (delta.inSeconds > 0 && delta.inHours < 24) {
+                _prevLayerDuration = delta;
+                _log.fine(
+                    'Computed PrevLayerTime from layer change (ms): ${_prevLayerDuration!.inMilliseconds}');
+              }
+            }
+            _lastObservedLayer = observedLayer;
+            _lastObservedLayerTime = now;
+          }
+        }
+      } catch (e, st) {
+        _log.fine(
+            'Failed to compute PrevLayerTime from layer change: $e', e, st);
+      }
+      // Prefer model-level prev-layer seconds when available. Fallback to
+      // raw keys otherwise (supports nanoseconds, microseconds, seconds).
+      try {
+        final maybePrevRaw = raw['PrevLayerTime'] ?? raw['prev_layer_seconds'];
+        if (maybePrevRaw != null) {
+          if (maybePrevRaw is num) {
+            final n = maybePrevRaw.toDouble();
+            if (n >= 1e9) {
+              // nanoseconds -> microseconds
+              final micros = (n / 1000).round();
+              _prevLayerDuration = Duration(microseconds: micros);
+            } else if (n >= 1e3) {
+              // already microseconds
+              _prevLayerDuration = Duration(microseconds: n.round());
+            } else {
+              // seconds -> microseconds
+              _prevLayerDuration = Duration(microseconds: (n * 1e6).round());
+            }
+          } else {
+            final s = maybePrevRaw
+                .toString()
+                .trim()
+                .replaceAll(RegExp(r'[^0-9+\-.eE]'), '');
+            final asDouble = double.tryParse(s);
+            if (asDouble != null) {
+              if (asDouble >= 1e9) {
+                final micros = (asDouble / 1000).round();
+                _prevLayerDuration = Duration(microseconds: micros);
+              } else if (asDouble >= 1e3) {
+                _prevLayerDuration = Duration(microseconds: asDouble.round());
+              } else {
+                _prevLayerDuration =
+                    Duration(microseconds: (asDouble * 1e6).round());
+              }
+            } else {
+              // leave previous value unchanged when parsing fails
+            }
+          }
+          try {
+            // _log.fine('Poll PrevLayerTime raw value: $maybePrevRaw');
+          } catch (_) {}
+        } else if (parsed.prevLayerSeconds != null) {
+          final micros = (parsed.prevLayerSeconds! * 1e6).round();
+          _prevLayerDuration = Duration(microseconds: micros);
+        } else {
+          // Do not clear on absence; preserve last known PrevLayerTime.
+        }
+      } catch (e, st) {
+        _log.warning('Error parsing PrevLayerTime (poll)', e, st);
+      }
+      // Prefer live LayerTime from analytics when printing
+      try {
+        if (parsed.isPrinting && _analyticsProvider != null) {
+          final lv = _analyticsProvider!.getLatestForKey('LayerTime');
+          if (lv != null) {
+            double? secs;
+            if (lv is num) secs = lv.toDouble();
+            if (secs == null) secs = double.tryParse(lv.toString());
+            if (secs != null) {
+              final micros = (secs * 1e6).round();
+              _currentLayerDuration = Duration(microseconds: micros);
+              _prevLayerDuration =
+                  _currentLayerDuration; // proxy for UI during active print
+              _log.fine(
+                  'Poll LayerTime from analytics (ms): ${_currentLayerDuration!.inMilliseconds}');
+            }
+          }
+        } else {
+          _currentLayerDuration = null;
+        }
+      } catch (e, st) {
+        _log.fine('Failed to read LayerTime from analytics (poll)', e, st);
+      }
       // Compute fingerprint difference to detect meaningful changes that
       // should update the UI (z/layer/progress/etc.). This allows the
       // UI to update every poll while printing without requiring full JSON
@@ -573,6 +1088,8 @@ class StatusProvider extends ChangeNotifier {
       // NanoDLP installs report minimal numeric changes that may be lost
       // by strict comparisons; forcing updates during active prints keeps
       // the UI responsive and in sync with the device.
+      // PrevLayerTime parsing deferred until after we've parsed the model
+      // so we can prefer the model's normalized value when available.
       if (parsed.isPrinting || parsed.isPaused) {
         statusChangedByFingerprint = true;
       }
@@ -616,6 +1133,9 @@ class StatusProvider extends ChangeNotifier {
       // still forces a clean spinner until the job restarts.
 
       _status = parsed;
+      // Kinematic status (Z position, offset, homed) is not polled
+      // continuously to reduce backend load. Screens that need it should call
+      // refreshKinematicStatus() explicitly (e.g. after button presses).
       _error = null;
       _loading = false;
       _everHadSuccessfulStatus = true;
@@ -878,6 +1398,61 @@ class StatusProvider extends ChangeNotifier {
   /// Clear current status so UI shows a neutral/loading state prior to the
   /// next print starting. Polling continues and will repopulate on refresh.
   /// Reset the provider to a neutral/loading state. Optionally provide an
+  /// Clears any error state, allowing the connection error dialog to be
+  /// dismissed. Useful when performing operations (like updates) where
+  /// connection loss is expected.
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  /// Pauses polling and SSE, useful during system updates where connection
+  /// loss is expected and error dialogs should not be shown.
+  void pausePolling() {
+    _polling = false;
+    _timer?.cancel();
+    _timer = null;
+    _sseStreamSub?.cancel();
+    _sseStreamSub = null;
+    _sseConnected = false;
+    _error = null;
+    notifyListeners();
+  }
+
+  /// Resumes polling after being paused.
+  void resumePolling() {
+    if (!_polling && !_disposed) {
+      _startPolling();
+    }
+  }
+
+  /// Enter standby mode: switch to slow polling (30s) instead of pausing
+  /// entirely, so we can still detect remotely-started prints.
+  void enterStandbyMode() {
+    if (_standbyMode) return;
+    _standbyMode = true;
+    // Tear down SSE to save resources; fall back to slow polling.
+    _sseStreamSub?.cancel();
+    _sseStreamSub = null;
+    _sseConnected = false;
+    _pollIntervalSeconds = _standbyPollIntervalSeconds;
+    // Restart polling loop with the new interval if not already running.
+    if (!_polling && !_disposed) {
+      _startPolling();
+    }
+  }
+
+  /// Exit standby mode: restore normal polling interval and reconnect SSE.
+  void exitStandbyMode() {
+    if (!_standbyMode) return;
+    _standbyMode = false;
+    _pollIntervalSeconds = _minPollIntervalSeconds;
+    // Reconnect SSE for real-time updates.
+    if (!_disposed) {
+      _tryStartSse();
+    }
+  }
+
   /// initial thumbnail (bytes) and file path or plate id so the UI can
   /// immediately render a cached preview while the backend populates
   /// active job metadata. This is useful when starting a print from the
@@ -903,6 +1478,12 @@ class StatusProvider extends ChangeNotifier {
     _awaitingSince = DateTime.now();
     // Clear thumbnail retry counters for fresh session
     _thumbnailRetries.clear();
+    // Clear any previously-observed layer timing so we don't show stale values
+    // when starting a fresh print session.
+    _prevLayerDuration = null;
+    _currentLayerDuration = null;
+    _lastObservedLayer = null;
+    _lastObservedLayerTime = null;
     // Ensure the UI shows a minimum spinner duration so the user perceives
     // a loading phase even if the backend responds very quickly.
     _minSpinnerUntil = DateTime.now().add(const Duration(seconds: 2));
@@ -938,13 +1519,32 @@ class StatusProvider extends ChangeNotifier {
   }) async {
     final pathKey = file.path;
     try {
-      final bytes = await ThumbnailCache.instance.getThumbnail(
-        location: location,
-        subdirectory: subdirectory,
-        fileName: fileName,
-        file: file,
-        size: size,
-      );
+      bool bypassCache = false;
+      try {
+        final meta = await BackendService().getFileMetadata(
+            location, file.path);
+        final plateId = meta['plate_id'] as int?;
+        if (plateId == 0) {
+          bypassCache = true;
+        }
+      } catch (_) {
+        // ignore metadata failures; fall back to cached path
+      }
+
+      final bytes = bypassCache
+          ? await ThumbnailUtil.extractThumbnailBytes(
+              location,
+              subdirectory,
+              fileName,
+              size: size,
+            )
+          : await ThumbnailCache.instance.getThumbnail(
+              location: location,
+              subdirectory: subdirectory,
+              fileName: fileName,
+              file: file,
+              size: size,
+            );
 
       if (bytes == null) {
         _thumbnailBytes = null;
@@ -1018,6 +1618,7 @@ class StatusProvider extends ChangeNotifier {
     try {
       _backoffTimer?.cancel();
     } catch (_) {}
+    _stopKinematicPolling();
     super.dispose();
   }
 }

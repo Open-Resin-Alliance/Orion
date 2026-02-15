@@ -54,6 +54,12 @@ abstract class BackendClient {
   /// expose a `/notification` endpoint that returns an array.
   Future<List<Map<String, dynamic>>> getNotifications();
 
+  /// Fetch kinematic status information when available. This is an optional
+  /// backend feature that returns a JSON-like map describing kinematic state
+  /// (for example Athena's `/athena-iot/status/kinematic` payload).
+  /// Implementations that do not support kinematic status should return null.
+  Future<Map<String, dynamic>?> getKinematicStatus();
+
   /// Disable / acknowledge a notification on the backend when supported.
   /// The timestamp argument is the numeric timestamp provided by the
   /// notification payload (e.g. NanoDLP uses an integer timestamp).
@@ -129,6 +135,10 @@ abstract class BackendClient {
   /// Returns a boolean indicating success or failure.
   Future<dynamic> tareForceSensor();
 
+  /// Update the backend service if supported.
+  /// Returns a boolean indicating success or failure.
+  Future<dynamic> updateBackend();
+
   /// Set and Get vat temperature if supported by the backend.
   /// Returns a boolean indicating success or failure.
   Future<dynamic> setVatTemperature(double temperature);
@@ -181,4 +191,12 @@ abstract class BackendClient {
   /// doesn't report calibration progress correctly.
   /// Returns null if unable to determine.
   Future<bool?> isCalibrationPlateProcessed();
+
+  /// Set Z offset if supported by the backend.
+  /// Returns a boolean indicating success or failure.
+  Future<bool> setZOffset(double offset);
+
+  /// Reset Z offset to default if supported by the backend.
+  /// Returns a boolean indicating success or failure.
+  Future<bool> resetZOffset();
 }

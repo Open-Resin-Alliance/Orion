@@ -17,9 +17,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path;
 import 'package:orion/backend_service/nanodlp/models/nano_file.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_manual.dart';
@@ -27,9 +29,11 @@ import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_machine.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_import_request.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 
 /// NanoDLP adapter (initial implementation)
 ///
@@ -57,6 +61,13 @@ class NanoDlpHttpClient implements BackendClient {
   static const Duration _thumbnailPlaceholderCacheTtl = Duration(seconds: 5);
   final Map<String, _ThumbnailCacheEntry> _thumbnailCache = {};
   final Map<String, Future<_ThumbnailCacheEntry>> _thumbnailInFlight = {};
+  // Cache for opportunistic Athena kinematic status to avoid hammering the
+  // Athena endpoint when StatusProvider polls frequently. TTL is small so
+  // UI sees near-real-time values but the Athena client isn't called every
+  // single poll.
+  Map<String, dynamic>? _kinematicCache;
+  DateTime? _kinematicCacheTime;
+  static const Duration _kinematicCacheTtl = Duration(seconds: 2);
 
   NanoDlpHttpClient(
       {http.Client Function()? clientFactory, Duration? requestTimeout})
@@ -258,6 +269,38 @@ class NanoDlpHttpClient implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>?> getKinematicStatus() async {
+    // Return cached value when recent to avoid calling Athena every poll.
+    try {
+      if (_kinematicCache != null && _kinematicCacheTime != null) {
+        final age = DateTime.now().difference(_kinematicCacheTime!);
+        if (age <= _kinematicCacheTtl) {
+          return _kinematicCache;
+        }
+      }
+
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      // Use a longer timeout (10s) for kinematic status as the endpoint can be slow
+      final athena = AthenaIotClient(baseNoSlash,
+          clientFactory: _clientFactory,
+          requestTimeout: const Duration(seconds: 10));
+      final kin = await athena.getKinematicStatusModel();
+      if (kin == null) {
+        _kinematicCache = null;
+        _kinematicCacheTime = DateTime.now();
+        return null;
+      }
+      final map = kin.toJson();
+      _kinematicCache = map;
+      _kinematicCacheTime = DateTime.now();
+      return map;
+    } catch (e) {
+      // Silent failure: avoid logging to keep polling quiet.
+      return null;
+    }
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getAnalytics(int n) async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/analytic/data/$n');
@@ -384,6 +427,117 @@ class NanoDlpHttpClient implements BackendClient {
     }
   }
 
+  /// Import a file from USB/local storage to NanoDLP's internal storage.
+  ///
+  /// When connecting to localhost, sends the file path directly (USBFile field).
+  /// When connecting to a remote NanoDLP, uploads the file content (ZipFile multipart).
+  /// Returns true if successful.
+  ///
+  /// Throws an exception if the request fails.
+  /// Returns the plate ID if successful, null if ID couldn't be determined.
+  Future<int?> importFile(NanoImportRequest request) async {
+    try {
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/plate/add');
+      _log.info(
+          'NanoDLP importFile request: $uri (file: ${request.usbFilePath}, job: ${request.jobName})');
+
+      final httpRequest = http.MultipartRequest('POST', uri);
+
+      // Determine if we're connecting to localhost
+      final isLocalhost = uri.host == 'localhost' ||
+          uri.host == '127.0.0.1' ||
+          uri.host.startsWith('127.');
+
+      if (isLocalhost) {
+        // For localhost, send the file path directly (NanoDLP can access it locally)
+        httpRequest.fields['USBFile'] = request.usbFilePath;
+      } else {
+        // For remote instances, upload the file content
+        final file = File(request.usbFilePath);
+        if (!await file.exists()) {
+          throw Exception('File not found: ${request.usbFilePath}');
+        }
+
+        final fileBytes = await file.readAsBytes();
+        final fileName = path.basename(request.usbFilePath);
+
+        // Use "ZipFile" as the field name, matching the WebUI form for remote uploads
+        httpRequest.files.add(
+          http.MultipartFile.fromBytes(
+            'ZipFile',
+            fileBytes,
+            filename: fileName,
+          ),
+        );
+      }
+
+      // Add form fields: Path (job name) and ProfileID
+      httpRequest.fields['Path'] = request.jobName;
+      httpRequest.fields['ProfileID'] = request.profileId;
+
+      // Set Accept header to match WebUI behavior
+      httpRequest.headers['Accept'] =
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
+
+      final client = _createClient();
+      try {
+        // Use longer timeout for file uploads (default 5s is too short for large files)
+        const uploadTimeout = Duration(seconds: 60);
+        final response = await httpRequest.send().timeout(uploadTimeout);
+        final statusCode = response.statusCode;
+        final responseBody = await response.stream.bytesToString();
+
+        _log.info('NanoDLP importFile response: $statusCode');
+        if (responseBody.isNotEmpty) {
+          _log.fine('NanoDLP importFile response body: $responseBody');
+        }
+
+        if (statusCode == 200 || statusCode == 302) {
+          // 200 = success, 302 = redirect (also indicates success)
+          int? plateId;
+
+          // Try to extract plate ID from Location header for 302 redirects
+          if (statusCode == 302) {
+            final location = response.headers['location'];
+            if (location != null) {
+              // Location typically contains the plate ID, e.g., "/plate/1" or similar
+              final match = RegExp(r'/(\d+)').firstMatch(location);
+              if (match != null) {
+                plateId = int.tryParse(match.group(1)!);
+                _log.info('NanoDLP importFile successful, plateId: $plateId');
+              }
+            }
+          }
+
+          // Invalidate plates cache so the new file appears in listings
+          _platesCacheData = null;
+          _platesCacheTime = null;
+          _platesCacheFuture = null;
+
+          return plateId;
+        } else {
+          _log.warning('NanoDLP importFile failed: $statusCode $responseBody');
+          throw Exception('Import failed: HTTP $statusCode');
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.severe('NanoDLP importFile error', e, st);
+      rethrow;
+    }
+  }
+
+  /// Invalidate the plates (files) cache to force a fresh fetch on next request.
+  /// Use this when files have been added, deleted, or modified externally (e.g., via WebUI).
+  void invalidatePlatesCache() {
+    _platesCacheData = null;
+    _platesCacheTime = null;
+    _platesCacheFuture = null;
+    _log.fine('Plates cache invalidated');
+  }
+
   // --- Unimplemented / TODOs ---
   @override
   Future<void> cancelPrint() async {
@@ -412,8 +566,51 @@ class NanoDlpHttpClient implements BackendClient {
 
   @override
   Future<Map<String, dynamic>> deleteFile(
-          String location, String filePath) async =>
-      throw UnimplementedError('NanoDLP deleteFile not implemented');
+      String location, String filePath) async {
+    try {
+      // Resolve plate ID from path/name if possible.
+      int? plateId = int.tryParse(filePath);
+      if (plateId == null) {
+        final plate = await _findPlateForPath(filePath);
+        if (plate != null && plate.plateId != null) {
+          plateId = plate.plateId;
+        }
+      }
+
+      if (plateId == null) {
+        throw Exception('NanoDLP deleteFile failed: plate ID not found');
+      }
+
+      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$baseNoSlash/plate/delete/$plateId');
+      _log.info('NanoDLP deleteFile request: $uri');
+
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        if (resp.statusCode != 200 &&
+            resp.statusCode != 204 &&
+            resp.statusCode != 302) {
+          _log.warning(
+              'NanoDLP deleteFile failed: ${resp.statusCode} ${resp.body}');
+          throw Exception('NanoDLP deleteFile failed: ${resp.statusCode}');
+        }
+
+        // Invalidate plates cache so deleted file disappears immediately.
+        invalidatePlatesCache();
+
+        return {
+          'success': true,
+          'plate_id': plateId,
+        };
+      } finally {
+        client.close();
+      }
+    } catch (e, st) {
+      _log.severe('NanoDLP deleteFile error', e, st);
+      rethrow;
+    }
+  }
 
   @override
   Future<Map<String, dynamic>> getFileMetadata(
@@ -476,11 +673,37 @@ class NanoDlpHttpClient implements BackendClient {
                 decoded['resin_level_mm'],
           };
 
+          // Attempt to enrich the vendor section with optional Athena IoT
+          // payloads when available on Athena-derived NanoDLP installs.
+          final vendor = <String, dynamic>{};
+          try {
+            final athena = AthenaIotClient(baseNoSlash,
+                clientFactory: _clientFactory, requestTimeout: _requestTimeout);
+            final athenaDataModel = await athena.getPrinterDataModel();
+            if (athenaDataModel != null) {
+              vendor['athena_printer_data'] = athenaDataModel.toJson();
+            }
+            final athenaFlagsModel = await athena.getFeatureFlagsModel();
+            if (athenaFlagsModel != null) {
+              vendor['athena_feature_flags'] = athenaFlagsModel.toJson();
+            }
+            try {
+              final athenaKinematic = await athena.getKinematicStatusModel();
+              if (athenaKinematic != null) {
+                vendor['athena_kinematic_status'] = athenaKinematic.toJson();
+              }
+            } catch (e, st) {
+              _log.fine('Ignoring athena kinematic fetch failure', e, st);
+            }
+          } catch (e, st) {
+            _log.fine('Ignoring athena IoT enrichment failure', e, st);
+          }
+
           return {
             'general': general,
             'advanced': advanced,
             'machine': machine,
-            'vendor': <String, dynamic>{},
+            'vendor': vendor,
           };
         } finally {
           client.close();
@@ -530,6 +753,8 @@ class NanoDlpHttpClient implements BackendClient {
     }
   }
 
+  // Athena IoT integration moved to athena_iot client implementation.
+
   @override
   Future<Map<String, dynamic>> listItems(
       String location, int pageSize, int pageIndex, String subdirectory) async {
@@ -560,7 +785,11 @@ class NanoDlpHttpClient implements BackendClient {
       }
 
       final plates = await _fetchPlates();
-      final files = plates.map((p) => p.toOdysseyFileEntry()).toList();
+      // Filter out calibration plate (ID 0) before mapping to file entries
+      final files = plates
+          .where((p) => p.plateId != 0)
+          .map((p) => p.toOdysseyFileEntry())
+          .toList();
       _log.info('listItems: mapped ${files.length} files from NanoDLP payload');
       return {
         'files': files,
@@ -1182,18 +1411,9 @@ class NanoDlpHttpClient implements BackendClient {
     final uri = Uri.parse('$baseNoSlash/static/plates/$plateId/$layer.png');
     final entry = await _downloadThumbnail(uri, 'plate $plateId layer $layer');
     if (entry.bytes.isNotEmpty) {
-      try {
-        // Resize on a background isolate to avoid blocking the UI thread.
-        try {
-          return await compute(resizeLayer2DCompute, entry.bytes);
-        } catch (_) {
-          // If compute fails (e.g., in test environment), fall back to
-          // synchronous resize.
-          return NanoDlpThumbnailGenerator.resizeLayer2D(entry.bytes);
-        }
-      } catch (_) {
-        // fall through to placeholder
-      }
+      // Return raw bytes; let the UI handle resizing via ResizeImage to avoid
+      // expensive Dart-based image decoding/resizing on the CPU.
+      return entry.bytes;
     }
     return NanoDlpThumbnailGenerator.generatePlaceholder(
         NanoDlpThumbnailGenerator.largeWidth,
@@ -1340,6 +1560,16 @@ class NanoDlpHttpClient implements BackendClient {
       manualCommand('[[PressureWrite 1]]');
     } catch (e, st) {
       _log.warning('NanoDLP tareForceSensor error', e, st);
+      rethrow;
+    }
+  }
+
+  @override
+  Future updateBackend() async {
+    try {
+      manualCommand('[[Exec /home/pi/athena-start-update.sh]]');
+    } catch (e, st) {
+      _log.warning('NanoDLP updateBackend error', e, st);
       rethrow;
     }
   }
@@ -1814,6 +2044,20 @@ class NanoDlpHttpClient implements BackendClient {
       _log.warning('Error checking calibration plate status: $e');
       return null;
     }
+  }
+
+  @override
+  Future<bool> resetZOffset() {
+    manualCommand('CLEAR_Z_OFFSET');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool> setZOffset(double offset) {
+    manualCommand(
+      'APPLY_AND_SAVE_Z_OFFSET OFFSET=${offset.toStringAsFixed(2)}',
+    );
+    return Future.value(true);
   }
 }
 

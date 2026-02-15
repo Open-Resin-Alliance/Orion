@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -23,6 +24,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/move_z_screen.dart';
 import 'package:orion/tools/exposure_screen.dart';
 import 'package:orion/tools/force_screen.dart';
+import 'package:orion/tools/leveling_screen.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 
 class ToolsScreen extends StatefulWidget {
@@ -50,17 +52,20 @@ class ToolsScreenState extends State<ToolsScreen> {
   Widget build(BuildContext context) {
     return GlassApp(
       child: Scaffold(
-        appBar: AppBar(
+        appBar: OrionAppBar(
           title: const Text('Tools'),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: const [SystemStatusWidget()],
         ),
         body: _selectedIndex == 0
             ? const MoveZScreen()
             : _selectedIndex == 1
-                ? const ExposureScreen()
+                ? const LevelingScreen()
                 : _selectedIndex == 2
-                    ? const ForceSensorScreen()
-                    : const MoveZScreen(),
+                    ? const ExposureScreen()
+                    : _selectedIndex == 3
+                        ? const ForceSensorScreen()
+                        : const MoveZScreen(),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           items: <BottomNavigationBarItem>[
@@ -71,6 +76,14 @@ class ToolsScreenState extends State<ToolsScreen> {
                 color: Theme.of(context).colorScheme.primary,
               ),
               label: 'Move Z',
+            ),
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.scales()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.scales,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              label: 'Leveling',
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),

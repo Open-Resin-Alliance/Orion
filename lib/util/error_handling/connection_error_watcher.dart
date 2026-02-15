@@ -123,6 +123,17 @@ class ConnectionErrorWatcher {
               'Suppressing connection error dialog during startup (hasEverConnected=false)');
           return;
         }
+        // Only show the modal after the provider has accumulated several
+        // consecutive failures. Networks can be flaky; avoid spamming users
+        // with a modal on the first hiccup. Use provider.pollAttemptCount
+        // which reflects consecutive poll failures.
+        final attempts = _provider.pollAttemptCount;
+        const minAttemptsBeforeDialog = 3;
+        if (attempts < minAttemptsBeforeDialog) {
+          log.info(
+              'Suppressing connection error dialog until $minAttemptsBeforeDialog failed attempts (current=$attempts)');
+          return;
+        }
         _dialogVisible = true;
         // Show the dialog; this Future completes when the dialog is dismissed
         WidgetsBinding.instance.addPostFrameCallback((_) async {

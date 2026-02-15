@@ -19,6 +19,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:path/path.dart' as path;
 import 'package:marquee/marquee.dart';
 import 'package:provider/provider.dart';
@@ -37,12 +38,14 @@ class DetailScreen extends StatefulWidget {
   final String fileName;
   final String fileSubdirectory;
   final String fileLocation;
+  final bool returnToLocalOnPop;
 
   const DetailScreen({
     super.key,
     required this.fileName,
     required this.fileSubdirectory,
     required this.fileLocation,
+    this.returnToLocalOnPop = false,
   });
 
   @override
@@ -62,6 +65,18 @@ class DetailScreenState extends State<DetailScreen> {
   FileMetadata? _meta;
   Future<Uint8List?>? _thumbnailFuture;
   bool _isThumbnailLoading = false;
+  int _metaRetryCount = 0;
+  bool _metaRetryPending = false;
+  static const int _maxMetaRetries = 25;
+
+  /// Remove leading bracketed prefixes like "[AFP]" or "[Template]" from
+  /// material names so the centered label is cleaner.
+  String _stripMaterialPrefix(String? material) {
+    if (material == null) return '';
+    // Remove one or more bracketed tokens at the start, e.g.
+    // "[AFP] [Template] ResinName" -> "ResinName"
+    return material.replaceAll(RegExp(r'^\s*(\[[^\]]+\]\s*)+'), '').trim();
+  }
 
   @override
   void initState() {
@@ -69,10 +84,47 @@ class DetailScreenState extends State<DetailScreen> {
     _loadMetadata();
   }
 
-  Future<void> _loadMetadata() async {
-    setState(() {
-      loading = true;
+  void _popWithResult([Object? result]) {
+    if (!mounted) return;
+    if (widget.returnToLocalOnPop) {
+      if (result is Map) {
+        result['switchToLocal'] = true;
+      } else {
+        result = {
+          'switchToLocal': true,
+          if (result != null) 'result': result,
+        };
+      }
+    }
+    Navigator.of(context).pop(result);
+  }
+
+  bool _isMetadataReady(FileMetadata meta) {
+    if (meta.layerHeight != null && meta.layerHeight! > 0) return true;
+    if (meta.printTime != null && meta.printTime! > 0) return true;
+    if (meta.usedMaterial != null && meta.usedMaterial! > 0) return true;
+    if (meta.fileData.lastModified > 0) return true;
+    return false;
+  }
+
+  void _scheduleMetadataRetry() {
+    if (_metaRetryPending || _metaRetryCount >= _maxMetaRetries) return;
+    _metaRetryPending = true;
+    _metaRetryCount++;
+    final delayMs = 400 + (_metaRetryCount * 120);
+    Future.delayed(Duration(milliseconds: delayMs.clamp(400, 2000))).then((_) {
+      _metaRetryPending = false;
+      if (!mounted) return;
+      _loadMetadata(isRetry: true);
     });
+  }
+
+  Future<void> _loadMetadata({bool isRetry = false}) async {
+    if (!isRetry || _meta == null) {
+      setState(() {
+        loading = true;
+      });
+    }
 
     final provider = Provider.of<FilesProvider>(context, listen: false);
     final filePath = DetailScreen._isDefaultDir(widget.fileSubdirectory)
@@ -80,6 +132,9 @@ class DetailScreenState extends State<DetailScreen> {
         : '${widget.fileSubdirectory}/${widget.fileName}';
 
     try {
+      if (isRetry) {
+        provider.invalidateFilesCache();
+      }
       final FileMetadata? meta =
           await provider.fetchFileMetadata(widget.fileLocation, filePath);
       if (meta == null) {
@@ -94,19 +149,20 @@ class DetailScreenState extends State<DetailScreen> {
       // Kick off thumbnail extraction but render metadata directly from the
       // typed model in build(). This mirrors the approach used in StatusScreen
       // where presentation derives values directly from the provider model.
-      final thumbFuture = ThumbnailCache.instance.getThumbnail(
-        location: widget.fileLocation,
-        subdirectory: widget.fileSubdirectory,
-        fileName: widget.fileName,
-        file: OrionApiFile(
-          path: widget.fileSubdirectory == ''
-              ? widget.fileName
-              : '${widget.fileSubdirectory}/${widget.fileName}',
-          name: widget.fileName,
-          parentPath: widget.fileSubdirectory,
-        ),
-        size: 'Large',
-      );
+      final Future<Uint8List?>? thumbFuture = _thumbnailFuture ??
+          ThumbnailCache.instance.getThumbnail(
+            location: widget.fileLocation,
+            subdirectory: widget.fileSubdirectory,
+            fileName: widget.fileName,
+            file: OrionApiFile(
+              path: widget.fileSubdirectory == ''
+                  ? widget.fileName
+                  : '${widget.fileSubdirectory}/${widget.fileName}',
+              name: widget.fileName,
+              parentPath: widget.fileSubdirectory,
+            ),
+            size: 'Large',
+          );
 
       // Track thumbnail loading separately so we can optionally overlay a
       // full-screen spinner while the image downloads to avoid UI flicker.
@@ -115,18 +171,29 @@ class DetailScreenState extends State<DetailScreen> {
           _meta = meta;
           _thumbnailFuture = thumbFuture;
           loading = false;
-          _isThumbnailLoading = true;
+          if (_thumbnailFuture != null) {
+            _isThumbnailLoading = true;
+          }
         });
       }
 
       // Clear the thumbnail-loading flag when the future completes (success or error).
-      thumbFuture.whenComplete(() {
-        if (mounted) {
-          setState(() {
-            _isThumbnailLoading = false;
-          });
-        }
-      });
+      if (thumbFuture != null) {
+        thumbFuture.whenComplete(() {
+          if (mounted) {
+            setState(() {
+              _isThumbnailLoading = false;
+            });
+          }
+        });
+      }
+
+      // If metadata is incomplete, schedule a retry to refresh it.
+      if (!_isMetadataReady(meta)) {
+        _scheduleMetadataRetry();
+      } else {
+        _metaRetryCount = 0;
+      }
     } catch (e, st) {
       _logger.severe('Failed to load file metadata', e, st);
       if (mounted) {
@@ -142,104 +209,114 @@ class DetailScreenState extends State<DetailScreen> {
     isLandScape = MediaQuery.of(context).orientation == Orientation.landscape;
     maxNameLength = isLandScape ? 12 : 24;
     return GlassApp(
-      child: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          actions: [SystemStatusWidget()],
-          title: Builder(builder: (context) {
-            // Use a single base font size for both title lines so they appear
-            // visually consistent. If the AppBar theme provides a title
-            // fontSize, use that as the base; otherwise default to 14 and
-            // reduce slightly.
-            final baseFontSize =
-                (Theme.of(context).appBarTheme.titleTextStyle?.fontSize ?? 14) -
-                    10;
+      child: WillPopScope(
+        onWillPop: () async {
+          if (widget.returnToLocalOnPop) {
+            _popWithResult();
+            return false;
+          }
+          return true;
+        },
+        child: Scaffold(
+          appBar: OrionAppBar(
+            actions: [SystemStatusWidget()],
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            // Keep the left-hand back affordance simple and labeled "Back".
+            title: const Text('Back'),
+            // Move the filename + date into the visual center of the AppBar.
+            centerWidget: Builder(builder: (context) {
+              // Use a single base font size for both title lines so they appear
+              // visually consistent. If the AppBar theme provides a title
+              // fontSize, use that as the base; otherwise default to 14 and
+              // reduce slightly.
+              final baseFontSize =
+                  (Theme.of(context).appBarTheme.titleTextStyle?.fontSize ??
+                          14) -
+                      10;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  widget.fileName.isNotEmpty ? widget.fileName : 'No file',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(
-                        fontSize: baseFontSize,
-                        fontWeight: FontWeight.normal,
-                        color: Theme.of(context)
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.fileName.isNotEmpty ? widget.fileName : 'No file',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        Theme.of(context).appBarTheme.titleTextStyle?.copyWith(
+                              fontSize: baseFontSize,
+                              fontWeight: FontWeight.normal,
+                              color: Theme.of(context)
+                                  .appBarTheme
+                                  .titleTextStyle
+                                  ?.color
+                                  ?.withValues(alpha: 0.95),
+                            ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    // Show the material name (if present) with any leading
+                    // bracketed prefixes stripped (e.g. "[AFP] Resin" -> "Resin").
+                    _stripMaterialPrefix(_meta?.materialName),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
                             .appBarTheme
                             .titleTextStyle
-                            ?.color
-                            ?.withValues(alpha: 0.95),
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _meta != null
-                      ? DateTime.fromMillisecondsSinceEpoch(
-                              _meta!.fileData.lastModified * 1000)
-                          .toString()
-                          .split('.')
-                          .first
-                      : '',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context)
-                          .appBarTheme
-                          .titleTextStyle
-                          ?.merge(TextStyle(
-                            fontWeight: FontWeight.normal,
-                            fontSize: baseFontSize,
-                          ))
-                          .copyWith(
-                            // Make status less visually dominant by lowering
-                            // its alpha relative to the AppBar title color.
-                            color: Theme.of(context)
-                                .appBarTheme
-                                .titleTextStyle
-                                ?.color
-                                ?.withValues(alpha: 0.65),
-                          ) ??
-                      TextStyle(
-                        fontSize: baseFontSize,
-                        fontWeight: FontWeight.normal,
-                        color: Theme.of(context)
-                            .appBarTheme
-                            .titleTextStyle
-                            ?.color
-                            ?.withValues(alpha: 0.65),
-                      ),
-                ),
-              ],
-            );
-          }),
-        ),
-        body: Center(
-          child: loading
-              ? const CircularProgressIndicator()
-              : _meta == null
-                  ? const Text('Failed to load file metadata')
-                  // If the thumbnail is still downloading, show a full-screen
-                  // spinner instead of rendering the details layout to avoid
-                  // partial UI flicker.
-                  : (_isThumbnailLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : LayoutBuilder(
-                          builder: (BuildContext context,
-                              BoxConstraints constraints) {
-                            return isLandScape
-                                ? Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 16, right: 16, bottom: 20),
-                                    child: buildLandscapeLayout(context))
-                                : Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 16, right: 16, bottom: 20),
-                                    child: buildPortraitLayout(context));
-                          },
-                        )),
+                            ?.merge(TextStyle(
+                              fontWeight: FontWeight.normal,
+                              fontSize: baseFontSize,
+                            ))
+                            .copyWith(
+                              // Make status less visually dominant by lowering
+                              // its alpha relative to the AppBar title color.
+                              color: Theme.of(context)
+                                  .appBarTheme
+                                  .titleTextStyle
+                                  ?.color
+                                  ?.withValues(alpha: 0.65),
+                            ) ??
+                        TextStyle(
+                          fontSize: baseFontSize,
+                          fontWeight: FontWeight.normal,
+                          color: Theme.of(context)
+                              .appBarTheme
+                              .titleTextStyle
+                              ?.color
+                              ?.withValues(alpha: 0.65),
+                        ),
+                  ),
+                ],
+              );
+            }),
+          ),
+          body: Center(
+            child: loading
+                ? const CircularProgressIndicator()
+                : _meta == null
+                    ? const Text('Failed to load file metadata')
+                    // If the thumbnail is still downloading, show a full-screen
+                    // spinner instead of rendering the details layout to avoid
+                    // partial UI flicker.
+                    : (_isThumbnailLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : LayoutBuilder(
+                            builder: (BuildContext context,
+                                BoxConstraints constraints) {
+                              return isLandScape
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(
+                                          left: 16, right: 16, bottom: 20),
+                                      child: buildLandscapeLayout(context))
+                                  : Padding(
+                                      padding: const EdgeInsets.only(
+                                          left: 16, right: 16, bottom: 20),
+                                      child: buildPortraitLayout(context));
+                            },
+                          )),
+          ),
         ),
       ),
     );
@@ -289,9 +366,13 @@ class DetailScreenState extends State<DetailScreen> {
                       ),
                       Expanded(
                         child: buildInfoCard(
-                          'File Size',
-                          _meta?.fileData.fileSize != null
-                              ? '${(_meta!.fileData.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB'
+                          'Date & Time',
+                          _meta != null
+                              ? DateTime.fromMillisecondsSinceEpoch(
+                                      _meta!.fileData.lastModified * 1000)
+                                  .toString()
+                                  .split('.')
+                                  .first
                               : '-',
                         ),
                       ),
@@ -337,9 +418,13 @@ class DetailScreenState extends State<DetailScreen> {
                           : '-',
                     ),
                     buildInfoCard(
-                        'File Size',
-                        _meta?.fileData.fileSize != null
-                            ? '${(_meta!.fileData.fileSize! / 1024 / 1024).toStringAsFixed(2)} MB'
+                        'Date & Time',
+                        _meta != null
+                            ? DateTime.fromMillisecondsSinceEpoch(
+                                    _meta!.fileData.lastModified * 1000)
+                                .toString()
+                                .split('.')
+                                .first
                             : '-'),
                     Spacer(),
                   ],
@@ -472,16 +557,75 @@ class DetailScreenState extends State<DetailScreen> {
       context: context,
       builder: (BuildContext context) {
         return GlassAlertDialog(
-          title: const Text('Delete File'),
-          content: const Text(
-            'Are you sure you want to delete this file?\nThis action cannot be undone.',
+          title: Row(
+            children: [
+              Icon(
+                Icons.delete_forever_rounded,
+                color: Theme.of(context).colorScheme.error,
+                size: 26,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Delete File',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'Are you sure you want to delete this file?',
+                style: TextStyle(
+                  fontSize: 18,
+                  height: 1.5,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'This action cannot be undone.',
+                style: TextStyle(
+                  fontSize: 18,
+                  height: 1.5,
+                ),
+              ),
+            ],
           ),
           actions: [
             GlassButton(
+              tint: GlassButtonTint.neutral,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel', style: TextStyle(fontSize: 20)),
+              child: const Text('Cancel', style: TextStyle(fontSize: 22)),
             ),
             GlassButton(
+              tint: GlassButtonTint.negative,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
               onPressed: () async {
                 try {
                   final provider =
@@ -505,7 +649,7 @@ class DetailScreenState extends State<DetailScreen> {
                   if (mounted) Navigator.of(context).pop(false);
                 }
               },
-              child: const Text('Delete', style: TextStyle(fontSize: 20)),
+              child: const Text('Delete', style: TextStyle(fontSize: 22)),
             ),
           ],
         );
@@ -513,7 +657,7 @@ class DetailScreenState extends State<DetailScreen> {
     );
     if (deleteConfirmed == true) {
       // Pop this detail screen and signal to previous screen to refresh
-      Navigator.of(context).pop(true); // Pass true to indicate refresh needed
+      _popWithResult({'refresh': true});
     }
   }
 

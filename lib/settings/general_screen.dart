@@ -22,6 +22,7 @@ import 'dart:math';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:orion/settings/machine_settings_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -33,6 +34,7 @@ import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/orion_list_tile.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/thumbnail_cache.dart';
 
 class GeneralCfgScreen extends StatefulWidget {
   const GeneralCfgScreen({super.key});
@@ -52,6 +54,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool releaseOverride;
   late bool overrideUpdateCheck;
   late bool overrideRawForceSensorValues;
+  late bool reuseCalibrationPlate;
   late String overrideRelease;
   late bool verboseLogging;
   late bool selfDestructMode;
@@ -92,6 +95,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         config.getFlag('overrideUpdateCheck', category: 'developer');
     overrideRawForceSensorValues =
         config.getFlag('overrideRawForceSensorValues', category: 'developer');
+    reuseCalibrationPlate =
+        config.getFlag('reuseCalibrationPlate', category: 'developer');
     overrideRelease =
         config.getString('overrideRelease', category: 'developer');
     verboseLogging = config.getFlag('verboseLogging', category: 'developer');
@@ -111,14 +116,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   }
 
   bool shouldDestruct() {
+    // Always make the Self-Destruct option rare to appear,
+    // regardless of whether it has ever been toggled before.
+    // Roughly ~0.1% chance on a given build of this screen.
     final rand = Random();
-    if (selfDestructMode && rand.nextInt(1000) < 2) {
-      setState(() {
-        selfDestructMode = false;
-      });
-      return true;
-    }
-    return !selfDestructMode;
+    return rand.nextInt(1000) == 0;
   }
 
   bool isJune() {
@@ -270,6 +272,31 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           fontSize: 28.0,
                         ),
                       ),
+                      const SizedBox(height: 20.0),
+                      GlassCard(
+                        outlined: true,
+                        elevation: 1,
+                        child: ListTile(
+                          leading: Icon(Icons.engineering),
+                          title: const Text('Machine Settings',
+                              style: TextStyle(fontSize: 20)),
+                          subtitle: const Text('Configure machine features',
+                              style: TextStyle(fontSize: 16)),
+                          trailing: Icon(Icons.arrow_forward_ios,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6)),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const MachineSettingsScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                       if (Platform.isLinux) const SizedBox(height: 20.0),
                       if (Platform.isLinux)
                         OrionListTile(
@@ -363,7 +390,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         return GlassAlertDialog(
                                           title: const Center(
                                               child:
-                                                  Text('Custom Odyssey URL')),
+                                                  Text('Custom Backend URL')),
                                           content: SizedBox(
                                             width: MediaQuery.of(context)
                                                     .size
@@ -395,6 +422,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           ),
                                           actions: [
                                             GlassButton(
+                                              tint: GlassButtonTint.neutral,
                                               onPressed: () {
                                                 Navigator.of(context).pop();
                                               },
@@ -403,9 +431,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                       const Size(0, 60)),
                                               child: const Text('Close',
                                                   style:
-                                                      TextStyle(fontSize: 16)),
+                                                      TextStyle(fontSize: 22)),
                                             ),
                                             GlassButton(
+                                              tint: GlassButtonTint.positive,
                                               onPressed: () {
                                                 setState(() {
                                                   customUrl = urlTextFieldKey
@@ -422,7 +451,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                       const Size(0, 60)),
                                               child: const Text('Confirm',
                                                   style:
-                                                      TextStyle(fontSize: 16)),
+                                                      TextStyle(fontSize: 22)),
                                             ),
                                           ],
                                         );
@@ -522,6 +551,236 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
               /// Developer Section for build overrides.
               if (developerMode) _buildDeveloperSection(),
+              const SizedBox(height: 12.0),
+              // Danger Zone - critical actions
+              GlassCard(
+                accentColor: Colors.redAccent.shade100,
+                outlined: true,
+                elevation: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Danger Zone',
+                        style:
+                            TextStyle(fontSize: 28.0, color: Colors.redAccent),
+                      ),
+                      const SizedBox(height: 12.0),
+                      Text(
+                        'Critical actions that may remove user data or change the device state. Use with caution.',
+                        style: TextStyle(
+                            fontSize: 20, color: Colors.redAccent.shade100),
+                      ),
+                      const SizedBox(height: 20.0),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GlassButton(
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(0, 60),
+                              ),
+                              tint: GlassButtonTint.negative,
+                              onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => GlassAlertDialog(
+                                        title: const Text('Reset User Config'),
+                                        content: const Text(
+                                            'Restore settings to factory defaults? If a factory preset is available it will be used. Otherwise your custom settings will be cleared. The device will restart immediately. Continue?',
+                                            style: TextStyle(fontSize: 18.0)),
+                                        actions: [
+                                          GlassButton(
+                                              style: ElevatedButton.styleFrom(
+                                                minimumSize: const Size(0, 60),
+                                              ),
+                                              tint: GlassButtonTint.warn,
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(false),
+                                              child: const Text('Cancel',
+                                                  style: TextStyle(
+                                                      fontSize: 22.0))),
+                                          GlassButton(
+                                              tint: GlassButtonTint.negative,
+                                              style: ElevatedButton.styleFrom(
+                                                minimumSize: const Size(0, 60),
+                                              ),
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(true),
+                                              child: const Text('Reset',
+                                                  style: TextStyle(
+                                                      fontSize: 22.0))),
+                                        ],
+                                      ),
+                                    ) ??
+                                    false;
+
+                                if (confirmed) {
+                                  try {
+                                    final cfgPath = config.getConfigPath();
+                                    final defaultFile =
+                                        File('$cfgPath/orion.default.cfg');
+                                    final targetFile =
+                                        File('$cfgPath/orion.cfg');
+
+                                    if (defaultFile.existsSync()) {
+                                      // Overwrite orion.cfg with the default
+                                      final contents =
+                                          defaultFile.readAsStringSync();
+                                      targetFile.writeAsStringSync(contents);
+                                    } else {
+                                      // No default provided: remove orion.cfg
+                                      if (targetFile.existsSync()) {
+                                        targetFile.deleteSync();
+                                      }
+                                    }
+
+                                    // Decide a message based on whether a default exists
+                                    final defaultFileExists =
+                                        defaultFile.existsSync();
+                                    final rebootMessage = defaultFileExists
+                                        ? 'Restoring settings to factory defaults and restarting now.'
+                                        : 'Clearing custom settings and restarting now.';
+
+                                    // Show rebooting message then reboot
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (ctx) => GlassAlertDialog(
+                                        title: const Text('Rebooting'),
+                                        content: Text(rebootMessage),
+                                      ),
+                                    );
+
+                                    // Flush and reboot
+                                    await Process.run(
+                                        'sudo', ['reboot', 'now']);
+                                  } catch (e) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => GlassAlertDialog(
+                                        title: const Text('Error'),
+                                        content: const Text(
+                                            'Unable to reset settings. Please try again.'),
+                                        actions: [
+                                          GlassButton(
+                                            onPressed: () =>
+                                                Navigator.of(ctx).pop(),
+                                            child: const Text('OK'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: const Text(
+                                'Reset User Config',
+                                style: TextStyle(fontSize: 22),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (developerMode) const SizedBox(height: 12.0),
+                      if (developerMode)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GlassButton(
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(0, 60),
+                                ),
+                                tint: GlassButtonTint.warn,
+                                onPressed: () async {
+                                  final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => GlassAlertDialog(
+                                          title: const Text(
+                                              'Prepare for Delivery'),
+                                          content: const Text(
+                                              'Prepare this device for shipping? The device will shut down now. On next start you will run the initial setup wizard. Use only when shipping the device. Continue?',
+                                              style: TextStyle(fontSize: 18.0)),
+                                          actions: [
+                                            GlassButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  minimumSize:
+                                                      const Size(0, 60),
+                                                ),
+                                                tint: GlassButtonTint.warn,
+                                                onPressed: () =>
+                                                    Navigator.of(ctx)
+                                                        .pop(false),
+                                                child: const Text('Cancel',
+                                                    style: TextStyle(
+                                                        fontSize: 22.0))),
+                                            GlassButton(
+                                                tint: GlassButtonTint.negative,
+                                                style: ElevatedButton.styleFrom(
+                                                  minimumSize:
+                                                      const Size(0, 60),
+                                                ),
+                                                onPressed: () =>
+                                                    Navigator.of(ctx).pop(true),
+                                                child: const Text('Prepare',
+                                                    style: TextStyle(
+                                                        fontSize: 22.0))),
+                                          ],
+                                        ),
+                                      ) ??
+                                      false;
+
+                                  if (confirmed) {
+                                    try {
+                                      // Mark firstRun so onboarding will run on next boot
+                                      config.setFlag('firstRun', true,
+                                          category: 'machine');
+
+                                      // Show immediate shutdown dialog then power off
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (ctx) => GlassAlertDialog(
+                                          title: const Text('Shutting down'),
+                                          content: const Text(
+                                              'Shutting down now. On next start you will be guided through setup.'),
+                                        ),
+                                      );
+
+                                      await Process.run(
+                                          'sudo', ['shutdown', 'now']);
+                                    } catch (e) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => GlassAlertDialog(
+                                          title: const Text('Error'),
+                                          content: const Text(
+                                              'Unable to prepare the device. Please try again.'),
+                                          actions: [
+                                            GlassButton(
+                                              onPressed: () =>
+                                                  Navigator.of(ctx).pop(),
+                                              child: const Text('OK'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: const Text(
+                                  'Prepare for Delivery',
+                                  style: TextStyle(fontSize: 22),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -679,6 +938,145 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       category: 'developer');
                 });
               },
+            ),
+            const SizedBox(height: 20.0),
+            OrionListTile(
+              title: 'Reuse Calibration Plate (Debug)',
+              icon: PhosphorIcons.flask(),
+              value: reuseCalibrationPlate,
+              onChanged: (bool value) {
+                setState(() {
+                  reuseCalibrationPlate = value;
+                  config.setFlag('reuseCalibrationPlate', value,
+                      category: 'developer');
+                });
+              },
+            ),
+            const SizedBox(height: 20.0),
+            Row(
+              children: [
+                Expanded(
+                  child: GlassButton(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 60),
+                    ),
+                    tint: GlassButtonTint.warn,
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => GlassAlertDialog(
+                              title: const Text('Clear Thumbnail Cache'),
+                              content: const Text(
+                                  'Clear all cached thumbnails from memory and disk? This will free up disk space and memory. Continue?',
+                                  style: TextStyle(fontSize: 18.0)),
+                              actions: [
+                                GlassButton(
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(0, 60),
+                                    ),
+                                    tint: GlassButtonTint.neutral,
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancel',
+                                        style: TextStyle(fontSize: 22.0))),
+                                GlassButton(
+                                    tint: GlassButtonTint.warn,
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(0, 60),
+                                    ),
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(true),
+                                    child: const Text('Clear',
+                                        style: TextStyle(fontSize: 22.0))),
+                              ],
+                            ),
+                          ) ??
+                          false;
+
+                      if (confirmed) {
+                        try {
+                          // Show clearing message
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (ctx) => const GlassAlertDialog(
+                              title: Text('Clearing Cache'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 16),
+                                  Text('Clearing thumbnail cache...',
+                                      style: TextStyle(fontSize: 18)),
+                                ],
+                              ),
+                            ),
+                          );
+
+                          // Clear the cache
+                          await ThumbnailCache.instance.clearAll();
+
+                          // Close progress dialog
+                          if (mounted) Navigator.of(context).pop();
+
+                          // Show success message
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => GlassAlertDialog(
+                                title: const Text('Success'),
+                                content: const Text(
+                                    'Thumbnail cache cleared successfully.',
+                                    style: TextStyle(fontSize: 18)),
+                                actions: [
+                                  GlassButton(
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(0, 60),
+                                    ),
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: const Text('OK',
+                                        style: TextStyle(fontSize: 22)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          // Close progress dialog if still showing
+                          if (mounted) Navigator.of(context).pop();
+
+                          // Show error message
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => GlassAlertDialog(
+                                title: const Text('Error'),
+                                content: Text(
+                                    'Failed to clear thumbnail cache: $e',
+                                    style: const TextStyle(fontSize: 18)),
+                                actions: [
+                                  GlassButton(
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(0, 60),
+                                    ),
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: const Text('OK',
+                                        style: TextStyle(fontSize: 22)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    child: const Text(
+                      'Clear Thumbnail Cache',
+                      style: TextStyle(fontSize: 22),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

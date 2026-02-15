@@ -23,10 +23,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
+import 'package:orion/util/update_notification_watcher.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:orion/util/install_locator.dart';
 import 'package:provider/provider.dart';
 import 'package:window_size/window_size.dart';
 
@@ -43,6 +47,7 @@ import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/files_provider.dart';
+import 'package:orion/backend_service/providers/local_files_provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/backend_service/providers/print_provider.dart';
 import 'package:orion/backend_service/providers/notification_provider.dart';
@@ -55,9 +60,22 @@ import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/providers/wifi_provider.dart';
 import 'package:orion/util/error_handling/connection_error_watcher.dart';
 import 'package:orion/util/error_handling/notification_watcher.dart';
+import 'package:orion/util/providers/orion_update_provider.dart';
+import 'package:orion/util/providers/athena_update_provider.dart';
+import 'package:orion/util/update_manager.dart';
+import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
+import 'package:orion/util/standby_overlay.dart';
+import 'package:orion/backend_service/providers/standby_settings_provider.dart';
+import 'package:orion/util/orion_config.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Restore screen brightness to full on startup (in case the app was
+  // closed while standby dimming was active)
+  if (Platform.isLinux) {
+    await _restoreFullBrightness();
+  }
 
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     setWindowTitle('Orion - Open Resin Alliance');
@@ -66,6 +84,10 @@ void main() {
       setWindowMaxSize(const Size(800, 800));
     }
   }
+
+  fvp.registerWith(options: {
+    'platforms': ['windows', 'linux']
+  });
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -97,18 +119,21 @@ void main() {
   logStreamController.stream.listen((record) async {
     await writeMutex.acquire();
     try {
-      Directory logDir = await getApplicationSupportDirectory();
-      File logFile = File('${logDir.path}/app.log');
+      // Resolve the log file location once (prefer env override, then
+      // application support dir, then packaged engine locations, exec dir,
+      // and fallback to app support). This mirrors the discovery used by
+      // other parts of the app (Debug screen / OrionConfig).
+      File logFile = await _resolveLogFile();
 
       // Check if log file needs rotation
       if (await logFile.exists() && await logFile.length() > maxLogFileSize) {
         // Rotate the log file
-        final rotatedLogFile = File('${logDir.path}/app.log.1');
+        final rotatedLogFile = File(p.join(logFile.parent.path, 'app.log.1'));
         if (await rotatedLogFile.exists()) {
           await rotatedLogFile.delete();
         }
         await logFile.rename(rotatedLogFile.path);
-        logFile = File('${logDir.path}/app.log');
+        logFile = File(p.join(logFile.parent.path, 'app.log'));
       }
 
       final logMessage =
@@ -130,6 +155,118 @@ void main() {
   });
 
   runApp(const OrionRoot());
+}
+
+/// Restore screen brightness to 255 on startup.
+/// This ensures the screen is at full brightness even if the app was closed
+/// while standby dimming was active.
+Future<void> _restoreFullBrightness() async {
+  try {
+    // Try to read the backlight device from config
+    final config = OrionConfig();
+    final backlightDevice = config.getString('backlightDevice', category: 'ui');
+
+    if (backlightDevice.isEmpty) {
+      // No backlight device configured, try to auto-detect
+      final backlightDir = Directory('/sys/class/backlight');
+      if (!await backlightDir.exists()) return;
+
+      // Find first available device
+      await for (final entry in backlightDir.list()) {
+        if (entry is Directory) {
+          final brightnessFile = File('${entry.path}/brightness');
+          if (await brightnessFile.exists()) {
+            await _writeBrightness(brightnessFile.path, 255);
+            return;
+          }
+        }
+      }
+    } else {
+      // Use configured device
+      final brightnessPath = '/sys/class/backlight/$backlightDevice/brightness';
+      final file = File(brightnessPath);
+      if (await file.exists()) {
+        await _writeBrightness(brightnessPath, 255);
+      }
+    }
+  } catch (e) {
+    print('Could not restore full brightness on startup: $e');
+  }
+}
+
+/// Write brightness value to the specified path
+Future<void> _writeBrightness(String path, int level) async {
+  try {
+    // Try direct write first
+    try {
+      final file = File(path);
+      await file.writeAsString(level.toString());
+      return;
+    } catch (_) {
+      // Direct write failed, try with sudo
+    }
+
+    // Fall back to sudo method
+    try {
+      final process = await Process.start('sudo', ['tee', path]);
+      process.stdin.writeln(level.toString());
+      await process.stdin.close();
+      await process.exitCode;
+    } catch (e) {
+      print('Brightness write skipped: $e');
+    }
+  } catch (e) {
+    print('Error writing brightness: $e');
+  }
+}
+
+/// Resolve the most likely log file location for this runtime.
+/// Priority: ORION_LOG_FILE env override -> application support dir ->
+/// engine dir (and parent) -> exec dir -> CWD -> application support fallback
+Future<File> _resolveLogFile() async {
+  try {
+    final env = Platform.environment['ORION_LOG_FILE'];
+    if (env != null && env.isNotEmpty) return File(env);
+  } catch (_) {}
+
+  try {
+    final appSupport = await getApplicationSupportDirectory();
+    final f = File(p.join(appSupport.path, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  try {
+    final engineDir = findEngineDir();
+    if (engineDir != null && engineDir.isNotEmpty) {
+      final f = File(p.join(engineDir, 'app.log'));
+      if (await f.exists()) return f;
+      final parent = Directory(engineDir).parent.path;
+      final fp = File(p.join(parent, 'app.log'));
+      if (await fp.exists()) return fp;
+      final opt = File('/opt/app.log');
+      if (await opt.exists()) return opt;
+    }
+  } catch (_) {}
+
+  try {
+    final execDir = Directory(Platform.resolvedExecutable).parent.path;
+    final f = File(p.join(execDir, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  try {
+    final f = File(p.join(Directory.current.path, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  // Fallback to application support path even if file doesn't exist yet.
+  try {
+    final appSupport = await getApplicationSupportDirectory();
+    return File(p.join(appSupport.path, 'app.log'));
+  } catch (_) {}
+
+  // As a final fallback, return a file in CWD
+  return File(p.join(Directory.current.path, 'app.log'));
 }
 
 class OrionRoot extends StatelessWidget {
@@ -168,6 +305,10 @@ class OrionRoot extends StatelessWidget {
           lazy: true,
         ),
         ChangeNotifierProvider(
+          create: (_) => LocalFilesProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
           create: (_) => PrintProvider(),
           lazy: true,
         ),
@@ -180,6 +321,24 @@ class OrionRoot extends StatelessWidget {
           lazy: true,
         ),
         ChangeNotifierProvider(
+          create: (_) => OrionUpdateProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AthenaUpdateProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProxyProvider2<OrionUpdateProvider, AthenaUpdateProvider,
+            UpdateManager>(
+          create: (context) => UpdateManager(
+            context.read<OrionUpdateProvider>(),
+            context.read<AthenaUpdateProvider>(),
+          ),
+          update: (context, orion, athena, previous) =>
+              previous ?? UpdateManager(orion, athena),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
           create: (_) => ResinsProvider(),
           // Prefetch calibration models and images at app startup so
           // opening the Calibration screen can show thumbnails immediately.
@@ -188,6 +347,10 @@ class OrionRoot extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => CalibrationContextProvider(),
           lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StandbySettingsProvider(),
+          lazy: false,
         )
       ],
       child: const OrionMainApp(),
@@ -206,6 +369,7 @@ class OrionMainAppState extends State<OrionMainApp> {
   late final GoRouter _router;
   ConnectionErrorWatcher? _connWatcher;
   NotificationWatcher? _notifWatcher;
+  UpdateNotificationWatcher? _updateWatcher;
   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
   bool _statusListenerAttached = false;
   bool _wasPrinting = false;
@@ -216,11 +380,17 @@ class OrionMainAppState extends State<OrionMainApp> {
   void initState() {
     super.initState();
     _initRouter();
+    // Start Athena periodic polling if applicable
+    try {
+      final mgr = AthenaFeatureManager();
+      mgr.startPeriodicPolling();
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _connWatcher?.dispose();
+    _updateWatcher?.dispose();
     _notifWatcher?.dispose();
     super.dispose();
   }
@@ -277,6 +447,12 @@ class OrionMainAppState extends State<OrionMainApp> {
               ],
             ),
             GoRoute(
+              path: 'updates',
+              builder: (BuildContext context, GoRouterState state) {
+                return const SettingsScreen(initialIndex: 3);
+              },
+            ),
+            GoRoute(
               path: 'status',
               builder: (BuildContext context, GoRouterState state) {
                 return const StatusScreen(
@@ -311,9 +487,8 @@ class OrionMainAppState extends State<OrionMainApp> {
       LocaleProvider localeProvider, ThemeProvider themeProvider) {
     return GlassApp(
       child: Builder(builder: (innerCtx) {
-        // Use MaterialApp.router's builder to get a context that has
-        // MaterialLocalizations and a Navigator. Install the watcher
-        // after the first frame using that context.
+        // Build the app shell and inject the StandbyOverlay from within
+        // MaterialApp.router's builder so Directionality/Theme are available
         return MaterialApp.router(
           title: 'Orion',
           debugShowCheckedModeBanner: false,
@@ -335,6 +510,9 @@ class OrionMainAppState extends State<OrionMainApp> {
                 if (_notifWatcher == null && navCtx != null) {
                   _notifWatcher = NotificationWatcher.install(navCtx);
                 }
+                // Use ctx (builder context) for UpdateNotificationWatcher since it
+                // needs access to providers which aren't available in navCtx
+                _updateWatcher ??= UpdateNotificationWatcher.install(ctx);
                 // Attach a listener to StatusProvider so we can auto-open
                 // the StatusScreen when a print becomes active (remote start).
                 try {
@@ -406,7 +584,13 @@ class OrionMainAppState extends State<OrionMainApp> {
                 } catch (_) {}
               } catch (_) {}
             });
-            return child ?? const SizedBox.shrink();
+            // Wrap the built subtree with the StandbyOverlay so it can
+            // access Theme/Directionality provided by MaterialApp.
+            // The StandbyOverlay will read actual settings from StandbySettingsProvider
+            return StandbyOverlay(
+              enabled: true,
+              child: child ?? const SizedBox.shrink(),
+            );
           },
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,

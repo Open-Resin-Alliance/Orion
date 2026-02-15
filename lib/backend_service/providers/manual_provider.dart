@@ -212,7 +212,7 @@ class ManualProvider extends ChangeNotifier {
 
   Future<bool> emergencyStop() async {
     _log.info('emergencyStop');
-    if (_busy) return false;
+    // Emergency stop should override busy state
     _busy = true;
     _error = null;
     notifyListeners();
@@ -376,5 +376,49 @@ class ManualProvider extends ChangeNotifier {
   Future<bool> setChamberEnabled(bool enabled, {double? temperature}) async {
     final temp = enabled ? (temperature ?? 1.0) : 0.0;
     return await setChamberTemperature(temp);
+  }
+
+  /// Set Z offset to the specified value in millimeters.
+  /// Returns true on success, false on failure.
+  Future<bool> setZOffset(double offset) async {
+    _log.info('setZOffset: $offset');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final ok = await _client.setZOffset(offset);
+      _busy = false;
+      notifyListeners();
+      return ok;
+    } catch (e, st) {
+      _log.severe('setZOffset failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Reset Z offset to default (typically 0).
+  /// Returns true on success, false on failure.
+  Future<bool> resetZOffset() async {
+    _log.info('resetZOffset');
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final ok = await _client.resetZOffset();
+      _busy = false;
+      notifyListeners();
+      return ok;
+    } catch (e, st) {
+      _log.severe('resetZOffset failed', e, st);
+      _error = e;
+      _busy = false;
+      notifyListeners();
+      return false;
+    }
   }
 }

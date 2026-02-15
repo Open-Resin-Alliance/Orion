@@ -20,6 +20,8 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 /// A full-screen modal overlay that displays calibration progress and messages.
 /// Designed to be shown during calibration print preparation to inform the user of progress.
@@ -149,9 +151,14 @@ class _CalibrationProgressOverlayState extends State<CalibrationProgressOverlay>
       );
     }
 
+    final isGlass =
+        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+
     return GlassApp(
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: isGlass
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.surface,
         body: SafeArea(
           child: ValueListenableBuilder<bool>(
             valueListenable: widget.showReady ?? ValueNotifier(false),

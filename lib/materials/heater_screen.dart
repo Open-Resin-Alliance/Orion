@@ -23,6 +23,7 @@ import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/orion_config.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class HeaterScreen extends StatefulWidget {
@@ -309,14 +310,20 @@ class HeaterScreenState extends State<HeaterScreen> {
 
   Widget buildVatHeaterToggle(BuildContext context,
       {required ManualProvider manual, required VoidCallback onPressed}) {
-    final effectiveOnPressed = onPressed;
+    final cfg = OrionConfig();
+    final hasVatHardware = cfg.hasHeatedVat();
+    final effectiveOnPressed = hasVatHardware ? onPressed : null;
     final capabilitiesLoaded = manual.heaterStateLoaded;
     final vatEnabled = manual.vatEnabled ?? false;
     return GlassButton(
       onPressed: effectiveOnPressed,
       tint: !capabilitiesLoaded
           ? GlassButtonTint.neutral
-          : (vatEnabled ? GlassButtonTint.positive : GlassButtonTint.negative),
+          : (!hasVatHardware
+              ? GlassButtonTint.negative
+              : (vatEnabled
+                  ? GlassButtonTint.positive
+                  : GlassButtonTint.negative)),
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15),
@@ -328,7 +335,9 @@ class HeaterScreenState extends State<HeaterScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           PhosphorIcon(
-            vatEnabled ? PhosphorIconsFill.fire : PhosphorIcons.fire(),
+            hasVatHardware
+                ? (vatEnabled ? PhosphorIconsFill.fire : PhosphorIcons.fire())
+                : PhosphorIcons.fire(),
             size: 40,
           ),
           const SizedBox(height: 8),
@@ -338,14 +347,18 @@ class HeaterScreenState extends State<HeaterScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            !capabilitiesLoaded
-                ? 'Checking…'
-                : (vatEnabled ? 'Enabled' : 'Disabled'),
+            !hasVatHardware
+                ? 'Not available'
+                : (!capabilitiesLoaded
+                    ? 'Checking…'
+                    : (vatEnabled ? 'Enabled' : 'Disabled')),
             style: TextStyle(
               fontSize: 16,
-              color: !capabilitiesLoaded
+              color: !hasVatHardware
                   ? Colors.grey
-                  : (vatEnabled ? Colors.green.shade300 : Colors.grey),
+                  : (!capabilitiesLoaded
+                      ? Colors.grey
+                      : (vatEnabled ? Colors.green.shade300 : Colors.grey)),
             ),
           ),
         ],
@@ -355,16 +368,20 @@ class HeaterScreenState extends State<HeaterScreen> {
 
   Widget buildChamberHeaterToggle(BuildContext context,
       {required ManualProvider manual, required VoidCallback onPressed}) {
-    final effectiveOnPressed = onPressed;
+    final cfg = OrionConfig();
+    final hasChamberHardware = cfg.hasHeatedChamber();
+    final effectiveOnPressed = hasChamberHardware ? onPressed : null;
     final capabilitiesLoaded = manual.heaterStateLoaded;
     final chamberEnabled = manual.chamberEnabled ?? false;
     return GlassButton(
       onPressed: effectiveOnPressed,
       tint: !capabilitiesLoaded
           ? GlassButtonTint.neutral
-          : (chamberEnabled
-              ? GlassButtonTint.positive
-              : GlassButtonTint.negative),
+          : (!hasChamberHardware
+              ? GlassButtonTint.negative
+              : (chamberEnabled
+                  ? GlassButtonTint.positive
+                  : GlassButtonTint.negative)),
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15),
@@ -376,8 +393,10 @@ class HeaterScreenState extends State<HeaterScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           PhosphorIcon(
-            chamberEnabled
-                ? PhosphorIconsFill.thermometerHot
+            hasChamberHardware
+                ? (chamberEnabled
+                    ? PhosphorIconsFill.thermometerHot
+                    : PhosphorIcons.thermometerHot())
                 : PhosphorIcons.thermometerHot(),
             size: 40,
           ),
@@ -388,14 +407,18 @@ class HeaterScreenState extends State<HeaterScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            !capabilitiesLoaded
-                ? 'Checking…'
-                : (chamberEnabled ? 'Enabled' : 'Disabled'),
+            !hasChamberHardware
+                ? 'Not available'
+                : (!capabilitiesLoaded
+                    ? 'Checking…'
+                    : (chamberEnabled ? 'Enabled' : 'Disabled')),
             style: TextStyle(
               fontSize: 16,
-              color: !capabilitiesLoaded
+              color: !hasChamberHardware
                   ? Colors.grey
-                  : (chamberEnabled ? Colors.green.shade300 : Colors.grey),
+                  : (!capabilitiesLoaded
+                      ? Colors.grey
+                      : (chamberEnabled ? Colors.green.shade300 : Colors.grey)),
             ),
           ),
         ],

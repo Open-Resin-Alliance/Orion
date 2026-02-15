@@ -28,6 +28,8 @@ class WelcomeBubble {
   double padding;
   final double baseSpeed; // Minimum speed the bubble maintains
   final double repulsionForce = 0.8; // How strongly bubbles push apart
+  // Trail points created by proximity interactions (global coordinates)
+  final List<TrailPoint> proximityTrails = [];
   double get width => _calculateWidth();
   double get height => size * 2; // Account for padding and text size
   double opacity;
@@ -118,6 +120,21 @@ class WelcomeBubble {
 
     // Handle screen boundaries last
     _handleScreenCollision(screenSize);
+
+    // Decay proximity trails
+    if (proximityTrails.isNotEmpty) {
+      final decay = 0.04; // per frame decay (approx 60fps)
+      for (var t in proximityTrails) {
+        t.life -= decay;
+      }
+      proximityTrails.removeWhere((t) => t.life <= 0);
+    }
+  }
+
+  /// Add a global-position trail point for proximity visual effects.
+  void addProximityTrail(Offset globalPosition) {
+    proximityTrails.insert(0, TrailPoint(globalPosition, 1.0));
+    if (proximityTrails.length > 14) proximityTrails.removeLast();
   }
 
   void _handleCollision(WelcomeBubble other) {
@@ -168,6 +185,13 @@ class Circle {
     required this.center,
     required this.radius,
   });
+}
+
+class TrailPoint {
+  Offset pos;
+  double life;
+
+  TrailPoint(this.pos, this.life);
 }
 
 extension OffsetX on Offset {
