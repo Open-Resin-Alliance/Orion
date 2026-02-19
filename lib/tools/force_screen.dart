@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:fl_chart/fl_chart.dart';
@@ -26,6 +27,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/analytics_provider.dart';
+import 'package:orion/tools/force_pong_game.dart';
 
 class ForceSensorScreen extends StatefulWidget {
   const ForceSensorScreen({super.key});
@@ -39,6 +41,10 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
   late final AnalyticsProvider _prov;
   bool _isPaused = false;
   final double _tareOffset = 0.0;
+
+  // Easter egg: tap counter for pong game
+  int _tapCount = 0;
+  Timer? _tapResetTimer;
 
   @override
   void initState() {
@@ -54,7 +60,35 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
   @override
   void dispose() {
     if (_listener != null) _prov.removeListener(_listener!);
+    _tapResetTimer?.cancel();
     super.dispose();
+  }
+
+  void _handleCurrentCardTap() {
+    setState(() {
+      _tapCount++;
+    });
+
+    // Reset tap counter after 2 seconds of no taps
+    _tapResetTimer?.cancel();
+    _tapResetTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _tapCount = 0;
+        });
+      }
+    });
+
+    // Launch pong game after 5 taps
+    if (_tapCount >= 5) {
+      _tapCount = 0;
+      _tapResetTimer?.cancel();
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const ForcePongGame(),
+        ),
+      );
+    }
   }
 
   @override
@@ -92,6 +126,7 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
               onPauseToggle: togglePause,
               onTare: doTare,
               tareOffset: _tareOffset,
+              onCurrentCardTap: _handleCurrentCardTap,
             )
           : buildPortraitLayout(
               context,
@@ -105,8 +140,8 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
   }
 }
 
-Widget buildStatsCard(String label, String value) {
-  return GlassCard(
+Widget buildStatsCard(String label, String value, {VoidCallback? onTap}) {
+  final card = GlassCard(
     margin: const EdgeInsets.only(
       left: 12.0,
       right: 0.0,
@@ -143,6 +178,14 @@ Widget buildStatsCard(String label, String value) {
       ),
     ),
   );
+
+  if (onTap != null) {
+    return GestureDetector(
+      onTap: onTap,
+      child: card,
+    );
+  }
+  return card;
 }
 
 OrionConfig config = OrionConfig();
@@ -302,6 +345,7 @@ Widget buildLandscapeLayout(
   required VoidCallback onPauseToggle,
   required VoidCallback onTare,
   required double tareOffset,
+  VoidCallback? onCurrentCardTap,
 }) {
   // Derive numeric stats from the series to show in the stat cards.
   final values = series
@@ -341,6 +385,7 @@ Widget buildLandscapeLayout(
                 child: buildStatsCard(
                   'Current',
                   _formatMass(currentVal),
+                  onTap: onCurrentCardTap,
                 ),
               ),
             ),
