@@ -623,14 +623,15 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
               final currentZ = status.status?.physicalState.z ??
                   status.kinematicStatus?.position ??
                   0.0;
+              final canRun = !_apiErrorState && !manual.busy;
               return Row(
                 children: [
                   // Reset button
                   Expanded(
-                    child: GlassButton(
-                      onPressed: _apiErrorState || manual.busy
-                          ? null
-                          : () async {
+                    child: canRun
+                        ? _SafeHoldGlassButton(
+                            duration: const Duration(seconds: 2),
+                            onConfirmed: () async {
                               _logger.info('Reset Z offset button pressed');
                               // Optimistically show offset = 0.0 immediately
                               _setOptimisticOffset(0.0);
@@ -650,35 +651,60 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                                 _clearOptimisticOffset();
                               }
                             },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize:
-                            const Size(double.infinity, double.infinity),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          PhosphorIcon(PhosphorIcons.arrowCounterClockwise(),
-                              size: 26),
-                          const Expanded(
-                            child: AutoSizeText(
-                              'Reset',
-                              style: TextStyle(fontSize: 24),
-                              minFontSize: 16,
-                              maxLines: 1,
-                              textAlign: TextAlign.center,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize:
+                                  const Size(double.infinity, double.infinity),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                PhosphorIcon(
+                                    PhosphorIcons.arrowCounterClockwise(),
+                                    size: 26),
+                                const Expanded(
+                                  child: AutoSizeText(
+                                    'Reset',
+                                    style: TextStyle(fontSize: 24),
+                                    minFontSize: 16,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : GlassButton(
+                            onPressed: null,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize:
+                                  const Size(double.infinity, double.infinity),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                PhosphorIcon(
+                                    PhosphorIcons.arrowCounterClockwise(),
+                                    size: 26),
+                                const Expanded(
+                                  child: AutoSizeText(
+                                    'Reset',
+                                    style: TextStyle(fontSize: 24),
+                                    minFontSize: 16,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
                   ),
                   const SizedBox(width: 12),
                   // Z = 0 button (sets current Z position as the offset)
                   Expanded(
-                    child: GlassButton(
-                      onPressed: _apiErrorState || manual.busy
-                          ? null
-                          : () async {
+                    child: canRun
+                        ? _SafeHoldGlassButton(
+                            duration: const Duration(seconds: 2),
+                            onConfirmed: () async {
                               _logger.info(
                                   'Set Z offset button pressed (Z=$currentZ)');
                               // Optimistically show the offset immediately
@@ -698,26 +724,50 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                                 _clearOptimisticOffset();
                               }
                             },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize:
-                            const Size(double.infinity, double.infinity),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          PhosphorIcon(PhosphorIcons.crosshair(), size: 26),
-                          const Expanded(
-                            child: AutoSizeText(
-                              'Z = 0',
-                              style: TextStyle(fontSize: 24),
-                              minFontSize: 16,
-                              maxLines: 1,
-                              textAlign: TextAlign.center,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize:
+                                  const Size(double.infinity, double.infinity),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                PhosphorIcon(PhosphorIcons.crosshair(),
+                                    size: 26),
+                                const Expanded(
+                                  child: AutoSizeText(
+                                    'Z = 0',
+                                    style: TextStyle(fontSize: 24),
+                                    minFontSize: 16,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : GlassButton(
+                            onPressed: null,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize:
+                                  const Size(double.infinity, double.infinity),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                PhosphorIcon(PhosphorIcons.crosshair(),
+                                    size: 26),
+                                const Expanded(
+                                  child: AutoSizeText(
+                                    'Z = 0',
+                                    style: TextStyle(fontSize: 24),
+                                    minFontSize: 16,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
                   ),
                 ],
               );
@@ -790,6 +840,102 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SafeHoldGlassButton extends StatefulWidget {
+  const _SafeHoldGlassButton({
+    required this.onConfirmed,
+    required this.child,
+    required this.style,
+    this.duration = const Duration(seconds: 2),
+  });
+
+  final Future<void> Function() onConfirmed;
+  final Widget child;
+  final ButtonStyle style;
+  final Duration duration;
+
+  @override
+  State<_SafeHoldGlassButton> createState() => _SafeHoldGlassButtonState();
+}
+
+class _SafeHoldGlassButtonState extends State<_SafeHoldGlassButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _fired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed && !_fired) {
+          _fired = true;
+          widget.onConfirmed();
+          _controller.reset();
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _startHold(TapDownDetails _) {
+    _fired = false;
+    _controller.forward(from: 0.0);
+  }
+
+  void _cancelHold([dynamic _]) {
+    if (_controller.isAnimating || _controller.value > 0.0) {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final overlayColor =
+        Theme.of(context).colorScheme.primary.withValues(alpha: 0.45);
+
+    return GestureDetector(
+      onTapDown: _startHold,
+      onTapUp: _cancelHold,
+      onTapCancel: _cancelHold,
+      behavior: HitTestBehavior.opaque,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GlassButton(
+            onPressed: () {},
+            style: widget.style,
+            child: widget.child,
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    return Align(
+                      alignment: Alignment.bottomCenter,
+                      child: FractionallySizedBox(
+                        heightFactor: _controller.value,
+                        widthFactor: 1.0,
+                        child: ColoredBox(color: overlayColor),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
