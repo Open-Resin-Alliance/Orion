@@ -457,6 +457,13 @@ class OrionUpdateProvider extends ChangeNotifier {
   }
 
   Future<void> performUpdate(BuildContext context, String assetUrl) async {
+    // Safety: if Force Update override is enabled, disable it as soon as
+    // the Orion update sequence is initiated so we don't force-prompt again
+    // on every boot after this run.
+    if (_config.getFlag('overrideUpdateCheck', category: 'developer')) {
+      _config.setFlag('overrideUpdateCheck', false, category: 'developer');
+    }
+
     final String localUser = Platform.environment['USER'] ?? 'pi';
 
     final String orionRoot = findOrionRoot();
