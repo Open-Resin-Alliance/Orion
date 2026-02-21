@@ -36,6 +36,9 @@ enum GlassButtonTint {
   /// Warning accent, rendered with an orange emphasis.
   warn,
 
+  /// Cold accent, rendered with a blue emphasis.
+  cold,
+
   /// Negative accent, rendered with a red emphasis.
   negative,
 }
@@ -331,6 +334,12 @@ _GlassButtonTintPalette? _resolveTintPalette(GlassButtonTint tint) {
         color: Colors.orangeAccent,
         materialForeground: Colors.white,
         glassForeground: Colors.orangeAccent,
+      );
+    case GlassButtonTint.cold:
+      return const _GlassButtonTintPalette(
+        color: Colors.lightBlueAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.lightBlueAccent,
       );
     case GlassButtonTint.neutral:
       // neutral uses theme primary; we'll resolve a placeholder here but

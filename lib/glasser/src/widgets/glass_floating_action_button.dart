@@ -416,6 +416,12 @@ _FabTintPalette? _resolveFabTintPalette(
         materialForeground: Colors.white,
         glassForeground: Colors.orangeAccent,
       );
+    case GlassButtonTint.cold:
+      return const _FabTintPalette(
+        color: Colors.lightBlueAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.lightBlueAccent,
+      );
     case GlassButtonTint.negative:
       return const _FabTintPalette(
         color: Colors.redAccent,
