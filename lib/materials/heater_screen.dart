@@ -33,8 +33,11 @@ class HeaterScreen extends StatefulWidget {
   HeaterScreenState createState() => HeaterScreenState();
 }
 
-class HeaterScreenState extends State<HeaterScreen> {
+class HeaterScreenState extends State<HeaterScreen>
+    with SingleTickerProviderStateMixin {
   final _logger = Logger('Heater');
+  late final AnimationController _onPulseController;
+  late final Animation<double> _onPulse;
 
   int _targetTemperature = 30; // Default to 30°C
   int? _lastBackendTemperature;
@@ -46,6 +49,14 @@ class HeaterScreenState extends State<HeaterScreen> {
   @override
   void initState() {
     super.initState();
+    _onPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _onPulse = CurvedAnimation(
+      parent: _onPulseController,
+      curve: Curves.easeInOut,
+    );
     // Refresh provider-backed heater enabled flags after the first frame so
     // the UI reflects the authoritative state held in ManualProvider.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -119,6 +130,7 @@ class HeaterScreenState extends State<HeaterScreen> {
   @override
   void dispose() {
     _heaterRefreshTimer?.cancel();
+    _onPulseController.dispose();
     super.dispose();
   }
 
@@ -315,55 +327,62 @@ class HeaterScreenState extends State<HeaterScreen> {
     final effectiveOnPressed = hasVatHardware ? onPressed : null;
     final capabilitiesLoaded = manual.heaterStateLoaded;
     final vatEnabled = manual.vatEnabled ?? false;
-    return GlassButton(
-      onPressed: effectiveOnPressed,
-      tint: !capabilitiesLoaded
-          ? GlassButtonTint.neutral
-          : (!hasVatHardware
-              ? GlassButtonTint.negative
-              : (vatEnabled
-                  ? GlassButtonTint.positive
-                  : GlassButtonTint.negative)),
-      style: ElevatedButton.styleFrom(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        minimumSize: const Size(double.infinity, double.infinity),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          PhosphorIcon(
-            hasVatHardware
-                ? (vatEnabled ? PhosphorIconsFill.fire : PhosphorIcons.fire())
-                : PhosphorIcons.fire(),
-            size: 40,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Vat Heater',
-            style: TextStyle(fontSize: 24),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            !hasVatHardware
-                ? 'Not available'
-                : (!capabilitiesLoaded
-                    ? 'Checking…'
-                    : (vatEnabled ? 'Enabled' : 'Disabled')),
-            style: TextStyle(
-              fontSize: 16,
-              color: !hasVatHardware
-                  ? Colors.grey
-                  : (!capabilitiesLoaded
-                      ? Colors.grey
-                      : (vatEnabled ? Colors.green.shade300 : Colors.grey)),
+    final heaterOn = hasVatHardware && capabilitiesLoaded && vatEnabled;
+    return _buildHeaterOnGlow(
+        enabled: heaterOn,
+        child: GlassButton(
+          onPressed: effectiveOnPressed,
+          tint: !capabilitiesLoaded
+              ? GlassButtonTint.neutral
+              : (!hasVatHardware
+                  ? GlassButtonTint.negative
+                  : (vatEnabled
+                      ? GlassButtonTint.negative
+                      : GlassButtonTint.cold)),
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
             ),
+            minimumSize: const Size(double.infinity, double.infinity),
           ),
-        ],
-      ),
-    );
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PhosphorIcon(
+                hasVatHardware
+                    ? (vatEnabled
+                        ? PhosphorIconsFill.fire
+                        : PhosphorIcons.fire())
+                    : PhosphorIcons.fire(),
+                size: 40,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Vat Heater',
+                style: TextStyle(fontSize: 24),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                !hasVatHardware
+                    ? 'Not available'
+                    : (!capabilitiesLoaded
+                        ? 'Checking…'
+                        : (vatEnabled ? 'Enabled' : 'Disabled')),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: !hasVatHardware
+                      ? Colors.grey
+                      : (!capabilitiesLoaded
+                          ? Colors.grey
+                          : (vatEnabled
+                              ? Colors.red.shade300
+                              : Colors.blue.shade300)),
+                ),
+              ),
+            ],
+          ),
+        ));
   }
 
   Widget buildChamberHeaterToggle(BuildContext context,
@@ -373,56 +392,86 @@ class HeaterScreenState extends State<HeaterScreen> {
     final effectiveOnPressed = hasChamberHardware ? onPressed : null;
     final capabilitiesLoaded = manual.heaterStateLoaded;
     final chamberEnabled = manual.chamberEnabled ?? false;
-    return GlassButton(
-      onPressed: effectiveOnPressed,
-      tint: !capabilitiesLoaded
-          ? GlassButtonTint.neutral
-          : (!hasChamberHardware
-              ? GlassButtonTint.negative
-              : (chamberEnabled
-                  ? GlassButtonTint.positive
-                  : GlassButtonTint.negative)),
-      style: ElevatedButton.styleFrom(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        minimumSize: const Size(double.infinity, double.infinity),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          PhosphorIcon(
-            hasChamberHardware
-                ? (chamberEnabled
-                    ? PhosphorIconsFill.thermometerHot
-                    : PhosphorIcons.thermometerHot())
-                : PhosphorIcons.thermometerHot(),
-            size: 40,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Chamber Heater',
-            style: TextStyle(fontSize: 24),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            !hasChamberHardware
-                ? 'Not available'
-                : (!capabilitiesLoaded
-                    ? 'Checking…'
-                    : (chamberEnabled ? 'Enabled' : 'Disabled')),
-            style: TextStyle(
-              fontSize: 16,
-              color: !hasChamberHardware
-                  ? Colors.grey
-                  : (!capabilitiesLoaded
-                      ? Colors.grey
-                      : (chamberEnabled ? Colors.green.shade300 : Colors.grey)),
+    final heaterOn = hasChamberHardware && capabilitiesLoaded && chamberEnabled;
+    return _buildHeaterOnGlow(
+        enabled: heaterOn,
+        child: GlassButton(
+          onPressed: effectiveOnPressed,
+          tint: !capabilitiesLoaded
+              ? GlassButtonTint.neutral
+              : (!hasChamberHardware
+                  ? GlassButtonTint.negative
+                  : (chamberEnabled
+                      ? GlassButtonTint.negative
+                      : GlassButtonTint.cold)),
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
             ),
+            minimumSize: const Size(double.infinity, double.infinity),
           ),
-        ],
-      ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PhosphorIcon(
+                hasChamberHardware
+                    ? (chamberEnabled
+                        ? PhosphorIconsFill.thermometerHot
+                        : PhosphorIcons.thermometerHot())
+                    : PhosphorIcons.thermometerHot(),
+                size: 40,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Chamber Heater',
+                style: TextStyle(fontSize: 24),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                !hasChamberHardware
+                    ? 'Not available'
+                    : (!capabilitiesLoaded
+                        ? 'Checking…'
+                        : (chamberEnabled ? 'Enabled' : 'Disabled')),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: !hasChamberHardware
+                      ? Colors.grey
+                      : (!capabilitiesLoaded
+                          ? Colors.grey
+                          : (chamberEnabled
+                              ? Colors.red.shade300
+                              : Colors.blue.shade300)),
+                ),
+              ),
+            ],
+          ),
+        ));
+  }
+
+  Widget _buildHeaterOnGlow({required bool enabled, required Widget child}) {
+    if (!enabled) return child;
+
+    return AnimatedBuilder(
+      animation: _onPulse,
+      child: child,
+      builder: (context, builtChild) {
+        final t = _onPulse.value;
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.redAccent.withValues(alpha: 0.22 + (0.20 * t)),
+                blurRadius: 14 + (12 * t),
+                spreadRadius: 0.5 + (1.5 * t),
+              ),
+            ],
+          ),
+          child: builtChild,
+        );
+      },
     );
   }
 
