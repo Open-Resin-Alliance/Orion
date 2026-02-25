@@ -81,6 +81,124 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
     }
   }
 
+  Future<bool> _showConfirmationDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required IconData icon,
+    required Color accentColor,
+    required GlassButtonTint confirmTint,
+  }) async {
+    if (!mounted) return false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => GlassAlertDialog(
+        title: Row(
+          children: [
+            PhosphorIcon(
+              icon,
+              color: accentColor,
+              size: 30,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 65),
+            ),
+            child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+          ),
+          GlassButton(
+            tint: confirmTint,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 65),
+            ),
+            child: Text(confirmLabel, style: const TextStyle(fontSize: 22)),
+          ),
+        ],
+      ),
+    );
+
+    return result == true;
+  }
+
+  Future<void> _confirmAndResetZOffset() async {
+    final confirmed = await _showConfirmationDialog(
+      title: 'Reset Z Offset',
+      message:
+          'This will reset the Z offset to 0.00 mm.\n\nDo you want to continue?',
+      confirmLabel: 'Reset Offset',
+      icon: PhosphorIcons.warning(),
+      accentColor: Colors.redAccent,
+      confirmTint: GlassButtonTint.negative,
+    );
+    if (!confirmed) return;
+
+    final manual = Provider.of<ManualProvider>(context, listen: false);
+    _logger.info('Reset Z offset button pressed');
+    _setOptimisticOffset(0.0);
+
+    final ok = await manual.resetZOffset();
+    if (!ok) _safeShowError('GOLDEN-APE');
+    if (!mounted) return;
+
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    await statusProvider.refreshKinematicStatus();
+    final backendOffset = statusProvider.kinematicStatus?.offset;
+    if (_offsetsMatch(_optimisticOffset, backendOffset)) {
+      _clearOptimisticOffset();
+    }
+  }
+
+  Future<void> _confirmAndSetCurrentAsZZero(double currentZ) async {
+    final confirmed = await _showConfirmationDialog(
+      title: 'Set Z = 0',
+      message:
+          'This will set the current position (${currentZ.toStringAsFixed(2)} mm) as the Z offset.\n\nDo you want to continue?',
+      confirmLabel: 'Set Offset',
+      icon: PhosphorIcons.warning(),
+      accentColor: Colors.orangeAccent,
+      confirmTint: GlassButtonTint.warn,
+    );
+    if (!confirmed) return;
+
+    final manual = Provider.of<ManualProvider>(context, listen: false);
+    _logger.info('Set Z offset button pressed (Z=$currentZ)');
+    _setOptimisticOffset(currentZ);
+
+    final ok = await manual.setZOffset(currentZ);
+    if (!ok) _safeShowError('GOLDEN-APE');
+    if (!mounted) return;
+
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    await statusProvider.refreshKinematicStatus();
+    final backendOffset = statusProvider.kinematicStatus?.offset;
+    if (_offsetsMatch(_optimisticOffset, backendOffset)) {
+      _clearOptimisticOffset();
+    }
+  }
+
   Future<void> moveZ(double distance) async {
     try {
       _logger.info('Moving Z by $distance');
@@ -628,146 +746,57 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                 children: [
                   // Reset button
                   Expanded(
-                    child: canRun
-                        ? _SafeHoldGlassButton(
-                            duration: const Duration(seconds: 2),
-                            onConfirmed: () async {
-                              _logger.info('Reset Z offset button pressed');
-                              // Optimistically show offset = 0.0 immediately
-                              _setOptimisticOffset(0.0);
-
-                              final ok = await manual.resetZOffset();
-                              if (!ok) _safeShowError('GOLDEN-APE');
-                              if (!mounted) return;
-                              final statusProvider =
-                                  Provider.of<StatusProvider>(context,
-                                      listen: false);
-                              await statusProvider.refreshKinematicStatus();
-                              // Clear optimistic offset if backend confirms
-                              final backendOffset =
-                                  statusProvider.kinematicStatus?.offset;
-                              if (_offsetsMatch(
-                                  _optimisticOffset, backendOffset)) {
-                                _clearOptimisticOffset();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              minimumSize:
-                                  const Size(double.infinity, double.infinity),
-                            ),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 12),
-                                PhosphorIcon(
-                                    PhosphorIcons.arrowCounterClockwise(),
-                                    size: 26),
-                                const Expanded(
-                                  child: AutoSizeText(
-                                    'Reset',
-                                    style: TextStyle(fontSize: 24),
-                                    minFontSize: 16,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : GlassButton(
-                            onPressed: null,
-                            style: ElevatedButton.styleFrom(
-                              minimumSize:
-                                  const Size(double.infinity, double.infinity),
-                            ),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 12),
-                                PhosphorIcon(
-                                    PhosphorIcons.arrowCounterClockwise(),
-                                    size: 26),
-                                const Expanded(
-                                  child: AutoSizeText(
-                                    'Reset',
-                                    style: TextStyle(fontSize: 24),
-                                    minFontSize: 16,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
+                    child: GlassButton(
+                      onPressed: canRun ? _confirmAndResetZOffset : null,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize:
+                            const Size(double.infinity, double.infinity),
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          PhosphorIcon(PhosphorIcons.arrowCounterClockwise(),
+                              size: 26),
+                          const Expanded(
+                            child: AutoSizeText(
+                              'Reset',
+                              style: TextStyle(fontSize: 24),
+                              minFontSize: 16,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   // Z = 0 button (sets current Z position as the offset)
                   Expanded(
-                    child: canRun
-                        ? _SafeHoldGlassButton(
-                            duration: const Duration(seconds: 2),
-                            onConfirmed: () async {
-                              _logger.info(
-                                  'Set Z offset button pressed (Z=$currentZ)');
-                              // Optimistically show the offset immediately
-                              _setOptimisticOffset(currentZ);
-
-                              final ok = await manual.setZOffset(currentZ);
-                              if (!ok) _safeShowError('GOLDEN-APE');
-                              if (!mounted) return;
-                              final statusProvider =
-                                  Provider.of<StatusProvider>(context,
-                                      listen: false);
-                              await statusProvider.refreshKinematicStatus();
-                              final backendOffset =
-                                  statusProvider.kinematicStatus?.offset;
-                              if (_offsetsMatch(
-                                  _optimisticOffset, backendOffset)) {
-                                _clearOptimisticOffset();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              minimumSize:
-                                  const Size(double.infinity, double.infinity),
-                            ),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 12),
-                                PhosphorIcon(PhosphorIcons.crosshair(),
-                                    size: 26),
-                                const Expanded(
-                                  child: AutoSizeText(
-                                    'Z = 0',
-                                    style: TextStyle(fontSize: 24),
-                                    minFontSize: 16,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : GlassButton(
-                            onPressed: null,
-                            style: ElevatedButton.styleFrom(
-                              minimumSize:
-                                  const Size(double.infinity, double.infinity),
-                            ),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 12),
-                                PhosphorIcon(PhosphorIcons.crosshair(),
-                                    size: 26),
-                                const Expanded(
-                                  child: AutoSizeText(
-                                    'Z = 0',
-                                    style: TextStyle(fontSize: 24),
-                                    minFontSize: 16,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
+                    child: GlassButton(
+                      onPressed: canRun
+                          ? () => _confirmAndSetCurrentAsZZero(currentZ)
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize:
+                            const Size(double.infinity, double.infinity),
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          PhosphorIcon(PhosphorIcons.crosshair(), size: 26),
+                          const Expanded(
+                            child: AutoSizeText(
+                              'Z = 0',
+                              style: TextStyle(fontSize: 24),
+                              minFontSize: 16,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               );
@@ -840,102 +869,6 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SafeHoldGlassButton extends StatefulWidget {
-  const _SafeHoldGlassButton({
-    required this.onConfirmed,
-    required this.child,
-    required this.style,
-    this.duration = const Duration(seconds: 2),
-  });
-
-  final Future<void> Function() onConfirmed;
-  final Widget child;
-  final ButtonStyle style;
-  final Duration duration;
-
-  @override
-  State<_SafeHoldGlassButton> createState() => _SafeHoldGlassButtonState();
-}
-
-class _SafeHoldGlassButtonState extends State<_SafeHoldGlassButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  bool _fired = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: widget.duration)
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed && !_fired) {
-          _fired = true;
-          widget.onConfirmed();
-          _controller.reset();
-        }
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _startHold(TapDownDetails _) {
-    _fired = false;
-    _controller.forward(from: 0.0);
-  }
-
-  void _cancelHold([dynamic _]) {
-    if (_controller.isAnimating || _controller.value > 0.0) {
-      _controller.reverse();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final overlayColor =
-        Theme.of(context).colorScheme.primary.withValues(alpha: 0.45);
-
-    return GestureDetector(
-      onTapDown: _startHold,
-      onTapUp: _cancelHold,
-      onTapCancel: _cancelHold,
-      behavior: HitTestBehavior.opaque,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          GlassButton(
-            onPressed: () {},
-            style: widget.style,
-            child: widget.child,
-          ),
-          Positioned.fill(
-            child: IgnorePointer(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, _) {
-                    return Align(
-                      alignment: Alignment.bottomCenter,
-                      child: FractionallySizedBox(
-                        heightFactor: _controller.value,
-                        widthFactor: 1.0,
-                        child: ColoredBox(color: overlayColor),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
