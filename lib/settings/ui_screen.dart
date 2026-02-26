@@ -29,6 +29,7 @@ import 'package:orion/util/theme_color_selector.dart';
 import 'package:orion/util/orion_list_tile.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
+import 'package:orion/backend_service/providers/lighting_provider.dart';
 
 class UIScreen extends StatefulWidget {
   const UIScreen({super.key});
@@ -130,8 +131,8 @@ class _UIScreenState extends State<UIScreen> {
                 const SizedBox(height: 16.0),
 
                 // Standby Screen Settings
-                Consumer<StandbySettingsProvider>(
-                  builder: (ctx, standbySettings, _) {
+                Consumer2<StandbySettingsProvider, LightingProvider>(
+                  builder: (ctx, standbySettings, lightingSettings, _) {
                     final standbyMinutes =
                         standbySettings.durationSeconds ~/ 60;
                     final standbySeconds = standbySettings.durationSeconds % 60;
@@ -211,6 +212,17 @@ class _UIScreenState extends State<UIScreen> {
                                 value: standbySettings.dimmingEnabled,
                                 onChanged: (bool value) {
                                   standbySettings.setDimmingEnabled(value);
+                                },
+                                icon: null,
+                              ),
+                              const SizedBox(height: 16.0),
+                              OrionListTile(
+                                title: 'Dim LED Lighting in Standby',
+                                value:
+                                    lightingSettings.standbyLedDimmingEnabled,
+                                onChanged: (bool value) {
+                                  lightingSettings
+                                      .setStandbyLedDimmingEnabled(value);
                                 },
                                 icon: null,
                               ),

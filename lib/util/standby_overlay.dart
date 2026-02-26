@@ -24,6 +24,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
+import 'package:orion/backend_service/providers/lighting_provider.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 import 'package:orion/util/orion_config.dart';
 import 'dart:ui' as ui;
@@ -77,6 +78,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   int _originalBrightness = 255;
   int _dimmingStartBrightness = 255;
   static const int _minBrightness = 13; // 5% of 255
+  bool _ledDimmingSuppressedForActiveJob = false;
+  bool _isExitingStandby = false;
 
   // Finished celebration state
   bool _celebrationActive = false;
@@ -236,7 +239,9 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     if (!_isStandbyActive && widget.enabled && standbySettings.standbyEnabled) {
       setState(() {
         _isStandbyActive = true;
+        _isExitingStandby = false;
       });
+      _ledDimmingSuppressedForActiveJob = false;
       _fadeController.forward();
       _startClockUpdate();
       _startBounce();
@@ -251,6 +256,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
 
   void _deactivateStandby() {
     if (_isStandbyActive) {
+      _isExitingStandby = true;
+      _ledDimmingSuppressedForActiveJob = false;
       // Restore brightness immediately so screen and UI return together.
       _stopDimming();
       // Speed up the fade-out (return to app) significantly
@@ -264,6 +271,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         if (mounted) {
           setState(() {
             _isStandbyActive = false;
+            _isExitingStandby = false;
           });
         }
         _resetCelebrationState(resetCompleted: true);
@@ -344,11 +352,40 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   }
 
   void _handleDimmingTick() {
+    if (!_isStandbyActive || _isExitingStandby) {
+      return;
+    }
+
     final progress = _dimmingAnimation.value;
     final currentBrightness =
         (_dimmingStartBrightness * (1 - progress) + _minBrightness * progress)
             .toInt();
     _writeBrightness(currentBrightness);
+    unawaited(_applyStandbyLedProgress(progress));
+  }
+
+  Future<void> _applyStandbyLedProgress(double progress) async {
+    if (!context.mounted || !_isStandbyActive || _isExitingStandby) return;
+
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    final isActiveJob = (statusProvider.status?.isPrinting ?? false) ||
+        (statusProvider.status?.isPaused ?? false) ||
+        statusProvider.isPausing ||
+        statusProvider.isCanceling;
+    final lighting = Provider.of<LightingProvider>(context, listen: false);
+
+    // Only dim LEDs while idle. If a print becomes active during standby,
+    // immediately restore LEDs once and suppress further dim commands.
+    if (isActiveJob) {
+      if (!_ledDimmingSuppressedForActiveJob) {
+        _ledDimmingSuppressedForActiveJob = true;
+        await lighting.setFullBrightness();
+      }
+      return;
+    }
+
+    _ledDimmingSuppressedForActiveJob = false;
+    await lighting.applyStandbyProgress(progress);
   }
 
   String _getBacklightDevice() {
@@ -418,7 +455,11 @@ class _StandbyOverlayState extends State<StandbyOverlay>
 
       final standbySettings =
           Provider.of<StandbySettingsProvider>(context, listen: false);
-      if (!standbySettings.dimmingEnabled) return; // Dimming not enabled, skip
+      if (!standbySettings.dimmingEnabled) {
+        // Screen dimming disabled: still apply standby LED behavior.
+        await _applyStandbyLedProgress(1.0);
+        return;
+      }
 
       // Read current brightness for this dimming pass
       _dimmingStartBrightness = await _readBrightness();
@@ -438,6 +479,11 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       // Instantly restore brightness
       _originalBrightness = 255;
       await _writeBrightness(_originalBrightness);
+
+      if (context.mounted) {
+        final lighting = Provider.of<LightingProvider>(context, listen: false);
+        await lighting.setFullBrightness();
+      }
     } catch (e) {
       print('Error stopping dimming: $e');
     }
@@ -452,6 +498,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     try {
       _pauseDimmingForCelebration();
       await _writeBrightness(255);
+      if (context.mounted) {
+        final lighting = Provider.of<LightingProvider>(context, listen: false);
+        await lighting.setFullBrightness();
+      }
     } catch (e) {
       print('Error boosting brightness: $e');
     }
