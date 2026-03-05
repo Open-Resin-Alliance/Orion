@@ -46,7 +46,7 @@ class NotificationProvider extends ChangeNotifier {
 
   Timer? _timer;
   bool _disposed = false;
-  final int _pollIntervalSeconds = 1;
+  final int _pollIntervalSeconds = 2;
   final Set<String> _seen = {}; // track seen notifications by text+ts
   final List<NotificationItem> _pending = [];
   // Keys present on the server in the most recent poll. Each key is

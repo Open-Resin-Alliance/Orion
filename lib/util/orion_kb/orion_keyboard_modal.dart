@@ -16,11 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
 import 'package:orion/util/orion_kb/orion_keyboard.dart';
-import 'package:orion/util/providers/theme_provider.dart';
-import 'package:orion/glasser/glasser.dart';
 
 class OrionKbModal extends ModalRoute<String> {
   final TextEditingController textController;
@@ -57,23 +53,11 @@ class OrionKbModal extends ModalRoute<String> {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     final keyboardHeightFactor = isLandscape ? 0.5 : 0.4;
-    final keyboardHeight = MediaQuery.of(context).size.height * keyboardHeightFactor;
-
-    final width = MediaQuery.of(context).size.width;
-    final height = MediaQuery.of(context).size.height;
-    final radius = (width > height) ? width / 30 : height / 30;
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isGlassTheme = themeProvider.isGlassTheme;
-    final gradient = GlassGradientUtils.resolveGradient(
-      themeProvider: themeProvider,
-    );
-    final modalGradient = GlassGradientUtils.darkenGradient(
-      gradient,
-      amount: 0.2,
-    );
+    final keyboardHeight =
+        MediaQuery.of(context).size.height * keyboardHeightFactor;
     final borderRadius = BorderRadius.only(
-      topLeft: Radius.circular(radius),
-      topRight: Radius.circular(radius),
+      topLeft: Radius.circular(24),
+      topRight: Radius.circular(24),
     );
 
     return Material(
@@ -94,67 +78,27 @@ class OrionKbModal extends ModalRoute<String> {
             top: false,
             child: Align(
               alignment: Alignment.bottomCenter,
-              child: isGlassTheme
-                  ? Container(
-                      decoration: BoxDecoration(
-                        borderRadius: borderRadius,
-                        boxShadow: GlassPlatformConfig.surfaceShadow(
-                          blurRadius: 26,
-                          yOffset: 12,
-                          alpha: 0.24,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: borderRadius,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: borderRadius,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: modalGradient,
-                            ),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.12),
-                              width: 1.2,
-                            ),
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.55),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 5.0),
-                              child: OrionKeyboard(
-                                controller: textController,
-                                locale: locale,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).canvasColor,
-                        borderRadius: borderRadius,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            spreadRadius: 2,
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 5.0),
-                        child: OrionKeyboard(
-                          controller: textController,
-                          locale: locale,
-                        ),
-                      ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).canvasColor,
+                  borderRadius: borderRadius,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      spreadRadius: 2,
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
                     ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5.0),
+                  child: OrionKeyboard(
+                    controller: textController,
+                    locale: locale,
+                  ),
+                ),
+              ),
             ),
           ),
         ],

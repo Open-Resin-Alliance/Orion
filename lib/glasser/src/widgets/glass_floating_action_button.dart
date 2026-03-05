@@ -119,9 +119,8 @@ class GlassFloatingActionButton extends StatelessWidget {
 
     if (!themeProvider.isGlassTheme) {
       final cs = Theme.of(context).colorScheme;
-      final bg = tintPalette != null
-          ? tintPalette.color.withValues(alpha: 0.10)
-          : cs.secondaryContainer;
+      final bg =
+          tintPalette != null ? tintPalette.color : cs.secondaryContainer;
       final fg = tintPalette != null
           ? tintPalette.materialForeground
           : cs.onSecondaryContainer;
@@ -316,6 +315,7 @@ class GlassFloatingActionButton extends StatelessWidget {
       );
     } else {
       final borderRadius = BorderRadius.circular(glassCornerRadius);
+      final forceBlur = doForceBlur;
       final shadow = GlassPlatformConfig.interactiveShadow(
         enabled: onPressed != null,
         blurRadius: 24,
@@ -352,7 +352,7 @@ class GlassFloatingActionButton extends StatelessWidget {
               opacity: fillOpacity,
               color: blendedFillColor,
               floatingSurface: true,
-              interactiveSurface: true,
+              interactiveSurface: forceBlur ? false : true,
               borderWidth: 1.6,
               emphasizeBorder: true,
               borderColor: borderColor,
@@ -415,6 +415,12 @@ _FabTintPalette? _resolveFabTintPalette(
         color: Colors.orangeAccent,
         materialForeground: Colors.white,
         glassForeground: Colors.orangeAccent,
+      );
+    case GlassButtonTint.cold:
+      return const _FabTintPalette(
+        color: Colors.lightBlueAccent,
+        materialForeground: Colors.white,
+        glassForeground: Colors.lightBlueAccent,
       );
     case GlassButtonTint.negative:
       return const _FabTintPalette(

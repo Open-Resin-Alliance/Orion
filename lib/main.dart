@@ -47,6 +47,7 @@ import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/files_provider.dart';
+import 'package:orion/backend_service/providers/local_files_provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/backend_service/providers/print_provider.dart';
 import 'package:orion/backend_service/providers/notification_provider.dart';
@@ -63,9 +64,18 @@ import 'package:orion/util/providers/orion_update_provider.dart';
 import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
+import 'package:orion/util/standby_overlay.dart';
+import 'package:orion/backend_service/providers/standby_settings_provider.dart';
+import 'package:orion/util/orion_config.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Restore screen brightness to full on startup (in case the app was
+  // closed while standby dimming was active)
+  if (Platform.isLinux) {
+    await _restoreFullBrightness();
+  }
 
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     setWindowTitle('Orion - Open Resin Alliance');
@@ -145,6 +155,69 @@ void main() {
   });
 
   runApp(const OrionRoot());
+}
+
+/// Restore screen brightness to 255 on startup.
+/// This ensures the screen is at full brightness even if the app was closed
+/// while standby dimming was active.
+Future<void> _restoreFullBrightness() async {
+  try {
+    // Try to read the backlight device from config
+    final config = OrionConfig();
+    final backlightDevice = config.getString('backlightDevice', category: 'ui');
+
+    if (backlightDevice.isEmpty) {
+      // No backlight device configured, try to auto-detect
+      final backlightDir = Directory('/sys/class/backlight');
+      if (!await backlightDir.exists()) return;
+
+      // Find first available device
+      await for (final entry in backlightDir.list()) {
+        if (entry is Directory) {
+          final brightnessFile = File('${entry.path}/brightness');
+          if (await brightnessFile.exists()) {
+            await _writeBrightness(brightnessFile.path, 255);
+            return;
+          }
+        }
+      }
+    } else {
+      // Use configured device
+      final brightnessPath = '/sys/class/backlight/$backlightDevice/brightness';
+      final file = File(brightnessPath);
+      if (await file.exists()) {
+        await _writeBrightness(brightnessPath, 255);
+      }
+    }
+  } catch (e) {
+    print('Could not restore full brightness on startup: $e');
+  }
+}
+
+/// Write brightness value to the specified path
+Future<void> _writeBrightness(String path, int level) async {
+  try {
+    // Try direct write first
+    try {
+      final file = File(path);
+      await file.writeAsString(level.toString());
+      return;
+    } catch (_) {
+      // Direct write failed, try with sudo
+    }
+
+    // Fall back to sudo method
+    try {
+      final process = await Process.start('sudo', ['tee', path]);
+      process.stdin.writeln(level.toString());
+      await process.stdin.close();
+      await process.exitCode;
+    } catch (e) {
+      print('Brightness write skipped: $e');
+    }
+  } catch (e) {
+    print('Error writing brightness: $e');
+  }
 }
 
 /// Resolve the most likely log file location for this runtime.
@@ -232,6 +305,10 @@ class OrionRoot extends StatelessWidget {
           lazy: true,
         ),
         ChangeNotifierProvider(
+          create: (_) => LocalFilesProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
           create: (_) => PrintProvider(),
           lazy: true,
         ),
@@ -245,17 +322,17 @@ class OrionRoot extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => OrionUpdateProvider(),
-          lazy: true,
+          lazy: false,
         ),
         ChangeNotifierProvider(
           create: (_) => AthenaUpdateProvider(),
-          lazy: true,
+          lazy: false,
         ),
         ChangeNotifierProxyProvider2<OrionUpdateProvider, AthenaUpdateProvider,
             UpdateManager>(
           create: (context) => UpdateManager(
-            Provider.of<OrionUpdateProvider>(context, listen: false),
-            Provider.of<AthenaUpdateProvider>(context, listen: false),
+            context.read<OrionUpdateProvider>(),
+            context.read<AthenaUpdateProvider>(),
           ),
           update: (context, orion, athena, previous) =>
               previous ?? UpdateManager(orion, athena),
@@ -270,6 +347,10 @@ class OrionRoot extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => CalibrationContextProvider(),
           lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StandbySettingsProvider(),
+          lazy: false,
         )
       ],
       child: const OrionMainApp(),
@@ -406,9 +487,8 @@ class OrionMainAppState extends State<OrionMainApp> {
       LocaleProvider localeProvider, ThemeProvider themeProvider) {
     return GlassApp(
       child: Builder(builder: (innerCtx) {
-        // Use MaterialApp.router's builder to get a context that has
-        // MaterialLocalizations and a Navigator. Install the watcher
-        // after the first frame using that context.
+        // Build the app shell and inject the StandbyOverlay from within
+        // MaterialApp.router's builder so Directionality/Theme are available
         return MaterialApp.router(
           title: 'Orion',
           debugShowCheckedModeBanner: false,
@@ -430,9 +510,9 @@ class OrionMainAppState extends State<OrionMainApp> {
                 if (_notifWatcher == null && navCtx != null) {
                   _notifWatcher = NotificationWatcher.install(navCtx);
                 }
-                if (_updateWatcher == null && navCtx != null) {
-                  _updateWatcher = UpdateNotificationWatcher.install(navCtx);
-                }
+                // Use ctx (builder context) for UpdateNotificationWatcher since it
+                // needs access to providers which aren't available in navCtx
+                _updateWatcher ??= UpdateNotificationWatcher.install(ctx);
                 // Attach a listener to StatusProvider so we can auto-open
                 // the StatusScreen when a print becomes active (remote start).
                 try {
@@ -504,7 +584,13 @@ class OrionMainAppState extends State<OrionMainApp> {
                 } catch (_) {}
               } catch (_) {}
             });
-            return child ?? const SizedBox.shrink();
+            // Wrap the built subtree with the StandbyOverlay so it can
+            // access Theme/Directionality provided by MaterialApp.
+            // The StandbyOverlay will read actual settings from StandbySettingsProvider
+            return StandbyOverlay(
+              enabled: true,
+              child: child ?? const SizedBox.shrink(),
+            );
           },
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,

@@ -73,6 +73,7 @@ dependencies:
   fl_chart: ^1.1.1
   # video_player: ^2.10.1
   fvp: ^0.35.1
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -116,6 +117,11 @@ flutter:
     - CHANGELOG.md
 
   fonts:
+    - family: AtkinsonHyperlegibleNext
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-VariableFont_wght.ttf
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-Italic-VariableFont_wght.ttf
+          style: italic
     - family: AtkinsonHyperlegible
       fonts:
         - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf

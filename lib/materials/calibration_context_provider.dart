@@ -29,9 +29,21 @@ class CalibrationContextProvider extends ChangeNotifier {
     _loadFromConfig();
   }
 
-  CalibrationContext? get context => _context;
+  CalibrationContext? get context {
+    // Always try to load from config if in-memory context is null
+    // This ensures we don't lose context after long waits or app lifecycle events
+    if (_context == null) {
+      _loadFromConfig();
+    }
+    return _context;
+  }
 
-  bool get hasContext => _context != null;
+  bool get hasContext {
+    // Check both in-memory and persistent storage
+    if (_context != null) return true;
+    _loadFromConfig();
+    return _context != null;
+  }
 
   /// Store calibration context when starting a calibration print
   void setContext(CalibrationContext context) {
@@ -53,6 +65,7 @@ class CalibrationContextProvider extends ChangeNotifier {
         final jsonString = jsonEncode(_context!.toJson());
         OrionConfig()
             .setString('activeContext', jsonString, category: 'calibration');
+        debugPrint('Saved calibration context to config');
       } catch (e) {
         debugPrint('Failed to save calibration context: $e');
       }
@@ -60,7 +73,12 @@ class CalibrationContextProvider extends ChangeNotifier {
   }
 
   void _clearConfig() {
-    OrionConfig().setString('activeContext', '', category: 'calibration');
+    try {
+      OrionConfig().setString('activeContext', '', category: 'calibration');
+      debugPrint('Cleared calibration context from config');
+    } catch (e) {
+      debugPrint('Failed to clear calibration context from config: $e');
+    }
   }
 
   void _loadFromConfig() {
@@ -70,9 +88,15 @@ class CalibrationContextProvider extends ChangeNotifier {
       if (jsonString.isNotEmpty) {
         final map = jsonDecode(jsonString);
         _context = CalibrationContext.fromJson(map);
+        debugPrint(
+            'Loaded calibration context from config: ${_context?.calibrationModelName}');
+      } else {
+        _context = null;
+        debugPrint('No calibration context found in config');
       }
     } catch (e) {
       debugPrint('Failed to load calibration context: $e');
+      _context = null;
     }
   }
 }

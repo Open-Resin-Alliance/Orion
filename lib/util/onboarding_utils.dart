@@ -17,6 +17,7 @@
 
 import 'dart:io';
 import 'package:logging/logging.dart';
+import 'package:orion/util/locales/all_countries.dart';
 
 class OnboardingUtils {
   static final Logger _logger = Logger('OnboardingUtils');
@@ -73,6 +74,51 @@ class OnboardingUtils {
     }
   }
 
+  static Future<void> setWifiRegion(String countryName) async {
+    if (!Platform.isLinux) return;
+    try {
+      // Get the ISO 2-letter country code from country data
+      final countryCode = getCountryCode(countryName);
+      if (countryCode.isEmpty) {
+        _logger.warning('Failed to get country code for "$countryName"');
+        return;
+      }
+
+      _logger.config(
+          'Attempting to set WiFi regulatory region to $countryCode for $countryName');
+
+      // Check if wlan0 is up first
+      final statusResult =
+          await Process.run('cat', ['/sys/class/net/wlan0/operstate']);
+      if (statusResult.exitCode != 0) {
+        _logger.warning(
+            'Could not check wlan0 status; WiFi interface may not be available');
+        return;
+      }
+
+      final status = statusResult.stdout.toString().trim();
+      if (status != 'up') {
+        _logger.fine(
+            'WiFi interface wlan0 is not up (status: $status), skipping region set');
+        return;
+      }
+
+      // Set the regulatory region using iw
+      final result =
+          await Process.run('sudo', ['iw', 'reg', 'set', countryCode]);
+      if (result.exitCode == 0) {
+        _logger
+            .config('Successfully set WiFi regulatory region to $countryCode');
+      } else {
+        _logger
+            .warning('Failed to set WiFi regulatory region: ${result.stderr}');
+      }
+    } catch (e) {
+      _logger.fine('Error setting WiFi region: $e');
+      // Don't be too loud about this - it's not critical if WiFi region setting fails
+    }
+  }
+
   // Convert a human-readable timezone (as presented in UI countryData)
   // into an IANA timezone name suitable for timedatectl. Returns null when
   // no mapping can be made.
@@ -88,28 +134,50 @@ class OnboardingUtils {
     final map = <String, String>{
       'coordinated universal time': 'UTC',
       'greenwich mean time': 'UTC',
+      // North American timezones
       'eastern time': 'America/New_York',
       'eastern daylight time': 'America/New_York',
+      'eastern standard time': 'America/New_York',
       'central time': 'America/Chicago',
+      'central daylight time': 'America/Chicago',
       'central standard time': 'America/Chicago',
       'mountain time': 'America/Denver',
+      'mountain daylight time': 'America/Denver',
+      'mountain standard time': 'America/Denver',
       'pacific time': 'America/Los_Angeles',
+      'pacific daylight time': 'America/Los_Angeles',
+      'pacific standard time': 'America/Los_Angeles',
       'alaska time': 'America/Anchorage',
       'hawaii time': 'Pacific/Honolulu',
       'newfoundland time': 'America/St_Johns',
       'atlantic standard time': 'America/Halifax',
+      // European timezones
+      'central european time': 'Europe/Berlin',
+      'central european summer time': 'Europe/Berlin',
+      'eastern european time': 'Europe/Athens',
+      'eastern european summer time': 'Europe/Athens',
+      'western european time': 'Europe/London',
+      'western european summer time': 'Europe/London',
+      'british standard time': 'Europe/London',
+      'irish standard time': 'Europe/Dublin',
+      'greenland time': 'America/Godthab',
+      'western greenland time': 'America/Godthab',
+      'moscow standard time': 'Europe/Moscow',
+      // South American timezones
       'argentina time': 'America/Argentina/Buenos_Aires',
       'peru time': 'America/Lima',
       'colombia time': 'America/Bogota',
       'ecuador time': 'America/Guayaquil',
       'brazilia time': 'America/Sao_Paulo',
       'brazil time': 'America/Sao_Paulo',
+      'chile standard time': 'America/Santiago',
+      // Asia-Pacific timezones
       'china standard time': 'Asia/Shanghai',
       'japan standard time': 'Asia/Tokyo',
       'india standard time': 'Asia/Kolkata',
       'philippine time': 'Asia/Manila',
       'australian eastern standard time': 'Australia/Sydney',
-      'chile standard time': 'America/Santiago',
+      'australian eastern daylight time': 'Australia/Sydney',
       'kamchatka time': 'Asia/Kamchatka'
     };
 

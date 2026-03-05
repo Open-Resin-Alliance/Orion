@@ -81,6 +81,124 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
     }
   }
 
+  Future<bool> _showConfirmationDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required IconData icon,
+    required Color accentColor,
+    required GlassButtonTint confirmTint,
+  }) async {
+    if (!mounted) return false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => GlassAlertDialog(
+        title: Row(
+          children: [
+            PhosphorIcon(
+              icon,
+              color: accentColor,
+              size: 30,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 65),
+            ),
+            child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+          ),
+          GlassButton(
+            tint: confirmTint,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 65),
+            ),
+            child: Text(confirmLabel, style: const TextStyle(fontSize: 22)),
+          ),
+        ],
+      ),
+    );
+
+    return result == true;
+  }
+
+  Future<void> _confirmAndResetZOffset() async {
+    final confirmed = await _showConfirmationDialog(
+      title: 'Reset Z Offset',
+      message:
+          'This will reset the Z offset to 0.00 mm.\n\nDo you want to continue?',
+      confirmLabel: 'Reset Offset',
+      icon: PhosphorIcons.warning(),
+      accentColor: Colors.redAccent,
+      confirmTint: GlassButtonTint.negative,
+    );
+    if (!confirmed) return;
+
+    final manual = Provider.of<ManualProvider>(context, listen: false);
+    _logger.info('Reset Z offset button pressed');
+    _setOptimisticOffset(0.0);
+
+    final ok = await manual.resetZOffset();
+    if (!ok) _safeShowError('GOLDEN-APE');
+    if (!mounted) return;
+
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    await statusProvider.refreshKinematicStatus();
+    final backendOffset = statusProvider.kinematicStatus?.offset;
+    if (_offsetsMatch(_optimisticOffset, backendOffset)) {
+      _clearOptimisticOffset();
+    }
+  }
+
+  Future<void> _confirmAndSetCurrentAsZZero(double currentZ) async {
+    final confirmed = await _showConfirmationDialog(
+      title: 'Set Z = 0',
+      message:
+          'This will set the current position (${currentZ.toStringAsFixed(2)} mm) as the Z offset.\n\nDo you want to continue?',
+      confirmLabel: 'Set Offset',
+      icon: PhosphorIcons.warning(),
+      accentColor: Colors.orangeAccent,
+      confirmTint: GlassButtonTint.warn,
+    );
+    if (!confirmed) return;
+
+    final manual = Provider.of<ManualProvider>(context, listen: false);
+    _logger.info('Set Z offset button pressed (Z=$currentZ)');
+    _setOptimisticOffset(currentZ);
+
+    final ok = await manual.setZOffset(currentZ);
+    if (!ok) _safeShowError('GOLDEN-APE');
+    if (!mounted) return;
+
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    await statusProvider.refreshKinematicStatus();
+    final backendOffset = statusProvider.kinematicStatus?.offset;
+    if (_offsetsMatch(_optimisticOffset, backendOffset)) {
+      _clearOptimisticOffset();
+    }
+  }
+
   Future<void> moveZ(double distance) async {
     try {
       _logger.info('Moving Z by $distance');
@@ -623,33 +741,13 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
               final currentZ = status.status?.physicalState.z ??
                   status.kinematicStatus?.position ??
                   0.0;
+              final canRun = !_apiErrorState && !manual.busy;
               return Row(
                 children: [
                   // Reset button
                   Expanded(
                     child: GlassButton(
-                      onPressed: _apiErrorState || manual.busy
-                          ? null
-                          : () async {
-                              _logger.info('Reset Z offset button pressed');
-                              // Optimistically show offset = 0.0 immediately
-                              _setOptimisticOffset(0.0);
-
-                              final ok = await manual.resetZOffset();
-                              if (!ok) _safeShowError('GOLDEN-APE');
-                              if (!mounted) return;
-                              final statusProvider =
-                                  Provider.of<StatusProvider>(context,
-                                      listen: false);
-                              await statusProvider.refreshKinematicStatus();
-                              // Clear optimistic offset if backend confirms
-                              final backendOffset =
-                                  statusProvider.kinematicStatus?.offset;
-                              if (_offsetsMatch(
-                                  _optimisticOffset, backendOffset)) {
-                                _clearOptimisticOffset();
-                              }
-                            },
+                      onPressed: canRun ? _confirmAndResetZOffset : null,
                       style: ElevatedButton.styleFrom(
                         minimumSize:
                             const Size(double.infinity, double.infinity),
@@ -676,28 +774,9 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                   // Z = 0 button (sets current Z position as the offset)
                   Expanded(
                     child: GlassButton(
-                      onPressed: _apiErrorState || manual.busy
-                          ? null
-                          : () async {
-                              _logger.info(
-                                  'Set Z offset button pressed (Z=$currentZ)');
-                              // Optimistically show the offset immediately
-                              _setOptimisticOffset(currentZ);
-
-                              final ok = await manual.setZOffset(currentZ);
-                              if (!ok) _safeShowError('GOLDEN-APE');
-                              if (!mounted) return;
-                              final statusProvider =
-                                  Provider.of<StatusProvider>(context,
-                                      listen: false);
-                              await statusProvider.refreshKinematicStatus();
-                              final backendOffset =
-                                  statusProvider.kinematicStatus?.offset;
-                              if (_offsetsMatch(
-                                  _optimisticOffset, backendOffset)) {
-                                _clearOptimisticOffset();
-                              }
-                            },
+                      onPressed: canRun
+                          ? () => _confirmAndSetCurrentAsZZero(currentZ)
+                          : null,
                       style: ElevatedButton.styleFrom(
                         minimumSize:
                             const Size(double.infinity, double.infinity),

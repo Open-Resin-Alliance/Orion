@@ -28,6 +28,7 @@ import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/wifi_screen.dart';
 import 'package:orion/util/locales/all_countries.dart';
+import 'package:orion/util/locales/country_regions.dart';
 import 'package:orion/util/locales/available_languages.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
@@ -319,11 +320,14 @@ class OnboardingPages {
     final suggestedCountryCodes =
         suggestedCountries.map((c) => c['code']).toSet();
 
-    final allCountries = countryData.entries
-        .map((e) => {'name': e.key, 'code': e.value['code']})
+    final otherCountries = countryData.entries
+        .map((e) =>
+            <String, String>{'name': e.key, 'code': e.value['code'] as String})
         .where((country) => !suggestedCountryCodes.contains(country['code']))
-        .toList()
-      ..sort((a, b) => a['name']!.compareTo(b['name']!));
+        .toList();
+
+    // Group countries by region
+    final groupedCountries = groupCountriesByRegion(otherCountries);
 
     return GlassApp(
       child: Padding(
@@ -342,20 +346,44 @@ class OnboardingPages {
                     _buildCountryCard(context, country, onCountrySelected),
               ),
               const SizedBox(height: 16),
-              Text(
-                l10n.regionAllCountries,
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
             ],
-            ...allCountries.map(
-              (country) => _buildCountryCard(
-                context,
-                country.map((key, value) => MapEntry(key, value.toString())),
-                onCountrySelected,
-              ),
+            Text(
+              l10n.regionAllCountries,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
+            // Display countries grouped by region
+            ...regionOrder.map((region) {
+              final countriesInRegion = groupedCountries[region] ?? [];
+              if (countriesInRegion.isEmpty) return const SizedBox.shrink();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12.0, horizontal: 8.0),
+                    child: Text(
+                      region,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  ...countriesInRegion.map(
+                    (country) => _buildCountryCard(
+                      context,
+                      country
+                          .map((key, value) => MapEntry(key, value.toString())),
+                      onCountrySelected,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              );
+            }).toList(),
           ],
         ),
       ),

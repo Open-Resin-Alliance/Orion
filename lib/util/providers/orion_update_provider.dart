@@ -254,33 +254,45 @@ class OrionUpdateProvider extends ChangeNotifier {
   }
 
   bool _isNewerVersion(String latest, String current) {
-    // Split the version and build numbers
-    List<String> latestVersionParts = latest.split('+')[0].split('.');
-    List<String> currentVersionParts = current.split('+')[0].split('.');
+    try {
+      // Split the version and build numbers
+      List<String> latestVersionParts = latest.split('+')[0].split('.');
+      List<String> currentVersionParts = current.split('+')[0].split('.');
 
-    // Convert version parts to integers for comparison
-    List<int> latestNumbers = latestVersionParts.map(int.parse).toList();
-    List<int> currentNumbers = currentVersionParts.map(int.parse).toList();
+      // Convert version parts to integers for comparison
+      // Use max length to handle strict semver (1.2 < 1.2.1)
+      int len = max(latestVersionParts.length, currentVersionParts.length);
 
-    // Compare major, minor, and patch numbers
-    for (int i = 0; i < min(latestNumbers.length, currentNumbers.length); i++) {
-      if (latestNumbers[i] > currentNumbers[i]) {
-        return true;
-      } else if (latestNumbers[i] < currentNumbers[i]) {
-        return false;
+      for (int i = 0; i < len; i++) {
+        int l = 0;
+        int c = 0;
+        if (i < latestVersionParts.length) {
+          l = int.tryParse(latestVersionParts[i]) ?? 0;
+        }
+        if (i < currentVersionParts.length) {
+          c = int.tryParse(currentVersionParts[i]) ?? 0;
+        }
+
+        if (l > c) {
+          return true;
+        } else if (l < c) {
+          return false;
+        }
       }
-    }
 
-    if (latest.contains('+') && current.contains('+')) {
-      String latestBuild = latest;
-      String currentBuild = current.split('+')[1];
-      try {
-        int latestBuildNumber = int.parse(latestBuild);
-        int currentBuildNumber = int.parse(currentBuild);
-        return latestBuildNumber > currentBuildNumber;
-      } catch (e) {
-        return latestBuild.compareTo(currentBuild) > 0;
+      if (latest.contains('+') && current.contains('+')) {
+        String latestBuild = latest.split('+')[1];
+        String currentBuild = current.split('+')[1];
+        try {
+          int latestBuildNumber = int.parse(latestBuild);
+          int currentBuildNumber = int.parse(currentBuild);
+          return latestBuildNumber > currentBuildNumber;
+        } catch (e) {
+          return latestBuild.compareTo(currentBuild) > 0;
+        }
       }
+    } catch (e) {
+      _logger.warning('Error comparing versions: $e');
     }
 
     return false;
@@ -445,6 +457,13 @@ class OrionUpdateProvider extends ChangeNotifier {
   }
 
   Future<void> performUpdate(BuildContext context, String assetUrl) async {
+    // Safety: if Force Update override is enabled, disable it as soon as
+    // the Orion update sequence is initiated so we don't force-prompt again
+    // on every boot after this run.
+    if (_config.getFlag('overrideUpdateCheck', category: 'developer')) {
+      _config.setFlag('overrideUpdateCheck', false, category: 'developer');
+    }
+
     final String localUser = Platform.environment['USER'] ?? 'pi';
 
     final String orionRoot = findOrionRoot();

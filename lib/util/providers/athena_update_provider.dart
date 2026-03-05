@@ -136,6 +136,15 @@ class AthenaUpdateProvider extends ChangeNotifier {
     }
   }
 
+  /// Returns true if this update should trigger user notifications.
+  /// Master/development branch updates are excluded from notifications
+  /// but still visible in the update screen for manual installation.
+  bool get shouldNotify {
+    if (!updateAvailable) return false;
+    // Suppress notifications for master/development branch
+    return channel != 'master';
+  }
+
   bool _isNewerVersion(String latest, String current) {
     try {
       final lv = latest.split('+')[0];

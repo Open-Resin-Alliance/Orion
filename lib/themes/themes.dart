@@ -15,25 +15,34 @@
 * limitations under the License.
 */
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 
 import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 
+// Variable fonts seem broken on Linux, so use Regular on Linux
+String get _primaryFontFamily {
+  if (Platform.isLinux) {
+    return 'AtkinsonHyperlegible';
+  }
+  return 'AtkinsonHyperlegible';
+}
+
 ThemeData createLightTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
-    // Use NotoSansCJK as a fallback for CJK characters so Linux displays
-    // Chinese/Japanese/Korean glyphs correctly when the primary font lacks them.
-    fontFamilyFallback: const ['NotoSansCJK'],
+    fontFamily: _primaryFontFamily,
+    // Keep classic Atkinson as secondary fallback, then CJK
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.light,
       variant: FlexSchemeVariant.soft,
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
-        fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.black,
       ),
@@ -43,19 +52,21 @@ ThemeData createLightTheme(Color seedColor) {
       iconTheme: IconThemeData(size: 30),
     ),
     // Ensure the TextTheme entries include the CJK fallback
-    textTheme: _withCjkFallback(const TextTheme(
-      bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
+    textTheme: _withCjkFallback(TextTheme(
+      bodyMedium:
+        TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
       titleLarge: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
+        fontFamily: _primaryFontFamily,
+        fontSize: 20), // For AppBar title
     )),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       selectedLabelStyle: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
-          fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       unselectedLabelStyle: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
-          fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
@@ -77,17 +88,17 @@ ThemeData createLightTheme(Color seedColor) {
 
 ThemeData createDarkTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
-    fontFamilyFallback: const ['NotoSansCJK'],
+    fontFamily: _primaryFontFamily,
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.dark,
       variant: FlexSchemeVariant.soft,
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
-        fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.white,
       ),
@@ -96,19 +107,21 @@ ThemeData createDarkTheme(Color seedColor) {
       toolbarHeight: 65,
       iconTheme: IconThemeData(size: 30, color: Colors.white),
     ),
-    textTheme: _withCjkFallback(const TextTheme(
-      bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
+    textTheme: _withCjkFallback(TextTheme(
+      bodyMedium:
+        TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
       titleLarge: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
+        fontFamily: _primaryFontFamily,
+        fontSize: 20), // For AppBar title
     )),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       selectedLabelStyle: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
-          fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       unselectedLabelStyle: TextStyle(
-          fontFamily: 'AtkinsonHyperlegible',
-          fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
@@ -130,8 +143,8 @@ ThemeData createDarkTheme(Color seedColor) {
 
 ThemeData createGlassTheme(Color seedColor) {
   return ThemeData(
-    fontFamily: 'AtkinsonHyperlegible',
-    fontFamilyFallback: const ['NotoSansCJK'],
+    fontFamily: _primaryFontFamily,
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
     colorScheme: SeedColorScheme.fromSeeds(
       primaryKey: seedColor,
       brightness: Brightness.dark,
@@ -148,12 +161,12 @@ ThemeData createGlassTheme(Color seedColor) {
         TargetPlatform.windows: _OpaquePageTransitionsBuilder(),
       },
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
       titleTextStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
-        fontFamilyFallback: ['NotoSansCJK'],
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
         fontSize: 30,
         color: Colors.white,
       ),
@@ -163,27 +176,27 @@ ThemeData createGlassTheme(Color seedColor) {
       iconTheme: IconThemeData(size: 30, color: Colors.white),
       foregroundColor: Colors.white,
     ),
-    textTheme: _withCjkFallback(const TextTheme(
+    textTheme: _withCjkFallback(TextTheme(
       bodyMedium: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
         fontSize: 20,
         color: Colors.white,
       ),
       titleLarge: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
         fontSize: 20,
         color: Colors.white,
       ),
     )),
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: Colors.transparent,
       selectedLabelStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
         fontSize: 18,
         color: Colors.white,
       ),
       unselectedLabelStyle: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible',
+        fontFamily: _primaryFontFamily,
         fontSize: 18,
         color: Colors.white70,
       ),

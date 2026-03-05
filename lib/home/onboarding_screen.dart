@@ -500,6 +500,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
     setState(() {
       _selectedCountry = name;
     });
+    // Attempt to set WiFi regulatory region based on selected country
+    OnboardingUtils.setWifiRegion(name);
     _handlePageChange(_currentPage + 1);
   }
 
