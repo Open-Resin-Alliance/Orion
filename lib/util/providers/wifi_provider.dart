@@ -69,26 +69,74 @@ class WiFiProvider with ChangeNotifier {
 
   WiFiProvider({bool startPolling = true}) {
     _detectPlatform();
-    _initializeBackend();
-    if (startPolling) {
-      _startPolling();
+    // Initialize backend asynchronously - don't block constructor
+    _initializeBackend().then((_) {
+      if (startPolling) {
+        _startPolling();
+      }
+    });
+  }
+
+  /// Check if modern backend (nmcli) is available on the system
+  Future<bool> _isModernBackendAvailable() async {
+    try {
+      final result = await Process.run('which', ['nmcli']);
+      return result.exitCode == 0;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Check if legacy backend tools are available on the system
+  Future<bool> _isLegacyBackendAvailable() async {
+    try {
+      final iwlistResult = await Process.run('which', ['iwlist']);
+      final iwconfigResult = await Process.run('which', ['iwconfig']);
+      return iwlistResult.exitCode == 0 && iwconfigResult.exitCode == 0;
+    } catch (e) {
+      return false;
     }
   }
 
   /// Initialize the appropriate WiFi backend based on configuration
-  void _initializeBackend() {
+  /// with automatic fallback from modern to legacy if modern is unavailable
+  Future<void> _initializeBackend() async {
     try {
       final config = OrionConfig();
       final wifiMode = config.getString('wifiMode', category: 'advanced');
-      
+
       if (wifiMode == 'legacy') {
+        // User explicitly requested legacy mode
         _backend = LegacyWiFiBackend();
-        _log.info('Using legacy WiFi backend (iwlist + wpa_supplicant)');
+        _log.info(
+            'Using legacy WiFi backend (iwlist + wpa_supplicant) - explicitly configured');
       } else {
-        _backend = ModernWiFiBackend();
-        _log.info('Using modern WiFi backend (nmcli)');
+        // Default to modern, or user explicitly set 'modern'
+        // Try modern backend first
+        final modernAvailable = await _isModernBackendAvailable();
+
+        if (modernAvailable) {
+          _backend = ModernWiFiBackend();
+          _log.info('Using modern WiFi backend (nmcli)');
+        } else {
+          // Modern not available, attempt fallback to legacy
+          _log.warning(
+              'nmcli not found, attempting fallback to legacy WiFi backend');
+          final legacyAvailable = await _isLegacyBackendAvailable();
+
+          if (legacyAvailable) {
+            _backend = LegacyWiFiBackend();
+            _log.info(
+                'Successfully fell back to legacy WiFi backend (iwlist + wpa_supplicant)');
+          } else {
+            // Neither available, default to modern (will fail gracefully)
+            _log.warning(
+                'No WiFi backend tools found (nmcli, iwlist, or iwconfig missing), using modern backend with limited functionality');
+            _backend = ModernWiFiBackend();
+          }
+        }
       }
-      
+
       // Inject state update callbacks into backend
       _connectBackendCallbacks();
     } catch (e) {
@@ -116,7 +164,7 @@ class WiFiProvider with ChangeNotifier {
         _ifaceName = name;
       };
     }
-    // For Legacy backend  
+    // For Legacy backend
     else if (_backend is LegacyWiFiBackend) {
       final legacy = _backend as LegacyWiFiBackend;
       legacy.updateState = (ssid, signal, connected, connectionType) {
