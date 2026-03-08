@@ -1349,13 +1349,23 @@ class NanoDlpHttpClient implements BackendClient {
   String _thumbnailCacheKeyForPlate(
       NanoFile plate, String fallbackPath, int width, int height) {
     // PlateID can change when files are deleted/replaced on the device.
-    // Prefer stable identifiers based on path + lastModified (if available)
-    // so cache keys remain valid across plateId churn.
+    // NanoDLP allows multiple files with the same name, so we need to
+    // cross-reference multiple properties from the file model to create
+    // a unique cache key that survives plateId reuse and duplicate names.
+    // Include: path, lastModified, fileSize, layerCount, usedMaterial,
+    // printTime, and layerHeight to maximize uniqueness.
     final resolvedPath = plate.resolvedPath.isNotEmpty
         ? plate.resolvedPath.toLowerCase()
         : fallbackPath;
     final lm = plate.lastModified ?? 0;
-    final identifier = 'path:$resolvedPath|lm:$lm';
+    final fs = plate.fileSize ?? 0;
+    final lc = plate.layerCount ?? 0;
+    final um = plate.usedMaterial?.toStringAsFixed(2) ?? '0.00';
+    final pt = plate.printTime?.toStringAsFixed(1) ?? '0.0';
+    final lh = plate.layerHeight?.toStringAsFixed(3) ?? '0.000';
+
+    final identifier =
+        'path:$resolvedPath|lm:$lm|fs:$fs|lc:$lc|um:$um|pt:$pt|lh:$lh';
     return _thumbnailCacheKey(identifier, width, height);
   }
 
