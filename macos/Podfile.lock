@@ -1,9 +1,5 @@
 PODS:
   - FlutterMacOS (1.0.0)
-  - fvp (0.35.1):
-    - Flutter
-    - FlutterMacOS
-    - mdk (~> 0.35.0)
   - mdk (0.35.0)
   - path_provider_foundation (0.0.1):
     - Flutter
@@ -18,7 +14,6 @@ PODS:
 
 DEPENDENCIES:
   - FlutterMacOS (from `Flutter/ephemeral`)
-  - fvp (from `Flutter/ephemeral/.symlinks/plugins/fvp/darwin`)
   - mdk (from `LocalPods/mdk/mdk.podspec`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
   - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
@@ -28,8 +23,6 @@ DEPENDENCIES:
 EXTERNAL SOURCES:
   FlutterMacOS:
     :path: Flutter/ephemeral
-  fvp:
-    :path: Flutter/ephemeral/.symlinks/plugins/fvp/darwin
   mdk:
     :podspec: LocalPods/mdk/mdk.podspec
   path_provider_foundation:
@@ -43,7 +36,6 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  fvp: 5a47a325ffa8d63e70a276a6436416ae703206a5
   mdk: 2fc33606b1a0a61eff999de7133532d28cabb8ab
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
