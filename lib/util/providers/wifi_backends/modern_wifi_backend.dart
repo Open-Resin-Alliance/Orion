@@ -28,7 +28,8 @@ class ModernWiFiBackend extends WiFiBackend {
   final Logger _log = Logger('ModernWiFiBackend');
 
   // These will be provided by the WiFiProvider parent
-  late Function(String?, int?, bool, String) updateState; // ssid, signal, connected, connectionType
+  late Function(String?, int?, bool, String)
+      updateState; // ssid, signal, connected, connectionType
   late Function(String?) updateIp;
   late Function(String?) updateIfaceName;
 
@@ -102,8 +103,8 @@ class ModernWiFiBackend extends WiFiBackend {
               updateState(null, null, true, 'ethernet');
               updateIfaceName(dev);
               try {
-                final interfaces = await NetworkInterface.list(
-                    type: InternetAddressType.IPv4);
+                final interfaces =
+                    await NetworkInterface.list(type: InternetAddressType.IPv4);
                 NetworkInterface? matching;
                 for (final i in interfaces) {
                   if (i.name == dev) {

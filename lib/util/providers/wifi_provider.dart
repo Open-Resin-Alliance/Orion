@@ -219,9 +219,41 @@ class WiFiProvider with ChangeNotifier {
     final prevMacAddress = _macAddress;
     final prevLinkSpeed = _linkSpeed;
 
+    if (!Platform.isLinux && !Platform.isMacOS) {
+      _log.warning('WiFi status fetching is not supported on this platform');
+      _currentSSID = null;
+      _signalStrength = null;
+      _isConnected = false;
+      _connectionType = 'none';
+      _ipAddress = null;
+      _ifaceName = null;
+      _macAddress = null;
+      _linkSpeed = null;
+
+      final changed = (prevCurrentSSID != _currentSSID) ||
+          (prevSignalStrength != _signalStrength) ||
+          (prevIsConnected != _isConnected) ||
+          (prevConnectionType != _connectionType) ||
+          (prevIpAddress != _ipAddress) ||
+          (prevIfaceName != _ifaceName) ||
+          (prevMacAddress != _macAddress) ||
+          (prevLinkSpeed != _linkSpeed);
+
+      if (changed && !_disposed) notifyListeners();
+      return;
+    }
     try {
       // Delegate to backend implementation
-      await _backend.fetchWiFiStatus();
+      if (!Platform.isMacOS) {
+        await _backend.fetchWiFiStatus(); // This only works on Linux.
+      } else {
+        // For macOS, we fake the WiFi status for development purposes
+        _currentSSID = 'MockNetwork';
+        _signalStrength = -50; // Good signal
+        _isConnected = true;
+        _connectionType = 'wifi';
+        _ipAddress = '';
+      }
 
       // Determine if any of the observed fields changed
       final changed = (prevCurrentSSID != _currentSSID) ||
