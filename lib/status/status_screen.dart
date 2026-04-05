@@ -66,6 +66,8 @@ class StatusScreen extends StatefulWidget {
 }
 
 class StatusScreenState extends State<StatusScreen> {
+  static const double _thumbBaseWidth = 800.0;
+  static const double _thumbBaseHeight = 480.0;
   // While starting a new print we suppress rendering of any stale provider
   // status until after we've issued a reset in a post-frame callback. This
   // avoids calling notifyListeners during the same build frame that mounted
@@ -968,93 +970,111 @@ class StatusScreenState extends State<StatusScreen> {
                   borderRadius: themeProvider.isGlassTheme
                       ? BorderRadius.circular(12.5)
                       : BorderRadius.circular(7.75),
-                  child: Stack(children: [
-                    // Base thumbnail / spinner
-                    ColorFiltered(
-                      colorFilter: const ColorFilter.matrix(<double>[
-                        0.2126, 0.7152, 0.0722, 0, 0, // grayscale matrix
-                        0.2126, 0.7152, 0.0722, 0, 0,
-                        0.2126, 0.7152, 0.0722, 0, 0,
-                        0, 0, 0, 1, 0,
-                      ]),
-                      child: thumbnail != null && thumbnail.isNotEmpty
-                          ? Image.memory(
-                              thumbnail,
-                              fit: BoxFit.cover,
-                            )
-                          : Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    effectiveStatusColor),
-                              ),
-                            ),
-                    ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final logicalSize = Size(
+                        constraints.maxWidth,
+                        constraints.maxHeight,
+                      );
+                      final ImageProvider? thumbnailProvider =
+                          (thumbnail != null && thumbnail.isNotEmpty)
+                              ? _statusThumbnailProvider(
+                                  thumbnail,
+                                  logicalSize: logicalSize,
+                                )
+                              : null;
 
-                    // Dim overlay
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black.withValues(alpha: 0.35),
-                      ),
-                    ),
+                      return Stack(children: [
+                        // Base thumbnail / spinner
+                        ColorFiltered(
+                          colorFilter: const ColorFilter.matrix(<double>[
+                            0.2126, 0.7152, 0.0722, 0, 0, // grayscale matrix
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0, 0, 0, 1, 0,
+                          ]),
+                          child: thumbnailProvider != null
+                              ? Image(
+                                  image: thumbnailProvider,
+                                  fit: BoxFit.cover,
+                                  filterQuality: FilterQuality.none,
+                                  gaplessPlayback: true,
+                                )
+                              : Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        effectiveStatusColor),
+                                  ),
+                                ),
+                        ),
 
-                    // Progress wipe
-                    Positioned.fill(
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: ClipRect(
+                        // Dim overlay
+                        Positioned.fill(
+                          child: Container(
+                            color: Colors.black.withValues(alpha: 0.35),
+                          ),
+                        ),
+
+                        // Progress wipe
+                        Positioned.fill(
                           child: Align(
                             alignment: Alignment.bottomCenter,
-                            heightFactor: progress,
-                            child: thumbnail != null && thumbnail.isNotEmpty
-                                ? Image.memory(
-                                    thumbnail,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Center(
+                            child: ClipRect(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                heightFactor: progress,
+                                child: thumbnailProvider != null
+                                    ? Image(
+                                        image: thumbnailProvider,
+                                        fit: BoxFit.cover,
+                                        filterQuality: FilterQuality.none,
+                                        gaplessPlayback: true,
+                                      )
+                                    : Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  effectiveStatusColor),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // 2D layer overlay (covers base thumbnail and status card when active)
+                        if (_showLayer2D)
+                          Positioned.fill(
+                            child: _layer2DLoading
+                                ? Center(
                                     child: CircularProgressIndicator(
                                       valueColor: AlwaysStoppedAnimation<Color>(
                                           effectiveStatusColor),
                                     ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // 2D layer overlay (covers base thumbnail and status card when active)
-                    if (_showLayer2D)
-                      Positioned.fill(
-                        child: _layer2DLoading
-                            ? Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      effectiveStatusColor),
-                                ),
-                              )
-                            : (_layer2DBytes != null &&
-                                    _layer2DBytes!.isNotEmpty
-                                ? LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final logicalSize = Size(
-                                        constraints.maxWidth,
-                                        constraints.maxHeight,
-                                      );
-                                      return Image(
-                                        image: _layerPreviewProvider(
-                                          _layer2DBytes!,
-                                          logicalSize: logicalSize,
-                                        ),
-                                        gaplessPlayback: true,
-                                        fit: BoxFit.cover,
-                                        filterQuality: FilterQuality.none,
-                                      );
-                                    },
                                   )
-                                : const Center(
-                                    child: Text('2D preview unavailable'),
-                                  )),
-                      ),
-                  ]),
+                                : (_layer2DBytes != null &&
+                                        _layer2DBytes!.isNotEmpty
+                                    ? ColoredBox(
+                                        color: Colors.black,
+                                        child: Center(
+                                          child: Image(
+                                            image: _layerPreviewProvider(
+                                              _layer2DBytes!,
+                                              logicalSize: logicalSize,
+                                            ),
+                                            gaplessPlayback: true,
+                                            fit: BoxFit.contain,
+                                            filterQuality: FilterQuality.none,
+                                          ),
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Text('2D preview unavailable'),
+                                      )),
+                          ),
+                      ]);
+                    },
+                  ),
                 ),
               ),
             ),
@@ -1125,13 +1145,34 @@ class StatusScreenState extends State<StatusScreen> {
   }
 
   ImageProvider _layerPreviewProvider(Uint8List bytes, {Size? logicalSize}) {
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final size = logicalSize ?? _estimatedLayerPreviewLogicalSize();
+    final dpr = _safeDevicePixelRatio();
+    final size = _safeLogicalSize(
+      logicalSize,
+      fallback: _estimatedLayerPreviewLogicalSize(),
+    );
 
     // Decode near display resolution (downsampling) instead of decoding full
     // source and downscaling every frame.
     final targetWidth = max(1, min(1600, (size.width * dpr).round()));
-    final targetHeight = max(1, min(960, (size.height * dpr).round()));
+
+    return ResizeImage(
+      MemoryImage(bytes),
+      width: targetWidth,
+      allowUpscaling: false,
+    );
+  }
+
+  ImageProvider _statusThumbnailProvider(Uint8List bytes, {Size? logicalSize}) {
+    final dpr = _safeDevicePixelRatio();
+    final size = _safeLogicalSize(
+      logicalSize,
+      fallback: _estimatedStatusThumbnailLogicalSize(),
+    );
+
+    // Decode near display resolution (downsampling) instead of full-size
+    // decode + runtime downscaling.
+    final targetWidth = max(1, min(1800, (size.width * dpr).round()));
+    final targetHeight = max(1, min(1200, (size.height * dpr).round()));
 
     return ResizeImage(
       MemoryImage(bytes),
@@ -1147,6 +1188,26 @@ class StatusScreenState extends State<StatusScreen> {
       return Size(screen.width * 0.44, screen.height * 0.60);
     }
     return Size(screen.width - 48, screen.height * 0.40);
+  }
+
+  Size _estimatedStatusThumbnailLogicalSize() {
+    return const Size(_thumbBaseWidth, _thumbBaseHeight);
+  }
+
+  double _safeDevicePixelRatio() {
+    final raw = MediaQuery.devicePixelRatioOf(context);
+    if (!raw.isFinite || raw <= 0) return 1.0;
+    return raw;
+  }
+
+  Size _safeLogicalSize(Size? logicalSize, {required Size fallback}) {
+    final w = logicalSize?.width;
+    final h = logicalSize?.height;
+
+    final safeW = (w != null && w.isFinite && w > 0) ? w : fallback.width;
+    final safeH = (h != null && h.isFinite && h > 0) ? h : fallback.height;
+
+    return Size(safeW, safeH);
   }
 
   Future<void> _precacheLayerPreview(Uint8List bytes, {Size? logicalSize}) {

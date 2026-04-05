@@ -58,6 +58,8 @@ class DetailScreen extends StatefulWidget {
 
 class DetailScreenState extends State<DetailScreen> {
   final _logger = Logger('DetailScreen');
+  static const double _thumbBaseWidth = 800.0;
+  static const double _thumbBaseHeight = 480.0;
 
   bool isLandScape = false;
   int maxNameLength = 0;
@@ -76,6 +78,18 @@ class DetailScreenState extends State<DetailScreen> {
     // Remove one or more bracketed tokens at the start, e.g.
     // "[AFP] [Template] ResinName" -> "ResinName"
     return material.replaceAll(RegExp(r'^\s*(\[[^\]]+\]\s*)+'), '').trim();
+  }
+
+  int _detailThumbnailCacheWidth() {
+    final rawDpr = MediaQuery.devicePixelRatioOf(context);
+    final dpr = (rawDpr.isFinite && rawDpr > 0) ? rawDpr : 1.0;
+    return (_thumbBaseWidth * dpr).clamp(1.0, 1800.0).round();
+  }
+
+  int _detailThumbnailCacheHeight() {
+    final rawDpr = MediaQuery.devicePixelRatioOf(context);
+    final dpr = (rawDpr.isFinite && rawDpr > 0) ? rawDpr : 1.0;
+    return (_thumbBaseHeight * dpr).clamp(1.0, 1200.0).round();
   }
 
   @override
@@ -527,7 +541,14 @@ class DetailScreenState extends State<DetailScreen> {
               if (snap.hasError || snap.data == null || snap.data!.isEmpty) {
                 return const Center(child: Icon(Icons.broken_image));
               }
-              return Image.memory(snap.data!, fit: BoxFit.contain);
+              return Image.memory(
+                snap.data!,
+                fit: BoxFit.contain,
+                cacheWidth: _detailThumbnailCacheWidth(),
+                cacheHeight: _detailThumbnailCacheHeight(),
+                filterQuality: FilterQuality.none,
+                gaplessPlayback: true,
+              );
             },
           );
 
