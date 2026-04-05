@@ -947,93 +947,109 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       elevation: 1,
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: !_usbAvailable && !_isUSB && _directory == _defaultDirectory
+        onTap: _isLoading
             ? null
-            : _directory == _defaultDirectory
-                ? () async {
-                    // Toggle between USB and Internal
-                    _isUSB = !_isUSB;
-
-                    if (_isUSB && _useLocalFilesProvider) {
-                      // Switch to LocalFilesProvider (USB)
-                      final provider = Provider.of<LocalFilesProvider>(context,
-                          listen: false);
-                      setState(() {
-                        _defaultDirectory = provider.baseDirectory;
-                        _directory = _defaultDirectory;
-                        _subdirectory = '';
-                      });
-                      await provider.loadItems('Usb', '');
-                      await _syncAfterLoad(provider, 'Usb');
-                    } else {
-                      // Switch to FilesProvider (API)
-                      final provider =
-                          Provider.of<FilesProvider>(context, listen: false);
-                      final newLocation = _isUSB ? 'Usb' : 'Local';
-                      await provider.loadItems(newLocation, '');
-                      await _syncAfterLoad(provider, newLocation);
-                      final items = provider.items;
-                      if (items.isNotEmpty) {
+            : (!_usbAvailable && !_isUSB && _directory == _defaultDirectory)
+                ? null
+                : _directory == _defaultDirectory
+                    ? () async {
+                        // Toggle between USB and Internal
+                        final targetIsUsb = !_isUSB;
                         setState(() {
-                          _defaultDirectory = path.dirname(items.first.path);
-                          _directory = _defaultDirectory;
-                          _subdirectory = '';
+                          _isLoading = true;
+                          _isUSB = targetIsUsb;
                         });
-                      } else {
-                        setState(() {
-                          _subdirectory = '';
-                        });
-                      }
-                    }
-                  }
-                : () async {
-                    try {
-                      _scrollController.jumpTo(0);
-                      final parentDirectory = path.dirname(_directory);
-                      setState(() {
-                        _isNavigating = true;
-                        _directory = parentDirectory;
-                      });
-                      final localBase = _isUSB && _useLocalFilesProvider
-                          ? Provider.of<LocalFilesProvider>(context,
-                                  listen: false)
-                              .baseDirectory
-                          : _defaultDirectory;
-                      final rawSubdir = parentDirectory == localBase
-                          ? ''
-                          : path.relative(parentDirectory, from: localBase);
-                      final subdir = rawSubdir == '.' ? '' : rawSubdir;
 
-                      if (_isUSB && _useLocalFilesProvider) {
-                        final provider = Provider.of<LocalFilesProvider>(
-                            context,
-                            listen: false);
-                        await provider.loadItems('Usb', subdir);
-                        await _syncAfterLoad(provider, 'Usb');
-                      } else {
-                        final provider =
-                            Provider.of<FilesProvider>(context, listen: false);
-                        await provider.loadItems(
-                            _isUSB ? 'Usb' : 'Local', subdir);
-                        await _syncAfterLoad(
-                            provider, _isUSB ? 'Usb' : 'Local');
+                        try {
+                          if (_isUSB && _useLocalFilesProvider) {
+                            // Switch to LocalFilesProvider (USB)
+                            final provider = Provider.of<LocalFilesProvider>(
+                                context,
+                                listen: false);
+                            setState(() {
+                              _defaultDirectory = provider.baseDirectory;
+                              _directory = _defaultDirectory;
+                              _subdirectory = '';
+                            });
+                            await provider.loadItems('Usb', '');
+                            await _syncAfterLoad(provider, 'Usb');
+                          } else {
+                            // Switch to FilesProvider (API)
+                            final provider = Provider.of<FilesProvider>(context,
+                                listen: false);
+                            final newLocation = _isUSB ? 'Usb' : 'Local';
+                            await provider.loadItems(newLocation, '');
+                            await _syncAfterLoad(provider, newLocation);
+                            final items = provider.items;
+                            if (items.isNotEmpty) {
+                              setState(() {
+                                _defaultDirectory =
+                                    path.dirname(items.first.path);
+                                _directory = _defaultDirectory;
+                                _subdirectory = '';
+                              });
+                            } else {
+                              setState(() {
+                                _subdirectory = '';
+                              });
+                            }
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
+                        }
                       }
-                      setState(() {
-                        _isNavigating = false;
-                        _subdirectory = subdir;
-                      });
-                    } catch (e) {
-                      _logger.severe(
-                          'Failed to navigate to parent directory', e);
-                      if (e is FileSystemException) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Operation not permitted'),
-                          ),
-                        );
-                      }
-                    }
-                  },
+                    : () async {
+                        try {
+                          _scrollController.jumpTo(0);
+                          final parentDirectory = path.dirname(_directory);
+                          setState(() {
+                            _isNavigating = true;
+                            _directory = parentDirectory;
+                          });
+                          final localBase = _isUSB && _useLocalFilesProvider
+                              ? Provider.of<LocalFilesProvider>(context,
+                                      listen: false)
+                                  .baseDirectory
+                              : _defaultDirectory;
+                          final rawSubdir = parentDirectory == localBase
+                              ? ''
+                              : path.relative(parentDirectory, from: localBase);
+                          final subdir = rawSubdir == '.' ? '' : rawSubdir;
+
+                          if (_isUSB && _useLocalFilesProvider) {
+                            final provider = Provider.of<LocalFilesProvider>(
+                                context,
+                                listen: false);
+                            await provider.loadItems('Usb', subdir);
+                            await _syncAfterLoad(provider, 'Usb');
+                          } else {
+                            final provider = Provider.of<FilesProvider>(context,
+                                listen: false);
+                            await provider.loadItems(
+                                _isUSB ? 'Usb' : 'Local', subdir);
+                            await _syncAfterLoad(
+                                provider, _isUSB ? 'Usb' : 'Local');
+                          }
+                          setState(() {
+                            _isNavigating = false;
+                            _subdirectory = subdir;
+                          });
+                        } catch (e) {
+                          _logger.severe(
+                              'Failed to navigate to parent directory', e);
+                          if (e is FileSystemException) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Operation not permitted'),
+                              ),
+                            );
+                          }
+                        }
+                      },
         child: GridTile(
           footer: GridTileBar(
             backgroundColor: Colors.transparent,
