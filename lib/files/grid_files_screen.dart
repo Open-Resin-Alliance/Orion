@@ -20,11 +20,13 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
 import 'dart:collection';
+import 'dart:math' as math;
 
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
@@ -47,7 +49,6 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/util/stl_thumbnail.dart';
-import 'dart:typed_data';
 
 ScrollController _scrollController = ScrollController();
 
@@ -105,7 +106,16 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   int _activeThumbnailFetches = 0;
   final Queue<_QueuedThumb> _thumbQueue = Queue<_QueuedThumb>();
   final Map<String, Future<Uint8List?>> _queuedInFlight = {};
-  final Map<String, Future<Uint8List?>> _thumbnailFutureCache = {};
+  static final LinkedHashMap<String, Future<Uint8List?>>
+      _thumbnailFutureCacheGlobal = LinkedHashMap<String, Future<Uint8List?>>();
+  static final LinkedHashMap<String, Uint8List?>
+      _processedThumbnailCacheGlobal = LinkedHashMap<String, Uint8List?>();
+  static const int _maxSharedThumbnailEntries = 1200;
+
+  Map<String, Future<Uint8List?>> get _thumbnailFutureCache =>
+      _thumbnailFutureCacheGlobal;
+  Map<String, Uint8List?> get _processedThumbnailCache =>
+      _processedThumbnailCacheGlobal;
 
   @override
   void initState() {
@@ -185,15 +195,33 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   void dispose() {
     _thumbQueue.clear();
     _queuedInFlight.clear();
-    _thumbnailFutureCache.clear();
     super.dispose();
+  }
+
+  void _touchProcessedCache(String key, Uint8List bytes) {
+    _processedThumbnailCache.remove(key);
+    _processedThumbnailCache[key] = bytes;
+    while (_processedThumbnailCache.length > _maxSharedThumbnailEntries) {
+      _processedThumbnailCache.remove(_processedThumbnailCache.keys.first);
+    }
+  }
+
+  void _touchFutureCache(String key, Future<Uint8List?> value) {
+    _thumbnailFutureCache.remove(key);
+    _thumbnailFutureCache[key] = value;
+    while (_thumbnailFutureCache.length > _maxSharedThumbnailEntries) {
+      _thumbnailFutureCache.remove(_thumbnailFutureCache.keys.first);
+    }
   }
 
   // Build a cache key similar to ThumbnailCache._cacheKey so we can
   // de-duplicate requests at this layer too.
   String _thumbCacheKey(String location, OrionApiFile file, String size,
       {String? variant}) {
-    final lastModified = file.lastModified ?? 0;
+    final rawLastModified = file.lastModified ?? 0;
+    final lastModified = rawLastModified > 999999999999
+        ? (rawLastModified / 1000).round()
+        : rawLastModified;
     // Match the format used by ThumbnailCache._cacheKey so we can
     // de-duplicate identical requests at this layer.
     final base = '$location|${file.path}|$lastModified|$size';
@@ -227,6 +255,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   }) {
     final key = _thumbCacheKey(location, file, size, variant: stlVariant);
 
+    final processedHit = _processedThumbnailCache[key];
+    if (processedHit != null && processedHit.isNotEmpty) {
+      _touchProcessedCache(key, processedHit);
+      return Future.value(processedHit);
+    }
+
     // If we already started or queued this request, return the existing future
     final existing = _queuedInFlight[key];
     if (existing != null) return existing;
@@ -238,7 +272,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       key: key,
       task: () async {
         try {
-          final bytes = await ThumbnailCache.instance.getThumbnail(
+          final rawBytes = await ThumbnailCache.instance.getThumbnail(
             location: location,
             subdirectory: subdirectory,
             fileName: fileName,
@@ -247,6 +281,13 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             stlMode: stlVariant,
             themeColor: themeColor,
           );
+          final bytes = await _postProcessGridThumbnail(
+            rawBytes,
+            size: size,
+          );
+          if (bytes != null && bytes.isNotEmpty) {
+            _touchProcessedCache(key, bytes);
+          }
           if (!completer.isCompleted) completer.complete(bytes);
         } catch (e, st) {
           if (!completer.isCompleted) completer.completeError(e, st);
@@ -273,17 +314,69 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         _resolveStlVariantForCache(fileName, file, advanceCycle: false);
     final themeColor = Theme.of(context).colorScheme.primary;
     final key = _thumbCacheKey(location, file, size, variant: stlVariant);
-    return _thumbnailFutureCache.putIfAbsent(
-      key,
-      () => _queuedGetThumbnail(
-        location: location,
-        subdirectory: subdirectory,
-        fileName: fileName,
-        file: file,
-        size: size,
-        stlVariant: stlVariant,
-        themeColor: themeColor,
-      ),
+    final existing = _thumbnailFutureCache[key];
+    if (existing != null) {
+      _touchFutureCache(key, existing);
+      return existing;
+    }
+    final created = _queuedGetThumbnail(
+      location: location,
+      subdirectory: subdirectory,
+      fileName: fileName,
+      file: file,
+      size: size,
+      stlVariant: stlVariant,
+      themeColor: themeColor,
+    );
+    _touchFutureCache(key, created);
+    return created;
+  }
+
+  Future<Uint8List?> _postProcessGridThumbnail(Uint8List? bytes,
+      {required String size}) async {
+    if (bytes == null || bytes.isEmpty) return bytes;
+    // Keep large/detail thumbnails unchanged; only tighten framing on the
+    // small grid tiles.
+    if (size != 'Small') return bytes;
+    try {
+      final cropped = await compute(_trimTransparentPaddingEntry, bytes);
+      if (cropped is Uint8List && cropped.isNotEmpty) {
+        return cropped;
+      }
+    } catch (_) {
+      // If crop fails, gracefully fall back to original bytes.
+    }
+    return bytes;
+  }
+
+  ImageProvider _gridThumbProvider(
+      Uint8List bytes, BoxConstraints constraints) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final decodeW =
+        math.max(64, math.min(512, (constraints.maxWidth * dpr).round()));
+    final decodeH =
+        math.max(64, math.min(512, (constraints.maxHeight * dpr).round()));
+    return ResizeImage(
+      MemoryImage(bytes),
+      width: decodeW,
+      height: decodeH,
+      allowUpscaling: false,
+    );
+  }
+
+  Widget _buildGridThumbnailImage(Uint8List bytes, {required double radius}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: Image(
+            image: _gridThumbProvider(bytes, constraints),
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.none,
+          ),
+        );
+      },
     );
   }
 
@@ -296,6 +389,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       return _thumbCacheKey(location, f, 'Small', variant: stlVariant);
     }).toSet();
     _thumbnailFutureCache.removeWhere((key, _) => !allowed.contains(key));
+    _processedThumbnailCache.removeWhere((key, _) => !allowed.contains(key));
   }
 
   void _processThumbnailQueue() {
@@ -1106,14 +1200,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                                       return _buildFileIcon(fileName);
                                     }
 
-                                    return ClipRRect(
-                                      borderRadius: BorderRadius.circular(7.75),
-                                      child: Image.memory(
-                                        bytes,
-                                        fit: BoxFit.cover,
-                                        cacheWidth: 512,
-                                        cacheHeight: 512,
-                                      ),
+                                    return _buildGridThumbnailImage(
+                                      bytes,
+                                      radius: 7.75,
                                     );
                                   },
                                 )
@@ -1273,16 +1362,10 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                                 return const Icon(Icons.error);
                               }
 
-                              return ClipRRect(
-                                borderRadius: themeProvider.isGlassTheme
-                                    ? BorderRadius.circular(10.5)
-                                    : BorderRadius.circular(7.75),
-                                child: Image.memory(
-                                  bytes,
-                                  fit: BoxFit.cover,
-                                  cacheWidth: 512,
-                                  cacheHeight: 512,
-                                ),
+                              return _buildGridThumbnailImage(
+                                bytes,
+                                radius:
+                                    themeProvider.isGlassTheme ? 10.5 : 7.75,
                               );
                             },
                           ),
@@ -1526,5 +1609,109 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             : PhosphorIcon(PhosphorIcons.trash(), size: 34),
       ),
     );
+  }
+}
+
+// Top-level entrypoint for compute() so transparent-border trimming happens
+// off the UI thread.
+Uint8List _trimTransparentPaddingEntry(Uint8List source) {
+  try {
+    final decoded = img.decodeImage(source);
+    if (decoded == null) return source;
+
+    final w = decoded.width;
+    final h = decoded.height;
+    if (w <= 2 || h <= 2) return source;
+
+    int minX = w;
+    int minY = h;
+    int maxX = -1;
+    int maxY = -1;
+
+    // Treat near-transparent pixels as empty so antialiased borders are
+    // trimmed too, but keep this fairly low so we don't clip faint edges.
+    const alphaThreshold = 6;
+    // Also treat pure/near-pure black (#000000) as background.
+    // Keep this tight so dark model details are preserved.
+    const blackThreshold = 2;
+
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        final px = decoded.getPixel(x, y);
+        final a = px.a;
+        final r = px.r;
+        final g = px.g;
+        final b = px.b;
+        final isBlackBackground =
+            r <= blackThreshold && g <= blackThreshold && b <= blackThreshold;
+        if (a > alphaThreshold && !isBlackBackground) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    // No visible content found; keep original.
+    if (maxX < 0 || maxY < 0) return source;
+
+    // Keep a safety margin so silhouettes don't hug tile edges.
+    // Scale with source size to keep visual framing consistent across
+    // different thumbnail resolutions.
+    final margin = ((math.min(w, h) * 0.03).round()).clamp(5, 14);
+    minX = math.max(0, minX - margin);
+    minY = math.max(0, minY - margin);
+    maxX = math.min(w - 1, maxX + margin);
+    maxY = math.min(h - 1, maxY + margin);
+
+    final cropW = maxX - minX + 1;
+    final cropH = maxY - minY + 1;
+    if (cropW <= 0 || cropH <= 0) return source;
+
+    // If crop is effectively full-size, skip re-encode.
+    if (cropW >= w - 2 && cropH >= h - 2) return source;
+
+    final cropped = img.copyCrop(
+      decoded,
+      x: minX,
+      y: minY,
+      width: cropW,
+      height: cropH,
+    );
+
+    // Keep output square so `BoxFit.cover` in square grid tiles doesn't crop
+    // off the sides of wide models (or top/bottom of tall models).
+    final side = math.max(w, h);
+    if (side <= 0) return source;
+
+    // Add a light framing pad inside the square canvas.
+    final innerPad = ((side * 0.045).round()).clamp(8, 20);
+    final innerSide = math.max(1, side - (innerPad * 2));
+
+    final scale = math.min(innerSide / cropW, innerSide / cropH);
+    final targetW = math.max(1, (cropW * scale).round());
+    final targetH = math.max(1, (cropH * scale).round());
+    final resized = img.copyResize(
+      cropped,
+      width: targetW,
+      height: targetH,
+      interpolation: img.Interpolation.cubic,
+    );
+
+    final canvas = img.Image(width: side, height: side, numChannels: 4);
+    img.fill(canvas, color: img.ColorRgba8(0, 0, 0, 0));
+
+    final dx = ((side - targetW) / 2).round();
+    final dy = ((side - targetH) / 2).round();
+    for (int y = 0; y < targetH; y++) {
+      for (int x = 0; x < targetW; x++) {
+        canvas.setPixel(dx + x, dy + y, resized.getPixel(x, y));
+      }
+    }
+
+    return Uint8List.fromList(img.encodePng(canvas));
+  } catch (_) {
+    return source;
   }
 }

@@ -180,7 +180,6 @@ class StatusScreenState extends State<StatusScreen> {
                 _frozenFileName = null;
                 _showLayer2D = false;
                 _layer2DBytes = null;
-                _layer2DImageProvider = null;
                 _prefetched = false;
                 _lastPrefetchedLayer = null;
                 _resolvedFilePathForPrefetch = null;
@@ -229,7 +228,6 @@ class StatusScreenState extends State<StatusScreen> {
   // Local UI state for toggling 2D layer preview
   bool _showLayer2D = false;
   Uint8List? _layer2DBytes;
-  ImageProvider? _layer2DImageProvider;
   bool _layer2DLoading = false;
   DateTime? _lastLayerToggleTime;
   bool _prefetched = false;
@@ -1033,21 +1031,28 @@ class StatusScreenState extends State<StatusScreen> {
                                       effectiveStatusColor),
                                 ),
                               )
-                            : (_layer2DImageProvider != null
-                                ? Image(
-                                    image: _layer2DImageProvider!,
-                                    gaplessPlayback: true,
-                                    fit: BoxFit.cover,
-                                  )
-                                : (_layer2DBytes != null &&
-                                        _layer2DBytes!.isNotEmpty
-                                    ? Image.memory(
-                                        _layer2DBytes!,
+                            : (_layer2DBytes != null &&
+                                    _layer2DBytes!.isNotEmpty
+                                ? LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final logicalSize = Size(
+                                        constraints.maxWidth,
+                                        constraints.maxHeight,
+                                      );
+                                      return Image(
+                                        image: _layerPreviewProvider(
+                                          _layer2DBytes!,
+                                          logicalSize: logicalSize,
+                                        ),
+                                        gaplessPlayback: true,
                                         fit: BoxFit.cover,
-                                      )
-                                    : Center(
-                                        child: Text('2D preview unavailable'),
-                                      ))),
+                                        filterQuality: FilterQuality.none,
+                                      );
+                                    },
+                                  )
+                                : const Center(
+                                    child: Text('2D preview unavailable'),
+                                  )),
                       ),
                   ]),
                 ),
@@ -1119,6 +1124,38 @@ class StatusScreenState extends State<StatusScreen> {
     );
   }
 
+  ImageProvider _layerPreviewProvider(Uint8List bytes, {Size? logicalSize}) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final size = logicalSize ?? _estimatedLayerPreviewLogicalSize();
+
+    // Decode near display resolution (downsampling) instead of decoding full
+    // source and downscaling every frame.
+    final targetWidth = max(1, min(1600, (size.width * dpr).round()));
+    final targetHeight = max(1, min(960, (size.height * dpr).round()));
+
+    return ResizeImage(
+      MemoryImage(bytes),
+      width: targetWidth,
+      height: targetHeight,
+      allowUpscaling: false,
+    );
+  }
+
+  Size _estimatedLayerPreviewLogicalSize() {
+    final screen = MediaQuery.sizeOf(context);
+    if (_isLandscape) {
+      return Size(screen.width * 0.44, screen.height * 0.60);
+    }
+    return Size(screen.width - 48, screen.height * 0.40);
+  }
+
+  Future<void> _precacheLayerPreview(Uint8List bytes, {Size? logicalSize}) {
+    return precacheImage(
+      _layerPreviewProvider(bytes, logicalSize: logicalSize),
+      context,
+    );
+  }
+
   Future<void> _fetchLayer2D(
       StatusProvider provider, StatusModel? status) async {
     if (status == null) return;
@@ -1148,10 +1185,10 @@ class StatusScreenState extends State<StatusScreen> {
       if (cached != null) {
         setState(() {
           _layer2DBytes = cached;
-          _layer2DImageProvider = ResizeImage(MemoryImage(cached), width: 800);
           _showLayer2D = true;
         });
-        LayerPreviewCache.instance.preload(BackendService(), plateId, layerIndex,
+        LayerPreviewCache.instance.preload(
+            BackendService(), plateId, layerIndex,
             count: 1, filePath: filePath);
         return;
       }
@@ -1167,13 +1204,11 @@ class StatusScreenState extends State<StatusScreen> {
               BackendService(), plateId, layerIndex,
               filePath: filePath);
       if (bytes.isNotEmpty) {
-        final imgProv = ResizeImage(MemoryImage(bytes), width: 800);
         // Start precaching but don't await it — decoding can be expensive
         // and awaiting here can cause UI jank. Fire-and-forget instead.
-        precacheImage(imgProv, context).catchError((_) {});
+        _precacheLayerPreview(bytes).catchError((_) {});
         setState(() {
           _layer2DBytes = bytes;
-          _layer2DImageProvider = imgProv;
           _showLayer2D = true;
         });
         if (!isCalibrationPlate) {
@@ -1258,8 +1293,6 @@ class StatusScreenState extends State<StatusScreen> {
                 _bytesEqual(_layer2DBytes!, bytes))) {
               setState(() {
                 _layer2DBytes = bytes;
-                _layer2DImageProvider =
-                    ResizeImage(MemoryImage(bytes), width: 800);
               });
             }
           }
@@ -1272,9 +1305,7 @@ class StatusScreenState extends State<StatusScreen> {
                     filePath: filePath)
                 .then((nextBytes) {
               if (nextBytes.isNotEmpty) {
-                precacheImage(ResizeImage(MemoryImage(nextBytes), width: 800),
-                        context)
-                    .catchError((_) {});
+                _precacheLayerPreview(nextBytes).catchError((_) {});
               }
             }).catchError((_) {});
           }
@@ -1328,8 +1359,7 @@ class StatusScreenState extends State<StatusScreen> {
           .then((curBytes) {
         if (curBytes.isNotEmpty) {
           // Precache decoded image for faster rendering (fire-and-forget).
-          precacheImage(ResizeImage(MemoryImage(curBytes), width: 800), context)
-              .catchError((_) {});
+          _precacheLayerPreview(curBytes).catchError((_) {});
           // If the user currently has the 2D preview visible, immediately
           // update the displayed image so the preview follows the layer.
           if (mounted && _showLayer2D) {
@@ -1338,8 +1368,6 @@ class StatusScreenState extends State<StatusScreen> {
                 _bytesEqual(_layer2DBytes!, curBytes))) {
               setState(() {
                 _layer2DBytes = curBytes;
-                _layer2DImageProvider =
-                    ResizeImage(MemoryImage(curBytes), width: 800);
               });
             }
           }
@@ -1354,9 +1382,7 @@ class StatusScreenState extends State<StatusScreen> {
                 filePath: _resolvedFilePathForPrefetch)
             .then((nextBytes) {
           if (nextBytes.isNotEmpty) {
-            precacheImage(
-                    ResizeImage(MemoryImage(nextBytes), width: 800), context)
-                .catchError((_) {});
+            _precacheLayerPreview(nextBytes).catchError((_) {});
           }
         }).catchError((_) {});
       }
