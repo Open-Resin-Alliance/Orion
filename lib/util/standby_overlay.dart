@@ -66,6 +66,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   static const double _logoSize = 180;
   Color _logoTint = Colors.white;
   late String _logoAssetPath;
+  // Throttle bounce redraws: only setState when the logo is actually
+  // visible, and only at ~15fps (every 4th vsync tick).
+  bool _bounceIsLogoMode = false;
+  int _bounceTick = 0;
 
   // Dimming variables
   late AnimationController _dimmingController;
@@ -772,6 +776,19 @@ class _StandbyOverlayState extends State<StandbyOverlay>
               : Center(child: _buildClockDisplay(ctx));
         }
 
+        // Track whether the logo is currently on screen so the bounce ticker
+        // knows whether to schedule redraws. Assign directly — no setState
+        // needed since this only affects the ticker, not the build output.
+        _bounceIsLogoMode = _isStandbyActive &&
+            !_celebrationActive &&
+            !_canceledActive &&
+            !_celebrationCompleted &&
+            !_canceledCompleted &&
+            !(isPaused || isPausing) &&
+            !isPrinting &&
+            !isCancelingTransition &&
+            standbySettings.standbyMode == 'logo';
+
         return Listener(
           onPointerDown: (_) => _handleUserInteraction(),
           onPointerMove: (_) => _handleUserInteraction(),
@@ -880,6 +897,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _bounceInitialized = true;
     }
 
+    // Always update position every tick so bounce detection is correct
+    // and motion is smooth the moment the mode switches to logo.
     _logoX += _logoDx;
     _logoY += _logoDy;
 
@@ -908,6 +927,15 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _logoTint = _randomAccentColor();
     }
 
+    // Only schedule a rebuild when the logo is actually on screen.
+    // In clock / progress / paused modes there is nothing to animate here —
+    // the clock ticks via its own 1 Hz timer and the progress ring is static
+    // (driven by status provider updates), so we avoid a 60 fps setState.
+    // For the logo screensaver, throttle to ~15 fps — the bouncing icon
+    // looks fine at that rate and cuts GPU work to ¼ of 60 fps.
+    if (!_bounceIsLogoMode) return;
+    _bounceTick++;
+    if (_bounceTick % 4 != 0) return; // ~15 fps at 60 Hz vsync
     setState(() {});
   }
 
