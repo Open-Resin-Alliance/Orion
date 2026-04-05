@@ -17,12 +17,14 @@
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// Provider for standby screen settings with change notifications.
 /// Allows UI and standby overlay to stay in sync with configuration changes.
 class StandbySettingsProvider extends ChangeNotifier {
   final OrionConfig _config = OrionConfig();
+  final _log = Logger('StandbySettingsProvider');
 
   bool _standbyEnabled = true;
   bool _dimmingEnabled = false;
@@ -122,8 +124,8 @@ class StandbySettingsProvider extends ChangeNotifier {
         }
       }
       return devices;
-    } catch (e) {
-      print('Error detecting backlight devices: $e');
+    } catch (e, stackTrace) {
+      _log.severe('Error detecting backlight devices', e, stackTrace);
       return [];
     }
   }

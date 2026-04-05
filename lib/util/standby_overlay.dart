@@ -107,6 +107,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   // Track previous settings to detect changes
   bool? _prevStandbyEnabled;
   int? _prevDurationSeconds;
+  bool _wakeOnPrintStartScheduled = false;
 
   @override
   void initState() {
@@ -304,6 +305,18 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     }
   }
 
+  void _scheduleWakeFromPrintStart() {
+    if (_wakeOnPrintStartScheduled) return;
+    _wakeOnPrintStartScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _wakeOnPrintStartScheduled = false;
+      if (!mounted) return;
+      if (_isStandbyActive) {
+        _deactivateStandby();
+      }
+    });
+  }
+
   void _startClockUpdate() {
     _updateTime();
     // Update once per second to flip immediately at minute boundaries
@@ -447,12 +460,36 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     // Rich palette — warm golds, cool cyans, greens, pinks, with varied
     // saturation so it doesn't look flat.
     final palettes = <List<Color>>[
-      [const Color(0xFF00E676), const Color(0xFF69F0AE), const Color(0xFFB9F6CA)],
-      [const Color(0xFF00BCD4), const Color(0xFF84FFFF), const Color(0xFFE0F7FA)],
-      [const Color(0xFFFFD740), const Color(0xFFFFAB40), const Color(0xFFFFF8E1)],
-      [const Color(0xFFFF4081), const Color(0xFFFF80AB), const Color(0xFFFCE4EC)],
-      [const Color(0xFF7C4DFF), const Color(0xFFB388FF), const Color(0xFFEDE7F6)],
-      [const Color(0xFF00E5FF), const Color(0xFF18FFFF), const Color(0xFFE0F7FA)],
+      [
+        const Color(0xFF00E676),
+        const Color(0xFF69F0AE),
+        const Color(0xFFB9F6CA)
+      ],
+      [
+        const Color(0xFF00BCD4),
+        const Color(0xFF84FFFF),
+        const Color(0xFFE0F7FA)
+      ],
+      [
+        const Color(0xFFFFD740),
+        const Color(0xFFFFAB40),
+        const Color(0xFFFFF8E1)
+      ],
+      [
+        const Color(0xFFFF4081),
+        const Color(0xFFFF80AB),
+        const Color(0xFFFCE4EC)
+      ],
+      [
+        const Color(0xFF7C4DFF),
+        const Color(0xFFB388FF),
+        const Color(0xFFEDE7F6)
+      ],
+      [
+        const Color(0xFF00E5FF),
+        const Color(0xFF18FFFF),
+        const Color(0xFFE0F7FA)
+      ],
     ];
 
     // 10 bursts spread across the full screen, with staggered delays
@@ -648,8 +685,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         // A print was canceled if either the model's isCanceled flag is set
         // (layer == null after a job) OR the cancel_latched hint from the
         // state handler is present (cancel mid-print where layer data remains).
-        final isCanceled = (status?.isCanceled ?? false) ||
-            (status?.cancelLatched == true);
+        final isCanceled =
+            (status?.isCanceled ?? false) || (status?.cancelLatched == true);
         final isFinished = status != null &&
             status.isIdle &&
             status.layer != null &&
@@ -659,6 +696,12 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         final isActiveJob =
             isPrinting || isPaused || isPausing || isCancelingTransition;
         _syncStandbyThrottling(statusProvider, isActiveJob);
+
+        final startedActivePrint =
+            (isPrinting || isPaused) && !_wasPrintingOrPaused;
+        if (_isStandbyActive && startedActivePrint) {
+          _scheduleWakeFromPrintStart();
+        }
 
         // Manage pause pulse animation
         if ((isPaused || isPausing) && _isStandbyActive) {
@@ -714,8 +757,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         } else if (_celebrationCompleted || _canceledCompleted) {
           standbyContent = Center(child: _buildClockDisplay(ctx));
         } else if (isPaused || isPausing) {
-          standbyContent =
-              Center(child: _buildPausedIndicator(ctx, progress));
+          standbyContent = Center(child: _buildPausedIndicator(ctx, progress));
         } else if (isPrinting) {
           standbyContent =
               Center(child: _buildProgressIndicator(ctx, progress));
@@ -762,8 +804,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
                                             : (isPrinting ||
                                                     isCancelingTransition)
                                                 ? 'printing'
-                                                : standbySettings
-                                                    .standbyMode,
+                                                : standbySettings.standbyMode,
                           ),
                           child: standbyContent,
                         ),
@@ -781,8 +822,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   void _resolveLogoAsset() {
     try {
       final config = OrionConfig();
-      final vendorLogo =
-          config.getString('vendorLogo', category: 'vendor').toLowerCase().trim();
+      final vendorLogo = config
+          .getString('vendorLogo', category: 'vendor')
+          .toLowerCase()
+          .trim();
       switch (vendorLogo) {
         case 'c3d':
           _logoAssetPath = 'assets/images/concepts_3d/c3d.svg';
@@ -792,10 +835,12 @@ class _StandbyOverlayState extends State<StandbyOverlay>
           break;
         case 'ora':
         default:
-          _logoAssetPath = 'assets/images/ora/open_resin_alliance_logo_darkmode.png';
+          _logoAssetPath =
+              'assets/images/ora/open_resin_alliance_logo_darkmode.png';
       }
     } catch (_) {
-      _logoAssetPath = 'assets/images/ora/open_resin_alliance_logo_darkmode.png';
+      _logoAssetPath =
+          'assets/images/ora/open_resin_alliance_logo_darkmode.png';
     }
   }
 
@@ -991,8 +1036,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       animation: _pausePulseController,
       builder: (context, child) {
         // Gentle pulse: icon opacity oscillates 0.55 ↔ 1.0
-        final pulse =
-            0.55 + 0.45 * _pausePulseController.value;
+        final pulse = 0.55 + 0.45 * _pausePulseController.value;
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -1305,6 +1349,7 @@ class _FireworkBurst {
   final double fractionalX;
   final double fractionalY;
   final List<_FireworkParticle> particles;
+
   /// Delay (0..1) within a single animation cycle before the burst fires.
   final double delay;
 
@@ -1323,8 +1368,10 @@ class _BloodDrip {
   final double maxWidth;
   final double delay;
   final double drift;
+
   /// 0..1 — fraction of width on the left side (0.5 = symmetric)
   final double asymmetry;
+
   /// Amplitude of organic edge waviness
   final double wobble;
 
@@ -1359,8 +1406,7 @@ class _BloodDripPainter extends CustomPainter {
     // --- 1. Draw individual drip smears ---
     for (final drip in drips) {
       if (t < drip.delay) continue;
-      final localT =
-          ((t - drip.delay) / (1.0 - drip.delay)).clamp(0.0, 1.0);
+      final localT = ((t - drip.delay) / (1.0 - drip.delay)).clamp(0.0, 1.0);
 
       // Viscous ease: slow start, accelerates
       final flowT = localT * localT * drip.speed;
@@ -1395,48 +1441,59 @@ class _BloodDripPainter extends CustomPainter {
       smearPath.moveTo(x - topLeftW, -2);
 
       // --- Left edge: narrow streak widens smoothly into the bulb ---
-      final wL1 = drip.wobble *
-          math.sin(localT * 7 + drip.fractionalX * 20);
-      final wL2 = drip.wobble *
-          math.sin(localT * 11 + drip.fractionalX * 30);
+      final wL1 = drip.wobble * math.sin(localT * 7 + drip.fractionalX * 20);
+      final wL2 = drip.wobble * math.sin(localT * 11 + drip.fractionalX * 30);
       // Streak portion: top → where bulb starts, gradually widening
       smearPath.cubicTo(
-        x - topLeftW + wL1, bulbTopY * 0.3,
-        x - topLeftW - (maxLeftW - topLeftW) * 0.4 + wL2, bulbTopY * 0.7,
-        x - maxLeftW, bulbTopY,
+        x - topLeftW + wL1,
+        bulbTopY * 0.3,
+        x - topLeftW - (maxLeftW - topLeftW) * 0.4 + wL2,
+        bulbTopY * 0.7,
+        x - maxLeftW,
+        bulbTopY,
       );
 
       // --- Left side of bulb: continues outward slightly, then curves
       //     around the bottom ---
       smearPath.cubicTo(
-        x - maxLeftW * 1.05, bulbTopY + bulbH * 0.3,
-        x - maxLeftW * 1.05, bulbTopY + bulbH * 0.7,
-        x - maxLeftW * 0.5, visibleTipY,
+        x - maxLeftW * 1.05,
+        bulbTopY + bulbH * 0.3,
+        x - maxLeftW * 1.05,
+        bulbTopY + bulbH * 0.7,
+        x - maxLeftW * 0.5,
+        visibleTipY,
       );
 
       // --- Bottom curve: rounded across the bottom of the bulb ---
       smearPath.cubicTo(
-        x - maxLeftW * 0.15, visibleTipY + bulbH * 0.15,
-        x + maxRightW * 0.15, visibleTipY + bulbH * 0.15,
-        x + maxRightW * 0.5, visibleTipY,
+        x - maxLeftW * 0.15,
+        visibleTipY + bulbH * 0.15,
+        x + maxRightW * 0.15,
+        visibleTipY + bulbH * 0.15,
+        x + maxRightW * 0.5,
+        visibleTipY,
       );
 
       // --- Right side of bulb: curves back up ---
-      final wR1 = drip.wobble *
-          math.sin(localT * 9 + drip.fractionalX * 25);
+      final wR1 = drip.wobble * math.sin(localT * 9 + drip.fractionalX * 25);
       smearPath.cubicTo(
-        x + maxRightW * 1.05, bulbTopY + bulbH * 0.7,
-        x + maxRightW * 1.05, bulbTopY + bulbH * 0.3,
-        x + maxRightW, bulbTopY,
+        x + maxRightW * 1.05,
+        bulbTopY + bulbH * 0.7,
+        x + maxRightW * 1.05,
+        bulbTopY + bulbH * 0.3,
+        x + maxRightW,
+        bulbTopY,
       );
 
       // --- Right edge: bulb top back up to narrow streak ---
-      final wR2 = drip.wobble *
-          math.sin(localT * 6 + drip.fractionalX * 15);
+      final wR2 = drip.wobble * math.sin(localT * 6 + drip.fractionalX * 15);
       smearPath.cubicTo(
-        x + topRightW + (maxRightW - topRightW) * 0.4 + wR1, bulbTopY * 0.7,
-        x + topRightW + wR2, bulbTopY * 0.3,
-        x + topRightW, -2,
+        x + topRightW + (maxRightW - topRightW) * 0.4 + wR1,
+        bulbTopY * 0.7,
+        x + topRightW + wR2,
+        bulbTopY * 0.3,
+        x + topRightW,
+        -2,
       );
 
       smearPath.close();
@@ -1476,8 +1533,7 @@ class _BloodDripPainter extends CustomPainter {
     double poolCoverage = 0;
     for (final drip in drips) {
       if (t < drip.delay) continue;
-      final localT =
-          ((t - drip.delay) / (1.0 - drip.delay)).clamp(0.0, 1.0);
+      final localT = ((t - drip.delay) / (1.0 - drip.delay)).clamp(0.0, 1.0);
       final flowT = localT * localT * drip.speed;
       final overshoot = (flowT - 0.85).clamp(0.0, 2.0);
       poolCoverage += overshoot * drip.maxWidth / size.width * 0.6;
@@ -1615,9 +1671,7 @@ class _BrickWallPainter extends CustomPainter {
       final fadeStart = size.height * 0.7;
       final opacity = finalY < fadeStart
           ? 1.0
-          : (1.0 -
-                  ((finalY - fadeStart) / (size.height * 0.5))
-                      .clamp(0.0, 1.0))
+          : (1.0 - ((finalY - fadeStart) / (size.height * 0.5)).clamp(0.0, 1.0))
               .clamp(0.0, 1.0);
       if (opacity <= 0.0) continue;
 
@@ -1741,8 +1795,9 @@ class _FireworksPainter extends CustomPainter {
         if ((pos - center).distance < exclusionRadius) continue;
 
         // Per-particle fade: fully visible until fadeStart, then fade out
-        final fadeProgress =
-            pt < p.fadeStart ? 1.0 : 1.0 - ((pt - p.fadeStart) / (1.0 - p.fadeStart));
+        final fadeProgress = pt < p.fadeStart
+            ? 1.0
+            : 1.0 - ((pt - p.fadeStart) / (1.0 - p.fadeStart));
         final alpha = fadeProgress.clamp(0.0, 1.0);
         if (alpha <= 0.01) continue;
 
