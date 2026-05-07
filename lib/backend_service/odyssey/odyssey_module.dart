@@ -79,10 +79,7 @@ class OdysseyModule implements BackendModule {
   }
 
   @override
-  List<String> getSupportedSubmodules() => [
-        BackendSubmodules
-            .athenaIot, // Reserved for future: Odyssey may support Athena IoT if ported
-      ];
+  List<String> getSupportedSubmodules() => [];
 
   /// Initialize Odyssey backend when activated.
   /// Currently no special setup needed, but kept as a hook for future needs.

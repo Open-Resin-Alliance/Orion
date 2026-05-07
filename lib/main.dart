@@ -63,7 +63,6 @@ import 'package:orion/util/error_handling/notification_watcher.dart';
 import 'package:orion/util/providers/orion_update_provider.dart';
 import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/update_manager.dart';
-import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 import 'package:orion/util/standby_overlay.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 import 'package:orion/util/orion_config.dart';
@@ -405,25 +404,48 @@ class OrionMainAppState extends State<OrionMainApp> {
   bool _statusListenerAttached = false;
   bool _wasPrinting = false;
   bool _isStatusShown = false;
+  String _activeBackendId = BackendIds.odyssey;
   // navigatorKey removed; using MaterialApp.router builder context instead
 
   @override
   void initState() {
     super.initState();
     _initRouter();
-    // Start Athena periodic polling if applicable
-    try {
-      final mgr = AthenaFeatureManager();
-      mgr.startPeriodicPolling();
-    } catch (_) {}
+    _activeBackendId = _resolveActiveBackendId();
+    _initializeActiveBackendSubmodules();
   }
 
   @override
   void dispose() {
+    _disposeActiveBackendSubmodules();
     _connWatcher?.dispose();
     _updateWatcher?.dispose();
     _notifWatcher?.dispose();
     super.dispose();
+  }
+
+  String _resolveActiveBackendId() {
+    try {
+      final configured =
+          OrionConfig().getString('backend', category: 'advanced');
+      return configured.isEmpty ? BackendIds.odyssey : configured;
+    } catch (_) {
+      return BackendIds.odyssey;
+    }
+  }
+
+  void _initializeActiveBackendSubmodules() {
+    final registry = BackendRegistry();
+    Future.microtask(() async {
+      await registry.initializeSubmodulesForBackend(_activeBackendId);
+    });
+  }
+
+  void _disposeActiveBackendSubmodules() {
+    final registry = BackendRegistry();
+    Future.microtask(() async {
+      await registry.disposeSubmodulesForBackend(_activeBackendId);
+    });
   }
 
   void _initRouter() {

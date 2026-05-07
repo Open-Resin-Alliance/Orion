@@ -83,10 +83,14 @@ void main() {
     expect(find.text('Link Speed'), findsOneWidget);
     // The exact button widget can vary by Flutter version/theme; assert on
     // the visible label instead.
-    expect(find.text('Disconnect Ethernet'), findsOneWidget);
+    expect(find.text('Disconnect'), findsWidgets);
 
     // Tap disconnect
-    await tester.tap(find.text('Disconnect Ethernet'));
+    await tester.tap(find.text('Disconnect').first);
+    await tester.pumpAndSettle();
+
+    // Confirm disconnect in the dialog.
+    await tester.tap(find.text('Disconnect').last);
     await tester.pumpAndSettle();
 
     expect(fake.disconnectCalled, isTrue);

@@ -17,6 +17,7 @@
 
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/athena_iot/athena_iot_submodule.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_module.dart';
 import 'package:orion/backend_service/odyssey/odyssey_module.dart';
 
@@ -25,6 +26,7 @@ import 'package:orion/backend_service/odyssey/odyssey_module.dart';
 // and register it in registerBuiltInModules() below.
 export 'package:orion/backend_service/nanodlp/nanodlp_module.dart';
 export 'package:orion/backend_service/odyssey/odyssey_module.dart';
+export 'package:orion/backend_service/athena_iot/athena_iot_submodule.dart';
 
 /// Canonical backend identifiers.
 class BackendIds {
@@ -266,7 +268,7 @@ class BackendRegistry {
   /// Register all built-in service submodules.
   /// When adding a new submodule, add registerSubmodule() call below.
   void registerBuiltInSubmodules() {
-    // Future: add AthenaIotSubmodule, FileImportSubmodule, etc.
+    registerSubmodule(AthenaIotSubmodule());
     _log.info('Registered all built-in submodules');
   }
 }

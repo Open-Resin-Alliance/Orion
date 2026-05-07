@@ -17,8 +17,11 @@ class UpdateManager extends ChangeNotifier {
   bool _suppressNotifications = false;
   bool _promptAcknowledgedThisSession = false;
 
-  UpdateManager(this.orionProvider, this.athenaProvider) {
-    _startTimer();
+  UpdateManager(this.orionProvider, this.athenaProvider,
+      {bool enableAutoChecks = true}) {
+    if (enableAutoChecks) {
+      _startTimer();
+    }
     OrionConfig.addChangeListener(_onConfigChanged);
   }
 
@@ -107,7 +110,7 @@ class UpdateManager extends ChangeNotifier {
   /// Clear pending update flags and suppress notifications.
   /// Call this before starting an update to ensure stale notifications
   /// don't resurface if the app restarts during the update process.
-  /// 
+  ///
   /// [components] specifies which component(s) to clear. Defaults to all.
   void clearPendingUpdates(
       {Set<UpdateComponent> components = const {
