@@ -93,6 +93,11 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
   }
 
   @override
+  Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
+    return;
+  }
+
+  @override
   Future<Map<String, dynamic>> getStatus() {
     throw UnimplementedError();
   }

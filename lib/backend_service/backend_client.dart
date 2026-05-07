@@ -72,6 +72,14 @@ abstract class BackendClient {
         'Resin profile editing is not supported by this backend.');
   }
 
+  /// Save full normalized resin settings for a profile.
+  ///
+  /// Implementations should persist all supported fields from [settings].
+  Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
+    throw UnsupportedError(
+        'Saving resin settings is not supported by this backend.');
+  }
+
   // Status-related
   Future<Map<String, dynamic>> getStatus();
 

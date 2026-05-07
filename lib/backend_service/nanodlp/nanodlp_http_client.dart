@@ -559,6 +559,13 @@ class NanoDlpHttpClient implements BackendClient {
     await editProfile(profileId, backendFields);
   }
 
+  @override
+  Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
+    final backendFields =
+        NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
+    await editProfile(profileId, backendFields);
+  }
+
   // --- Unimplemented / TODOs ---
   @override
   Future<void> cancelPrint() async {

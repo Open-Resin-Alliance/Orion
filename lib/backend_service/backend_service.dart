@@ -205,6 +205,10 @@ class BackendService implements BackendClient {
   Future<void> saveResinExposure(int profileId, double normalCureTime) =>
       _delegate.saveResinExposure(profileId, normalCureTime);
 
+  @override
+  Future<void> saveResinSettings(int profileId, ResinSettings settings) =>
+      _delegate.saveResinSettings(profileId, settings);
+
   /// Convenience method to check if the current backend supports a capability.
   /// Returns false if capability is not found or backend is not registered.
   bool supportsCapability(String capabilityName) {

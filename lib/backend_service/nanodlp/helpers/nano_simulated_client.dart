@@ -237,6 +237,11 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   @override
+  Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
+    await editProfile(profileId, settings.toNormalizedMap());
+  }
+
+  @override
   Future<Uint8List> getFileThumbnail(
       String location, String filePath, String size) async {
     final dims = _parseSize(size);

@@ -30,7 +30,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/update_progress.dart';
 import 'package:orion/util/markdown_screen.dart';
 import 'package:orion/util/orion_config.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
+import 'package:orion/backend_service/backend_service.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -109,62 +109,64 @@ class UpdateScreenState extends State<UpdateScreen>
 
   Future<void> _offerResetChannel(BuildContext ctx) async {
     final resetConfirmed = await showDialog<bool>(
-      context: ctx,
-      barrierDismissible: false,
-      builder: (dctx) => GlassAlertDialog(
-        title: Row(
-          children: [
-            PhosphorIcon(
-              PhosphorIcons.arrowClockwise(),
-              color: Colors.greenAccent,
-              size: 32,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Reset Update Channel',
-                style: const TextStyle(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (dctx) => GlassAlertDialog(
+            title: Row(
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.arrowClockwise(),
                   color: Colors.greenAccent,
-                  fontWeight: FontWeight.bold,
+                  size: 32,
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Reset Update Channel',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        content: const Text(
-          'Would you like to switch back to the stable update channel?\n\n'
-          'This is recommended for production builds.',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-        ),
-        actions: [
-          GlassButton(
-            tint: GlassButtonTint.neutral,
-            onPressed: () => Navigator.of(dctx).pop(false),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-            child: const Text('Keep Development Channel',
-                style: TextStyle(fontSize: 18)),
+            content: const Text(
+              'Would you like to switch back to the stable update channel?\n\n'
+              'This is recommended for production builds.',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.neutral,
+                onPressed: () => Navigator.of(dctx).pop(false),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: const Text('Keep Development Channel',
+                    style: TextStyle(fontSize: 18)),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () => Navigator.of(dctx).pop(true),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: const Text('Reset to Stable',
+                    style: TextStyle(fontSize: 18)),
+              ),
+            ],
           ),
-          GlassButton(
-            tint: GlassButtonTint.positive,
-            onPressed: () => Navigator.of(dctx).pop(true),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-            child: const Text('Reset to Stable',
-                style: TextStyle(fontSize: 18)),
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
 
     if (resetConfirmed) {
       try {
-        final nano = NanoDlpHttpClient();
-        await nano.manualCommand('[[Exec echo "stable" > /home/pi/channel]]');
+        final backend = BackendService();
+        await backend
+            .manualCommand('[[Exec echo "stable" > /home/pi/channel]]');
         _logger.info('Update channel reset to stable');
-        
+
         // Refresh AthenaOS update status to reflect the new channel
         if (ctx.mounted) {
-          final athenaProvider = Provider.of<AthenaUpdateProvider>(ctx, listen: false);
+          final athenaProvider =
+              Provider.of<AthenaUpdateProvider>(ctx, listen: false);
           await athenaProvider.checkForUpdates();
         }
       } catch (e) {
@@ -214,16 +216,15 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('I Accept',
-                        style: TextStyle(fontSize: 20)),
+                    child:
+                        const Text('I Accept', style: TextStyle(fontSize: 20)),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.positive,
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel', style: TextStyle(fontSize: 20)),
                   ),
                 ],
               ),
@@ -273,16 +274,15 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel', style: TextStyle(fontSize: 20)),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.negative,
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Continue',
-                        style: TextStyle(fontSize: 20)),
+                    child:
+                        const Text('Continue', style: TextStyle(fontSize: 20)),
                   ),
                 ],
               ),
@@ -342,8 +342,7 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel', style: TextStyle(fontSize: 20)),
                   ),
                 ],
               ),
@@ -422,7 +421,8 @@ class UpdateScreenState extends State<UpdateScreen>
   }
 
   Future<void> _triggerAthenaUpdate(BuildContext ctx) async {
-    final athenaProvider = Provider.of<AthenaUpdateProvider>(ctx, listen: false);
+    final athenaProvider =
+        Provider.of<AthenaUpdateProvider>(ctx, listen: false);
     final isMasterBranch = athenaProvider.channel == 'master';
 
     bool confirmed = false;
@@ -470,14 +470,15 @@ class UpdateScreenState extends State<UpdateScreen>
                 GlassButton(
                   tint: GlassButtonTint.negative,
                   onPressed: () => Navigator.of(dctx).pop(false),
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child:
-                      const Text('Dismiss', style: TextStyle(fontSize: 20)),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                  child: const Text('Dismiss', style: TextStyle(fontSize: 20)),
                 ),
                 GlassButton(
                   tint: GlassButtonTint.positive,
                   onPressed: () => Navigator.of(dctx).pop(true),
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
                   child:
                       const Text('Update Now', style: TextStyle(fontSize: 20)),
                 ),
@@ -517,8 +518,8 @@ class UpdateScreenState extends State<UpdateScreen>
     // Trigger the update in the background
     // The system will reboot, so we don't need to dismiss the overlay
     try {
-      final nano = NanoDlpHttpClient();
-      await nano.updateBackend();
+      final backend = BackendService();
+      await backend.updateBackend();
       messageNotifier.value = 'AthenaOS Update intitiated!';
     } catch (e) {
       _logger.warning('AthenaOS update error: $e');
@@ -636,13 +637,15 @@ class UpdateScreenState extends State<UpdateScreen>
                             final model =
                                 cfg.getMachineModelName().toLowerCase();
                             final isAthena = model.contains('athena');
-                            final isMasterBranch =
-                                isNano && isAthena && athenaProvider.channel == 'master';
+                            final isMasterBranch = isNano &&
+                                isAthena &&
+                                athenaProvider.channel == 'master';
 
                             String headerText;
                             if (isNano && isAthena) {
-                              headerText =
-                                  isMasterBranch ? 'AthenaOS Internal' : 'AthenaOS';
+                              headerText = isMasterBranch
+                                  ? 'AthenaOS Internal'
+                                  : 'AthenaOS';
                             } else {
                               headerText = 'Backend';
                             }

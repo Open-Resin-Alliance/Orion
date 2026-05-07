@@ -328,6 +328,12 @@ class OdysseyHttpClient implements BackendClient {
         'Resin profile editing is not supported by Odyssey backend.');
   }
 
+  @override
+  Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
+    throw UnsupportedError(
+        'Saving resin settings is not supported by Odyssey backend.');
+  }
+
   // Internal helpers
   Uri _dynUri(String apiUrl, String path, Map<String, dynamic> queryParams) {
     if (queryParams.containsKey('file_path')) {

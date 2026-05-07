@@ -24,7 +24,6 @@ import 'package:provider/provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/util/orion_config.dart';
-import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 /// Overlay shown after a calibration print completes
@@ -483,11 +482,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     // Fetch current profile to get the actual previous exposure time
     double previousExposure = widget.startExposure;
     try {
-      final profileJson =
-          await _backendService.getProfileJson(widget.profileId);
-      final normalized = NanoProfile.normalizeForEdit(profileJson);
-      previousExposure = (normalized['normal_cure_time'] as num?)?.toDouble() ??
-          widget.startExposure;
+      final settings = await _backendService.getResinSettings(widget.profileId);
+      previousExposure = settings?.normalCureTime ?? widget.startExposure;
     } catch (e) {
       _logger.warning('Failed to fetch current profile for comparison: $e');
       // Continue with widget.startExposure as fallback
@@ -497,11 +493,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       _logger.info(
           'Saving optimal exposure ${optimalExposure}s to profile ${widget.profileId}');
 
-      // Normalize to the canonical key and convert to backend fields
-      final normalized = {'normal_cure_time': optimalExposure};
-      final backendFields = NanoProfile.denormalizeForBackend(normalized);
-
-      await _backendService.editProfile(widget.profileId, backendFields);
+      await _backendService.saveResinExposure(
+          widget.profileId, optimalExposure);
       _logger.info('Successfully saved optimal exposure to profile');
     } catch (e) {
       _logger.warning('Failed to save optimal exposure to profile: $e');
@@ -682,13 +675,10 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   // Fetch current profile to get the actual previous exposure time
                   double previousExposure = widget.startExposure;
                   try {
-                    final profileJson =
-                        await _backendService.getProfileJson(widget.profileId);
-                    final normalized =
-                        NanoProfile.normalizeForEdit(profileJson);
+                    final settings = await _backendService
+                        .getResinSettings(widget.profileId);
                     previousExposure =
-                        (normalized['normal_cure_time'] as num?)?.toDouble() ??
-                            widget.startExposure;
+                        settings?.normalCureTime ?? widget.startExposure;
                   } catch (e) {
                     _logger.warning(
                         'Failed to fetch current profile for comparison: $e');
@@ -697,11 +687,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
                   // Save the chosen fine-tuned exposure
                   try {
-                    final normalized = {'normal_cure_time': value};
-                    final backendFields =
-                        NanoProfile.denormalizeForBackend(normalized);
-                    await _backendService.editProfile(
-                        widget.profileId, backendFields);
+                    await _backendService.saveResinExposure(
+                        widget.profileId, value);
                   } catch (e) {
                     _logger.warning('Failed to save fine-tuned exposure: $e');
                   }
