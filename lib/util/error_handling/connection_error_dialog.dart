@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/util/orion_config.dart';
@@ -150,9 +151,16 @@ class _ConnectionErrorDialogContentState
       String targetUri = '';
       try {
         final cfg = OrionConfig();
-        backendName = cfg.getString('backend', category: 'advanced');
-        final isNano = cfg.isNanoDlpMode();
-        if (isNano) {
+        final configuredBackend =
+            cfg.getString('backend', category: 'advanced');
+        final backendId =
+            configuredBackend.isEmpty ? BackendIds.odyssey : configuredBackend;
+        backendName = configuredBackend;
+        final registry = BackendRegistry();
+        final supportsAthena = registry.supportsCapability(
+                backendId, BackendCapabilities.supportsAthena) ??
+            false;
+        if (supportsAthena) {
           final base = cfg.getString('nanodlp.base_url', category: 'advanced');
           final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
           final custom = cfg.getString('customUrl', category: 'advanced');
@@ -163,14 +171,14 @@ class _ConnectionErrorDialogContentState
           } else {
             targetUri = 'http://localhost';
           }
-          if (backendName.isEmpty) backendName = 'NanoDLP';
+          if (backendName.isEmpty) backendName = backendId;
         } else {
           final custom = cfg.getString('customUrl', category: 'advanced');
           final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
           targetUri = (useCustom && custom.isNotEmpty)
               ? custom
               : 'http://localhost:12357';
-          if (backendName.isEmpty) backendName = 'Odyssey';
+          if (backendName.isEmpty) backendName = backendId;
         }
       } catch (_) {
         // best-effort: leave strings empty if config read fails

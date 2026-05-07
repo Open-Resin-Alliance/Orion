@@ -39,6 +39,8 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/athena_iot/athena_feature_manager.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -70,6 +72,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
   // Configuration and system state
   final OrionConfig config = OrionConfig();
+  final BackendService _backendService = BackendService();
   final Logger _logger = Logger('Onboarding');
   late Future<void> _wifiScreenFuture;
   String _printerName = '';
@@ -175,7 +178,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
     }
 
     // Fetch printer name and serial from Athena as soon as onboarding loads
-    if (config.isNanoDlpMode()) {
+    if (_backendService
+        .supportsCapability(BackendCapabilities.supportsAthena)) {
       try {
         final mgr = AthenaFeatureManager();
         await mgr.fetchAndApplyFeatureFlags();
@@ -349,6 +353,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   void dispose() {
+    _backendService.dispose();
+    _scrollController.dispose();
     _bubbleController.dispose();
     _completeAnimationController.dispose();
     _titleAnimationController.dispose();

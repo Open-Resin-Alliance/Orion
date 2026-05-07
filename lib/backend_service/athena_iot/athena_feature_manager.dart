@@ -18,6 +18,7 @@
 import 'dart:async';
 
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 
@@ -28,6 +29,21 @@ class AthenaFeatureManager {
   final OrionConfig _config;
   final _log = Logger('AthenaFeatureManager');
   Timer? _periodic;
+
+  bool _supportsAthena() {
+    try {
+      final configuredBackend =
+          _config.getString('backend', category: 'advanced');
+      final backendId =
+          configuredBackend.isEmpty ? BackendIds.odyssey : configuredBackend;
+      final registry = BackendRegistry();
+      return registry.supportsCapability(
+              backendId, BackendCapabilities.supportsAthena) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   String _resolveBaseUrl() {
     try {
@@ -42,7 +58,7 @@ class AthenaFeatureManager {
 
   Future<void> fetchAndApplyFeatureFlags() async {
     try {
-      if (!_config.isNanoDlpMode()) return;
+      if (!_supportsAthena()) return;
       final base = _resolveBaseUrl();
       final athena = AthenaIotClient(base);
 

@@ -20,6 +20,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/home/onboarding_screen.dart';
 import 'package:orion/home/home_screen.dart';
 import 'package:orion/home/startup_screen.dart';
@@ -38,6 +40,7 @@ class StartupGate extends StatefulWidget {
 
 class _StartupGateState extends State<StartupGate> {
   late StatusProvider _statusProv;
+  final BackendService _backendService = BackendService();
   bool _isAthena = false;
   bool _isSimulated = false;
   bool _athenaReady = false;
@@ -72,7 +75,9 @@ class _StartupGateState extends State<StartupGate> {
       final cfg = OrionConfig();
       _isSimulated = cfg.getFlag('simulated', category: 'developer') ||
           cfg.getFlag('simulated', category: 'advanced');
-      _isAthena = cfg.isNanoDlpMode() &&
+      final supportsAthena = _backendService
+          .supportsCapability(BackendCapabilities.supportsAthena);
+      _isAthena = supportsAthena &&
           cfg.getMachineModelName().toLowerCase().contains('athena');
     } catch (_) {
       _isAthena = false;
@@ -110,7 +115,10 @@ class _StartupGateState extends State<StartupGate> {
     // When we see the backend become available, kick off Athena IoT checks
     try {
       final prov = Provider.of<StatusProvider>(context, listen: false);
-      if (_isAthena && !_isSimulated && !_athenaReady && prov.hasEverConnected) {
+      if (_isAthena &&
+          !_isSimulated &&
+          !_athenaReady &&
+          prov.hasEverConnected) {
         _ensureAthenaReady();
       }
     } catch (_) {}
@@ -158,6 +166,7 @@ class _StartupGateState extends State<StartupGate> {
   @override
   void dispose() {
     try {
+      _backendService.dispose();
       _statusProv.removeListener(_onStatusChange);
       // Ensure notifications are unsuppressed when leaving startup
       Provider.of<UpdateManager>(context, listen: false).suppressNotifications =
@@ -173,7 +182,7 @@ class _StartupGateState extends State<StartupGate> {
 
     final requireAthenaReady = _isAthena && !_isSimulated;
     final backendReady =
-      prov.hasEverConnected && (!requireAthenaReady || _athenaReady);
+        prov.hasEverConnected && (!requireAthenaReady || _athenaReady);
     final isReadyToProceed =
         _animationsComplete && backendReady && _checkForUpdatesComplete;
 

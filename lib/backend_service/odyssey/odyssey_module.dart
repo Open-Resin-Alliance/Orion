@@ -72,6 +72,9 @@ class OdysseyModule implements BackendModule {
 
       // Cache invalidation
       BackendCapabilities.supportsCacheInvalidation: false,
+
+      // Streaming
+      BackendCapabilities.supportsSseStatusStream: true,
     };
   }
 

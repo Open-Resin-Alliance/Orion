@@ -59,8 +59,8 @@ class NanoDlpModule implements BackendModule {
       BackendCapabilities.supportsAthenaFeatureFlags: true,
 
       // Temperature/vat control
-      BackendCapabilities.supportsVatTemperature: false,
-      BackendCapabilities.supportsChamberTemperature: false,
+      BackendCapabilities.supportsVatTemperature: true,
+      BackendCapabilities.supportsChamberTemperature: true,
 
       // Notifications
       BackendCapabilities.supportsNotifications: true,
@@ -70,6 +70,9 @@ class NanoDlpModule implements BackendModule {
 
       // Cache invalidation
       BackendCapabilities.supportsCacheInvalidation: true,
+
+      // Streaming
+      BackendCapabilities.supportsSseStatusStream: false,
     };
   }
 

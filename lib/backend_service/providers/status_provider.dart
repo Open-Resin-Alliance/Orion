@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'package:orion/backend_service/athena_iot/models/athena_kinematic_status.dart';
@@ -215,6 +216,20 @@ class StatusProvider extends ChangeNotifier {
   // int _sseConsecutiveErrors = 0; // reserved for future use
   bool _fetchInFlight = false;
   bool _disposed = false;
+
+  bool _backendSupports(String capability) {
+    try {
+      final cfg = OrionConfig();
+      final configuredBackend = cfg.getString('backend', category: 'advanced');
+      final backendId =
+          configuredBackend.isEmpty ? BackendIds.odyssey : configuredBackend;
+      final registry = BackendRegistry();
+      return registry.supportsCapability(backendId, capability) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // True while the provider is attempting the first initial connection.
   // This is used by the UI to show a startup/splash screen until the
   // first status refresh completes (success or failure).
@@ -327,15 +342,12 @@ class StatusProvider extends ChangeNotifier {
       _startPolling();
       return;
     }
-    // If configured for NanoDLP (developer override or backend config) the
-    // NanoDLP adapter is polling-only and does not support SSE. Avoid
-    // attempting to establish an SSE subscription in that case.
+    // If backend does not advertise SSE support, skip stream attempts.
     try {
-      final cfg = OrionConfig();
-      final isNano = cfg.isNanoDlpMode();
-      if (isNano) {
-        _log.info(
-            'Backend is NanoDLP; skipping SSE subscription and using polling');
+      final supportsSse =
+          _backendSupports(BackendCapabilities.supportsSseStatusStream);
+      if (!supportsSse) {
+        _log.info('Backend does not support SSE status stream; using polling');
         _startPolling();
         return;
       }
@@ -1289,16 +1301,13 @@ class StatusProvider extends ChangeNotifier {
             (prevIsPausing != nowIsPausing) ||
             (prevIsCanceling != nowIsCanceling) ||
             statusChanged;
-        // If configured for NanoDLP (developer override or backend config),
-        // we poll frequently. Some NanoDLP setups report only tiny numeric
-        // changes which can be normalized away; ensure active printing/paused
-        // always triggers UI updates on each poll so the status screen stays
-        // visually responsive.
+        // For polling-only backends (no SSE support), ensure active prints
+        // still trigger regular UI updates each poll interval.
         try {
-          final cfg = OrionConfig();
-          final isNano = cfg.isNanoDlpMode();
+          final isPollingOnly =
+              !_backendSupports(BackendCapabilities.supportsSseStatusStream);
           if (!shouldNotify &&
-              isNano &&
+              isPollingOnly &&
               (_status?.isPrinting == true || _status?.isPaused == true)) {
             shouldNotify = true;
           }
@@ -1521,8 +1530,8 @@ class StatusProvider extends ChangeNotifier {
     try {
       bool bypassCache = false;
       try {
-        final meta = await BackendService().getFileMetadata(
-            location, file.path);
+        final meta =
+            await BackendService().getFileMetadata(location, file.path);
         final plateId = meta['plate_id'] as int?;
         if (plateId == 0) {
           bypassCache = true;
