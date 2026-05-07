@@ -21,8 +21,9 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
+import 'package:orion/backend_service/backend_registry.dart';
+import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
-import 'package:orion/util/orion_config.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -39,7 +40,7 @@ class ExposureScreen extends StatefulWidget {
 
 class ExposureScreenState extends State<ExposureScreen> {
   final _logger = Logger('Exposure');
-  final _config = OrionConfig();
+  final BackendService _backendService = BackendService();
   CancelableOperation? _exposureOperation;
   Completer<void>? _exposureCompleter;
 
@@ -49,7 +50,9 @@ class ExposureScreenState extends State<ExposureScreen> {
   Future<void> exposeScreen(String type) async {
     int delayTime = 1; // Odyssey requires a 1 second delay before exposure
 
-    if (_config.isNanoDlpMode()) {
+    final supportsCalibration = _backendService
+        .supportsCapability(BackendCapabilities.supportsCalibration);
+    if (supportsCalibration) {
       delayTime = 0;
     }
 
@@ -221,6 +224,12 @@ class ExposureScreenState extends State<ExposureScreen> {
     super.initState();
     // Defer to after first frame to avoid provider notifications during build.
     WidgetsBinding.instance.addPostFrameCallback((_) => getApiStatus());
+  }
+
+  @override
+  void dispose() {
+    _backendService.dispose();
+    super.dispose();
   }
 
   Future<void> getApiStatus() async {

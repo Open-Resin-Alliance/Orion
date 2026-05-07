@@ -18,9 +18,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/backend_client.dart';
-import 'package:orion/util/orion_config.dart';
 
 /// A simple notification model used locally.
 class NotificationItem {
@@ -42,6 +42,7 @@ class NotificationItem {
 
 class NotificationProvider extends ChangeNotifier {
   final BackendClient _client;
+  final BackendService _backendService;
   final _log = Logger('NotificationProvider');
 
   Timer? _timer;
@@ -66,17 +67,15 @@ class NotificationProvider extends ChangeNotifier {
   }
 
   NotificationProvider({BackendClient? client})
-      : _client = client ?? BackendService() {
+      : _client = client ?? BackendService(),
+        _backendService = BackendService() {
     _start();
   }
 
   void _start() {
-    try {
-      final cfg = OrionConfig();
-      final isNano = cfg.isNanoDlpMode();
-      if (!isNano) return; // placeholder: only NanoDLP implemented
-    } catch (_) {
-      // if config read fails, default to not starting
+    final supportsNotifications = _backendService
+        .supportsCapability(BackendCapabilities.supportsNotifications);
+    if (!supportsNotifications) {
       return;
     }
 
@@ -174,6 +173,7 @@ class NotificationProvider extends ChangeNotifier {
     try {
       _timer?.cancel();
     } catch (_) {}
+    _backendService.dispose();
     super.dispose();
   }
 }

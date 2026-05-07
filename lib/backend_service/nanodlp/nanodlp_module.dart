@@ -43,39 +43,39 @@ class NanoDlpModule implements BackendModule {
   Map<String, bool> getCapabilities() {
     return {
       // File management
-      'supportsImportFile': true,
-      'supportsLocalFilesProvider': true,
+      BackendCapabilities.supportsImportFile: true,
+      BackendCapabilities.supportsLocalFilesProvider: true,
 
       // Profile management
-      'supportsProfiles': true,
-      'supportsProfileEdit': true,
+      BackendCapabilities.supportsProfiles: true,
+      BackendCapabilities.supportsProfileEdit: true,
 
       // Calibration
-      'supportsCalibration': true,
+      BackendCapabilities.supportsCalibration: true,
 
       // Athena IoT integration (Athena is a machine that runs on NanoDLP)
-      'supportsAthena': true,
-      'supportsAthenaUpdates': true,
-      'supportsAthenaFeatureFlags': true,
+      BackendCapabilities.supportsAthena: true,
+      BackendCapabilities.supportsAthenaUpdates: true,
+      BackendCapabilities.supportsAthenaFeatureFlags: true,
 
       // Temperature/vat control
-      'supportsVatTemperature': false,
-      'supportsChamberTemperature': false,
+      BackendCapabilities.supportsVatTemperature: false,
+      BackendCapabilities.supportsChamberTemperature: false,
 
       // Notifications
-      'supportsNotifications': true,
+      BackendCapabilities.supportsNotifications: true,
 
       // Analytics
-      'supportsAnalytics': true,
+      BackendCapabilities.supportsAnalytics: true,
 
       // Cache invalidation
-      'supportsCacheInvalidation': true,
+      BackendCapabilities.supportsCacheInvalidation: true,
     };
   }
 
   @override
   List<String> getSupportedSubmodules() => [
-        'athena_iot', // NanoDLP supports Athena IoT services
+        BackendSubmodules.athenaIot, // NanoDLP supports Athena IoT services
       ];
 
   /// Initialize NanoDLP backend when activated.

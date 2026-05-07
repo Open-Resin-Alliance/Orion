@@ -4,16 +4,18 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
-import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_analytics_config.dart';
 
 class AnalyticsProvider extends ChangeNotifier {
   final BackendClient _client;
+  final BackendService _backendService;
   final Logger _log = Logger('AnalyticsProvider');
 
   AnalyticsProvider({BackendClient? client})
-      : _client = client ?? BackendService() {
+      : _client = client ?? BackendService(),
+        _backendService = BackendService() {
     _start();
   }
 
@@ -78,8 +80,9 @@ class AnalyticsProvider extends ChangeNotifier {
     if (_disposed) return;
     _loading = true;
     try {
-      final cfg = OrionConfig();
-      if (cfg.isNanoDlpMode()) {
+      final supportsAnalytics = _backendService
+          .supportsCapability(BackendCapabilities.supportsAnalytics);
+      if (supportsAnalytics) {
         // Always fetch pressure at high frequency
         final Map<int, dynamic> fetchedValues = {};
 
@@ -215,6 +218,7 @@ class AnalyticsProvider extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _polling = false;
+    _backendService.dispose();
     super.dispose();
   }
 }

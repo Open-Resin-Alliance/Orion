@@ -45,39 +45,40 @@ class OdysseyModule implements BackendModule {
   Map<String, bool> getCapabilities() {
     return {
       // File management
-      'supportsImportFile': false,
-      'supportsLocalFilesProvider': false,
+      BackendCapabilities.supportsImportFile: false,
+      BackendCapabilities.supportsLocalFilesProvider: false,
 
       // Profile management
-      'supportsProfiles': false,
-      'supportsProfileEdit': false,
+      BackendCapabilities.supportsProfiles: false,
+      BackendCapabilities.supportsProfileEdit: false,
 
       // Calibration
-      'supportsCalibration': false,
+      BackendCapabilities.supportsCalibration: false,
 
       // Athena IoT integration
-      'supportsAthena': false,
-      'supportsAthenaUpdates': false,
-      'supportsAthenaFeatureFlags': false,
+      BackendCapabilities.supportsAthena: false,
+      BackendCapabilities.supportsAthenaUpdates: false,
+      BackendCapabilities.supportsAthenaFeatureFlags: false,
 
       // Temperature/vat control
-      'supportsVatTemperature': false,
-      'supportsChamberTemperature': false,
+      BackendCapabilities.supportsVatTemperature: false,
+      BackendCapabilities.supportsChamberTemperature: false,
 
       // Notifications
-      'supportsNotifications': true,
+      BackendCapabilities.supportsNotifications: true,
 
       // Analytics
-      'supportsAnalytics': false,
+      BackendCapabilities.supportsAnalytics: false,
 
       // Cache invalidation
-      'supportsCacheInvalidation': false,
+      BackendCapabilities.supportsCacheInvalidation: false,
     };
   }
 
   @override
   List<String> getSupportedSubmodules() => [
-        'athena_iot', // Reserved for future: Odyssey may support Athena IoT if ported
+        BackendSubmodules
+            .athenaIot, // Reserved for future: Odyssey may support Athena IoT if ported
       ];
 
   /// Initialize Odyssey backend when activated.

@@ -31,6 +31,7 @@ import 'package:orion/settings/update_progress.dart';
 import 'package:orion/util/markdown_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -43,6 +44,7 @@ class UpdateScreenState extends State<UpdateScreen>
     with TickerProviderStateMixin {
   final Logger _logger = Logger('UpdateScreen');
   final OrionConfig _config = OrionConfig();
+  final BackendService _backendService = BackendService();
   late AnimationController _pulseController;
 
   @override
@@ -71,6 +73,7 @@ class UpdateScreenState extends State<UpdateScreen>
 
   @override
   void dispose() {
+    _backendService.dispose();
     _pulseController.dispose();
     super.dispose();
   }
@@ -632,17 +635,22 @@ class UpdateScreenState extends State<UpdateScreen>
                         children: [
                           // Header
                           Builder(builder: (ctx) {
-                            final cfg = _config;
-                            final isNano = cfg.isNanoDlpMode();
                             final model =
-                                cfg.getMachineModelName().toLowerCase();
-                            final isAthena = model.contains('athena');
-                            final isMasterBranch = isNano &&
+                                _config.getMachineModelName().toLowerCase();
+                            final supportsAthena =
+                                _backendService.supportsCapability(
+                                    BackendCapabilities.supportsAthena);
+                            final supportsAthenaUpdates =
+                                _backendService.supportsCapability(
+                                    BackendCapabilities.supportsAthenaUpdates);
+                            final isAthena =
+                                supportsAthena && model.contains('athena');
+                            final isMasterBranch = supportsAthenaUpdates &&
                                 isAthena &&
                                 athenaProvider.channel == 'master';
 
                             String headerText;
-                            if (isNano && isAthena) {
+                            if (supportsAthenaUpdates && isAthena) {
                               headerText = isMasterBranch
                                   ? 'AthenaOS Internal'
                                   : 'AthenaOS';
@@ -655,7 +663,7 @@ class UpdateScreenState extends State<UpdateScreen>
                                 PhosphorIcon(
                                   isMasterBranch
                                       ? PhosphorIcons.warning()
-                                      : (isNano && isAthena
+                                      : (supportsAthenaUpdates && isAthena
                                           ? PhosphorIconsFill.info
                                           : PhosphorIconsFill.info),
                                   color: isMasterBranch
@@ -865,12 +873,14 @@ class UpdateScreenState extends State<UpdateScreen>
   }
 
   Widget _buildBackendContent(AthenaUpdateProvider ap) {
-    final cfg = _config;
-    final isNano = cfg.isNanoDlpMode();
-    final model = cfg.getMachineModelName().toLowerCase();
-    final isAthena = model.contains('athena');
+    final model = _config.getMachineModelName().toLowerCase();
+    final supportsAthena =
+        _backendService.supportsCapability(BackendCapabilities.supportsAthena);
+    final supportsAthenaUpdates = _backendService
+        .supportsCapability(BackendCapabilities.supportsAthenaUpdates);
+    final isAthena = supportsAthena && model.contains('athena');
 
-    if (isNano && isAthena) {
+    if (supportsAthenaUpdates && isAthena) {
       if (ap.isChecking) {
         return const Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -133,9 +133,9 @@ class BackendService implements BackendClient {
     final backendId = configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
     final registry = BackendRegistry();
 
-    final supportsCaching =
-        registry.supportsCapability(backendId, 'supportsCacheInvalidation') ??
-            false;
+    final supportsCaching = registry.supportsCapability(
+            backendId, BackendCapabilities.supportsCacheInvalidation) ??
+        false;
 
     if (!supportsCaching) {
       _log.fine('Backend $backendId does not support cache invalidation');
@@ -172,7 +172,7 @@ class BackendService implements BackendClient {
 
   /// Import a file from USB/local storage to the backend's internal storage.
   ///
-  /// This is only supported on backends that declare 'supportsImportFile' capability.
+  /// This is only supported on backends that declare import capability.
   /// Check [supportsCapability] before calling to avoid errors.
   ///
   /// Returns the plate ID if successful, null if ID couldn't be determined.
@@ -184,7 +184,8 @@ class BackendService implements BackendClient {
     final configuredBackend = cfg.getString('backend', category: 'advanced');
     final backendId = configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
 
-    final supportsImport = supportsCapability('supportsImportFile');
+    final supportsImport =
+        supportsCapability(BackendCapabilities.supportsImportFile);
 
     if (!supportsImport) {
       throw UnsupportedError(

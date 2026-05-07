@@ -26,6 +26,34 @@ import 'package:orion/backend_service/odyssey/odyssey_module.dart';
 export 'package:orion/backend_service/nanodlp/nanodlp_module.dart';
 export 'package:orion/backend_service/odyssey/odyssey_module.dart';
 
+/// Canonical backend identifiers.
+class BackendIds {
+  static const nanodlp = 'nanodlp';
+  static const odyssey = 'odyssey';
+}
+
+/// Canonical backend capability keys.
+class BackendCapabilities {
+  static const supportsImportFile = 'supportsImportFile';
+  static const supportsLocalFilesProvider = 'supportsLocalFilesProvider';
+  static const supportsProfiles = 'supportsProfiles';
+  static const supportsProfileEdit = 'supportsProfileEdit';
+  static const supportsCalibration = 'supportsCalibration';
+  static const supportsAthena = 'supportsAthena';
+  static const supportsAthenaUpdates = 'supportsAthenaUpdates';
+  static const supportsAthenaFeatureFlags = 'supportsAthenaFeatureFlags';
+  static const supportsVatTemperature = 'supportsVatTemperature';
+  static const supportsChamberTemperature = 'supportsChamberTemperature';
+  static const supportsNotifications = 'supportsNotifications';
+  static const supportsAnalytics = 'supportsAnalytics';
+  static const supportsCacheInvalidation = 'supportsCacheInvalidation';
+}
+
+/// Canonical backend submodule identifiers.
+class BackendSubmodules {
+  static const athenaIot = 'athena_iot';
+}
+
 /// Service submodules (e.g., Athena IoT, file import, analytics) that can be
 /// optionally loaded and shared across multiple backends.
 abstract class BackendSubmodule {
