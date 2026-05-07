@@ -37,22 +37,49 @@ import 'package:orion/util/orion_config.dart';
 /// type checks and direct client instantiation throughout the codebase.
 class BackendService implements BackendClient {
   static final _log = Logger('BackendService');
+  static BackendService? _sharedInstance;
+  static bool _sharedListenerRegistered = false;
 
   BackendClient _delegate;
 
   /// Default constructor: picks the concrete implementation based on
   /// configuration (or defaults to the HTTP adapter). The selected
   /// delegate may be reloaded later by calling [reloadFromConfig].
-  BackendService({BackendClient? delegate})
-      : _delegate = delegate ?? _chooseFromConfig() {
-    _registerConfigListener();
+  ///
+  /// By default this returns a shared singleton instance to avoid repeatedly
+  /// constructing backend clients in call sites that invoke `BackendService()`
+  /// inside polling loops or one-shot helper calls.
+  factory BackendService({BackendClient? delegate}) {
+    // Explicit delegate injection should create an isolated instance.
+    if (delegate != null) {
+      return BackendService._internal(
+        delegate: delegate,
+        registerSharedConfigListener: false,
+      );
+    }
+
+    return _sharedInstance ??= BackendService._internal(
+      delegate: _chooseFromConfig(),
+      registerSharedConfigListener: true,
+    );
+  }
+
+  BackendService._internal({
+    BackendClient? delegate,
+    required bool registerSharedConfigListener,
+  }) : _delegate = delegate ?? _chooseFromConfig() {
+    if (registerSharedConfigListener) {
+      _registerConfigListener();
+    }
   }
 
   // Automatically reload the delegate when the on-disk config is updated.
   // We register a listener with OrionConfig so onboarding or settings
   // flows that call setString()/setFlag() cause the backend to re-evaluate.
   void _registerConfigListener() {
+    if (_sharedListenerRegistered) return;
     OrionConfig.addChangeListener(_handleConfigChange);
+    _sharedListenerRegistered = true;
   }
 
   void _handleConfigChange() {
@@ -65,6 +92,8 @@ class BackendService implements BackendClient {
 
   /// Dispose the backend service and remove any registered listeners.
   void dispose() {
+    // The shared singleton intentionally keeps its listener for app lifetime.
+    if (identical(this, _sharedInstance)) return;
     try {
       OrionConfig.removeChangeListener(_handleConfigChange);
     } catch (_) {}

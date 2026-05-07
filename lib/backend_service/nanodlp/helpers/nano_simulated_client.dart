@@ -10,6 +10,8 @@
 */
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -18,6 +20,7 @@ import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
+import 'package:orion/util/orion_config.dart';
 
 /// Printerless, deterministic NanoDLP simulator for development/testing.
 ///
@@ -27,10 +30,15 @@ class NanoDlpSimulatedClient implements BackendClient {
       : _totalLayers = max(1, totalLayers),
         _layerSeconds = layerSeconds <= 0 ? 2.5 : layerSeconds {
     _seedProfiles();
+    _loadPersistedState();
+    _useDefaultPrintTiming();
   }
 
   final int _totalLayers;
   final double _layerSeconds;
+
+  int _activeTotalLayers = 0;
+  double _activeLayerSeconds = 0.0;
 
   final StreamController<Map<String, dynamic>> _statusController =
       StreamController<Map<String, dynamic>>.broadcast();
@@ -52,16 +60,157 @@ class NanoDlpSimulatedClient implements BackendClient {
   double _zHeightMm = 0.0;
   double _vatTemp = 23.0;
   double _chamberTemp = 24.0;
-  // Hardware presence is static in the simulator.
+
   final bool _vatHeaterPresent = true;
   final bool _chamberHeaterPresent = true;
 
-  // Runtime enabled-state should reflect user actions.
   bool _vatControlEnabled = false;
   bool _chamberControlEnabled = false;
 
   final List<Map<String, dynamic>> _files = [];
   final Map<int, Map<String, dynamic>> _profiles = {};
+
+  DateTime? _calibrationStartedAt;
+  bool _calibrationPlateProcessed = false;
+  int? _lastCalibrationModelId;
+  int? _lastCalibrationProfileId;
+  List<double> _lastCalibrationExposureTimes = const [];
+
+  static const Duration _calibrationPreparationDuration = Duration(seconds: 2);
+  static const int _calibrationPrintLayers = 10;
+  static const double _calibrationPrintLayerSeconds = 0.8;
+  static const String _persistedStateFile = 'simulated_backend_state.json';
+
+  String? _stateFilePath() {
+    try {
+      final cfg = OrionConfig();
+      final dir = cfg.getConfigPath();
+      if (dir.isEmpty) return null;
+      return '$dir/$_persistedStateFile';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _loadPersistedState() {
+    try {
+      final filePath = _stateFilePath();
+      if (filePath == null) return;
+      final file = File(filePath);
+      if (!file.existsSync()) return;
+
+      final raw = file.readAsStringSync();
+      if (raw.trim().isEmpty) return;
+      final decoded = json.decode(raw);
+      if (decoded is! Map) return;
+
+      final state = Map<String, dynamic>.from(decoded);
+      final persistedProfiles = state['profiles'];
+      if (persistedProfiles is Map) {
+        for (final entry in persistedProfiles.entries) {
+          final id = int.tryParse(entry.key.toString());
+          if (id == null) continue;
+          if (entry.value is Map) {
+            _profiles[id] = Map<String, dynamic>.from(entry.value as Map);
+          }
+        }
+      }
+
+      final defaultProfileId = state['defaultProfileId'];
+      if (defaultProfileId != null) {
+        _defaultProfileId =
+            int.tryParse('$defaultProfileId') ?? _defaultProfileId;
+      }
+    } catch (_) {
+      // Ignore persistence loading errors in simulator mode.
+    }
+  }
+
+  void _persistState() {
+    try {
+      final filePath = _stateFilePath();
+      if (filePath == null) return;
+      final file = File(filePath);
+
+      final profiles = <String, dynamic>{};
+      for (final entry in _profiles.entries) {
+        profiles['${entry.key}'] = entry.value;
+      }
+
+      final payload = {
+        'schemaVersion': 1,
+        'defaultProfileId': _defaultProfileId,
+        'profiles': profiles,
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+
+      file.writeAsStringSync(
+          const JsonEncoder.withIndent('  ').convert(payload));
+    } catch (_) {
+      // Ignore persistence write errors in simulator mode.
+    }
+  }
+
+  void _useDefaultPrintTiming() {
+    _activeTotalLayers = _totalLayers;
+    _activeLayerSeconds = _layerSeconds;
+  }
+
+  void _useCalibrationPrintTiming() {
+    _activeTotalLayers = _calibrationPrintLayers;
+    _activeLayerSeconds = _calibrationPrintLayerSeconds;
+  }
+
+  void _upsertFile({required String name, required String path}) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final idx = _files.indexWhere((f) => f['path'] == path);
+    final item = {
+      'name': name,
+      'path': path,
+      'last_modified': now,
+    };
+    if (idx >= 0) {
+      _files[idx] = item;
+    } else {
+      _files.insert(0, item);
+    }
+  }
+
+  void _startPrintInternal(String filePath) {
+    _currentFilePath = filePath.trim().isEmpty ? _currentFilePath : filePath;
+    _currentFileName = _currentFilePath.split('/').last;
+    _printing = true;
+    _paused = false;
+    _cancelLatched = false;
+    _currentLayer = 0;
+    _startedAt = DateTime.now();
+    _pausedAt = null;
+    _pauseAccumulated = Duration.zero;
+  }
+
+  double _calibrationPreparationProgress() {
+    final started = _calibrationStartedAt;
+    if (started == null) return 0.0;
+    if (_calibrationPlateProcessed) return 1.0;
+    final elapsedMs = DateTime.now().difference(started).inMilliseconds;
+    final totalMs = _calibrationPreparationDuration.inMilliseconds;
+    if (totalMs <= 0) return 1.0;
+    return (elapsedMs / totalMs).clamp(0.0, 1.0);
+  }
+
+  void _syncCalibrationProgress() {
+    if (_calibrationStartedAt == null || _calibrationPlateProcessed) return;
+    final progress = _calibrationPreparationProgress();
+    if (progress >= 0.93) {
+      _calibrationPlateProcessed = true;
+      if (!_printing) {
+        final modelId = _lastCalibrationModelId ?? 0;
+        _useCalibrationPrintTiming();
+        _startPrintInternal('/sim/calibration_$modelId.gcode');
+        _emitStatus();
+      }
+    }
+  }
 
   void _seedProfiles() {
     for (var i = 1; i <= 3; i++) {
@@ -103,17 +252,20 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   void _syncProgress() {
+    _syncCalibrationProgress();
     if (!_printing || _paused || _startedAt == null) return;
     final now = DateTime.now();
     final elapsed = now.difference(_startedAt!).inMilliseconds / 1000.0;
     final active = elapsed - _pauseAccumulated.inMilliseconds / 1000.0;
-    final layer = min(_totalLayers, max(0, active ~/ _layerSeconds));
+    final layer =
+        min(_activeTotalLayers, max(0, active ~/ _activeLayerSeconds));
     if (layer != _currentLayer) _currentLayer = layer;
 
-    if (_currentLayer >= _totalLayers) {
+    if (_currentLayer >= _activeTotalLayers) {
       _printing = false;
       _paused = false;
       _pausedAt = null;
+      _useDefaultPrintTiming();
     }
   }
 
@@ -127,16 +279,22 @@ class NanoDlpSimulatedClient implements BackendClient {
           : (_cancelLatched ? 'Canceled' : 'Idle'),
       'State': _printing ? (_paused ? 6 : 5) : 0,
       'LayerID': _currentLayer,
-      'LayersCount': _totalLayers,
+      'LayersCount': _activeTotalLayers,
       'CurrentHeight': (_zHeightMm * 6400).round(),
-      'PrevLayerTime': (_layerSeconds * 1e9).round(),
+      'PrevLayerTime': (_activeLayerSeconds * 1e9).round(),
       'resin': _vatTemp,
       'temp': _chamberTemp,
       'mcu': 46.0,
       'file': {
         'name': _currentFileName,
         'path': _currentFilePath,
-        'layer_count': _totalLayers,
+        'layer_count': _activeTotalLayers,
+      },
+      'calibration': {
+        'model_id': _lastCalibrationModelId,
+        'profile_id': _lastCalibrationProfileId,
+        'exposure_times': _lastCalibrationExposureTimes,
+        'processed': _calibrationPlateProcessed,
       },
       'cancel_latched': _cancelLatched,
       'pause_latched': _paused,
@@ -212,7 +370,13 @@ class NanoDlpSimulatedClient implements BackendClient {
   @override
   Future<Map<String, dynamic>> getFileMetadata(
       String location, String filePath) async {
+    final normalizedPath = filePath.trim().toLowerCase();
+    final isCalibrationFile = normalizedPath.contains('/calibration_') ||
+        normalizedPath.endsWith('/0') ||
+        normalizedPath == '0';
+
     return {
+      if (isCalibrationFile) 'plate_id': 0,
       'file_data': {
         'path': filePath,
         'name': filePath.split('/').last,
@@ -245,15 +409,10 @@ class NanoDlpSimulatedClient implements BackendClient {
 
   @override
   Future<void> startPrint(String location, String filePath) async {
-    _currentFilePath = filePath.trim().isEmpty ? _currentFilePath : filePath;
-    _currentFileName = _currentFilePath.split('/').last;
-    _printing = true;
-    _paused = false;
-    _cancelLatched = false;
-    _currentLayer = 0;
-    _startedAt = DateTime.now();
-    _pausedAt = null;
-    _pauseAccumulated = Duration.zero;
+    _calibrationStartedAt = null;
+    _calibrationPlateProcessed = false;
+    _useDefaultPrintTiming();
+    _startPrintInternal(filePath);
     _emitStatus();
   }
 
@@ -326,6 +485,9 @@ class NanoDlpSimulatedClient implements BackendClient {
     _paused = false;
     _cancelLatched = true;
     _currentLayer = 0;
+    _calibrationStartedAt = null;
+    _calibrationPlateProcessed = false;
+    _useDefaultPrintTiming();
     _emitStatus();
   }
 
@@ -487,6 +649,7 @@ class NanoDlpSimulatedClient implements BackendClient {
 
     merged['CustomValues'] = custom;
     _profiles[id] = merged;
+    _persistState();
     return merged;
   }
 
@@ -496,6 +659,7 @@ class NanoDlpSimulatedClient implements BackendClient {
   @override
   Future<void> setDefaultProfileId(int id) async {
     _defaultProfileId = id;
+    _persistState();
   }
 
   @override
@@ -568,21 +732,41 @@ class NanoDlpSimulatedClient implements BackendClient {
     required List<double> exposureTimes,
     required int profileId,
   }) async {
-    await startPrint('Local', '/sim/calibration_$calibrationModelId.gcode');
+    _lastCalibrationModelId = calibrationModelId;
+    _lastCalibrationProfileId = profileId;
+    _lastCalibrationExposureTimes = List<double>.from(exposureTimes);
+
+    _calibrationStartedAt = DateTime.now();
+    _calibrationPlateProcessed = false;
+
+    final filePath = '/sim/calibration_$calibrationModelId.gcode';
+    _upsertFile(name: 'calibration_$calibrationModelId.gcode', path: filePath);
+    _currentFilePath = filePath;
+    _currentFileName = filePath.split('/').last;
+    _cancelLatched = false;
+    _emitStatus();
     return true;
   }
 
   @override
   Future<double?> getSlicerProgress() async {
+    _syncCalibrationProgress();
+    if (_calibrationStartedAt != null) {
+      return _calibrationPreparationProgress();
+    }
+
     if (!_printing) return null;
     _syncProgress();
-    return (_currentLayer / _totalLayers).clamp(0.0, 1.0);
+    return (_currentLayer / _activeTotalLayers).clamp(0.0, 1.0);
   }
 
   @override
   Future<bool?> isCalibrationPlateProcessed() async {
-    _syncProgress();
-    return !_printing && _currentLayer >= _totalLayers;
+    _syncCalibrationProgress();
+    if (_calibrationStartedAt == null && !_calibrationPlateProcessed) {
+      return null;
+    }
+    return _calibrationPlateProcessed;
   }
 
   @override
