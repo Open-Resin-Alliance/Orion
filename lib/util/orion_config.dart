@@ -848,14 +848,17 @@ class OrionConfig {
     return defaultName;
   }
 
-  /// Convenience check for whether the app should operate in NanoDLP mode.
-  /// Determined solely from the merged 'advanced.backend' setting.
-  bool isNanoDlpMode() {
+  /// Return the configured backend id from `advanced.backend`.
+  ///
+  /// This keeps config access backend-agnostic; callers should avoid
+  /// backend-name-specific checks and instead use backend capabilities.
+  String getConfiguredBackendId({String fallback = 'odyssey'}) {
     try {
-      final backend = getString('backend', category: 'advanced');
-      return backend.toLowerCase() == 'nanodlp';
+      final backend = getString('backend', category: 'advanced').trim();
+      if (backend.isEmpty) return fallback;
+      return backend.toLowerCase();
     } catch (_) {
-      return false;
+      return fallback;
     }
   }
 
