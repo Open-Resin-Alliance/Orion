@@ -18,6 +18,7 @@
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
@@ -223,6 +224,33 @@ class BackendService implements BackendClient {
     } catch (e) {
       _log.warning('Error checking capability: $capabilityName', e);
       return false;
+    }
+  }
+
+  /// Fetch Athena printer_data through the backend façade.
+  ///
+  /// Returns an empty map when Athena updates are not supported or when
+  /// data is temporarily unavailable.
+  Future<Map<String, dynamic>> getAthenaPrinterData() async {
+    if (!supportsCapability(BackendCapabilities.supportsAthenaUpdates)) {
+      return <String, dynamic>{};
+    }
+
+    try {
+      final cfg = OrionConfig();
+      final base = cfg.getString('nanodlp.base_url', category: 'advanced');
+      final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
+      final custom = cfg.getString('customUrl', category: 'advanced');
+      final athenaBase = base.isNotEmpty
+          ? base
+          : (useCustom && custom.isNotEmpty ? custom : 'http://localhost');
+
+      final athena = AthenaIotClient(athenaBase);
+      return await athena.getPrinterData();
+    } catch (e, st) {
+      _log.warning(
+          'Failed to fetch Athena printer_data via BackendService', e, st);
+      return <String, dynamic>{};
     }
   }
 

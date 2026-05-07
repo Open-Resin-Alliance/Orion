@@ -20,11 +20,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_printer_data.dart';
+import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/orion_config.dart';
 
 class AthenaUpdateProvider extends ChangeNotifier {
   final Logger _log = Logger('AthenaUpdateProvider');
+  final BackendService _backendService = BackendService();
 
   bool isChecking = false;
   bool updateAvailable = false;
@@ -64,26 +66,15 @@ class AthenaUpdateProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final cfg = OrionConfig();
-      // Determine Athena IoT base URL. Prefer explicit nanodlp.base_url, but
-      // fall back to the customUrl if useCustomUrl is set (mirrors
-      // NanoDlpHttpClient/AthenaFeatureManager resolution logic).
-      final base = cfg.getString('nanodlp.base_url', category: 'advanced');
-      final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
-      final custom = cfg.getString('customUrl', category: 'advanced');
-      final athenaBase = base.isNotEmpty
-          ? base
-          : (useCustom && custom.isNotEmpty ? custom : 'http://localhost');
-      final athena = AthenaIotClient(athenaBase);
-
-      final pd = await athena.getPrinterDataModel();
-      if (pd == null) {
+      final rawPrinterData = await _backendService.getAthenaPrinterData();
+      if (rawPrinterData.isEmpty) {
         _log.info('No Athena printer_data available');
         // Do not clear state on temporary failure to talk to local service
         isChecking = false;
         notifyListeners();
         return;
       }
+      final pd = AthenaPrinterData.fromJson(rawPrinterData);
 
       channel = pd.updateChannel?.trim().isNotEmpty == true
           ? pd.updateChannel!.trim()
@@ -163,5 +154,11 @@ class AthenaUpdateProvider extends ChangeNotifier {
     } catch (_) {
       return false;
     }
+  }
+
+  @override
+  void dispose() {
+    _backendService.dispose();
+    super.dispose();
   }
 }
