@@ -30,7 +30,7 @@ import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
-import 'package:orion/backend_service/nanodlp/models/nano_import_request.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/providers/files_provider.dart';
 import 'package:orion/backend_service/odyssey/models/files_models.dart';
 import 'package:orion/files/details_screen.dart';
@@ -148,8 +148,12 @@ class ImportScreenState extends State<ImportScreen> {
         orElse: () => resins.first,
       );
 
-      // Extract profile ID from the resin profile
-      final profileId = selectedResin.path ?? selectedResin.name;
+      // Extract profile ID from the resin profile key.
+      final profileKey = selectedResin.path ?? selectedResin.name;
+      final profileId = int.tryParse(profileKey);
+      if (profileId == null) {
+        throw Exception('Invalid profile ID: $profileKey');
+      }
 
       // Create a backend service instance to import the file
       final backendService = BackendService();
@@ -163,7 +167,7 @@ class ImportScreenState extends State<ImportScreen> {
           .map((f) => _fileKey(f))
           .toSet();
 
-      final importRequest = NanoImportRequest(
+      final importRequest = FileImportRequest(
         usbFilePath: widget.filePath,
         jobName: jobName,
         profileId: profileId,

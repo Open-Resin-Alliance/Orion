@@ -29,9 +29,9 @@ import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_machine.dart';
-import 'package:orion/backend_service/nanodlp/models/nano_import_request.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 
@@ -435,7 +435,8 @@ class NanoDlpHttpClient implements BackendClient {
   ///
   /// Throws an exception if the request fails.
   /// Returns the plate ID if successful, null if ID couldn't be determined.
-  Future<int?> importFile(NanoImportRequest request) async {
+  @override
+  Future<int?> importFile(FileImportRequest request) async {
     try {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       final uri = Uri.parse('$baseNoSlash/plate/add');
@@ -474,7 +475,7 @@ class NanoDlpHttpClient implements BackendClient {
 
       // Add form fields: Path (job name) and ProfileID
       httpRequest.fields['Path'] = request.jobName;
-      httpRequest.fields['ProfileID'] = request.profileId;
+      httpRequest.fields['ProfileID'] = request.profileId.toString();
 
       // Set Accept header to match WebUI behavior
       httpRequest.headers['Accept'] =
@@ -536,6 +537,26 @@ class NanoDlpHttpClient implements BackendClient {
     _platesCacheTime = null;
     _platesCacheFuture = null;
     _log.fine('Plates cache invalidated');
+  }
+
+  @override
+  Future<void> invalidateCache() async {
+    invalidatePlatesCache();
+  }
+
+  @override
+  Future<ResinSettings?> getResinSettings(int profileId) async {
+    final profileJson = await getProfileJson(profileId);
+    if (profileJson.isEmpty) return null;
+    final normalized = NanoProfile.normalizeForEdit(profileJson);
+    return ResinSettings.fromNormalizedMap(normalized);
+  }
+
+  @override
+  Future<void> saveResinExposure(int profileId, double normalCureTime) async {
+    final normalized = <String, dynamic>{'normal_cure_time': normalCureTime};
+    final backendFields = NanoProfile.denormalizeForBackend(normalized);
+    await editProfile(profileId, backendFields);
   }
 
   // --- Unimplemented / TODOs ---

@@ -21,6 +21,7 @@ import 'dart:typed_data';
 import 'dart:math' as math;
 
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
@@ -110,6 +111,18 @@ class NanoDlpSimulatedClient implements BackendClient {
   Future<Map<String, dynamic>> deleteFile(
       String location, String filePath) async {
     return {'deleted': true};
+  }
+
+  @override
+  Future<void> invalidateCache() async {
+    // Simulated client has no persistent cache to invalidate.
+    return;
+  }
+
+  @override
+  Future<int?> importFile(FileImportRequest request) async {
+    // Simulate successful import with a deterministic fake plate id.
+    return 1;
   }
 
   @override
@@ -210,6 +223,17 @@ class NanoDlpSimulatedClient implements BackendClient {
       merged['CustomValues'] = cv;
     } catch (_) {}
     return merged;
+  }
+
+  @override
+  Future<ResinSettings?> getResinSettings(int profileId) async {
+    final profile = await getProfileJson(profileId);
+    return ResinSettings.fromNormalizedMap(profile);
+  }
+
+  @override
+  Future<void> saveResinExposure(int profileId, double normalCureTime) async {
+    await editProfile(profileId, {'normal_cure_time': normalCureTime});
   }
 
   @override

@@ -19,6 +19,7 @@ import 'dart:typed_data';
 import 'dart:async';
 
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/domain/models.dart';
 
 /// Simple fake client used by unit tests to assert ManualProvider behavior.
 class FakeBackendClient implements BackendClient {
@@ -37,6 +38,26 @@ class FakeBackendClient implements BackendClient {
   @override
   Future<Map<String, dynamic>> deleteFile(String location, String filePath) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> invalidateCache() async {
+    return;
+  }
+
+  @override
+  Future<int?> importFile(FileImportRequest request) async {
+    return null;
+  }
+
+  @override
+  Future<ResinSettings?> getResinSettings(int profileId) async {
+    return null;
+  }
+
+  @override
+  Future<void> saveResinExposure(int profileId, double normalCureTime) async {
+    return;
+  }
 
   @override
   Future<Map<String, dynamic>> getConfig() => throw UnimplementedError();

@@ -21,6 +21,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 
@@ -302,6 +303,29 @@ class OdysseyHttpClient implements BackendClient {
     final resp = await _odysseyDelete(
         '/file', {'location': location, 'file_path': filePath});
     return json.decode(resp.body) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<void> invalidateCache() async {
+    // No file list cache in Odyssey adapter.
+    return;
+  }
+
+  @override
+  Future<int?> importFile(FileImportRequest request) async {
+    throw UnsupportedError('File import is not supported by Odyssey backend.');
+  }
+
+  @override
+  Future<ResinSettings?> getResinSettings(int profileId) async {
+    // Odyssey currently does not expose resin profile edit APIs.
+    return null;
+  }
+
+  @override
+  Future<void> saveResinExposure(int profileId, double normalCureTime) async {
+    throw UnsupportedError(
+        'Resin profile editing is not supported by Odyssey backend.');
   }
 
   // Internal helpers

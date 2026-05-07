@@ -33,6 +33,7 @@ import 'package:orion/tools/manual_leveling_screen.dart';
 class LevelingScreen extends StatelessWidget {
   const LevelingScreen({super.key});
 
+  // ignore: unused_element
   Future<void> _showLevelingDialog(BuildContext context) async {
     final config = OrionConfig();
     final navigator = Navigator.of(context);
@@ -95,6 +96,7 @@ class LevelingScreen extends StatelessWidget {
           _buildOverlayRoute(
             _LevelingHomingScreen(
               homeIsUp: homeIsUp,
+              skipHome: false,
               shouldSkipHome: checkSmartHoming,
               onComplete: () {
                 showChecklist(variant);

@@ -18,6 +18,8 @@
 import 'dart:typed_data';
 import 'dart:async';
 
+import 'package:orion/backend_service/domain/models.dart';
+
 /// Minimal abstraction over the Backend API used by providers. This allows
 /// swapping implementations (real HTTP client, mock, or unit-test doubles)
 /// while keeping providers free from direct dependency on ApiService.
@@ -40,6 +42,35 @@ abstract class BackendClient {
   Future<void> startPrint(String location, String filePath);
 
   Future<Map<String, dynamic>> deleteFile(String location, String filePath);
+
+  /// Invalidate any backend-side or client-side file/cache metadata.
+  ///
+  /// Backends that don't cache may keep the default no-op behavior.
+  Future<void> invalidateCache() async {}
+
+  /// Import a file to backend-managed storage.
+  ///
+  /// Returns backend-specific identifier (e.g. plate ID) when available.
+  /// Implementations that don't support import should throw [UnsupportedError].
+  Future<int?> importFile(FileImportRequest request) async {
+    throw UnsupportedError('File import is not supported by this backend.');
+  }
+
+  /// Fetch normalized resin settings for a profile.
+  ///
+  /// Implementations that don't support profiles may return null.
+  Future<ResinSettings?> getResinSettings(int profileId) async {
+    return null;
+  }
+
+  /// Save only normal exposure to a resin profile without mutating unrelated fields.
+  ///
+  /// Implementations that don't support profile editing should throw
+  /// [UnsupportedError].
+  Future<void> saveResinExposure(int profileId, double normalCureTime) async {
+    throw UnsupportedError(
+        'Resin profile editing is not supported by this backend.');
+  }
 
   // Status-related
   Future<Map<String, dynamic>> getStatus();

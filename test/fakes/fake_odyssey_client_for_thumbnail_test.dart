@@ -19,6 +19,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/domain/models.dart';
 
 class FakeBackendClientForThumbnailTest implements BackendClient {
   final Uint8List bytes;
@@ -69,6 +70,26 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
   @override
   Future<Map<String, dynamic>> deleteFile(String location, String filePath) {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<void> invalidateCache() async {
+    return;
+  }
+
+  @override
+  Future<int?> importFile(FileImportRequest request) async {
+    return null;
+  }
+
+  @override
+  Future<ResinSettings?> getResinSettings(int profileId) async {
+    return null;
+  }
+
+  @override
+  Future<void> saveResinExposure(int profileId, double normalCureTime) async {
+    return;
   }
 
   @override

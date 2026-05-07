@@ -18,11 +18,10 @@
 import 'dart:typed_data';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_simulated_client.dart';
-import 'package:orion/backend_service/nanodlp/models/nano_import_request.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// BackendService is a small façade that selects a concrete
@@ -143,13 +142,8 @@ class BackendService implements BackendClient {
       return;
     }
 
-    // For NanoDLP, we need to call the specific method.
-    // TODO: Phase 1 refactor - add invalidateCache() to BackendClient interface
-    // and remove this special handling.
-    if (_delegate is NanoDlpHttpClient) {
-      (_delegate as NanoDlpHttpClient).invalidatePlatesCache();
-      _log.fine('Invalidated NanoDLP plates cache');
-    }
+    _delegate.invalidateCache();
+    _log.fine('Invalidated backend cache for $backendId');
   }
 
   @override
@@ -183,7 +177,8 @@ class BackendService implements BackendClient {
   ///
   /// Returns the plate ID if successful, null if ID couldn't be determined.
   /// Throws UnsupportedError if backend doesn't support file import.
-  Future<int?> importFile(NanoImportRequest request) async {
+  @override
+  Future<int?> importFile(FileImportRequest request) async {
     // Check if current backend supports file import via registry.
     final cfg = OrionConfig();
     final configuredBackend = cfg.getString('backend', category: 'advanced');
@@ -196,13 +191,19 @@ class BackendService implements BackendClient {
           'File import is not supported by backend: $backendId');
     }
 
-    // For NanoDLP, delegate to its specific method.
-    if (_delegate is NanoDlpHttpClient) {
-      return (_delegate as NanoDlpHttpClient).importFile(request);
-    }
-
-    throw UnsupportedError('File import is not supported by current backend');
+    return _delegate.importFile(request);
   }
+
+  @override
+  Future<void> invalidateCache() => _delegate.invalidateCache();
+
+  @override
+  Future<ResinSettings?> getResinSettings(int profileId) =>
+      _delegate.getResinSettings(profileId);
+
+  @override
+  Future<void> saveResinExposure(int profileId, double normalCureTime) =>
+      _delegate.saveResinExposure(profileId, normalCureTime);
 
   /// Convenience method to check if the current backend supports a capability.
   /// Returns false if capability is not found or backend is not registered.
