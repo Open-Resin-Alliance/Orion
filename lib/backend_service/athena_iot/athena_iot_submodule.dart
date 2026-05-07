@@ -51,7 +51,7 @@ class AthenaIotSubmodule implements BackendSubmodule {
   @override
   Future<void> dispose() async {
     try {
-      _manager.stopPeriodicPolling();
+      _manager.dispose();
       _log.info('Athena IoT submodule disposed');
     } catch (e, st) {
       _log.warning('Failed to dispose Athena IoT submodule', e, st);

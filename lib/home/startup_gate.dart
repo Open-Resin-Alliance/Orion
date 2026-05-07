@@ -19,7 +19,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
-import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/home/onboarding_screen.dart';
@@ -124,31 +123,17 @@ class _StartupGateState extends State<StartupGate> {
     } catch (_) {}
   }
 
-  String _resolveNanodlpBaseUrl() {
-    try {
-      final cfg = OrionConfig();
-      final base = cfg.getString('nanodlp.base_url', category: 'advanced');
-      final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
-      final custom = cfg.getString('customUrl', category: 'advanced');
-      if (base.isNotEmpty) return base;
-      if (useCustom && custom.isNotEmpty) return custom;
-    } catch (_) {}
-    return 'http://localhost';
-  }
-
   Future<void> _ensureAthenaReady() async {
     if (_isSimulated) return;
     if (_checkingAthena) return;
     _checkingAthena = true;
     try {
-      final base = _resolveNanodlpBaseUrl();
-      final client =
-          AthenaIotClient(base, requestTimeout: const Duration(seconds: 3));
       // Retry a few times with backoff
       const maxAttempts = 6;
       for (var attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-          final model = await client.getPrinterDataModel();
+          final model = await _backendService.getAthenaPrinterDataModel(
+              requestTimeout: const Duration(seconds: 3));
           if (model != null) {
             _athenaReady = true;
             if (mounted) setState(() {});

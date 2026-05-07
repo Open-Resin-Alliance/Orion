@@ -18,15 +18,19 @@
 import 'dart:async';
 
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/util/orion_config.dart';
-import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 
 class AthenaFeatureManager {
-  AthenaFeatureManager({OrionConfig? config})
-      : _config = config ?? OrionConfig();
+  AthenaFeatureManager({OrionConfig? config, BackendService? backendService})
+      : _config = config ?? OrionConfig(),
+        _backendService = backendService ?? BackendService(),
+        _ownsBackendService = backendService == null;
 
   final OrionConfig _config;
+  final BackendService _backendService;
+  final bool _ownsBackendService;
   final _log = Logger('AthenaFeatureManager');
   Timer? _periodic;
 
@@ -45,25 +49,12 @@ class AthenaFeatureManager {
     }
   }
 
-  String _resolveBaseUrl() {
-    try {
-      final base = _config.getString('nanodlp.base_url', category: 'advanced');
-      final useCustom = _config.getFlag('useCustomUrl', category: 'advanced');
-      final custom = _config.getString('customUrl', category: 'advanced');
-      if (base.isNotEmpty) return base;
-      if (useCustom && custom.isNotEmpty) return custom;
-    } catch (_) {}
-    return 'http://localhost';
-  }
-
   Future<void> fetchAndApplyFeatureFlags() async {
     try {
       if (!_supportsAthena()) return;
-      final base = _resolveBaseUrl();
-      final athena = AthenaIotClient(base);
 
       // Fetch printer data for hostname and serial
-      final printerData = await athena.getPrinterDataModel();
+      final printerData = await _backendService.getAthenaPrinterDataModel();
       if (printerData != null) {
         _log.fine(
             'Received printer_data: printerName=${printerData.printerName}, printerSerial=${printerData.printerSerial}, cpuSerial=${printerData.cpuSerial}');
@@ -98,7 +89,7 @@ class AthenaFeatureManager {
         _log.fine('printer_data returned null');
       }
 
-      final flags = await athena.getFeatureFlagsModel();
+      final flags = await _backendService.getAthenaFeatureFlagsModel();
       if (flags == null) {
         _log.fine('No Athena feature_flags present');
         return;
@@ -154,7 +145,7 @@ class AthenaFeatureManager {
         }
       }
       _config.setVendorOverrides(overrides);
-      _log.info('Applied Athena feature flags overrides from $base');
+      _log.info('Applied Athena feature flags overrides');
     } catch (e, st) {
       _log.fine('Failed to fetch/apply Athena feature flags', e, st);
     }
@@ -176,5 +167,12 @@ class AthenaFeatureManager {
   void stopPeriodicPolling() {
     _periodic?.cancel();
     _periodic = null;
+  }
+
+  void dispose() {
+    stopPeriodicPolling();
+    if (_ownsBackendService) {
+      _backendService.dispose();
+    }
   }
 }

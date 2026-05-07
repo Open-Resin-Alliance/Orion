@@ -19,6 +19,8 @@ import 'dart:typed_data';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_feature_flags.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_printer_data.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
@@ -227,26 +229,60 @@ class BackendService implements BackendClient {
     }
   }
 
-  /// Fetch Athena printer_data through the backend façade.
-  ///
-  /// Returns an empty map when Athena updates are not supported or when
-  /// data is temporarily unavailable.
-  Future<Map<String, dynamic>> getAthenaPrinterData() async {
-    if (!supportsCapability(BackendCapabilities.supportsAthenaUpdates)) {
-      return <String, dynamic>{};
-    }
-
+  String _resolveAthenaBaseUrl() {
     try {
       final cfg = OrionConfig();
       final base = cfg.getString('nanodlp.base_url', category: 'advanced');
       final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
       final custom = cfg.getString('customUrl', category: 'advanced');
-      final athenaBase = base.isNotEmpty
-          ? base
-          : (useCustom && custom.isNotEmpty ? custom : 'http://localhost');
+      if (base.isNotEmpty) return base;
+      if (useCustom && custom.isNotEmpty) return custom;
+    } catch (_) {}
+    return 'http://localhost';
+  }
 
-      final athena = AthenaIotClient(athenaBase);
-      return await athena.getPrinterData();
+  AthenaIotClient? _createAthenaClient({Duration? requestTimeout}) {
+    if (!supportsCapability(BackendCapabilities.supportsAthenaUpdates)) {
+      return null;
+    }
+    final athenaBase = _resolveAthenaBaseUrl();
+    return AthenaIotClient(athenaBase, requestTimeout: requestTimeout);
+  }
+
+  /// Fetch typed Athena printer_data via backend capability-gated access.
+  Future<AthenaPrinterData?> getAthenaPrinterDataModel(
+      {Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return null;
+      return await client.getPrinterDataModel();
+    } catch (e, st) {
+      _log.warning('Failed to fetch Athena printer_data model', e, st);
+      return null;
+    }
+  }
+
+  /// Fetch typed Athena feature_flags via backend capability-gated access.
+  Future<AthenaFeatureFlags?> getAthenaFeatureFlagsModel(
+      {Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return null;
+      return await client.getFeatureFlagsModel();
+    } catch (e, st) {
+      _log.warning('Failed to fetch Athena feature_flags model', e, st);
+      return null;
+    }
+  }
+
+  /// Fetch Athena printer_data through the backend façade.
+  ///
+  /// Returns an empty map when Athena updates are not supported or when
+  /// data is temporarily unavailable.
+  Future<Map<String, dynamic>> getAthenaPrinterData() async {
+    try {
+      final model = await getAthenaPrinterDataModel();
+      return model?.toJson() ?? <String, dynamic>{};
     } catch (e, st) {
       _log.warning(
           'Failed to fetch Athena printer_data via BackendService', e, st);
