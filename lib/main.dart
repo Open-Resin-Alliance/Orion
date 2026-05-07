@@ -32,6 +32,7 @@ import 'package:path/path.dart' as p;
 import 'package:orion/util/install_locator.dart';
 import 'package:provider/provider.dart';
 import 'package:window_size/window_size.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 
 import 'package:orion/files/files_screen.dart';
 import 'package:orion/files/grid_files_screen.dart';
@@ -67,8 +68,43 @@ import 'package:orion/util/standby_overlay.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 import 'package:orion/util/orion_config.dart';
 
+/// Initialize all available backend modules at app startup.
+/// This is Phase 0 of the backend coupling refactor: centralizing all
+/// backend registration so backends are declared once and referenced
+/// via the registry throughout the app.
+///
+/// To add a new backend:
+///   1. Create a new module class implementing BackendModule
+///   2. Add an export in backend_registry.dart
+///   3. Add register() call in BackendRegistry.registerBuiltInModules()
+/// That's it—no other changes needed!
+void _initializeBackendModules() {
+  final registry = BackendRegistry();
+  registry.registerBuiltInModules();
+}
+
+/// Initialize all available service submodules (Athena IoT, file import, etc).
+/// Submodules are backend-agnostic services that multiple backends can use.
+///
+/// To add a new submodule:
+///   1. Create a new class implementing BackendSubmodule
+///   2. Add registerSubmodule() call below
+/// That's it—each backend declares which submodules it supports!
+void _initializeSubmodules() {
+  final registry = BackendRegistry();
+  registry.registerBuiltInSubmodules();
+  // Future: add registry.registerSubmodule(AthenaIotSubmodule()); here
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize backend registry with all available modules.
+  // This must be done early so backends can be selected by configuration.
+  _initializeBackendModules();
+
+  // Initialize all service submodules (Athena IoT, file import, etc).
+  _initializeSubmodules();
 
   // Restore screen brightness to full on startup (in case the app was
   // closed while standby dimming was active)

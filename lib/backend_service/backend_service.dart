@@ -16,7 +16,9 @@
 */
 
 import 'dart:typed_data';
+import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_simulated_client.dart';
@@ -27,7 +29,13 @@ import 'package:orion/util/orion_config.dart';
 /// `BackendClient` implementation at runtime. This centralizes the
 /// point where an alternative backend implementation (different API)
 /// can be swapped in without changing providers or UI code.
+///
+/// As of Phase 0 refactoring, backends are registered via BackendRegistry
+/// and selected at runtime based on configuration, eliminating scattered
+/// type checks and direct client instantiation throughout the codebase.
 class BackendService implements BackendClient {
+  static final _log = Logger('BackendService');
+
   BackendClient _delegate;
 
   /// Default constructor: picks the concrete implementation based on
@@ -76,18 +84,34 @@ class BackendService implements BackendClient {
   static BackendClient _chooseFromConfig() {
     try {
       final cfg = OrionConfig();
+
       // Developer-mode simulated backend flag (developer.simulated = true)
+      // Simulated client is still special-cased for testing.
       final simulated = cfg.getFlag('simulated', category: 'developer');
       if (simulated) {
+        _log.info('Creating simulated NanoDLP client (developer mode)');
         return NanoDlpSimulatedClient();
       }
-      if (cfg.isNanoDlpMode()) {
-        // Return the NanoDLP adapter when explicitly requested in config.
-        return NanoDlpHttpClient();
+
+      // Use registry to select the backend ID and create client directly.
+      final configuredBackend = cfg.getString('backend', category: 'advanced');
+      final backendId =
+          configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
+      final registry = BackendRegistry();
+      final module = registry.getModule(backendId);
+
+      if (module != null) {
+        _log.info('Selected backend: $backendId from registry');
+        return module.createClient();
       }
-    } catch (_) {
-      // ignore config errors and fall back
+
+      _log.warning(
+          'Backend module not registered: $backendId, falling back to Odyssey');
+    } catch (e, st) {
+      _log.warning('Error choosing backend from config', e, st);
     }
+
+    // Fallback to Odyssey
     return OdysseyHttpClient();
   }
 
@@ -100,13 +124,32 @@ class BackendService implements BackendClient {
   @override
   Future<bool> usbAvailable() => _delegate.usbAvailable();
 
-  /// Invalidate cached file listings (NanoDLP plates cache).
+  /// Invalidate cached file listings when supported by the backend.
   /// Call this when files may have been modified externally (e.g., deleted via WebUI).
+  /// Backends that don't support caching (e.g., Odyssey) will no-op.
   void invalidateFilesCache() {
+    // Check if current backend supports cache invalidation via registry.
+    final cfg = OrionConfig();
+    final configuredBackend = cfg.getString('backend', category: 'advanced');
+    final backendId = configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
+    final registry = BackendRegistry();
+
+    final supportsCaching =
+        registry.supportsCapability(backendId, 'supportsCacheInvalidation') ??
+            false;
+
+    if (!supportsCaching) {
+      _log.fine('Backend $backendId does not support cache invalidation');
+      return;
+    }
+
+    // For NanoDLP, we need to call the specific method.
+    // TODO: Phase 1 refactor - add invalidateCache() to BackendClient interface
+    // and remove this special handling.
     if (_delegate is NanoDlpHttpClient) {
       (_delegate as NanoDlpHttpClient).invalidatePlatesCache();
+      _log.fine('Invalidated NanoDLP plates cache');
     }
-    // Other backends don't cache, so no action needed
   }
 
   @override
@@ -133,18 +176,48 @@ class BackendService implements BackendClient {
   Future<Map<String, dynamic>> deleteFile(String location, String filePath) =>
       _delegate.deleteFile(location, filePath);
 
-  /// Import a file from USB/local storage to NanoDLP's internal storage.
+  /// Import a file from USB/local storage to the backend's internal storage.
   ///
-  /// This is a NanoDLP-specific feature. If the current backend is not NanoDLP,
-  /// this will throw an UnsupportedError.
+  /// This is only supported on backends that declare 'supportsImportFile' capability.
+  /// Check [supportsCapability] before calling to avoid errors.
   ///
   /// Returns the plate ID if successful, null if ID couldn't be determined.
+  /// Throws UnsupportedError if backend doesn't support file import.
   Future<int?> importFile(NanoImportRequest request) async {
+    // Check if current backend supports file import via registry.
+    final cfg = OrionConfig();
+    final configuredBackend = cfg.getString('backend', category: 'advanced');
+    final backendId = configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
+
+    final supportsImport = supportsCapability('supportsImportFile');
+
+    if (!supportsImport) {
+      throw UnsupportedError(
+          'File import is not supported by backend: $backendId');
+    }
+
+    // For NanoDLP, delegate to its specific method.
     if (_delegate is NanoDlpHttpClient) {
       return (_delegate as NanoDlpHttpClient).importFile(request);
     }
-    throw UnsupportedError(
-        'File import is only supported with NanoDLP backend');
+
+    throw UnsupportedError('File import is not supported by current backend');
+  }
+
+  /// Convenience method to check if the current backend supports a capability.
+  /// Returns false if capability is not found or backend is not registered.
+  bool supportsCapability(String capabilityName) {
+    try {
+      final cfg = OrionConfig();
+      final configuredBackend = cfg.getString('backend', category: 'advanced');
+      final backendId =
+          configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
+      final registry = BackendRegistry();
+      return registry.supportsCapability(backendId, capabilityName) ?? false;
+    } catch (e) {
+      _log.warning('Error checking capability: $capabilityName', e);
+      return false;
+    }
   }
 
   @override
