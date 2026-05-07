@@ -196,16 +196,39 @@ class NanoProfile {
   /// names for posting edits. This is the inverse of normalizeForEdit.
   static Map<String, dynamic> denormalizeForBackend(
       Map<String, dynamic> normalized) {
-    return {
-      'SupportCureTime':
-          (normalized['burn_in_cure_time'] as num?)?.toDouble() ?? 10.0,
-      'CureTime': (normalized['normal_cure_time'] as num?)?.toDouble() ?? 8.0,
-      'WaitHeight': (normalized['lift_after_print'] as num?)?.toDouble() ?? 5.0,
-      'SupportLayerNumber': (normalized['burn_in_count'] as num?)?.toInt() ?? 3,
-      'TopWait': (normalized['wait_after_cure'] as num?)?.toDouble() ?? 2.0,
-      'WaitAfterPrint':
-          (normalized['wait_after_life'] as num?)?.toDouble() ?? 2.0,
-    };
+    final out = <String, dynamic>{};
+
+    if (normalized.containsKey('burn_in_cure_time')) {
+      final v = (normalized['burn_in_cure_time'] as num?)?.toDouble();
+      if (v != null) out['SupportCureTime'] = v;
+    }
+
+    if (normalized.containsKey('normal_cure_time')) {
+      final v = (normalized['normal_cure_time'] as num?)?.toDouble();
+      if (v != null) out['CureTime'] = v;
+    }
+
+    if (normalized.containsKey('lift_after_print')) {
+      final v = (normalized['lift_after_print'] as num?)?.toDouble();
+      if (v != null) out['WaitHeight'] = v;
+    }
+
+    if (normalized.containsKey('burn_in_count')) {
+      final v = (normalized['burn_in_count'] as num?)?.toInt();
+      if (v != null) out['SupportLayerNumber'] = v;
+    }
+
+    if (normalized.containsKey('wait_after_cure')) {
+      final v = (normalized['wait_after_cure'] as num?)?.toDouble();
+      if (v != null) out['TopWait'] = v;
+    }
+
+    if (normalized.containsKey('wait_after_life')) {
+      final v = (normalized['wait_after_life'] as num?)?.toDouble();
+      if (v != null) out['WaitAfterPrint'] = v;
+    }
+
+    return out;
   }
 
   /// Normalize common resin edit fields into a canonical map used by the
