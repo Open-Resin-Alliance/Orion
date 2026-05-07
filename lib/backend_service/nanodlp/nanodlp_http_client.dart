@@ -98,6 +98,15 @@ class NanoDlpHttpClient implements BackendClient {
     return _TimeoutHttpClient(inner, _requestTimeout, _log, 'NanoDLP');
   }
 
+  AthenaIotClient _createAthenaClient({Duration? requestTimeout}) {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    return AthenaIotClient(
+      baseNoSlash,
+      clientFactory: _clientFactory,
+      requestTimeout: requestTimeout ?? _requestTimeout,
+    );
+  }
+
   // Timestamp when this client instance was created. Used to avoid
   // performing potentially expensive plate-list resolution during the
   // very first status poll immediately at app startup.
@@ -279,11 +288,9 @@ class NanoDlpHttpClient implements BackendClient {
         }
       }
 
-      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       // Use a longer timeout (10s) for kinematic status as the endpoint can be slow
-      final athena = AthenaIotClient(baseNoSlash,
-          clientFactory: _clientFactory,
-          requestTimeout: const Duration(seconds: 10));
+      final athena =
+          _createAthenaClient(requestTimeout: const Duration(seconds: 10));
       final kin = await athena.getKinematicStatusModel();
       if (kin == null) {
         _kinematicCache = null;
@@ -705,8 +712,7 @@ class NanoDlpHttpClient implements BackendClient {
           // payloads when available on Athena-derived NanoDLP installs.
           final vendor = <String, dynamic>{};
           try {
-            final athena = AthenaIotClient(baseNoSlash,
-                clientFactory: _clientFactory, requestTimeout: _requestTimeout);
+            final athena = _createAthenaClient();
             final athenaDataModel = await athena.getPrinterDataModel();
             if (athenaDataModel != null) {
               vendor['athena_printer_data'] = athenaDataModel.toJson();
