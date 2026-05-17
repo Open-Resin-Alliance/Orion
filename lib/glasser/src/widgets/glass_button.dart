@@ -141,6 +141,12 @@ ButtonStyle _baseNonGlassButtonStyle(BuildContext context, {Color? tintColor}) {
   );
 
   final outlineColor = effectiveTint;
+  final baseTextStyle =
+      (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
+    fontFamily: 'AtkinsonHyperlegible',
+    fontSize: 20,
+    fontWeight: FontWeight.w500,
+  );
 
   return ButtonStyle(
     backgroundColor: WidgetStateProperty.resolveWith((states) {
@@ -187,6 +193,7 @@ ButtonStyle _baseNonGlassButtonStyle(BuildContext context, {Color? tintColor}) {
       }
       return null;
     }),
+    textStyle: WidgetStateProperty.all(baseTextStyle),
     surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
   );
 }
