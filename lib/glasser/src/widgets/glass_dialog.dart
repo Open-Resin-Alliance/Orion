@@ -56,7 +56,6 @@ class GlassDialog extends StatelessWidget {
     final dialogConstraints = BoxConstraints(
       minWidth: 280,
       maxWidth: MediaQuery.of(context).size.width * 0.8,
-      maxHeight: MediaQuery.of(context).size.height * 0.8,
     );
 
     if (!themeProvider.isGlassTheme) {

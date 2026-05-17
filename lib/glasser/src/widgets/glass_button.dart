@@ -130,7 +130,7 @@ ButtonStyle _baseNonGlassButtonStyle(BuildContext context, {Color? tintColor}) {
 
   final tintedFill = tintColor != null
       ? Color.alphaBlend(
-          tintColor.withValues(alpha: isDark ? 0.10 : 0.07),
+          tintColor.withValues(alpha: isDark ? 0.14 : 0.07),
           theme.colorScheme.surface,
         )
       : neutralFill;
