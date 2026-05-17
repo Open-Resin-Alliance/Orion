@@ -52,17 +52,28 @@ class GlassDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final borderRadius = BorderRadius.circular(glassCornerRadius);
+    final dialogConstraints = BoxConstraints(
+      minWidth: 280,
+      maxWidth: MediaQuery.of(context).size.width * 0.8,
+      maxHeight: MediaQuery.of(context).size.height * 0.8,
+    );
 
     if (!themeProvider.isGlassTheme) {
       return Dialog(
-        child: Padding(
-          padding: padding,
-          child: child,
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+        shape: RoundedRectangleBorder(borderRadius: borderRadius),
+        child: ConstrainedBox(
+          constraints: dialogConstraints,
+          child: Padding(
+            padding: padding,
+            child: child,
+          ),
         ),
       );
     }
 
-    final borderRadius = BorderRadius.circular(glassCornerRadius);
     final shadow = GlassPlatformConfig.surfaceShadow(
       blurRadius: 26,
       yOffset: 12,
@@ -72,22 +83,27 @@ class GlassDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: borderRadius,
-          boxShadow: shadow,
-        ),
-        child: GlassEffect(
-          borderRadius: borderRadius,
-          sigma: glassBlurSigma,
-          opacity: 0.12,
-          floatingSurface: true,
-          borderWidth: 1.6,
-          emphasizeBorder: true,
-          interactiveSurface: false,
-          child: Padding(
-            padding: padding,
-            child: child,
+      insetPadding:
+          const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+      child: ConstrainedBox(
+        constraints: dialogConstraints,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            boxShadow: shadow,
+          ),
+          child: GlassEffect(
+            borderRadius: borderRadius,
+            sigma: glassBlurSigma,
+            opacity: 0.12,
+            floatingSurface: true,
+            borderWidth: 1.6,
+            emphasizeBorder: true,
+            interactiveSurface: false,
+            child: Padding(
+              padding: padding,
+              child: child,
+            ),
           ),
         ),
       ),

@@ -63,19 +63,89 @@ class GlassAlertDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final borderRadius = BorderRadius.circular(glassCornerRadius);
+    final dialogConstraints = BoxConstraints(
+      minWidth: 280,
+      maxWidth: MediaQuery.of(context).size.width * 0.8,
+      maxHeight: MediaQuery.of(context).size.height * 0.8,
+    );
 
     if (!themeProvider.isGlassTheme) {
-      return AlertDialog(
-        title: title,
-        content: content,
-        actions: actions,
-        titlePadding: titlePadding,
-        contentPadding: contentPadding,
-        actionsPadding: actionsPadding,
+      return Dialog(
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+        shape: RoundedRectangleBorder(borderRadius: borderRadius),
+        child: ConstrainedBox(
+          constraints: dialogConstraints,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.28),
+                width: 1.2,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (title != null)
+                  Padding(
+                    padding: titlePadding,
+                    child: DefaultTextStyle(
+                      style: TextStyle(
+                        fontFamily: 'AtkinsonHyperlegible',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      child: title!,
+                    ),
+                  ),
+                if (content != null)
+                  Flexible(
+                    child: Padding(
+                      padding: contentPadding,
+                      child: DefaultTextStyle(
+                        style: TextStyle(
+                          fontFamily: 'AtkinsonHyperlegible',
+                          fontSize: 19,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.84),
+                          height: 1.45,
+                        ),
+                        child: content!,
+                      ),
+                    ),
+                  ),
+                if (actions != null && actions!.isNotEmpty)
+                  Padding(
+                    padding: actionsPadding,
+                    child: Row(
+                      children: actions!.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final action = entry.value;
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              left: index == 0 ? 0 : 6,
+                              right: index == actions!.length - 1 ? 0 : 6,
+                            ),
+                            child: _buildActionButton(action),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
-    final borderRadius = BorderRadius.circular(glassCornerRadius);
     final fillOpacity =
         GlassPlatformConfig.surfaceOpacity(0.12, emphasize: true);
     final shadow = GlassPlatformConfig.surfaceShadow(
@@ -90,11 +160,7 @@ class GlassAlertDialog extends StatelessWidget {
       insetPadding:
           const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: 280,
-          maxWidth: MediaQuery.of(context).size.width * 0.8,
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
-        ),
+        constraints: dialogConstraints,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -236,7 +302,6 @@ Widget _buildButtonContentWithIcon(Widget originalChild) {
           Icon(
             icon,
             size: 18,
-            color: Colors.white,
           ),
           const SizedBox(width: 8),
           Text(originalChild.data ?? ''),
