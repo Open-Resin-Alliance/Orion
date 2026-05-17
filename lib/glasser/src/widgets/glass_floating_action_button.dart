@@ -163,16 +163,16 @@ class GlassFloatingActionButton extends StatelessWidget {
                 data: IconThemeData(size: 20 * scale, color: fg),
                 child: icon!,
               );
-        final textWidget = Flexible(
-          child: Text(
-            label ?? '',
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: 'AtkinsonHyperlegible',
-              color: fg,
-              fontSize: 16 * scale,
-              fontWeight: FontWeight.w500,
-            ),
+        final textWidget = Text(
+          label ?? '',
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontFamily: 'AtkinsonHyperlegible',
+            color: fg,
+            fontSize: 16 * scale,
+            fontWeight: FontWeight.w500,
           ),
         );
         final children = iconAfterLabel
@@ -214,7 +214,7 @@ class GlassFloatingActionButton extends StatelessWidget {
                   vertical: 12 * scale,
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.max,
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: children,
                 ),
@@ -352,20 +352,19 @@ class GlassFloatingActionButton extends StatelessWidget {
                             child: icon!,
                           ),
                         );
-                  final textWidget = Flexible(
-                    child: DefaultTextStyle(
-                      style: TextStyle(
-                        fontFamily: 'AtkinsonHyperlegible',
-                        color: hasTint
-                            ? tintPalette.glassForeground
-                            : Colors.white,
-                        fontSize: 16 * scale,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      child: Text(
-                        label ?? '',
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                  final textWidget = DefaultTextStyle(
+                    style: TextStyle(
+                      fontFamily: 'AtkinsonHyperlegible',
+                      color:
+                          hasTint ? tintPalette.glassForeground : Colors.white,
+                      fontSize: 16 * scale,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    child: Text(
+                      label ?? '',
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   );
                   final children = iconAfterLabel

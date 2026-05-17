@@ -103,7 +103,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 _currentStep == 0
                     ? PhosphorIcons.checkCircle()
                     : PhosphorIconsFill.magnifyingGlass,
-                size: 36,
+                size: 30,
                 color: _currentStep == 0
                     ? Colors.greenAccent
                     : Theme.of(context).colorScheme.primary,
@@ -118,9 +118,9 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         ? 'Calibration Complete!'
                         : 'Evaluate Test Print',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_service.dart';
@@ -86,10 +88,48 @@ class ResinsProvider extends ChangeNotifier {
   // these during refresh so UI can display thumbnails without issuing
   // additional backend calls.
   final Map<int, String?> _calibrationImageUrls = {};
+  final Map<int, Future<void>> _inFlightCalibrationImageFetches = {};
 
   /// Returns the prefetched calibration image URL for [modelId], or null
   /// if not available yet or the backend didn't provide one.
   String? calibrationImageUrl(int modelId) => _calibrationImageUrls[modelId];
+
+  /// Ensures an image URL exists for [modelId]. If not cached, fetch it now.
+  ///
+  /// This method deduplicates concurrent fetches per model id.
+  Future<void> ensureCalibrationImage(
+    int modelId, {
+    bool notify = true,
+  }) async {
+    final existing = _calibrationImageUrls[modelId];
+    if (existing != null && existing.isNotEmpty) return;
+
+    final inFlight = _inFlightCalibrationImageFetches[modelId];
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+
+    final future = (() async {
+      try {
+        final url = await _service
+            .getCalibrationImageUrl(modelId)
+            .timeout(const Duration(seconds: 8), onTimeout: () => null);
+        if (url != null && url.isNotEmpty) {
+          _calibrationImageUrls[modelId] = url;
+          _cachedCalibrationImageUrls = Map.from(_calibrationImageUrls);
+          if (notify) notifyListeners();
+        }
+      } catch (_) {
+        // Keep graceful fallback when backend image endpoint fails.
+      } finally {
+        _inFlightCalibrationImageFetches.remove(modelId);
+      }
+    })();
+
+    _inFlightCalibrationImageFetches[modelId] = future;
+    await future;
+  }
 
   int? _selectedCalibrationModelId;
 
@@ -252,6 +292,26 @@ class ResinsProvider extends ChangeNotifier {
     return null;
   }
 
+  void _prefetchCalibrationImagesInBackground(
+    List<CalibrationModel> models,
+  ) {
+    unawaited(() async {
+      final missing = models.where((m) {
+        final v = _calibrationImageUrls[m.id];
+        return v == null || v.isEmpty;
+      }).toList(growable: false);
+      if (missing.isEmpty) return;
+
+      // Run all missing-image fetches concurrently for faster fill-in.
+      await Future.wait(
+        missing.map((m) => ensureCalibrationImage(m.id, notify: false)),
+      );
+
+      _cachedCalibrationImageUrls = Map.from(_calibrationImageUrls);
+      notifyListeners();
+    }());
+  }
+
   Future<void> refresh() async {
     _log.info('Refreshing resin profiles');
     // Only show loading spinner if we don't have cached data
@@ -286,25 +346,21 @@ class ResinsProvider extends ChangeNotifier {
         }
       }
 
-      // Prefetch calibration model images concurrently and cache them.
-      try {
-        final futures = _calibrationModels.map((m) async {
-          try {
-            final url = await _service.getCalibrationImageUrl(m.id);
-            _calibrationImageUrls[m.id] = url;
-          } catch (_) {
-            _calibrationImageUrls[m.id] = null;
-          }
-        }).toList();
-        await Future.wait(futures);
-      } catch (_) {
-        // Continue even if image prefetch fails for some models.
+      // Cache calibration model metadata immediately so UI can render fast.
+      _cachedCalibrationModels = List.from(_calibrationModels);
+      _cachedSelectedCalibrationModelId = _selectedCalibrationModelId;
+
+      // If selected/current model image is missing, force an immediate fetch.
+      final selectedId = _selectedCalibrationModelId;
+      if (selectedId != null) {
+        final selectedImage = _calibrationImageUrls[selectedId];
+        if (selectedImage == null || selectedImage.isEmpty) {
+          await ensureCalibrationImage(selectedId, notify: false);
+        }
       }
 
-      // Cache calibration models and images for next app startup
-      _cachedCalibrationModels = List.from(_calibrationModels);
-      _cachedCalibrationImageUrls = Map.from(_calibrationImageUrls);
-      _cachedSelectedCalibrationModelId = _selectedCalibrationModelId;
+      // Start image prefetch in background (non-blocking).
+      _prefetchCalibrationImagesInBackground(_calibrationModels);
 
       // Try common locations the backend might expose.
       final resp = await _service.listItems('Resins', 100, 0, '');
