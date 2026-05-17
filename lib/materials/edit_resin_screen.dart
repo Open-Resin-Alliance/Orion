@@ -311,7 +311,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Done', style: TextStyle(fontSize: 22)),
+                child: const Text('Done'),
               ),
             ],
           ),

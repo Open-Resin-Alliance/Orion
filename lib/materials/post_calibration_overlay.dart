@@ -593,7 +593,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               Navigator.of(context).pop(); // Close dialog
               widget.onComplete(); // Close overlay
             },
-            child: const Text('Done', style: TextStyle(fontSize: 22)),
+            child: const Text('Done'),
           ),
         ],
       ),
@@ -662,7 +662,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+                child: const Text('Cancel'),
               ),
               GlassButton(
                 tint: GlassButtonTint.positive,
@@ -787,14 +787,13 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                             Navigator.of(context).pop();
                             widget.onComplete();
                           },
-                          child: const Text('Done',
-                              style: TextStyle(fontSize: 22)),
+                          child: const Text('Done'),
                         ),
                       ],
                     ),
                   );
                 },
-                child: const Text('Save', style: TextStyle(fontSize: 22)),
+                child: const Text('Save'),
               ),
             ],
           );

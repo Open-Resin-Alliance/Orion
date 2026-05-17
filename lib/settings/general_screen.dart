@@ -438,9 +438,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               style: ElevatedButton.styleFrom(
                                                   minimumSize:
                                                       const Size(0, 60)),
-                                              child: const Text('Close',
-                                                  style:
-                                                      TextStyle(fontSize: 22)),
+                                              child: const Text('Close'),
                                             ),
                                             GlassButton(
                                               tint: GlassButtonTint.positive,
@@ -458,9 +456,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               style: ElevatedButton.styleFrom(
                                                   minimumSize:
                                                       const Size(0, 60)),
-                                              child: const Text('Confirm',
-                                                  style:
-                                                      TextStyle(fontSize: 22)),
+                                              child: const Text('Confirm'),
                                             ),
                                           ],
                                         );
@@ -607,9 +603,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               tint: GlassButtonTint.warn,
                                               onPressed: () =>
                                                   Navigator.of(ctx).pop(false),
-                                              child: const Text('Cancel',
-                                                  style: TextStyle(
-                                                      fontSize: 22.0))),
+                                              child: const Text('Cancel')),
                                           GlassButton(
                                               tint: GlassButtonTint.negative,
                                               style: ElevatedButton.styleFrom(
@@ -617,9 +611,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               ),
                                               onPressed: () =>
                                                   Navigator.of(ctx).pop(true),
-                                              child: const Text('Reset',
-                                                  style: TextStyle(
-                                                      fontSize: 22.0))),
+                                              child: const Text('Reset')),
                                         ],
                                       ),
                                     ) ??
@@ -721,9 +713,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 onPressed: () =>
                                                     Navigator.of(ctx)
                                                         .pop(false),
-                                                child: const Text('Cancel',
-                                                    style: TextStyle(
-                                                        fontSize: 22.0))),
+                                                child: const Text('Cancel')),
                                             GlassButton(
                                                 tint: GlassButtonTint.negative,
                                                 style: ElevatedButton.styleFrom(
@@ -732,9 +722,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 ),
                                                 onPressed: () =>
                                                     Navigator.of(ctx).pop(true),
-                                                child: const Text('Prepare',
-                                                    style: TextStyle(
-                                                        fontSize: 22.0))),
+                                                child: const Text('Prepare')),
                                           ],
                                         ),
                                       ) ??
@@ -986,8 +974,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     tint: GlassButtonTint.neutral,
                                     onPressed: () =>
                                         Navigator.of(ctx).pop(false),
-                                    child: const Text('Cancel',
-                                        style: TextStyle(fontSize: 22.0))),
+                                    child: const Text('Cancel')),
                                 GlassButton(
                                     tint: GlassButtonTint.warn,
                                     style: ElevatedButton.styleFrom(
@@ -995,8 +982,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     ),
                                     onPressed: () =>
                                         Navigator.of(ctx).pop(true),
-                                    child: const Text('Clear',
-                                        style: TextStyle(fontSize: 22.0))),
+                                    child: const Text('Clear')),
                               ],
                             ),
                           ) ??
@@ -1043,8 +1029,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       minimumSize: const Size(0, 60),
                                     ),
                                     onPressed: () => Navigator.of(ctx).pop(),
-                                    child: const Text('OK',
-                                        style: TextStyle(fontSize: 22)),
+                                    child: const Text('OK'),
                                   ),
                                 ],
                               ),
@@ -1069,8 +1054,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       minimumSize: const Size(0, 60),
                                     ),
                                     onPressed: () => Navigator.of(ctx).pop(),
-                                    child: const Text('OK',
-                                        style: TextStyle(fontSize: 22)),
+                                    child: const Text('OK'),
                                   ),
                                 ],
                               ),
