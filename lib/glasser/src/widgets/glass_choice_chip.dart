@@ -70,7 +70,9 @@ class GlassChoiceChip extends StatelessWidget {
         primary.withValues(alpha: isDark ? 0.14 : 0.10),
         theme.colorScheme.surface,
       );
-      final outlineColor = primary.withValues(alpha: selected ? 0.35 : 0.12);
+      final outlineColor = primary.withValues(
+        alpha: isDark ? (selected ? 0.22 : 0.12) : (selected ? 0.35 : 0.12),
+      );
 
       return ChoiceChip.elevated(
         label: SizedBox(

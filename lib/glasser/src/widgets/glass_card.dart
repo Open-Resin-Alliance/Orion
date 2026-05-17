@@ -72,7 +72,7 @@ class GlassCard extends StatelessWidget {
 
     if (!themeProvider.isGlassTheme) {
       final bool isDarkMode = theme.brightness == Brightness.dark;
-      
+
       // For non-glass dark mode, apply subtle primary-tinted styling like buttons
       // unless explicitly outlined or using an accent color.
       final Color? effectiveCardColor = color ??
@@ -105,9 +105,14 @@ class GlassCard extends StatelessWidget {
           // If there is no custom shape or it's a RoundedRectangleBorder,
           // construct a RoundedRectangleBorder that includes a stroked side so
           // the accent color appears as the card's border.
+          // In dark mode, make accent outlines more subtle.
+          final accentAlpha = isDarkMode ? 0.22 : 1.0;
           effectiveShape = RoundedRectangleBorder(
             borderRadius: resolvedRadius,
-            side: BorderSide(color: accentColor!, width: 1.4),
+            side: BorderSide(
+              color: accentColor!.withValues(alpha: accentAlpha),
+              width: 1.4,
+            ),
           );
         } else {
           // If the provided shape is not a RoundedRectangleBorder we can't
@@ -133,7 +138,12 @@ class GlassCard extends StatelessWidget {
             margin: margin ?? const EdgeInsets.all(4.0),
             decoration: BoxDecoration(
               borderRadius: resolvedRadius,
-              border: Border.all(color: accentColor!, width: 1.4),
+              border: Border.all(
+                color: accentColor!.withValues(
+                  alpha: isDarkMode ? 0.22 : 1.0,
+                ),
+                width: 1.4,
+              ),
             ),
             child: card,
           );
@@ -141,11 +151,16 @@ class GlassCard extends StatelessWidget {
       }
 
       // For non-glass dark mode without accent, add subtle primary-tinted outline
-      if (!outlined && isDarkMode && accentColor == null && 
-          (effectiveShape == null || effectiveShape is RoundedRectangleBorder)) {
-        final BorderRadius resolvedRadius = effectiveShape is RoundedRectangleBorder
-            ? (effectiveShape as RoundedRectangleBorder).borderRadius as BorderRadius
-            : BorderRadius.circular(glassCornerRadius);
+      if (!outlined &&
+          isDarkMode &&
+          accentColor == null &&
+          (effectiveShape == null ||
+              effectiveShape is RoundedRectangleBorder)) {
+        final BorderRadius resolvedRadius =
+            effectiveShape is RoundedRectangleBorder
+                ? (effectiveShape as RoundedRectangleBorder).borderRadius
+                    as BorderRadius
+                : BorderRadius.circular(glassCornerRadius);
 
         effectiveShape = RoundedRectangleBorder(
           borderRadius: resolvedRadius,

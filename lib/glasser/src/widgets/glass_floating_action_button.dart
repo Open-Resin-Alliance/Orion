@@ -118,12 +118,37 @@ class GlassFloatingActionButton extends StatelessWidget {
     // (theme lookup removed; currently not needed in this branch)
 
     if (!themeProvider.isGlassTheme) {
-      final cs = Theme.of(context).colorScheme;
-      final bg =
-          tintPalette != null ? tintPalette.color : cs.secondaryContainer;
-      final fg = tintPalette != null
-          ? tintPalette.materialForeground
-          : cs.onSecondaryContainer;
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      final cs = theme.colorScheme;
+
+      // In dark mode, use subtle button-like styling instead of solid fills
+      final tintColor = tintPalette?.color;
+      final fg = isDark && tintColor != null
+          ? tintColor // Use tint color for icon in dark mode
+          : (tintPalette != null
+              ? tintPalette.materialForeground
+              : cs.onSecondaryContainer);
+
+      late final Color bg;
+      late final Color outlineColor;
+      late final double borderWidth;
+
+      if (isDark && tintColor != null) {
+        // Dark mode with tint: subtle fill + tinted outline
+        bg = Color.alphaBlend(
+          tintColor.withValues(alpha: 0.10),
+          cs.surface,
+        );
+        outlineColor = tintColor.withValues(alpha: 0.22);
+        borderWidth = 1.2;
+      } else {
+        // Light mode or untinted: use original logic
+        bg = tintPalette != null ? tintPalette.color : cs.secondaryContainer;
+        outlineColor = Colors.transparent;
+        borderWidth = 0;
+      }
+
       if (extended) {
         final iconWidget = icon == null
             ? null
@@ -158,6 +183,9 @@ class GlassFloatingActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(glassCornerRadius),
+            border: borderWidth > 0
+                ? Border.all(color: outlineColor, width: borderWidth)
+                : null,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.25),
@@ -187,7 +215,7 @@ class GlassFloatingActionButton extends StatelessWidget {
           ),
         );
       } else {
-        return FloatingActionButton(
+        final fab = FloatingActionButton(
           heroTag: heroTag,
           onPressed: onPressed,
           backgroundColor: bg,
@@ -196,6 +224,18 @@ class GlassFloatingActionButton extends StatelessWidget {
             child: child ?? const SizedBox(),
           ),
         );
+
+        // If dark mode with tint, wrap with border container
+        if (isDark && tintColor != null) {
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(glassCornerRadius),
+              border: Border.all(color: outlineColor, width: borderWidth),
+            ),
+            child: fab,
+          );
+        }
+        return fab;
       }
     }
 
