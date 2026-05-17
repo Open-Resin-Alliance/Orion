@@ -32,6 +32,7 @@ import 'package:orion/util/markdown_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/backend_registry.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -710,6 +711,70 @@ class UpdateScreenState extends State<UpdateScreen>
     );
   }
 
+  Widget _buildStatusChip({
+    required BuildContext context,
+    required String label,
+    required Color accent,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isGlassTheme = context.watch<ThemeProvider>().isGlassTheme;
+
+    final materialFill = Color.alphaBlend(
+      accent.withValues(alpha: isDark ? 0.14 : 0.07),
+      theme.colorScheme.surface,
+    );
+
+    Widget chipChild = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: accent,
+        ),
+      ),
+    );
+
+    if (!isGlassTheme) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: materialFill,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.22),
+            width: 1.2,
+          ),
+        ),
+        child: chipChild,
+      );
+    }
+
+    final glassFill = Color.alphaBlend(
+      accent.withValues(alpha: 0.75),
+      Colors.white,
+    );
+
+    return GlassEffect(
+      borderRadius: BorderRadius.circular(6),
+      sigma: glassBlurSigma,
+      opacity: GlassPlatformConfig.surfaceOpacity(
+        0.12,
+        emphasize: true,
+      ),
+      color: glassFill,
+      borderWidth: 1.5,
+      borderColor: accent,
+      borderAlpha: 0.45,
+      useRawBorderAlpha: true,
+      emphasizeBorder: true,
+      interactiveSurface: false,
+      floatingSurface: false,
+      child: chipChild,
+    );
+  }
+
   Widget _buildOrionContent(OrionUpdateProvider provider) {
     if (provider.rateLimitExceeded) {
       return Column(
@@ -748,24 +813,12 @@ class UpdateScreenState extends State<UpdateScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Status badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.orangeAccent.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(6),
-              border:
-                  Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
-            ),
-            child: Text(
-              provider.betaUpdatesOverride
-                  ? (provider.preRelease ? 'BLEEDING EDGE' : 'ROLLBACK')
-                  : 'UPDATE AVAILABLE',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.orangeAccent,
-              ),
-            ),
+          _buildStatusChip(
+            context: context,
+            accent: Colors.orangeAccent,
+            label: provider.betaUpdatesOverride
+                ? (provider.preRelease ? 'BLEEDING EDGE' : 'ROLLBACK')
+                : 'UPDATE AVAILABLE',
           ),
           const SizedBox(height: 12),
 
@@ -837,22 +890,10 @@ class UpdateScreenState extends State<UpdateScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: Colors.greenAccent.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(6),
-            border:
-                Border.all(color: Colors.greenAccent.withValues(alpha: 0.5)),
-          ),
-          child: const Text(
-            'UP TO DATE',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.greenAccent,
-            ),
-          ),
+        _buildStatusChip(
+          context: context,
+          accent: Colors.greenAccent,
+          label: 'UP TO DATE',
         ),
         const SizedBox(height: 12),
         Text(
@@ -903,38 +944,16 @@ class UpdateScreenState extends State<UpdateScreen>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: isMasterBranch
-                    ? Colors.redAccent.withValues(alpha: 0.2)
-                    : (isBetaChannel && isSameVersion
-                        ? Colors.redAccent.withValues(alpha: 0.12)
-                        : Colors.orangeAccent.withValues(alpha: 0.2)),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                    color: isMasterBranch
-                        ? Colors.redAccent.withValues(alpha: 0.5)
-                        : (isBetaChannel && isSameVersion
-                            ? Colors.redAccent.withValues(alpha: 0.5)
-                            : Colors.orangeAccent.withValues(alpha: 0.5))),
-              ),
-              child: Text(
-                isMasterBranch
-                    ? 'INTERNAL BUILD'
-                    : (isBetaChannel && isSameVersion
-                        ? 'BETA VERSION'
-                        : 'UPDATE AVAILABLE'),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isMasterBranch
-                      ? Colors.redAccent
-                      : (isBetaChannel && isSameVersion
-                          ? Colors.redAccent
-                          : Colors.orangeAccent),
-                ),
-              ),
+            _buildStatusChip(
+              context: context,
+              accent: (isMasterBranch || (isBetaChannel && isSameVersion))
+                  ? Colors.redAccent
+                  : Colors.orangeAccent,
+              label: isMasterBranch
+                  ? 'INTERNAL BUILD'
+                  : (isBetaChannel && isSameVersion
+                      ? 'BETA VERSION'
+                      : 'UPDATE AVAILABLE'),
             ),
             const SizedBox(height: 12),
             Text(
@@ -987,22 +1006,10 @@ class UpdateScreenState extends State<UpdateScreen>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.greenAccent.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                    color: Colors.greenAccent.withValues(alpha: 0.5)),
-              ),
-              child: const Text(
-                'UP TO DATE',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.greenAccent,
-                ),
-              ),
+            _buildStatusChip(
+              context: context,
+              accent: Colors.greenAccent,
+              label: 'UP TO DATE',
             ),
             const SizedBox(height: 12),
             Text(

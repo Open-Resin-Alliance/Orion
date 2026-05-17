@@ -124,6 +124,16 @@ class GlassFloatingActionButton extends StatelessWidget {
 
       // In dark mode, use subtle button-like styling instead of solid fills
       final tintColor = tintPalette?.color;
+      final neutralFill = Color.alphaBlend(
+        Colors.white.withValues(alpha: isDark ? 0.05 : 0.018),
+        cs.surface,
+      );
+      final tintedFill = tintColor != null
+          ? Color.alphaBlend(
+              tintColor.withValues(alpha: isDark ? 0.14 : 0.07),
+              cs.surface,
+            )
+          : neutralFill;
       final fg = isDark && tintColor != null
           ? tintColor // Use tint color for icon in dark mode
           : (tintPalette != null
@@ -134,13 +144,10 @@ class GlassFloatingActionButton extends StatelessWidget {
       late final Color outlineColor;
       late final double borderWidth;
 
-      if (isDark && tintColor != null) {
-        // Dark mode with tint: subtle fill + tinted outline
-        bg = Color.alphaBlend(
-          tintColor.withValues(alpha: 0.10),
-          cs.surface,
-        );
-        outlineColor = tintColor.withValues(alpha: 0.22);
+      if (isDark) {
+        // Match GlassButton dark-mode material styling.
+        bg = tintedFill;
+        outlineColor = (tintColor ?? cs.primary).withValues(alpha: 0.22);
         borderWidth = 1.2;
       } else {
         // Light mode or untinted: use original logic
@@ -215,27 +222,50 @@ class GlassFloatingActionButton extends StatelessWidget {
           ),
         );
       } else {
-        final fab = FloatingActionButton(
-          heroTag: heroTag,
-          onPressed: onPressed,
-          backgroundColor: bg,
-          child: IconTheme(
-            data: IconThemeData(size: 24 * scale, color: fg),
-            child: child ?? const SizedBox(),
+        final compactFab = SizedBox(
+          width: 56 * scale,
+          height: 56 * scale,
+          child: Container(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(glassCornerRadius),
+              border: borderWidth > 0
+                  ? Border.all(color: outlineColor, width: borderWidth)
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.12),
+                  blurRadius: isDark ? 6 : 4,
+                  offset: Offset(0, isDark ? 2 : 1),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(glassCornerRadius),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onPressed,
+                borderRadius: BorderRadius.circular(glassCornerRadius),
+                splashColor: fg.withValues(alpha: 0.1),
+                highlightColor: fg.withValues(alpha: 0.05),
+                child: Center(
+                  child: IconTheme(
+                    data: IconThemeData(size: 24 * scale, color: fg),
+                    child: child ?? const SizedBox(),
+                  ),
+                ),
+              ),
+            ),
           ),
         );
 
-        // If dark mode with tint, wrap with border container
-        if (isDark && tintColor != null) {
-          return Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(glassCornerRadius),
-              border: Border.all(color: outlineColor, width: borderWidth),
-            ),
-            child: fab,
-          );
+        if (heroTag != null) {
+          return Hero(tag: heroTag!, child: compactFab);
         }
-        return fab;
+        return compactFab;
       }
     }
 
@@ -246,12 +276,12 @@ class GlassFloatingActionButton extends StatelessWidget {
       final forceBlur = doForceBlur;
       final shadow = GlassPlatformConfig.interactiveShadow(
         enabled: isEnabled,
-        blurRadius: 24,
-        yOffset: 6,
-        alpha: 0.18,
+        blurRadius: 16,
+        yOffset: 3,
+        alpha: 0.14,
       );
       final fillOpacity =
-          GlassPlatformConfig.surfaceOpacity(0.14, emphasize: true);
+          GlassPlatformConfig.surfaceOpacity(0.12, emphasize: isEnabled);
       // If tinted, compute a blended fill color and a border color
       final bool hasTint = tintPalette != null;
       final Color? blendedFillColor = hasTint
@@ -272,8 +302,8 @@ class GlassFloatingActionButton extends StatelessWidget {
           color: blendedFillColor,
           floatingSurface: true,
           interactiveSurface: forceBlur ? false : true,
-          borderWidth: 1.6,
-          emphasizeBorder: true,
+          borderWidth: 1.5,
+          emphasizeBorder: isEnabled,
           borderColor: borderColor,
           useRawBorderAlpha: hasTint,
           borderAlpha: hasTint ? 0.45 : 0.2,
@@ -284,10 +314,16 @@ class GlassFloatingActionButton extends StatelessWidget {
             child: InkWell(
               borderRadius: borderRadius,
               onTap: onPressed,
-              splashColor:
-                  isEnabled ? Colors.white.withValues(alpha: 0.2) : null,
-              highlightColor:
-                  isEnabled ? Colors.white.withValues(alpha: 0.1) : null,
+              splashColor: isEnabled
+                  ? (hasTint
+                      ? tintPalette.color.withValues(alpha: 0.28)
+                      : Colors.white.withValues(alpha: 0.2))
+                  : null,
+              highlightColor: isEnabled
+                  ? (hasTint
+                      ? tintPalette.color.withValues(alpha: 0.18)
+                      : Colors.white.withValues(alpha: 0.1))
+                  : null,
               child: Container(
                 constraints: BoxConstraints(
                   minHeight: 48 * scale,
@@ -356,14 +392,15 @@ class GlassFloatingActionButton extends StatelessWidget {
     } else {
       final borderRadius = BorderRadius.circular(glassCornerRadius);
       final forceBlur = doForceBlur;
+      final isEnabled = onPressed != null;
       final shadow = GlassPlatformConfig.interactiveShadow(
-        enabled: onPressed != null,
-        blurRadius: 24,
-        yOffset: 8,
-        alpha: 0.18,
+        enabled: isEnabled,
+        blurRadius: 20,
+        yOffset: 5,
+        alpha: 0.16,
       );
       final fillOpacity =
-          GlassPlatformConfig.surfaceOpacity(0.15, emphasize: true);
+          GlassPlatformConfig.surfaceOpacity(0.13, emphasize: isEnabled);
 
       final bool hasTint = tintPalette != null;
       final Color? blendedFillColor = hasTint
@@ -372,43 +409,56 @@ class GlassFloatingActionButton extends StatelessWidget {
           : null;
       final Color? borderColor = hasTint ? tintPalette.color : null;
 
-      return FloatingActionButton(
-        heroTag: heroTag,
-        onPressed: onPressed,
-        elevation: 0,
-        hoverElevation: 0,
-        focusElevation: 0,
-        highlightElevation: 0,
-        backgroundColor: Colors.transparent,
-        child: SizedBox.expand(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: borderRadius,
-              boxShadow: shadow,
-            ),
-            child: GlassEffect(
-              borderRadius: borderRadius,
-              sigma: glassBlurSigma,
-              opacity: fillOpacity,
-              color: blendedFillColor,
-              floatingSurface: true,
-              interactiveSurface: forceBlur ? false : true,
-              borderWidth: 1.6,
-              emphasizeBorder: true,
-              borderColor: borderColor,
-              useRawBorderAlpha: hasTint,
-              borderAlpha: hasTint ? 0.45 : 0.2,
-              child: Center(
-                child: DefaultTextStyle(
-                  style: const TextStyle(
-                      fontFamily: 'AtkinsonHyperlegible', color: Colors.white),
-                  child: IconTheme(
-                    data: IconThemeData(
-                        color: hasTint
-                            ? tintPalette.glassForeground
-                            : Colors.white,
-                        size: 24 * scale),
-                    child: child ?? const SizedBox(),
+      final fabBody = SizedBox(
+        width: 58 * scale,
+        height: 58 * scale,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            boxShadow: shadow,
+          ),
+          child: GlassEffect(
+            borderRadius: borderRadius,
+            sigma: glassBlurSigma,
+            opacity: fillOpacity,
+            color: blendedFillColor,
+            floatingSurface: true,
+            interactiveSurface: forceBlur ? false : true,
+            borderWidth: 1.8,
+            emphasizeBorder: isEnabled,
+            borderColor: borderColor,
+            useRawBorderAlpha: hasTint,
+            borderAlpha: hasTint ? 0.45 : 0.2,
+            child: Material(
+              color: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: borderRadius),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                borderRadius: borderRadius,
+                onTap: onPressed,
+                splashColor: isEnabled
+                    ? (hasTint
+                        ? tintPalette.color.withValues(alpha: 0.28)
+                        : Colors.white.withValues(alpha: 0.2))
+                    : null,
+                highlightColor: isEnabled
+                    ? (hasTint
+                        ? tintPalette.color.withValues(alpha: 0.18)
+                        : Colors.white.withValues(alpha: 0.1))
+                    : null,
+                child: Center(
+                  child: DefaultTextStyle(
+                    style: const TextStyle(
+                        fontFamily: 'AtkinsonHyperlegible',
+                        color: Colors.white),
+                    child: IconTheme(
+                      data: IconThemeData(
+                          color: hasTint
+                              ? tintPalette.glassForeground
+                              : Colors.white,
+                          size: 25 * scale),
+                      child: child ?? const SizedBox(),
+                    ),
                   ),
                 ),
               ),
@@ -416,6 +466,11 @@ class GlassFloatingActionButton extends StatelessWidget {
           ),
         ),
       );
+
+      if (heroTag != null) {
+        return Hero(tag: heroTag!, child: fabBody);
+      }
+      return fabBody;
     }
   }
 }
