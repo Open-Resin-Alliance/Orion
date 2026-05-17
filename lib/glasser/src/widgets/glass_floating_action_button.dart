@@ -214,7 +214,8 @@ class GlassFloatingActionButton extends StatelessWidget {
                   vertical: 12 * scale,
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: children,
                 ),
               ),
