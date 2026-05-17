@@ -315,8 +315,7 @@ class _ConnectionErrorDialogContentState
                   onPressed: retryNow,
                   style:
                       ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child:
-                      const Text('Retry now', style: TextStyle(fontSize: 20)),
+                  child: const Text('Retry now'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -326,7 +325,7 @@ class _ConnectionErrorDialogContentState
                   style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 60),
                       backgroundColor: Colors.transparent),
-                  child: const Text('Close', style: TextStyle(fontSize: 20)),
+                  child: const Text('Close'),
                 ),
               ),
             ],
@@ -399,7 +398,7 @@ class _ConnectionErrorDialogContentState
               child: GlassButton(
                 onPressed: retryNow,
                 style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                child: const Text('Retry now', style: TextStyle(fontSize: 20)),
+                child: const Text('Retry now'),
               ),
             ),
             const SizedBox(width: 12),
@@ -409,7 +408,7 @@ class _ConnectionErrorDialogContentState
                 style: ElevatedButton.styleFrom(
                     minimumSize: const Size(0, 60),
                     backgroundColor: Colors.transparent),
-                child: const Text('Close', style: TextStyle(fontSize: 20)),
+                child: const Text('Close'),
               ),
             ),
           ],

@@ -126,7 +126,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 65),
             ),
-            child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+            child: const Text('Cancel'),
           ),
           GlassButton(
             tint: confirmTint,
@@ -134,7 +134,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 65),
             ),
-            child: Text(confirmLabel, style: const TextStyle(fontSize: 22)),
+            child: Text(confirmLabel),
           ),
         ],
       ),
