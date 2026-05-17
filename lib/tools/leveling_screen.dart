@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -166,7 +167,7 @@ class LevelingScreen extends StatelessWidget {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: OrionSpacing.screenPaddingWithBottomNav,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -360,7 +361,7 @@ class _LevelingOverlayState extends State<_LevelingOverlay> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: OrionSpacing.screenPaddingNoTop,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -375,7 +376,7 @@ class _LevelingOverlayState extends State<_LevelingOverlay> {
           }),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -836,7 +837,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               children: [
                 Selector<StatusProvider, double?>(
@@ -980,7 +981,7 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1036,7 +1037,7 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1115,7 +1116,7 @@ class _BuildArmSelectionScreen extends StatelessWidget {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1201,7 +1202,7 @@ class _BuildArmSelectionScreen extends StatelessWidget {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
@@ -1315,7 +1316,7 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1353,7 +1354,7 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1550,7 +1551,7 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               children: [
                 Expanded(
@@ -1626,7 +1627,7 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

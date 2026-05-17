@@ -27,6 +27,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/theme_color_selector.dart';
 import 'package:orion/util/orion_list_tile.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 
 class UIScreen extends StatefulWidget {
@@ -68,8 +69,7 @@ class _UIScreenState extends State<UIScreen> {
         ),
         body: SingleChildScrollView(
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+            padding: OrionSpacing.screenPadding,
             child: Column(
               children: [
                 // Theme Mode Selector Card

@@ -27,6 +27,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/widgets/selection_screens.dart';
 import 'package:orion/widgets/zoom_value_editor_dialog.dart';
 import 'package:orion/util/orion_config.dart';
@@ -94,7 +95,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       backgroundColor: Colors.transparent,
       body: Padding(
         padding: const EdgeInsets.only(
-            left: 16.0, right: 16.0, top: 4.0, bottom: 4.0),
+            left: OrionSpacing.screenHorizontal,
+            right: OrionSpacing.screenHorizontal,
+            top: OrionSpacing.screenTop,
+            bottom: OrionSpacing.compactListGap),
         child: Column(
           children: [
             Expanded(

@@ -46,6 +46,7 @@ import 'package:orion/util/orion_api_filesystem/orion_api_directory.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_item.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/util/stl_thumbnail.dart';
@@ -894,7 +895,10 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final crossCount =
             MediaQuery.of(context).orientation == Orientation.landscape ? 4 : 2;
         return Padding(
-          padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+          padding: const EdgeInsets.only(
+              left: OrionSpacing.gridScreenHorizontal,
+              right: OrionSpacing.gridScreenHorizontal,
+              bottom: 10),
           child: GridView.builder(
             controller: _scrollController,
             cacheExtent: 300,
@@ -943,7 +947,10 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final crossCount =
             MediaQuery.of(context).orientation == Orientation.landscape ? 4 : 2;
         return Padding(
-          padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+          padding: const EdgeInsets.only(
+              left: OrionSpacing.gridScreenHorizontal,
+              right: OrionSpacing.gridScreenHorizontal,
+              bottom: 10),
           child: GridView.builder(
             controller: _scrollController,
             cacheExtent: 300,

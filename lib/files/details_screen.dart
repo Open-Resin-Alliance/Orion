@@ -32,6 +32,7 @@ import 'package:orion/status/status_screen.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -321,12 +322,12 @@ class DetailScreenState extends State<DetailScreen> {
                                 BoxConstraints constraints) {
                               return isLandScape
                                   ? Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 16, right: 16, bottom: 20),
+                                      padding: OrionSpacing.screenPaddingNoTop
+                                          .copyWith(bottom: 20),
                                       child: buildLandscapeLayout(context))
                                   : Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 16, right: 16, bottom: 20),
+                                      padding: OrionSpacing.screenPaddingNoTop
+                                          .copyWith(bottom: 20),
                                       child: buildPortraitLayout(context));
                             },
                           )),
@@ -454,7 +455,7 @@ class DetailScreenState extends State<DetailScreen> {
         ),
         const SizedBox(height: 20),
         Padding(
-          padding: const EdgeInsets.only(left: 5.0, right: 5.0),
+          padding: EdgeInsets.zero,
           child: buildPrintButtons(),
         ),
       ],

@@ -29,6 +29,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/pubspec.dart';
 import 'package:orion/themes/themes.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/backend_service/backend_service.dart';
@@ -110,7 +111,7 @@ class AboutScreenState extends State<AboutScreen> {
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                padding: OrionSpacing.screenPaddingNoTop,
             child: isLandscape
                 ? buildLandscapeLayout(context)
                 : buildPortraitLayout(context),

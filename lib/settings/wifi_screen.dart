@@ -31,6 +31,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/wifi_provider.dart';
 
 class WifiScreen extends StatefulWidget {
@@ -312,7 +313,7 @@ class WifiScreenState extends State<WifiScreen> {
                   return Center(
                     child: SingleChildScrollView(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: OrionSpacing.screenPaddingNoTop,
                         child: isLandscape
                             ? buildLandscapeLayout(context, currentSSID, net,
                                 networks, connectionType)
@@ -346,7 +347,7 @@ class WifiScreenState extends State<WifiScreen> {
                   itemBuilder: (context, index) {
                     final network = networks[index];
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: OrionSpacing.screenPaddingNoTop,
                       child: GlassCard(
                         elevation: 1,
                         outlined: true,
@@ -362,7 +363,6 @@ class WifiScreenState extends State<WifiScreen> {
                               wifiProvider.platform),
                           onTap: () {
                             showDialog(
-                              barrierDismissible: false,
                               context: context,
                               builder: (BuildContext context) {
                                 return GlassAlertDialog(

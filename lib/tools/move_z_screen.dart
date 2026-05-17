@@ -28,6 +28,7 @@ import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 
 class MoveZScreen extends StatefulWidget {
   const MoveZScreen({super.key});
@@ -145,7 +146,7 @@ class MoveZScreenState extends State<MoveZScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: OrionSpacing.screenPaddingWithBottomNav,
         child: isLandscape
             ? buildLandscapeLayout(context)
             : buildPortraitLayout(context),

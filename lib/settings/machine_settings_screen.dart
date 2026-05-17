@@ -20,6 +20,7 @@ import 'package:orion/util/orion_list_tile.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -56,7 +57,7 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
             ],
           ),
           body: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 5),
+            padding: OrionSpacing.screenPadding,
             child: ListView(
               children: [
                 GlassCard(

@@ -24,6 +24,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/glasser/glasser.dart';
 // error dialog util removed (delete flow not present); import kept out for now
 import 'package:orion/backend_service/providers/resins_provider.dart';
+import 'package:orion/util/orion_spacing.dart';
 
 class ResinsScreen extends StatefulWidget {
   const ResinsScreen({super.key});
@@ -62,7 +63,7 @@ class ResinsScreenState extends State<ResinsScreen> {
           backgroundColor: Colors.transparent,
           body: Padding(
             // Match other screens: narrow horizontal padding to maximize usable area
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 4.0),
+            padding: OrionSpacing.screenPadding,
             child: Column(
               children: [
                 // Content
@@ -153,11 +154,13 @@ class ResinsScreenState extends State<ResinsScreen> {
                                 return _buildResinCard(selected!, provider);
                               }
                               if (index == 1) {
-                                return const SizedBox(height: 4);
+                                return const SizedBox(
+                                    height: OrionSpacing.compactListGap);
                               }
                               final resin = otherItems[index - 2];
                               return Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
+                                padding: const EdgeInsets.only(
+                                    top: OrionSpacing.compactListGap),
                                 child: _buildResinCard(resin, provider),
                               );
                             },
@@ -168,8 +171,8 @@ class ResinsScreenState extends State<ResinsScreen> {
                         return ListView.separated(
                           controller: _scrollController,
                           itemCount: items.length,
-                          separatorBuilder: (ctx, i) =>
-                              const SizedBox(height: 4),
+                          separatorBuilder: (ctx, i) => const SizedBox(
+                              height: OrionSpacing.compactListGap),
                           padding: EdgeInsets.zero,
                           itemBuilder: (context, index) {
                             final resin = items[index];
@@ -231,7 +234,7 @@ class ResinsScreenState extends State<ResinsScreen> {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: OrionSpacing.compactCardPadding,
             child: Row(
               children: [
                 if (isDefault) ...[

@@ -36,6 +36,7 @@ import 'package:orion/backend_service/odyssey/models/files_models.dart';
 import 'package:orion/files/details_screen.dart';
 import 'package:orion/files/import_progress_overlay.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/widgets/selection_screens.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -412,7 +413,7 @@ class ImportScreenState extends State<ImportScreen> {
           title: const Text('Back'),
         ),
         body: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: OrionSpacing.screenPadding,
           child: Column(
             children: [
               Expanded(

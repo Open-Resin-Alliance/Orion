@@ -28,6 +28,7 @@ import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 
 class ManualLevelingScreen extends StatefulWidget {
@@ -321,7 +322,10 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.only(
-                left: 20.0, right: 20.0, top: 8.0, bottom: 20.0),
+                left: OrionSpacing.screenHorizontal,
+                right: OrionSpacing.screenHorizontal,
+                top: OrionSpacing.screenTop,
+                bottom: 20.0),
             child: Column(
               children: [
                 Expanded(
@@ -357,7 +361,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: LayoutBuilder(
             builder: (context, constraints) {
               // Calculate widths to match the body columns exactly.

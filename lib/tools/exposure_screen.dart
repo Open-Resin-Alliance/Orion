@@ -28,6 +28,7 @@ import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/orion_spacing.dart';
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -262,7 +263,7 @@ class ExposureScreenState extends State<ExposureScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: OrionSpacing.screenPaddingWithBottomNav,
         child: isLandscape
             ? buildLandscapeLayout(context)
             : buildPortraitLayout(context),

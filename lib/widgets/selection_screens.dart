@@ -18,6 +18,7 @@
 import 'package:flutter/material.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
 
@@ -31,7 +32,7 @@ class DetailedSelectionScreen extends StatelessWidget {
     super.key,
     required this.title,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = OrionSpacing.screenPadding,
     this.actions,
   });
 
@@ -69,7 +70,7 @@ class ListSelectionScreen<T> extends StatelessWidget {
     required this.itemBuilder,
     this.separatorBuilder,
     this.header,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = OrionSpacing.screenPadding,
     this.actions,
   });
 
@@ -86,7 +87,7 @@ class ListSelectionScreen<T> extends StatelessWidget {
                   itemBuilder(context, items[index]),
               separatorBuilder: separatorBuilder ??
                   (context, index) {
-                    return const SizedBox(height: 8);
+                    return const SizedBox(height: OrionSpacing.listGap);
                   },
             )
           : Column(
@@ -100,7 +101,7 @@ class ListSelectionScreen<T> extends StatelessWidget {
                         itemBuilder(context, items[index]),
                     separatorBuilder: separatorBuilder ??
                         (context, index) {
-                          return const SizedBox(height: 8);
+                          return const SizedBox(height: OrionSpacing.listGap);
                         },
                   ),
                 ),

@@ -33,6 +33,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/orion_list_tile.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/widgets/selection_screens.dart';
@@ -163,7 +164,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     return PopScope(
       child: Scaffold(
         body: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, top: 5),
+          padding: OrionSpacing.screenPadding,
           child: ListView(
             controller: _scrollController,
             children: <Widget>[

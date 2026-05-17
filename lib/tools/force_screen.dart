@@ -24,6 +24,7 @@ import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/analytics_provider.dart';
@@ -118,24 +119,30 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
     }
 
     return Scaffold(
-      body: isLandscape
-          ? buildLandscapeLayout(
-              context,
-              series,
-              isPaused: _isPaused,
-              onPauseToggle: togglePause,
-              onTare: doTare,
-              tareOffset: _tareOffset,
-              onCurrentCardTap: _handleCurrentCardTap,
-            )
-          : buildPortraitLayout(
-              context,
-              series,
-              isPaused: _isPaused,
-              onPauseToggle: togglePause,
-              onTare: doTare,
-              tareOffset: _tareOffset,
-            ),
+      body: Padding(
+        padding: const EdgeInsets.only(
+          top: OrionSpacing.screenTop,
+          bottom: OrionSpacing.screenBottomNavClearance,
+        ),
+        child: isLandscape
+            ? buildLandscapeLayout(
+                context,
+                series,
+                isPaused: _isPaused,
+                onPauseToggle: togglePause,
+                onTare: doTare,
+                tareOffset: _tareOffset,
+                onCurrentCardTap: _handleCurrentCardTap,
+              )
+            : buildPortraitLayout(
+                context,
+                series,
+                isPaused: _isPaused,
+                onPauseToggle: togglePause,
+                onTare: doTare,
+                tareOffset: _tareOffset,
+              ),
+      ),
     );
   }
 }

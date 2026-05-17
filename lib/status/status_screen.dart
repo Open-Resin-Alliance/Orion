@@ -31,6 +31,7 @@ import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/util/hold_button.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/status_card.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
@@ -874,7 +875,7 @@ class StatusScreenState extends State<StatusScreen> {
       ),
       const SizedBox(height: 20),
       Padding(
-        padding: const EdgeInsets.only(left: 5, right: 5),
+        padding: OrionSpacing.screenPaddingNoTop,
         child: _buildButtons(provider, statusModel),
       ),
     ]);
@@ -1538,8 +1539,7 @@ class StatusScreenState extends State<StatusScreen> {
                             ),
                             const SizedBox(height: 10),
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
+                              padding: OrionSpacing.screenPaddingNoTop,
                               child: SizedBox(
                                 height: 65,
                                 width: 450,
@@ -1565,8 +1565,7 @@ class StatusScreenState extends State<StatusScreen> {
                             ),
                             const SizedBox(height: 20),
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
+                              padding: OrionSpacing.screenPaddingNoTop,
                               child: SizedBox(
                                 height: 65,
                                 width: 450,
@@ -1587,8 +1586,7 @@ class StatusScreenState extends State<StatusScreen> {
                             ),
                             const SizedBox(height: 20),
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
+                              padding: OrionSpacing.screenPaddingNoTop,
                               child: SizedBox(
                                 height: 65,
                                 width: 450,
@@ -2082,7 +2080,7 @@ class StatusScreenState extends State<StatusScreen> {
       ),
       const SizedBox(height: 20),
       Padding(
-        padding: const EdgeInsets.only(left: 5, right: 5),
+        padding: OrionSpacing.screenPaddingNoTop,
         child: _buildButtons(provider, status),
       ),
     ]);

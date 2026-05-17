@@ -30,6 +30,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/update_progress.dart';
 import 'package:orion/util/markdown_screen.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/util/providers/theme_provider.dart';
@@ -523,7 +524,7 @@ class UpdateScreenState extends State<UpdateScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: OrionSpacing.screenPadding,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
