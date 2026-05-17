@@ -68,8 +68,18 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final theme = Theme.of(context);
 
     if (!themeProvider.isGlassTheme) {
+      final bool isDarkMode = theme.brightness == Brightness.dark;
+      final Color? effectiveCardColor = color ??
+          (outlined && isDarkMode
+              ? Color.alphaBlend(
+                  Colors.white.withValues(alpha: 0.04),
+                  theme.colorScheme.surface,
+                )
+              : null);
+
       // For non-glass theme, prefer to apply the accent color to the Card's
       // existing border (shape side) so the accent tints the card edge rather
       // than adding a separate outer border which looks visually detached.
@@ -98,14 +108,14 @@ class GlassCard extends StatelessWidget {
           final card = outlined
               ? Card.outlined(
                   margin: margin ?? const EdgeInsets.all(4.0),
-                  color: color,
+                  color: effectiveCardColor,
                   elevation: elevation,
                   shape: shape,
                   child: child,
                 )
               : Card(
                   margin: margin ?? const EdgeInsets.all(4.0),
-                  color: color,
+                  color: effectiveCardColor,
                   elevation: elevation,
                   shape: shape,
                   child: child,
@@ -159,7 +169,7 @@ class GlassCard extends StatelessWidget {
       final card = outlined
           ? Card.outlined(
               margin: margin ?? const EdgeInsets.all(4.0),
-              color: color,
+              color: effectiveCardColor,
               elevation: elevation,
               shape: effectiveShape,
               clipBehavior: Clip.antiAlias,
@@ -167,7 +177,7 @@ class GlassCard extends StatelessWidget {
             )
           : Card(
               margin: margin ?? const EdgeInsets.all(4.0),
-              color: color,
+              color: effectiveCardColor,
               elevation: elevation,
               shape: effectiveShape,
               clipBehavior: Clip.antiAlias,
