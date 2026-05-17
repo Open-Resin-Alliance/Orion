@@ -670,94 +670,12 @@ class _ImportResinProfilePickerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListSelectionScreen<ResinProfile>(
+    return ResinProfileSelectionScreen(
       title: 'Select Resin Profile',
-      items: resins,
-      separatorBuilder: (ctx, i) => const SizedBox(height: 12),
-      itemBuilder: (context, resin) {
-        final resinKey = resin.path ?? resin.name;
-        final isSelected = selectedResinKey == resinKey;
-        final meta = resin.meta;
-        final parts = <String>[];
-        if (meta['viscosity'] != null) {
-          parts.add('Viscosity: ${meta['viscosity']}');
-        }
-        if (meta['exposure'] != null) {
-          parts.add('Exposure: ${meta['exposure']}');
-        }
-
-        return GlassCard(
-          elevation: isSelected ? 2.0 : 1.0,
-          outlined: true,
-          color: isSelected
-              ? Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.3)
-              : null,
-          child: InkWell(
-            onTap: () => Navigator.of(context).pop(resinKey),
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          resin.name,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w500,
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (parts.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            parts.join(' • '),
-                            style: TextStyle(
-                              fontSize: 14,
-                              color:
-                                  Theme.of(context).textTheme.bodySmall?.color,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      border: isSelected
-                          ? null
-                          : Border.all(
-                              color: Theme.of(context).dividerColor,
-                              width: 2,
-                            ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: isSelected
-                        ? const Icon(Icons.check, color: Colors.white, size: 18)
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+      resins: resins,
+      selectedResinKey: selectedResinKey,
+      onSelected: (resin) {
+        Navigator.of(context).pop(resin.path ?? resin.name);
       },
     );
   }

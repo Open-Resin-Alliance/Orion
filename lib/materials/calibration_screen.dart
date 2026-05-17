@@ -795,95 +795,13 @@ class _ResinProfilePickerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListSelectionScreen<ResinProfile>(
+    return ResinProfileSelectionScreen(
       title: title,
-      items: resins,
-      itemBuilder: (context, resin) {
-        final isSelected = selectedResin == resin;
-        final meta = resin.meta;
-        final parts = <String>[];
-        if (meta['viscosity'] != null) {
-          parts.add('Viscosity: ${meta['viscosity']}');
-        }
-        if (meta['exposure'] != null) {
-          parts.add('Exposure: ${meta['exposure']}');
-        }
-
-        return GlassCard(
-          elevation: isSelected ? 2.0 : 1.0,
-          outlined: true,
-          color: isSelected
-              ? Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.3)
-              : null,
-          child: InkWell(
-            onTap: () => Navigator.of(context).pop(resin),
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          resin.name,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (parts.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Text(
-                              parts.join(' • '),
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.color,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      border: isSelected
-                          ? null
-                          : Border.all(
-                              color: Theme.of(context).dividerColor,
-                              width: 2,
-                            ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: isSelected
-                        ? const Icon(Icons.check, color: Colors.white, size: 16)
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+      resins: resins,
+      selectedResinKey: selectedResin?.path ?? selectedResin?.name,
+      onSelected: (resin) {
+        Navigator.of(context).pop(resin);
       },
-      separatorBuilder: (ctx, i) => const SizedBox(height: 8),
     );
   }
 }
