@@ -58,6 +58,20 @@ class GlassChoiceChip extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     if (!themeProvider.isGlassTheme) {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      final primary = theme.colorScheme.primary;
+
+      final neutralFill = Color.alphaBlend(
+        Colors.white.withValues(alpha: isDark ? 0.05 : 0.018),
+        theme.colorScheme.surface,
+      );
+      final selectedFill = Color.alphaBlend(
+        primary.withValues(alpha: isDark ? 0.14 : 0.10),
+        theme.colorScheme.surface,
+      );
+      final outlineColor = primary.withValues(alpha: selected ? 0.35 : 0.12);
+
       return ChoiceChip.elevated(
         label: SizedBox(
           width: double.infinity,
@@ -65,6 +79,21 @@ class GlassChoiceChip extends StatelessWidget {
         ),
         selected: selected,
         onSelected: onSelected,
+        backgroundColor: neutralFill,
+        selectedColor: selectedFill,
+        elevation: selected ? 1.8 : 1.2,
+        pressElevation: 0.5,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(glassSmallCornerRadius),
+          side: BorderSide(color: outlineColor, width: selected ? 1.4 : 1.2),
+        ),
+        labelStyle: TextStyle(
+          color: selected
+              ? primary
+              : theme.colorScheme.onSurface.withValues(alpha: 0.85),
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
+        showCheckmark: false,
       );
     }
 

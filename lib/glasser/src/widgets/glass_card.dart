@@ -72,13 +72,21 @@ class GlassCard extends StatelessWidget {
 
     if (!themeProvider.isGlassTheme) {
       final bool isDarkMode = theme.brightness == Brightness.dark;
+      
+      // For non-glass dark mode, apply subtle primary-tinted styling like buttons
+      // unless explicitly outlined or using an accent color.
       final Color? effectiveCardColor = color ??
           (outlined && isDarkMode
               ? Color.alphaBlend(
                   Colors.white.withValues(alpha: 0.04),
                   theme.colorScheme.surface,
                 )
-              : null);
+              : (!outlined && isDarkMode && accentColor == null
+                  ? Color.alphaBlend(
+                      Colors.white.withValues(alpha: 0.05),
+                      theme.colorScheme.surface,
+                    )
+                  : null));
 
       // For non-glass theme, prefer to apply the accent color to the Card's
       // existing border (shape side) so the accent tints the card edge rather
@@ -130,6 +138,22 @@ class GlassCard extends StatelessWidget {
             child: card,
           );
         }
+      }
+
+      // For non-glass dark mode without accent, add subtle primary-tinted outline
+      if (!outlined && isDarkMode && accentColor == null && 
+          (effectiveShape == null || effectiveShape is RoundedRectangleBorder)) {
+        final BorderRadius resolvedRadius = effectiveShape is RoundedRectangleBorder
+            ? (effectiveShape as RoundedRectangleBorder).borderRadius as BorderRadius
+            : BorderRadius.circular(glassCornerRadius);
+
+        effectiveShape = RoundedRectangleBorder(
+          borderRadius: resolvedRadius,
+          side: BorderSide(
+            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+            width: 1.2,
+          ),
+        );
       }
 
       // Compose a child that includes a subtly tinted overlay when an accent
