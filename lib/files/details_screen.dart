@@ -322,13 +322,11 @@ class DetailScreenState extends State<DetailScreen> {
                                 BoxConstraints constraints) {
                               return isLandScape
                                   ? Padding(
-                                      padding: OrionSpacing
-                                          .settingsScreenPaddingNoTop
+                                      padding: OrionSpacing.screenPaddingNoTop
                                           .copyWith(bottom: 20),
                                       child: buildLandscapeLayout(context))
                                   : Padding(
-                                      padding: OrionSpacing
-                                          .settingsScreenPaddingNoTop
+                                      padding: OrionSpacing.screenPaddingNoTop
                                           .copyWith(bottom: 20),
                                       child: buildPortraitLayout(context));
                             },

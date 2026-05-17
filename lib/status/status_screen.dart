@@ -768,22 +768,16 @@ class StatusScreenState extends State<StatusScreen> {
                   // Show analytics view or main status view based on toggle
                   if (_showAnalytics) {
                     return Padding(
-                      padding: const EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        bottom: 20,
-                      ),
+                      padding:
+                          OrionSpacing.screenPaddingNoTop.copyWith(bottom: 20),
                       child: _buildAnalyticsView(context, provider, status),
                     );
                   }
 
                   return _isLandscape
                       ? Padding(
-                          padding: const EdgeInsets.only(
-                            left: 16,
-                            right: 16,
-                            bottom: 20,
-                          ),
+                          padding: OrionSpacing.screenPaddingNoTop
+                              .copyWith(bottom: 20),
                           child: _buildLandscapeLayout(
                             context,
                             provider,
@@ -793,11 +787,8 @@ class StatusScreenState extends State<StatusScreen> {
                           ),
                         )
                       : Padding(
-                          padding: const EdgeInsets.only(
-                            left: 16,
-                            right: 16,
-                            bottom: 20,
-                          ),
+                          padding: OrionSpacing.screenPaddingNoTop
+                              .copyWith(bottom: 20),
                           child: _buildPortraitLayout(
                             context,
                             provider,
