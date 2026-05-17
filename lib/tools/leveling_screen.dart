@@ -173,9 +173,10 @@ class LevelingScreen extends StatelessWidget {
           children: [
             Expanded(
               child: GlassCard(
+                margin: EdgeInsets.zero,
                 accentColor: null, //accent,
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: OrionSpacing.cardPadding,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -235,9 +236,10 @@ class LevelingScreen extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(
               child: GlassCard(
+                margin: EdgeInsets.zero,
                 accentColor: accent,
                 child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: OrionSpacing.cardPadding,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -471,8 +473,9 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GlassCard(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: OrionSpacing.compactCardPadding,
             child: CheckboxListTile(
               activeColor: Colors.greenAccent,
               value: _haveRemovedResin,
@@ -486,8 +489,9 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
         ),
         const SizedBox(height: 8),
         GlassCard(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: OrionSpacing.compactCardPadding,
             child: CheckboxListTile(
               activeColor: Colors.greenAccent,
               value: _haveHexKeys,
@@ -501,8 +505,9 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
         ),
         const SizedBox(height: 8),
         GlassCard(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: OrionSpacing.compactCardPadding,
             child: CheckboxListTile(
               activeColor: Colors.greenAccent,
               value: _havePlate,
@@ -517,8 +522,9 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
         ),
         const SizedBox(height: 8),
         GlassCard(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: OrionSpacing.compactCardPadding,
             child: CheckboxListTile(
               activeColor: Colors.greenAccent,
               value: _haveClean,
@@ -987,9 +993,10 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 GlassCard(
+                  margin: EdgeInsets.zero,
                   outlined: true,
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: OrionSpacing.cardPadding,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1322,8 +1329,9 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 GlassCard(
+                  margin: EdgeInsets.zero,
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: OrionSpacing.cardPadding,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1562,6 +1570,7 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
                       Expanded(
                         flex: 1,
                         child: GlassCard(
+                          margin: EdgeInsets.zero,
                           child: ClipRRect(
                             borderRadius:
                                 BorderRadius.circular(glassCornerRadius),
@@ -1597,8 +1606,9 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
                           children: [
                             Expanded(
                               child: GlassCard(
+                                margin: EdgeInsets.zero,
                                 child: Padding(
-                                  padding: const EdgeInsets.all(24.0),
+                                  padding: OrionSpacing.cardPadding,
                                   child: Center(
                                     child: SingleChildScrollView(
                                       child: Text(

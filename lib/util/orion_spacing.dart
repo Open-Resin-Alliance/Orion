@@ -28,7 +28,11 @@ abstract final class OrionSpacing {
   static const double screenHorizontal = 20.0;
   static const double screenTop = 5.0;
   static const double screenBottomNavClearance = 16.0;
+  static const double controlGap = 20.0;
   static const double gridScreenHorizontal = screenHorizontal - 4.0;
+  // For screens where card/button margins already contribute ~12px of edge
+  // spacing, add this root padding so total edge inset equals screenHorizontal.
+  static const double cardAwareScreenHorizontal = screenHorizontal - 12.0;
 
   static const EdgeInsets screenPadding = EdgeInsets.only(
     left: screenHorizontal,

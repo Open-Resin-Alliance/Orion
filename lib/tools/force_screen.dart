@@ -121,6 +121,8 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.only(
+          left: OrionSpacing.cardAwareScreenHorizontal,
+          right: OrionSpacing.cardAwareScreenHorizontal,
           top: OrionSpacing.screenTop,
           bottom: OrionSpacing.screenBottomNavClearance,
         ),
@@ -152,8 +154,8 @@ Widget buildStatsCard(String label, String value, {VoidCallback? onTap}) {
     margin: const EdgeInsets.only(
       left: 12.0,
       right: 0.0,
-      top: 6.0,
-      bottom: 6.0,
+      top: 0.0,
+      bottom: 0.0,
     ),
     child: Padding(
       padding: const EdgeInsets.all(8.0),
@@ -262,8 +264,8 @@ Widget buildControlButtons(BuildContext context,
           margin: const EdgeInsets.only(
             left: 0.0,
             right: 12.0,
-            top: 4.0,
-            bottom: 6.0,
+            top: 0.0,
+            bottom: 0.0,
           ),
           tint: !isPaused ? GlassButtonTint.none : GlassButtonTint.positive,
           onPressed: onPauseToggle,
@@ -285,13 +287,14 @@ Widget buildControlButtons(BuildContext context,
           ),
         ),
       ),
+      const SizedBox(height: OrionSpacing.controlGap),
       Expanded(
         child: GlassButton(
           margin: const EdgeInsets.only(
             left: 0.0,
             right: 12.0,
-            top: 6.0,
-            bottom: 4.0,
+            top: 0.0,
+            bottom: 0.0,
           ),
           tint: GlassButtonTint.none,
           onPressed: isPaused ? null : onTare,
@@ -331,11 +334,14 @@ Widget buildPortraitLayout(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: _PressureLineChart(
-                series: series, tareOffset: tareOffset, isPaused: isPaused),
+              series: series,
+              tareOffset: tareOffset,
+              isPaused: isPaused,
+            ),
           ),
         ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: OrionSpacing.controlGap),
       SizedBox(
         height: 120,
         child: buildControlButtons(context,
@@ -386,6 +392,7 @@ Widget buildLandscapeLayout(
                 ),
               ),
             ),
+            const SizedBox(height: OrionSpacing.controlGap),
             Expanded(
               child: SizedBox(
                 width: 140,
@@ -396,6 +403,7 @@ Widget buildLandscapeLayout(
                 ),
               ),
             ),
+            const SizedBox(height: OrionSpacing.controlGap),
             Expanded(
               child: SizedBox(
                 width: 140,
@@ -408,13 +416,15 @@ Widget buildLandscapeLayout(
           ],
         ),
       ),
+      const SizedBox(width: OrionSpacing.controlGap),
       Expanded(
         flex: 3,
         child: GlassCard(
-          margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
+          margin: const EdgeInsets.symmetric(vertical: 0.0, horizontal: 0.0),
           child: _PressureLineChart(series: series, tareOffset: tareOffset),
         ),
       ),
+      const SizedBox(width: OrionSpacing.controlGap),
       SizedBox(
         width: 140,
         child: buildControlButtons(context,

@@ -74,28 +74,43 @@ class GlassChoiceChip extends StatelessWidget {
         alpha: isDark ? (selected ? 0.22 : 0.12) : (selected ? 0.35 : 0.12),
       );
 
-      return ChoiceChip.elevated(
-        label: SizedBox(
-          width: double.infinity,
-          child: label,
+      final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
+      final textStyle = TextStyle(
+        color: selected
+            ? primary
+            : theme.colorScheme.onSurface.withValues(alpha: 0.85),
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+      );
+
+      return SizedBox.expand(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onSelected != null ? () => onSelected!(!selected) : null,
+            borderRadius: borderRadius,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                color: selected ? selectedFill : neutralFill,
+                border: Border.all(
+                  color: outlineColor,
+                  width: selected ? 1.4 : 1.2,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: DefaultTextStyle(
+                style: textStyle,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: label,
+                ),
+              ),
+            ),
+          ),
         ),
-        selected: selected,
-        onSelected: onSelected,
-        backgroundColor: neutralFill,
-        selectedColor: selectedFill,
-        elevation: selected ? 1.8 : 1.2,
-        pressElevation: 0.5,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(glassSmallCornerRadius),
-          side: BorderSide(color: outlineColor, width: selected ? 1.4 : 1.2),
-        ),
-        labelStyle: TextStyle(
-          color: selected
-              ? primary
-              : theme.colorScheme.onSurface.withValues(alpha: 0.85),
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-        ),
-        showCheckmark: false,
       );
     }
 

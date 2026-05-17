@@ -167,7 +167,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Expanded(child: buildMoveButtons(context)),
-                    const SizedBox(width: 30),
+                    const SizedBox(width: OrionSpacing.controlGap),
                     Expanded(child: buildChoiceCards(context)),
                   ],
                 ),
@@ -175,7 +175,7 @@ class MoveZScreenState extends State<MoveZScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 30),
+        const SizedBox(width: OrionSpacing.controlGap),
         Expanded(child: buildControlButtons(context)),
       ],
     );
@@ -189,12 +189,12 @@ class MoveZScreenState extends State<MoveZScreen> {
           child: Row(
             children: [
               Expanded(child: buildMoveButtons(context)),
-              const SizedBox(width: 32),
+              const SizedBox(width: OrionSpacing.controlGap),
               Expanded(child: buildControlButtons(context)),
             ],
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(child: buildChoiceCards(context)),
       ],
     );
@@ -203,38 +203,34 @@ class MoveZScreenState extends State<MoveZScreen> {
   Widget buildChoiceCards(BuildContext context) {
     final values = [0.1, 1.0, 10.0, 100.0];
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(values.length, (index) {
-        final value = values[index];
-        return Flexible(
-          child: Padding(
-            padding: EdgeInsets.only(
-                bottom: index < values.length - 1
-                    ? 25.0
-                    : 0.0), // Add padding only if it's not the last item
+      children: [
+        for (int index = 0; index < values.length; index++) ...[
+          Expanded(
             child: GlassChoiceChip(
               label: SizedBox(
                 width: double.infinity,
                 child: Text(
-                  '$value mm',
+                  '${values[index]} mm',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 22),
                 ),
               ),
-              selected: step == value,
+              selected: step == values[index],
               onSelected: _apiErrorState
                   ? null
                   : (selected) {
                       if (selected) {
                         setState(() {
-                          step = value;
+                          step = values[index];
                         });
                       }
                     },
             ),
           ),
-        );
-      }),
+          if (index < values.length - 1)
+            const SizedBox(height: OrionSpacing.controlGap),
+        ],
+      ],
     );
   }
 
@@ -256,12 +252,12 @@ class MoveZScreenState extends State<MoveZScreen> {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, double.infinity),
                 ),
-                child: PhosphorIcon(PhosphorIcons.arrowUp(), size: 50),
+                child: PhosphorIcon(PhosphorIcons.caretUp(), size: 60),
               );
             },
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: Consumer<ManualProvider>(
             builder: (context, manual, _) {
@@ -276,7 +272,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, double.infinity),
                 ),
-                child: PhosphorIcon(PhosphorIcons.arrowDown(), size: 50),
+                child: PhosphorIcon(PhosphorIcons.caretDown(), size: 60),
               );
             },
           ),
@@ -306,11 +302,11 @@ class MoveZScreenState extends State<MoveZScreen> {
                 child: Row(
                   children: [
                     const SizedBox(width: 16),
-                    PhosphorIcon(PhosphorIconsFill.house, size: 30),
+                    PhosphorIcon(PhosphorIconsFill.house, size: 34),
                     const Expanded(
                       child: AutoSizeText(
                         'Return to Home',
-                        style: TextStyle(fontSize: 24),
+                        style: TextStyle(fontSize: 26),
                         minFontSize: 20,
                         maxLines: 1,
                         overflowReplacement: Padding(
@@ -318,7 +314,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                           child: Center(
                             child: Text(
                               'Home',
-                              style: TextStyle(fontSize: 24),
+                              style: TextStyle(fontSize: 26),
                             ),
                           ),
                         ),
@@ -331,7 +327,7 @@ class MoveZScreenState extends State<MoveZScreen> {
             },
           ),
         ),
-        const SizedBox(height: 25),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: Consumer<ManualProvider>(
             builder: (context, manual, _) {
@@ -350,7 +346,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                   children: [
                     const SizedBox(width: 16),
                     PhosphorIcon(PhosphorIconsFill.stop,
-                        size: 30,
+                        size: 34,
                         color: _apiErrorState
                             ? null
                             : Theme.of(context).colorScheme.onErrorContainer),
@@ -358,7 +354,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                       child: AutoSizeText(
                         'Emergency Stop',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 26,
                           color: _apiErrorState
                               ? null
                               : Theme.of(context).colorScheme.onErrorContainer,
@@ -371,7 +367,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                             child: Text(
                               'Stop',
                               style: TextStyle(
-                                fontSize: 24,
+                                fontSize: 26,
                                 color: _apiErrorState
                                     ? null
                                     : Theme.of(context)
@@ -390,7 +386,7 @@ class MoveZScreenState extends State<MoveZScreen> {
             },
           ),
         ),
-        const SizedBox(height: 25),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: Consumer<ManualProvider>(
             builder: (context, manual, _) {
@@ -443,10 +439,10 @@ class MoveZScreenState extends State<MoveZScreen> {
                                 ? 'Move to Floor'
                                 : 'Move to Top';
                             final icon = cfg.isHomePositionUp()
-                                ? PhosphorIcon(PhosphorIcons.arrowDown(),
-                                    size: 26)
-                                : PhosphorIcon(PhosphorIcons.arrowUp(),
-                                    size: 26);
+                                ? PhosphorIcon(PhosphorIcons.caretLineDown(),
+                                    size: 34)
+                                : PhosphorIcon(PhosphorIcons.caretLineUp(),
+                                    size: 34);
                             return Row(
                               children: [
                                 const SizedBox(width: 12),
@@ -454,7 +450,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                                 Expanded(
                                   child: AutoSizeText(
                                     topLabel,
-                                    style: const TextStyle(fontSize: 24),
+                                    style: const TextStyle(fontSize: 26),
                                     minFontSize: 20,
                                     maxLines: 1,
                                     textAlign: TextAlign.center,
@@ -466,7 +462,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                                           topLabel == 'Move to Floor'
                                               ? 'Floor'
                                               : 'Top',
-                                          style: const TextStyle(fontSize: 24),
+                                          style: const TextStyle(fontSize: 26),
                                         ),
                                       ),
                                     ),

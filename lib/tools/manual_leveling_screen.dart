@@ -321,11 +321,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.only(
-                left: OrionSpacing.screenHorizontal,
-                right: OrionSpacing.screenHorizontal,
-                top: OrionSpacing.screenTop,
-                bottom: 20.0),
+            padding: OrionSpacing.screenPaddingWithBottomNav,
             child: Column(
               children: [
                 Expanded(
@@ -411,46 +407,41 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
   Widget buildChoiceCards(BuildContext context) {
     final values = [0.01, 0.1, 1.0, 5.0];
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(values.length, (index) {
-        final value = values[index];
-        String label;
-        if (value < 1.0) {
-          label = '${(value * 1000).round()} µm';
-        } else {
-          label =
-              '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} mm';
-        }
+      children: [
+        for (int index = 0; index < values.length; index++) ...[
+          Expanded(
+            child: Builder(builder: (context) {
+              final value = values[index];
+              final label = value < 1.0
+                  ? '${(value * 1000).round()} µm'
+                  : '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} mm';
 
-        return Flexible(
-          child: Padding(
-            padding: EdgeInsets.only(
-                bottom: index < values.length - 1
-                    ? 25.0
-                    : 0.0), // Add padding only if it's not the last item
-            child: GlassChoiceChip(
-              label: SizedBox(
-                width: double.infinity,
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22),
+              return GlassChoiceChip(
+                label: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 22),
+                  ),
                 ),
-              ),
-              selected: step == value,
-              onSelected: _apiErrorState
-                  ? null
-                  : (selected) {
-                      if (selected) {
-                        setState(() {
-                          step = value;
-                        });
-                      }
-                    },
-            ),
+                selected: step == value,
+                onSelected: _apiErrorState
+                    ? null
+                    : (selected) {
+                        if (selected) {
+                          setState(() {
+                            step = value;
+                          });
+                        }
+                      },
+              );
+            }),
           ),
-        );
-      }),
+          if (index < values.length - 1)
+            const SizedBox(height: OrionSpacing.controlGap),
+        ],
+      ],
     );
   }
 
