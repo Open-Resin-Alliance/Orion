@@ -198,7 +198,7 @@ class NotificationWatcher {
                     onPressed: onPressed,
                     tint: tint,
                     style: style,
-                    child: Text(label, style: const TextStyle(fontSize: 22)),
+                    child: Text(label),
                   ),
                 );
               }
@@ -228,19 +228,17 @@ class NotificationWatcher {
               }
 
               final ordered = [...others, ...primary];
-
-              // Wrap with Flexible and padding; last item gets no trailing padding.
-              final buttons = ordered.asMap().entries.map<Widget>((entry) {
-                final idx = entry.key;
-                final widget = entry.value;
-                final isLast = idx == ordered.length - 1;
-                return Flexible(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: isLast ? 0.0 : 6.0),
-                    child: widget,
-                  ),
-                );
-              }).toList(growable: false);
+              final actionButtons = ordered.isNotEmpty
+                  ? ordered
+                  : [
+                      GlassButton(
+                        tint: GlassButtonTint.neutral,
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(0, 60)),
+                        child: const Text('Close'),
+                      ),
+                    ];
 
               return GlassAlertDialog(
                 title: Row(
@@ -255,25 +253,18 @@ class NotificationWatcher {
                       child: Text(
                         getNanoTypeTitle(item.type),
                         style: const TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.w600),
+                          color: Colors.orangeAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 12),
-                    Text(item.text ?? '(no text)',
-                        style: const TextStyle(
-                            fontSize: 22, color: Colors.white70),
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                  ],
+                content: Text(
+                  item.text ?? '(no text)',
+                  textAlign: TextAlign.start,
                 ),
-                actions: [
-                  Row(children: buttons),
-                ],
+                actions: actionButtons,
               );
             },
           );
