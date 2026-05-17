@@ -126,9 +126,7 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
                                                 onPressed: () =>
                                                     Navigator.of(ctx)
                                                         .pop(false),
-                                                child: const Text('Cancel',
-                                                    style: TextStyle(
-                                                        fontSize: 22.0))),
+                                                child: const Text('Cancel')),
                                             GlassButton(
                                                 tint: GlassButtonTint.negative,
                                                 style: ElevatedButton.styleFrom(
@@ -137,9 +135,7 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
                                                 ),
                                                 onPressed: () =>
                                                     Navigator.of(ctx).pop(true),
-                                                child: const Text('Remove',
-                                                    style: TextStyle(
-                                                        fontSize: 22.0))),
+                                                child: const Text('Remove')),
                                           ],
                                         ),
                                       ) ??

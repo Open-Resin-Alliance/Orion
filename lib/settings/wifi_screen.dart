@@ -438,8 +438,7 @@ class WifiScreenState extends State<WifiScreen> {
                                       style: ElevatedButton.styleFrom(
                                         minimumSize: const Size(90, 60),
                                       ),
-                                      child: const Text('Close',
-                                          style: TextStyle(fontSize: 20)),
+                                      child: const Text('Close'),
                                     ),
                                     GlassButton(
                                       tint: GlassButtonTint.positive,
@@ -464,8 +463,7 @@ class WifiScreenState extends State<WifiScreen> {
                                       style: ElevatedButton.styleFrom(
                                         minimumSize: const Size(90, 60),
                                       ),
-                                      child: const Text('Confirm',
-                                          style: TextStyle(fontSize: 20)),
+                                      child: const Text('Confirm'),
                                     ),
                                   ],
                                 );

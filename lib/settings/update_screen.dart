@@ -220,15 +220,14 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child:
-                        const Text('I Accept', style: TextStyle(fontSize: 20)),
+                    child: const Text('I Accept'),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.positive,
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel'),
                   ),
                 ],
               ),
@@ -278,15 +277,14 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel'),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.negative,
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child:
-                        const Text('Continue', style: TextStyle(fontSize: 20)),
+                    child: const Text('Continue'),
                   ),
                 ],
               ),
@@ -338,15 +336,14 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Update Now',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Update Now'),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.positive,
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel'),
                   ),
                 ],
               ),
@@ -393,10 +390,7 @@ class UpdateScreenState extends State<UpdateScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text(
-                'Dismiss',
-                style: TextStyle(fontSize: 20),
-              ),
+              child: const Text('Dismiss'),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -406,10 +400,7 @@ class UpdateScreenState extends State<UpdateScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text(
-                'Update Now',
-                style: TextStyle(fontSize: 20),
-              ),
+              child: const Text('Update Now'),
             )
           ],
         );
@@ -476,15 +467,14 @@ class UpdateScreenState extends State<UpdateScreen>
                   onPressed: () => Navigator.of(dctx).pop(false),
                   style:
                       ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child: const Text('Dismiss', style: TextStyle(fontSize: 20)),
+                  child: const Text('Dismiss'),
                 ),
                 GlassButton(
                   tint: GlassButtonTint.positive,
                   onPressed: () => Navigator.of(dctx).pop(true),
                   style:
                       ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child:
-                      const Text('Update Now', style: TextStyle(fontSize: 20)),
+                  child: const Text('Update Now'),
                 ),
               ],
             ),

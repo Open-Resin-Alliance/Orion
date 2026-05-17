@@ -625,10 +625,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
             minimumSize: const Size(120, 60),
           ),
           onPressed: () => Navigator.of(context).pop(null),
-          child: const Text(
-            'Cancel',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: const Text('Cancel'),
         ),
         GlassButton(
           tint: GlassButtonTint.positive,
@@ -636,10 +633,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
             minimumSize: const Size(120, 60),
           ),
           onPressed: () => Navigator.of(context).pop(_currentValue),
-          child: const Text(
-            'Save',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: const Text('Save'),
         ),
       ],
     );
