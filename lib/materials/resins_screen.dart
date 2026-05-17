@@ -62,8 +62,12 @@ class ResinsScreenState extends State<ResinsScreen> {
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: Padding(
-            // Match other screens: narrow horizontal padding to maximize usable area
-            padding: OrionSpacing.screenPadding,
+            // Account for card margins: cards have 4px margin, so reduce padding
+            padding: EdgeInsets.only(
+              left: OrionSpacing.screenHorizontal - 4.0,
+              right: OrionSpacing.screenHorizontal - 4.0,
+              top: OrionSpacing.screenTop,
+            ),
             child: Column(
               children: [
                 // Content
@@ -206,17 +210,19 @@ class ResinsScreenState extends State<ResinsScreen> {
     final cleanedName = resin.name.replaceFirst(templatePrefix, '').trim();
     final displayName = cleanedName.isEmpty ? resin.name : cleanedName;
 
-    const templateAccent = Color(0xFFD3B78A);
     final outlineColor = isDefault
         ? Colors.green.shade400.withValues(alpha: 0.55)
-        : isTemplate
-            ? templateAccent.withValues(alpha: 0.35)
-            : Theme.of(context).dividerColor.withValues(alpha: 0.35);
+        : Theme.of(context).dividerColor.withValues(alpha: 0.35);
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final fillColor = isDefault
         ? Colors.green.shade400.withValues(alpha: 0.08)
-        : isTemplate
-            ? templateAccent.withValues(alpha: 0.05)
-            : null;
+        : (isDarkMode
+            ? Color.alphaBlend(
+                Colors.white.withValues(alpha: 0.05),
+                Theme.of(context).colorScheme.surface,
+              )
+            : null);
 
     return GlassCard(
       elevation: isDefault ? 2 : 1,
@@ -269,10 +275,15 @@ class ResinsScreenState extends State<ResinsScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 9, vertical: 3),
                               decoration: BoxDecoration(
-                                color: templateAccent.withValues(alpha: 0.10),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surface
+                                    .withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
-                                  color: templateAccent.withValues(alpha: 0.28),
+                                  color: Theme.of(context)
+                                      .dividerColor
+                                      .withValues(alpha: 0.3),
                                   width: 1,
                                 ),
                               ),
@@ -281,7 +292,10 @@ class ResinsScreenState extends State<ResinsScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: templateAccent,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.color,
                                 ),
                               ),
                             ),

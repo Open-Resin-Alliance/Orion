@@ -524,7 +524,12 @@ class UpdateScreenState extends State<UpdateScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Padding(
-        padding: OrionSpacing.settingsScreenPadding,
+        padding: EdgeInsets.only(
+          left: OrionSpacing.settingsScreenHorizontal,
+          right: OrionSpacing.settingsScreenHorizontal,
+          top: OrionSpacing.screenTop,
+          bottom: OrionSpacing.screenBottomNavClearance,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

@@ -288,30 +288,19 @@ class LevelingScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            if (actionEnabled)
-              Center(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: GlassFloatingActionButton.extended(
-                    heroTag: heroTag,
-                    scale: 1.2,
-                    icon: actionIcon,
-                    label: actionLabel,
-                    tint: actionTint,
-                    onPressed: onPressed,
-                  ),
-                ),
-              )
-            else
-              Center(
-                child: Text(
-                  actionLabel,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
+            Center(
+              child: SizedBox(
+                width: double.infinity,
+                child: GlassFloatingActionButton.extended(
+                  heroTag: heroTag,
+                  scale: 1.2,
+                  icon: actionIcon,
+                  label: actionLabel,
+                  tint: actionTint,
+                  onPressed: actionEnabled ? onPressed : null,
                 ),
               ),
+            ),
           ],
         ),
       ),

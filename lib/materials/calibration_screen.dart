@@ -94,11 +94,12 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.only(
-            left: OrionSpacing.screenHorizontal,
-            right: OrionSpacing.screenHorizontal,
-            top: OrionSpacing.screenTop,
-            bottom: OrionSpacing.compactListGap),
+        padding: EdgeInsets.only(
+          left: OrionSpacing.screenHorizontal - 4.0,
+          right: OrionSpacing.screenHorizontal - 4.0,
+          top: OrionSpacing.screenTop,
+          bottom: OrionSpacing.screenBottomNavClearance,
+        ),
         child: Column(
           children: [
             Expanded(
@@ -122,7 +123,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                                 : () => _selectResinProfile(resins),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         // Starting Exposure
                         Expanded(
                           child: _buildCompactCard(
@@ -143,7 +144,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         // Exposure Increment
                         Expanded(
                           child: _buildCompactCard(
