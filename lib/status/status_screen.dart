@@ -1553,7 +1553,6 @@ class StatusScreenState extends State<StatusScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const SizedBox(height: 10),
                             const Padding(
                               padding: EdgeInsets.all(8.0),
                               child: Text(
