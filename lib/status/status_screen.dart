@@ -46,6 +46,8 @@ import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
 
+const int _forceSensorMiniWindowSize = 300;
+
 class StatusScreen extends StatefulWidget {
   final bool newPrint;
   final Uint8List? initialThumbnailBytes;
@@ -251,6 +253,21 @@ class StatusScreenState extends State<StatusScreen> {
   // prefetch on every Nth layer to reduce CPU usage when NanoDLP polls
   // status frequently.
   static const int _layerPrefetchStride = 3;
+  final GlobalKey _analyticsLeftStackMeasureKey = GlobalKey();
+  double? _analyticsLeftStackHeight;
+
+  void _updateAnalyticsLeftStackHeight() {
+    final ctx = _analyticsLeftStackMeasureKey.currentContext;
+    final h = ctx?.size?.height;
+    if (h == null || !h.isFinite || h <= 0) return;
+    final prev = _analyticsLeftStackHeight;
+    if (prev == null || (prev - h).abs() > 0.5) {
+      if (!mounted) return;
+      setState(() {
+        _analyticsLeftStackHeight = h;
+      });
+    }
+  }
 
   /// Check if current print is a calibration print and show post-calibration overlay
   Future<void> _checkAndShowCalibrationOverlay() async {
@@ -372,6 +389,25 @@ class StatusScreenState extends State<StatusScreen> {
     return '${v.toStringAsFixed(1)} g';
   }
 
+  List<double> _forceValuesInVisibleMiniWindow(
+      List<Map<String, dynamic>> series) {
+    final int last = series.length;
+    final int start = last - _forceSensorMiniWindowSize < 0
+        ? 0
+        : last - _forceSensorMiniWindowSize;
+    final window = series.sublist(start, last);
+
+    return window
+        .map((m) {
+          final vRaw = m['v'];
+          if (vRaw is num) return vRaw.toDouble();
+          return double.tryParse(vRaw?.toString() ?? '');
+        })
+        .where((v) => v != null)
+        .cast<double>()
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<StatusProvider>(
@@ -386,7 +422,6 @@ class StatusScreenState extends State<StatusScreen> {
           _frozenFileName = null;
         }
 
-        // Freeze the file name once we observe it for the active print so
         // it does not change mid-print if backend later updates metadata.
         if (_frozenFileName == null &&
             status?.printData?.fileData?.name != null) {
@@ -1746,15 +1781,7 @@ class StatusScreenState extends State<StatusScreen> {
 
     List<double> values = [];
     try {
-      values = series
-          .map((m) {
-            final vRaw = m['v'];
-            if (vRaw is num) return vRaw.toDouble();
-            return double.tryParse(vRaw?.toString() ?? '');
-          })
-          .where((v) => v != null)
-          .cast<double>()
-          .toList();
+      values = _forceValuesInVisibleMiniWindow(series);
     } catch (_) {
       values = [];
     }
@@ -1779,16 +1806,16 @@ class StatusScreenState extends State<StatusScreen> {
             children: [
               Expanded(
                   child: _buildStatItem(
+                      context, 'Min', _formatForceValue(minVal))),
+              Container(width: 1, color: Theme.of(context).dividerColor),
+              Expanded(
+                  child: _buildStatItem(
                       context, 'Current', _formatForceValue(currentVal),
                       isLarge: true)),
               Container(width: 1, color: Theme.of(context).dividerColor),
               Expanded(
                   child: _buildStatItem(
                       context, 'Max', _formatForceValue(maxVal))),
-              Container(width: 1, color: Theme.of(context).dividerColor),
-              Expanded(
-                  child: _buildStatItem(
-                      context, 'Min', _formatForceValue(minVal))),
             ],
           ),
         ),
@@ -1886,6 +1913,11 @@ class StatusScreenState extends State<StatusScreen> {
 
   Widget _buildAnalyticsLandscape(BuildContext context, StatusProvider provider,
       StatusModel status, int? layerCurrent, int? layerTotal) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _updateAnalyticsLeftStackHeight();
+    });
+
     return Column(children: [
       Expanded(
         child: Row(children: [
@@ -1893,43 +1925,49 @@ class StatusScreenState extends State<StatusScreen> {
             flex: 1,
             child: Column(children: [
               Spacer(),
-              _buildInfoCard(
-                'Print Progress',
-                layerCurrent == null || layerTotal == null
-                    ? '- / -'
-                    : '$layerCurrent / $layerTotal',
+              Column(
+                key: _analyticsLeftStackMeasureKey,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildInfoCard(
+                    'Print Progress',
+                    layerCurrent == null || layerTotal == null
+                        ? '- / -'
+                        : '$layerCurrent / $layerTotal',
+                  ),
+                  _buildInfoCard(
+                    'Last Layer Time',
+                    // Prefer live analytics LayerTime (currentLayerSeconds), then
+                    // the provider-parsed PrevLayerTime (provider.prevLayerSeconds),
+                    // finally fall back to the model field when present.
+                    (provider.currentLayerSeconds ??
+                                provider.prevLayerSeconds ??
+                                status.prevLayerSeconds) !=
+                            null
+                        ?
+                        // display whichever value we picked
+                        '${(provider.currentLayerSeconds ?? provider.prevLayerSeconds ?? status.prevLayerSeconds)!.toStringAsFixed(1)} s'
+                        : 'N/A',
+                  ),
+                  _buildInfoCard(
+                      'Resin Temp.',
+                      provider.resinTemperature != null
+                          ? '${provider.resinTemperature}°C'
+                          : 'N/A', // TODO: Connect to actual data
+                      provider.resinTemperature!.toDouble()),
+                  // UV LED Temp is provided via analytics (TemperatureOutside)
+                  Builder(builder: (ctx) {
+                    final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
+                    final dynamic uvRaw =
+                        analyticsProv.getLatestForKey('TemperatureOutside');
+                    final String uvText = uvRaw != null ? '${uvRaw}°C' : 'N/A';
+                    final double uvVal = uvRaw is num
+                        ? uvRaw.toDouble()
+                        : (double.tryParse(uvRaw?.toString() ?? '') ?? 0.0);
+                    return _buildInfoCard('UV LED Temp.', uvText, uvVal);
+                  }),
+                ],
               ),
-              _buildInfoCard(
-                'Last Layer Time',
-                // Prefer live analytics LayerTime (currentLayerSeconds), then
-                // the provider-parsed PrevLayerTime (provider.prevLayerSeconds),
-                // finally fall back to the model field when present.
-                (provider.currentLayerSeconds ??
-                            provider.prevLayerSeconds ??
-                            status.prevLayerSeconds) !=
-                        null
-                    ?
-                    // display whichever value we picked
-                    '${(provider.currentLayerSeconds ?? provider.prevLayerSeconds ?? status.prevLayerSeconds)!.toStringAsFixed(1)} s'
-                    : 'N/A',
-              ),
-              _buildInfoCard(
-                  'Resin Temp.',
-                  provider.resinTemperature != null
-                      ? '${provider.resinTemperature}°C'
-                      : 'N/A', // TODO: Connect to actual data
-                  provider.resinTemperature!.toDouble()),
-              // UV LED Temp is provided via analytics (TemperatureOutside)
-              Builder(builder: (ctx) {
-                final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
-                final dynamic uvRaw =
-                    analyticsProv.getLatestForKey('TemperatureOutside');
-                final String uvText = uvRaw != null ? '${uvRaw}°C' : 'N/A';
-                final double uvVal = uvRaw is num
-                    ? uvRaw.toDouble()
-                    : (double.tryParse(uvRaw?.toString() ?? '') ?? 0.0);
-                return _buildInfoCard('UV LED Temp.', uvText, uvVal);
-              }),
               Spacer(),
             ]),
           ),
@@ -2001,81 +2039,109 @@ class StatusScreenState extends State<StatusScreen> {
           // Right column: force sensor and stats (temperature graph removed)
           Expanded(
             flex: 2,
-            child: Column(
-              children: [
-                // Make force sensor taller by giving it more flex
-                Expanded(
-                  flex: 3,
-                  child: _buildPlaceholderCard(
-                    context,
-                    'Force Sensor',
-                    Icons.compress,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Bottom row displays Current / Max / Min
-                Expanded(
-                  flex: 1,
-                  child: Builder(builder: (ctx) {
-                    final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
-                    final series = analyticsProv.pressureSeries.isNotEmpty
-                        ? analyticsProv.pressureSeries
-                        : analyticsProv.getSeriesForKey('Pressure');
+            child: LayoutBuilder(builder: (lbCtx, lbConstraints) {
+              // Constrain right column to the actual rendered height of the
+              // left info-card stack so both columns share identical vertical
+              // bounds regardless of font/theme/card metric changes.
+              final double availH = lbConstraints.maxHeight;
+              final double infoContentH = (_analyticsLeftStackHeight ?? 320.0)
+                  .clamp(0.0, availH)
+                  .toDouble();
+              final double topPad =
+                  ((availH - infoContentH) / 2).clamp(0.0, availH);
 
-                    List<double> values = [];
-                    try {
-                      values = series
-                          .map((m) {
-                            final vRaw = m['v'];
-                            if (vRaw is num) return vRaw.toDouble();
-                            return double.tryParse(vRaw?.toString() ?? '');
-                          })
-                          .where((v) => v != null)
-                          .cast<double>()
-                          .toList();
-                    } catch (_) {
-                      values = [];
-                    }
-
-                    final hasData = values.isNotEmpty;
-                    final currentVal = hasData ? values.last : 0.0;
-                    final maxVal = hasData ? values.reduce(max) : 0.0;
-                    final minVal = hasData ? values.reduce(min) : 0.0;
-
-                    return GlassCard(
-                      margin: EdgeInsets.zero,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 12),
-                        child: IntrinsicHeight(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Expanded(
-                                  child: _buildStatItem(ctx, 'Current',
-                                      _formatForceValue(currentVal),
-                                      isLarge: true)),
-                              Container(
-                                  width: 1,
-                                  color: Theme.of(context).dividerColor),
-                              Expanded(
-                                  child: _buildStatItem(
-                                      ctx, 'Max', _formatForceValue(maxVal))),
-                              Container(
-                                  width: 1,
-                                  color: Theme.of(context).dividerColor),
-                              Expanded(
-                                  child: _buildStatItem(
-                                      ctx, 'Min', _formatForceValue(minVal))),
-                            ],
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(height: topPad),
+                  SizedBox(
+                    height: infoContentH,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          flex: 7,
+                          child: _buildPlaceholderCard(
+                            lbCtx,
+                            'Force Sensor',
+                            Icons.compress,
                           ),
                         ),
-                      ),
-                    );
-                  }),
-                ),
-              ],
-            ),
+                        Expanded(
+                          flex: 2,
+                          child: Builder(builder: (ctx) {
+                            final analyticsProv =
+                                Provider.of<AnalyticsProvider>(ctx);
+                            final series =
+                                analyticsProv.pressureSeries.isNotEmpty
+                                    ? analyticsProv.pressureSeries
+                                    : analyticsProv.getSeriesForKey('Pressure');
+
+                            List<double> values = [];
+                            try {
+                              values = _forceValuesInVisibleMiniWindow(series);
+                            } catch (_) {
+                              values = [];
+                            }
+
+                            final hasData = values.isNotEmpty;
+                            final currentVal = hasData ? values.last : 0.0;
+                            final maxVal = hasData ? values.reduce(max) : 0.0;
+                            final minVal = hasData ? values.reduce(min) : 0.0;
+
+                            return GlassCard(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 0, vertical: 4),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 0, vertical: 6),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8),
+                                        child: _buildStatItem(ctx, 'Min',
+                                            _formatForceValue(minVal)),
+                                      ),
+                                    ),
+                                    Container(
+                                        width: 1,
+                                        color: Theme.of(context).dividerColor),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8),
+                                        child: _buildStatItem(ctx, 'Current',
+                                            _formatForceValue(currentVal),
+                                            isLarge: true),
+                                      ),
+                                    ),
+                                    Container(
+                                        width: 1,
+                                        color: Theme.of(context).dividerColor),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8),
+                                        child: _buildStatItem(ctx, 'Max',
+                                            _formatForceValue(maxVal)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: topPad),
+                ],
+              );
+            }),
           ),
         ]),
       ),
@@ -2136,7 +2202,7 @@ class StatusScreenState extends State<StatusScreen> {
           : analyticsProv.getSeriesForKey('Pressure');
 
       return GlassCard(
-        margin: EdgeInsets.only(left: 0, right: 0, top: 4, bottom: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
         outlined: true,
         elevation: 1.0,
         child: series.isEmpty
@@ -2490,7 +2556,8 @@ class _ForceSensorMiniChart extends StatefulWidget {
 }
 
 class _ForceSensorMiniChartState extends State<_ForceSensorMiniChart> {
-  static const int _windowSize = 300; // Smaller window for mini chart
+  static const int _windowSize =
+      _forceSensorMiniWindowSize; // Smaller window for mini chart
   double? _displayMin;
   double? _displayMax;
   final Map<Object, double> _idToX = {};
