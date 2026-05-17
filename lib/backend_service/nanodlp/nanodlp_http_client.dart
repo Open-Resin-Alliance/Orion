@@ -561,9 +561,25 @@ class NanoDlpHttpClient implements BackendClient {
 
   @override
   Future<void> saveResinExposure(int profileId, double normalCureTime) async {
-    final normalized = <String, dynamic>{'normal_cure_time': normalCureTime};
-    final backendFields = NanoProfile.denormalizeForBackend(normalized);
-    await editProfile(profileId, backendFields);
+    // NanoDLP's profile edit endpoint may treat omitted fields as zero/default.
+    // To keep single-value updates non-destructive, fetch current settings and
+    // submit a full merged payload.
+    final existing = await getResinSettings(profileId);
+    if (existing == null) {
+      throw StateError(
+          'Unable to load existing resin settings for profile $profileId');
+    }
+
+    final merged = ResinSettings(
+      burnInCureTime: existing.burnInCureTime,
+      normalCureTime: normalCureTime,
+      liftAfterPrint: existing.liftAfterPrint,
+      burnInCount: existing.burnInCount,
+      waitAfterCure: existing.waitAfterCure,
+      waitAfterLife: existing.waitAfterLife,
+    );
+
+    await saveResinSettings(profileId, merged);
   }
 
   @override
@@ -1885,9 +1901,35 @@ class NanoDlpHttpClient implements BackendClient {
       });
 
       final resp = await client.post(uri, body: body);
-      if (resp.statusCode != 200 && resp.statusCode != 201) {
-        _log.warning('editProfile failed: ${resp.statusCode} ${resp.body}');
-        throw Exception('editProfile failed: ${resp.statusCode}');
+      final status = resp.statusCode;
+
+      // NanoDLP commonly replies to successful form POSTs with a redirect
+      // (302/303) back to the profile page. Treat non-auth redirects as
+      // success, similar to import/delete flows.
+      if (status >= 300 && status < 400) {
+        final locationRaw = (resp.headers['location'] ?? '').trim();
+        final location = locationRaw.toLowerCase();
+        final looksLikeAuthRedirect = location.contains('login') ||
+            location.contains('signin') ||
+            location.contains('auth');
+
+        if (looksLikeAuthRedirect) {
+          _log.warning(
+              'editProfile failed auth redirect: $status location=$locationRaw');
+          throw Exception('editProfile failed: $status (auth redirect)');
+        }
+
+        _log.info(
+            'editProfile redirect treated as success: $status location=$locationRaw');
+        return {
+          'status': status,
+          if (locationRaw.isNotEmpty) 'location': locationRaw,
+        };
+      }
+
+      if (status != 200 && status != 201 && status != 204) {
+        _log.warning('editProfile failed: $status ${resp.body}');
+        throw Exception('editProfile failed: $status');
       }
 
       if (resp.body.trim().isEmpty) return {};

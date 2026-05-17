@@ -210,7 +210,12 @@ class NanoProfile {
 
     if (normalized.containsKey('lift_after_print')) {
       final v = (normalized['lift_after_print'] as num?)?.toDouble();
-      if (v != null) out['WaitHeight'] = v;
+      if (v != null) {
+        // Different NanoDLP variants expose this as TopDistance and/or
+        // WaitHeight. Send both to maximize compatibility.
+        out['TopDistance'] = v;
+        out['WaitHeight'] = v;
+      }
     }
 
     if (normalized.containsKey('burn_in_count')) {
@@ -303,6 +308,7 @@ class NanoProfile {
             'ZLiftDistance',
             'PdPeelMinLiftDistance',
             'LiftAfterPrint',
+            'TopDistance',
             'WaitHeight',
           ]),
           5.0);

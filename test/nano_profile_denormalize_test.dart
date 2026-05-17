@@ -43,11 +43,20 @@ void main() {
       equals({
         'SupportCureTime': 12.5,
         'CureTime': 2.8,
+        'TopDistance': 6.0,
         'WaitHeight': 6.0,
         'SupportLayerNumber': 5,
         'TopWait': 1.4,
         'WaitAfterPrint': 1.8,
       }),
     );
+  });
+
+  test('normalizeForEdit reads lift_after_print from TopDistance', () {
+    final normalized = NanoProfile.normalizeForEdit({
+      'TopDistance': 7.25,
+    });
+
+    expect(normalized['lift_after_print'], 7.25);
   });
 }

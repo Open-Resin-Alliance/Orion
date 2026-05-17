@@ -81,7 +81,7 @@ class EditResinScreenState extends State<EditResinScreen> {
           asNum(pick('normal_cure_time', ['CureTime'], 8.0), 8.0).toDouble(),
       liftAfterPrint: asNum(
               pick('lift_after_print',
-                  ['TopWait', 'TopDistance', 'LiftAfterPrint'], 5.0),
+              ['TopDistance', 'WaitHeight', 'LiftAfterPrint'], 5.0),
               5.0)
           .toDouble(),
       burnInCount:
@@ -221,7 +221,7 @@ class EditResinScreenState extends State<EditResinScreen> {
           context: context,
           builder: (context) => GlassAlertDialog(
             title: const Text('Profile Saved',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
