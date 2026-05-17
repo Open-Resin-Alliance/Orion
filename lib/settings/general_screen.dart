@@ -1186,37 +1186,15 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                 height: MediaQuery.of(context).size.height * 0.8,
                 child: Column(
                   children: [
-                    // Compact Header Section
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: Theme.of(context)
-                                .dividerColor
-                                .withValues(alpha: 0.3),
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.download, size: 24),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
-                              'Select Release Version',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          if (overrideRelease.isNotEmpty) ...[
-                            Container(
+                    GlassDialogHeader(
+                      icon: Icons.download,
+                      title: 'Select Release Version',
+                      badge: overrideRelease.isNotEmpty
+                          ? Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Theme.of(context)
                                     .colorScheme
@@ -1231,19 +1209,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close, size: 20),
-                            padding: const EdgeInsets.all(4),
-                            constraints: const BoxConstraints(
-                                minWidth: 32, minHeight: 32),
-                            tooltip: 'Close',
-                          ),
-                        ],
-                      ),
+                            )
+                          : null,
                     ),
 
                     // Content Section

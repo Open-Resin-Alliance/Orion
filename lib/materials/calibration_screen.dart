@@ -482,36 +482,15 @@ class CalibrationScreenState extends State<CalibrationScreen> {
           height: MediaQuery.of(context).size.height * 0.8,
           child: Column(
             children: [
-              // Header Section
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color:
-                          Theme.of(context).dividerColor.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.science, size: 24),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Select Calibration Model',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    if (_selectedModel != null) ...[
-                      Container(
+              GlassDialogHeader(
+                icon: Icons.science,
+                title: 'Select Calibration Model',
+                badge: _selectedModel != null
+                    ? Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(12),
@@ -526,19 +505,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: const EdgeInsets.all(4),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      tooltip: 'Close',
-                    ),
-                  ],
-                ),
+                      )
+                    : null,
               ),
 
               // Content Section with image-based selection
@@ -695,36 +663,15 @@ class CalibrationScreenState extends State<CalibrationScreen> {
           height: MediaQuery.of(context).size.height * 0.8,
           child: Column(
             children: [
-              // Header Section
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color:
-                          Theme.of(context).dividerColor.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.water_drop, size: 24),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Select Resin Profile',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    if (_selectedResin != null) ...[
-                      Container(
+              GlassDialogHeader(
+                icon: Icons.water_drop,
+                title: 'Select Resin Profile',
+                badge: _selectedResin != null
+                    ? Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(12),
@@ -739,19 +686,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: const EdgeInsets.all(4),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      tooltip: 'Close',
-                    ),
-                  ],
-                ),
+                      )
+                    : null,
               ),
 
               // Content Section

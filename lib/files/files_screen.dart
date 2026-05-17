@@ -20,6 +20,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:orion/files/search_file_screen.dart';
+import 'package:orion/glasser/glasser.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -382,19 +383,58 @@ class FilesScreenState extends State<FilesScreen> {
                                 showDialog(
                                   context: context,
                                   builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Confirm Delete'),
+                                    return GlassAlertDialog(
+                                      title: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.delete_forever_rounded,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                            size: 26,
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text('Delete File'),
+                                                Text(
+                                                  path.basename(file.path),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    color: Colors.grey.shade400,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                       content: const Text(
-                                          'Are you sure you want to delete this file?'),
-                                      actions: <Widget>[
-                                        TextButton(
-                                          child: const Text('Cancel'),
+                                        'Are you sure you want to delete this file?\nThis action cannot be undone.',
+                                        style: TextStyle(
+                                          height: 1.5,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                      actions: [
+                                        GlassButton(
+                                          tint: GlassButtonTint.neutral,
                                           onPressed: () {
                                             Navigator.of(context).pop();
                                           },
+                                          style: ElevatedButton.styleFrom(
+                                            minimumSize: const Size(0, 60),
+                                          ),
+                                          child: const Text('Cancel'),
                                         ),
-                                        TextButton(
-                                          child: const Text('Delete'),
+                                        GlassButton(
+                                          tint: GlassButtonTint.negative,
                                           onPressed: () {
                                             file.deleteSync();
                                             setState(() {
@@ -404,10 +444,15 @@ class FilesScreenState extends State<FilesScreen> {
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               const SnackBar(
-                                                  content: Text(
-                                                      'File deleted successfully.')),
+                                                content: Text(
+                                                    'File deleted successfully.'),
+                                              ),
                                             );
                                           },
+                                          style: ElevatedButton.styleFrom(
+                                            minimumSize: const Size(0, 60),
+                                          ),
+                                          child: const Text('Delete'),
                                         ),
                                       ],
                                     );

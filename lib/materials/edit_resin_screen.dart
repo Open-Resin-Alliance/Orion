@@ -81,7 +81,7 @@ class EditResinScreenState extends State<EditResinScreen> {
           asNum(pick('normal_cure_time', ['CureTime'], 8.0), 8.0).toDouble(),
       liftAfterPrint: asNum(
               pick('lift_after_print',
-              ['TopDistance', 'WaitHeight', 'LiftAfterPrint'], 5.0),
+                  ['TopDistance', 'WaitHeight', 'LiftAfterPrint'], 5.0),
               5.0)
           .toDouble(),
       burnInCount:

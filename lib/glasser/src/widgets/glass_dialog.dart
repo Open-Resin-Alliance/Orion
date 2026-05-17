@@ -80,7 +80,7 @@ class GlassDialog extends StatelessWidget {
         child: GlassEffect(
           borderRadius: borderRadius,
           sigma: glassBlurSigma,
-          opacity: 0.1, // Use dialog-specific opacity
+          opacity: 0.12,
           floatingSurface: true,
           borderWidth: 1.6,
           emphasizeBorder: true,
