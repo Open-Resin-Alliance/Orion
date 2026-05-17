@@ -128,6 +128,35 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     return now.month == 6;
   }
 
+  Widget _buildOffsetNavCard({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final navCardElevation = switch (themeMode) {
+      OrionThemeMode.glass => 4.0,
+      OrionThemeMode.dark => 3.0,
+      OrionThemeMode.light => 1.0,
+    };
+
+    return GlassCard(
+      outlined: true,
+      elevation: navCardElevation,
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title, style: const TextStyle(fontSize: 20)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 16)),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -219,28 +248,18 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       const SizedBox(height: 20.0),
 
                       // UI Settings Navigation
-                      GlassCard(
-                        outlined: true,
-                        elevation: 1,
-                        child: ListTile(
-                          leading: Icon(Icons.palette),
-                          title: const Text('User Interface',
-                              style: TextStyle(fontSize: 20)),
-                          subtitle: const Text('Theme and appearance settings',
-                              style: TextStyle(fontSize: 16)),
-                          trailing: Icon(Icons.arrow_forward_ios,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.6)),
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const UIScreen(),
-                              ),
-                            );
-                          },
-                        ),
+                      _buildOffsetNavCard(
+                        context: context,
+                        icon: Icons.palette,
+                        title: 'User Interface',
+                        subtitle: 'Theme and appearance settings',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const UIScreen(),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 20.0),
                       OrionListTile(
@@ -273,29 +292,19 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         ),
                       ),
                       const SizedBox(height: 20.0),
-                      GlassCard(
-                        outlined: true,
-                        elevation: 1,
-                        child: ListTile(
-                          leading: Icon(Icons.engineering),
-                          title: const Text('Machine Settings',
-                              style: TextStyle(fontSize: 20)),
-                          subtitle: const Text('Configure machine features',
-                              style: TextStyle(fontSize: 16)),
-                          trailing: Icon(Icons.arrow_forward_ios,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.6)),
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const MachineSettingsScreen(),
-                              ),
-                            );
-                          },
-                        ),
+                      _buildOffsetNavCard(
+                        context: context,
+                        icon: Icons.engineering,
+                        title: 'Machine Settings',
+                        subtitle: 'Configure machine features',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const MachineSettingsScreen(),
+                            ),
+                          );
+                        },
                       ),
                       if (Platform.isLinux) const SizedBox(height: 20.0),
                       if (Platform.isLinux)

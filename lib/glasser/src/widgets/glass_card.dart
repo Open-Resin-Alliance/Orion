@@ -158,8 +158,7 @@ class GlassCard extends StatelessWidget {
               effectiveShape is RoundedRectangleBorder)) {
         final BorderRadius resolvedRadius =
             effectiveShape is RoundedRectangleBorder
-                ? (effectiveShape as RoundedRectangleBorder).borderRadius
-                    as BorderRadius
+                ? effectiveShape.borderRadius as BorderRadius
                 : BorderRadius.circular(glassCornerRadius);
 
         effectiveShape = RoundedRectangleBorder(
@@ -238,6 +237,27 @@ class GlassCard extends StatelessWidget {
     final hasAccent = accentColor != null;
     final tintColor = accentColor;
 
+    final double? requestedElevation = elevation;
+    final bool customElevationProvided = requestedElevation != null;
+
+    // When callers provide `elevation` in glass mode, map it to the same
+    // interactive shadow style family used by GlassButton so cards can
+    // visually lift in a comparable way.
+    final List<BoxShadow>? resolvedShadow = customElevationProvided
+        ? (requestedElevation <= 0
+            ? null
+            : GlassPlatformConfig.interactiveShadow(
+                enabled: true,
+                blurRadius: (12 + (requestedElevation * 4)).clamp(8, 28),
+                yOffset: (2 + requestedElevation).clamp(1, 10),
+                alpha: (0.08 + (requestedElevation * 0.02)).clamp(0.08, 0.22),
+              ))
+        : GlassPlatformConfig.surfaceShadow(
+            blurRadius: outlined ? 14 : 16,
+            yOffset: outlined ? 3 : 4,
+            alpha: outlined ? 0.14 : 0.12,
+          );
+
     // Provide a blended white base when tinted so the glass stays frosted
     // but carries the accent color subtly (matching GlassButton behavior).
     Color? blendedFillColor;
@@ -250,11 +270,7 @@ class GlassCard extends StatelessWidget {
       margin: margin ?? const EdgeInsets.all(4.0), // Default Card margin
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        boxShadow: GlassPlatformConfig.surfaceShadow(
-          blurRadius: outlined ? 14 : 16,
-          yOffset: outlined ? 3 : 4,
-          alpha: outlined ? 0.14 : 0.12,
-        ),
+        boxShadow: resolvedShadow,
         // In the glass theme, prefer drawing the border via GlassEffect so
         // we avoid a doubled border (outer Container + inner GlassEffect).
         // The material/non-glass branch still draws an outer border.
