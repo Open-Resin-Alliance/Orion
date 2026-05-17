@@ -69,7 +69,7 @@ class _UIScreenState extends State<UIScreen> {
         ),
         body: SingleChildScrollView(
           child: Padding(
-            padding: OrionSpacing.screenPadding,
+            padding: OrionSpacing.settingsScreenPadding,
             child: Column(
               children: [
                 // Theme Mode Selector Card

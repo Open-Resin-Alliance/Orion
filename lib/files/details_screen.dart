@@ -322,11 +322,13 @@ class DetailScreenState extends State<DetailScreen> {
                                 BoxConstraints constraints) {
                               return isLandScape
                                   ? Padding(
-                                      padding: OrionSpacing.screenPaddingNoTop
+                                      padding: OrionSpacing
+                                          .settingsScreenPaddingNoTop
                                           .copyWith(bottom: 20),
                                       child: buildLandscapeLayout(context))
                                   : Padding(
-                                      padding: OrionSpacing.screenPaddingNoTop
+                                      padding: OrionSpacing
+                                          .settingsScreenPaddingNoTop
                                           .copyWith(bottom: 20),
                                       child: buildPortraitLayout(context));
                             },
@@ -476,6 +478,7 @@ class DetailScreenState extends State<DetailScreen> {
     return GlassCard(
       outlined: true,
       elevation: 1.0,
+      margin: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
       child: cardContent,
     );
   }
@@ -524,6 +527,7 @@ class DetailScreenState extends State<DetailScreen> {
 
         return GlassCard(
           outlined: true,
+          margin: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
           child: cardChild,
         );
       },
@@ -568,6 +572,7 @@ class DetailScreenState extends State<DetailScreen> {
     return Center(
       child: GlassCard(
         outlined: true,
+        margin: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
         child: cardContent,
       ),
     );

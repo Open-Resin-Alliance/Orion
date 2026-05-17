@@ -233,7 +233,7 @@ class LevelingScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: OrionSpacing.controlGap),
             Expanded(
               child: GlassCard(
                 margin: EdgeInsets.zero,

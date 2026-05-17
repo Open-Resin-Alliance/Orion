@@ -826,7 +826,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                         size: 30,
                         color: _apiErrorState
                             ? null
-                            : Theme.of(context).colorScheme.onErrorContainer),
+                            : Theme.of(context).colorScheme.error),
                     Expanded(
                       child: AutoSizeText(
                         'Emergency Stop',
@@ -834,7 +834,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           fontSize: 24,
                           color: _apiErrorState
                               ? null
-                              : Theme.of(context).colorScheme.onErrorContainer,
+                              : Theme.of(context).colorScheme.error,
                         ),
                         maxLines: 1,
                         minFontSize: 20,
@@ -847,9 +847,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                                 fontSize: 24,
                                 color: _apiErrorState
                                     ? null
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .onErrorContainer,
+                                    : Theme.of(context).colorScheme.error,
                               ),
                             ),
                           ),

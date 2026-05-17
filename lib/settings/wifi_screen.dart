@@ -313,7 +313,7 @@ class WifiScreenState extends State<WifiScreen> {
                   return Center(
                     child: SingleChildScrollView(
                       child: Padding(
-                        padding: OrionSpacing.screenPaddingNoTop,
+                        padding: OrionSpacing.settingsScreenPaddingNoTop,
                         child: isLandscape
                             ? buildLandscapeLayout(context, currentSSID, net,
                                 networks, connectionType)
@@ -347,7 +347,7 @@ class WifiScreenState extends State<WifiScreen> {
                   itemBuilder: (context, index) {
                     final network = networks[index];
                     return Padding(
-                      padding: OrionSpacing.screenPaddingNoTop,
+                      padding: OrionSpacing.settingsScreenPaddingNoTop,
                       child: GlassCard(
                         elevation: 1,
                         outlined: true,

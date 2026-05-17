@@ -111,7 +111,7 @@ class AboutScreenState extends State<AboutScreen> {
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
-                padding: OrionSpacing.screenPaddingNoTop,
+            padding: OrionSpacing.settingsScreenPaddingNoTop,
             child: isLandscape
                 ? buildLandscapeLayout(context)
                 : buildPortraitLayout(context),

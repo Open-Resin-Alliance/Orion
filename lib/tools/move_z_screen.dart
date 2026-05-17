@@ -349,7 +349,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                         size: 34,
                         color: _apiErrorState
                             ? null
-                            : Theme.of(context).colorScheme.onErrorContainer),
+                            : Theme.of(context).colorScheme.error),
                     Expanded(
                       child: AutoSizeText(
                         'Emergency Stop',
@@ -357,7 +357,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                           fontSize: 26,
                           color: _apiErrorState
                               ? null
-                              : Theme.of(context).colorScheme.onErrorContainer,
+                              : Theme.of(context).colorScheme.error,
                         ),
                         maxLines: 1,
                         minFontSize: 20,
@@ -370,9 +370,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                                 fontSize: 26,
                                 color: _apiErrorState
                                     ? null
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .onErrorContainer,
+                                    : Theme.of(context).colorScheme.error,
                               ),
                             ),
                           ),

@@ -875,7 +875,7 @@ class StatusScreenState extends State<StatusScreen> {
       ),
       const SizedBox(height: 20),
       Padding(
-        padding: OrionSpacing.screenPaddingNoTop,
+        padding: EdgeInsets.zero,
         child: _buildButtons(provider, statusModel),
       ),
     ]);
@@ -888,6 +888,7 @@ class StatusScreenState extends State<StatusScreen> {
     return GlassCard(
       outlined: true,
       elevation: 1.0,
+      margin: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
       // If temperature is NaN treat as unspecified; otherwise choose an
       // accent color based on the value.
       accentColor: temperature == 0 ? null : _colorForTemperature(temperature),
@@ -1539,7 +1540,7 @@ class StatusScreenState extends State<StatusScreen> {
                             ),
                             const SizedBox(height: 10),
                             Padding(
-                              padding: OrionSpacing.screenPaddingNoTop,
+                              padding: OrionSpacing.settingsScreenPaddingNoTop,
                               child: SizedBox(
                                 height: 65,
                                 width: 450,
@@ -1565,7 +1566,7 @@ class StatusScreenState extends State<StatusScreen> {
                             ),
                             const SizedBox(height: 20),
                             Padding(
-                              padding: OrionSpacing.screenPaddingNoTop,
+                              padding: OrionSpacing.settingsScreenPaddingNoTop,
                               child: SizedBox(
                                 height: 65,
                                 width: 450,
@@ -1586,7 +1587,7 @@ class StatusScreenState extends State<StatusScreen> {
                             ),
                             const SizedBox(height: 20),
                             Padding(
-                              padding: OrionSpacing.screenPaddingNoTop,
+                              padding: OrionSpacing.settingsScreenPaddingNoTop,
                               child: SizedBox(
                                 height: 65,
                                 width: 450,
@@ -2080,7 +2081,7 @@ class StatusScreenState extends State<StatusScreen> {
       ),
       const SizedBox(height: 20),
       Padding(
-        padding: OrionSpacing.screenPaddingNoTop,
+        padding: EdgeInsets.zero,
         child: _buildButtons(provider, status),
       ),
     ]);

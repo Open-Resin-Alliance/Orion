@@ -115,15 +115,20 @@ class GlassChoiceChip extends StatelessWidget {
     }
 
     // Glass theme - create glassmorphic choice chip
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
     final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
-    final fillOpacity = GlassPlatformConfig.surfaceOpacity(
-      selected ? 0.22 : 0.1,
-      emphasize: selected,
+    final fillOpacity =
+        GlassPlatformConfig.surfaceOpacity(0.1, emphasize: false);
+    final borderWidth = selected ? 1.6 : 1.2;
+    final selectedTint = primary.withValues(
+      alpha: theme.brightness == Brightness.dark ? 0.18 : 0.12,
     );
-    final borderWidth = selected ? 2.2 : 1.2;
-    final glow = selected
-        ? GlassPlatformConfig.selectionGlow(blurRadius: 10, alpha: 0.24)
-        : null;
+    final borderColor = selected
+        ? primary.withValues(
+            alpha: theme.brightness == Brightness.dark ? 0.42 : 0.32,
+          )
+        : Colors.white.withValues(alpha: 0.16);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -131,35 +136,53 @@ class GlassChoiceChip extends StatelessWidget {
       height: 48,
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        boxShadow: glow,
+        border: Border.all(
+          color: borderColor,
+          width: borderWidth,
+        ),
       ),
       child: GlassEffect(
         borderRadius: borderRadius,
         sigma: glassBlurSigma,
         opacity: fillOpacity,
-        borderWidth: borderWidth,
-        emphasizeBorder: selected,
+        borderWidth: 1.0,
+        emphasizeBorder: false,
         interactiveSurface: true,
         floatingSurface: false,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onSelected != null ? () => onSelected!(!selected) : null,
-            borderRadius: borderRadius,
-            child: Center(
-              child: DefaultTextStyle(
-                style: TextStyle(
-                  fontFamily: 'AtkinsonHyperlegible',
-                  color: selected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.85),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 22,
+        child: Stack(
+          children: [
+            if (selected)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: selectedTint,
+                      borderRadius: borderRadius,
+                    ),
+                  ),
                 ),
-                child: label,
+              ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onSelected != null ? () => onSelected!(!selected) : null,
+                borderRadius: borderRadius,
+                child: Center(
+                  child: DefaultTextStyle(
+                    style: TextStyle(
+                      fontFamily: 'AtkinsonHyperlegible',
+                      color: selected
+                          ? primary.withValues(alpha: 0.96)
+                          : Colors.white.withValues(alpha: 0.85),
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 22,
+                    ),
+                    child: label,
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

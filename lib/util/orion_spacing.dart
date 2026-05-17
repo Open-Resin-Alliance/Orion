@@ -30,6 +30,9 @@ abstract final class OrionSpacing {
   static const double screenBottomNavClearance = 16.0;
   static const double controlGap = 20.0;
   static const double gridScreenHorizontal = screenHorizontal - 4.0;
+  // Settings pages frequently use GlassCard's default 4px outer margin.
+  // Compensate at the shell level so effective edge inset remains 20px.
+  static const double settingsScreenHorizontal = screenHorizontal - 4.0;
   // For screens where card/button margins already contribute ~12px of edge
   // spacing, add this root padding so total edge inset equals screenHorizontal.
   static const double cardAwareScreenHorizontal = screenHorizontal - 12.0;
@@ -49,6 +52,16 @@ abstract final class OrionSpacing {
 
   static const EdgeInsets screenPaddingNoTop = EdgeInsets.symmetric(
     horizontal: screenHorizontal,
+  );
+
+  static const EdgeInsets settingsScreenPadding = EdgeInsets.only(
+    left: settingsScreenHorizontal,
+    right: settingsScreenHorizontal,
+    top: screenTop,
+  );
+
+  static const EdgeInsets settingsScreenPaddingNoTop = EdgeInsets.symmetric(
+    horizontal: settingsScreenHorizontal,
   );
 
   static const double listGap = 8.0;

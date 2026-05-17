@@ -164,7 +164,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     return PopScope(
       child: Scaffold(
         body: Padding(
-          padding: OrionSpacing.screenPadding,
+          padding: OrionSpacing.settingsScreenPadding,
           child: ListView(
             controller: _scrollController,
             children: <Widget>[

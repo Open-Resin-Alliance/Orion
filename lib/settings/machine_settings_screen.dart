@@ -57,7 +57,7 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
             ],
           ),
           body: Padding(
-            padding: OrionSpacing.screenPadding,
+            padding: OrionSpacing.settingsScreenPadding,
             child: ListView(
               children: [
                 GlassCard(
