@@ -448,8 +448,8 @@ class DetailScreenState extends State<DetailScreen> {
                 ),
               ),
               const SizedBox(width: 16.0),
-              Flexible(
-                flex: 0,
+              Expanded(
+                flex: 2,
                 child: buildThumbnailView(context),
               ),
             ],

@@ -867,8 +867,8 @@ class StatusScreenState extends State<StatusScreen> {
             ]),
           ),
           const SizedBox(width: 16.0),
-          Flexible(
-            flex: 0,
+          Expanded(
+            flex: 2,
             child: _buildThumbnailView(context, provider, statusModel),
           ),
         ]),
@@ -1933,7 +1933,7 @@ class StatusScreenState extends State<StatusScreen> {
               Spacer(),
             ]),
           ),
-          const SizedBox(width: 4.0),
+          const SizedBox(width: 12.0),
           Expanded(
             flex: 1,
             child: Column(children: [
