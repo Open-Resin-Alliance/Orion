@@ -35,6 +35,7 @@ import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/orion_list_tile.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/thumbnail_cache.dart';
+import 'package:orion/widgets/selection_screens.dart';
 
 class GeneralCfgScreen extends StatefulWidget {
   const GeneralCfgScreen({super.key});
@@ -1092,121 +1093,142 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
       }
     });
 
-    showDialog(
-      barrierDismissible: true,
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            void fetchReleases() async {
-              if (_availableReleases.isNotEmpty && _loadError == null) return;
+    Navigator.of(context)
+        .push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (BuildContext context) {
+          return StatefulBuilder(
+            builder: (context, setRouteState) {
+              void fetchReleases() async {
+                if (_availableReleases.isNotEmpty && _loadError == null) {
+                  return;
+                }
 
-              setState(() {
-                _isLoadingReleases = true;
-                _loadError = null;
-              });
+                setRouteState(() {
+                  _isLoadingReleases = true;
+                  _loadError = null;
+                });
 
-              try {
-                final response = await http.get(
-                  Uri.parse(
-                      'https://api.github.com/repos/Open-Resin-Alliance/Orion/releases'),
-                  headers: {'Accept': 'application/vnd.github.v3+json'},
-                ).timeout(const Duration(seconds: 10));
+                try {
+                  final response = await http.get(
+                    Uri.parse(
+                        'https://api.github.com/repos/Open-Resin-Alliance/Orion/releases'),
+                    headers: {'Accept': 'application/vnd.github.v3+json'},
+                  ).timeout(const Duration(seconds: 10));
 
-                if (response.statusCode == 200) {
-                  final List<dynamic> releases = json.decode(response.body);
-                  List<String> regularReleases = [];
-                  List<String> branchReleases = [];
-                  Map<String, String> dates = {};
+                  if (response.statusCode == 200) {
+                    final List<dynamic> releases = json.decode(response.body);
+                    List<String> regularReleases = [];
+                    List<String> branchReleases = [];
+                    Map<String, String> dates = {};
 
-                  for (var release in releases) {
-                    String tag = release['tag_name'] as String;
-                    if (tag.startsWith('v')) {
-                      tag = tag.substring(1);
+                    for (var release in releases) {
+                      String tag = release['tag_name'] as String;
+                      if (tag.startsWith('v')) {
+                        tag = tag.substring(1);
+                      }
+
+                      String publishedAt = release['published_at'] as String;
+                      DateTime releaseDate = DateTime.parse(publishedAt);
+                      String formattedDate =
+                          "${releaseDate.year}-${releaseDate.month.toString().padLeft(2, '0')}-${releaseDate.day.toString().padLeft(2, '0')}";
+
+                      dates[tag] = formattedDate;
+
+                      if (tag.startsWith('BRANCH_')) {
+                        branchReleases.add(tag);
+                      } else {
+                        regularReleases.add(tag);
+                      }
                     }
 
-                    String publishedAt = release['published_at'] as String;
-                    DateTime releaseDate = DateTime.parse(publishedAt);
-                    String formattedDate =
-                        "${releaseDate.year}-${releaseDate.month.toString().padLeft(2, '0')}-${releaseDate.day.toString().padLeft(2, '0')}";
+                    regularReleases
+                        .sort((a, b) => dates[b]!.compareTo(dates[a]!));
+                    branchReleases
+                        .sort((a, b) => dates[b]!.compareTo(dates[a]!));
 
-                    dates[tag] = formattedDate;
-
-                    if (tag.startsWith('BRANCH_')) {
-                      branchReleases.add(tag);
-                    } else {
-                      regularReleases.add(tag);
-                    }
+                    setRouteState(() {
+                      _availableReleases = [
+                        ...regularReleases,
+                        ...branchReleases
+                      ];
+                      _releaseDates = dates;
+                      _isLoadingReleases = false;
+                    });
+                  } else {
+                    setRouteState(() {
+                      _isLoadingReleases = false;
+                      _loadError =
+                          'Failed to fetch releases: HTTP ${response.statusCode}';
+                    });
                   }
-
-                  // Sort by date (newest first)
-                  regularReleases
-                      .sort((a, b) => dates[b]!.compareTo(dates[a]!));
-                  branchReleases.sort((a, b) => dates[b]!.compareTo(dates[a]!));
-
-                  setState(() {
-                    _availableReleases = [
-                      ...regularReleases,
-                      ...branchReleases
-                    ];
-                    _releaseDates = dates;
+                } catch (e) {
+                  setRouteState(() {
                     _isLoadingReleases = false;
-                  });
-                } else {
-                  setState(() {
-                    _isLoadingReleases = false;
-                    _loadError =
-                        'Failed to fetch releases: HTTP ${response.statusCode}';
+                    _loadError = e.toString();
                   });
                 }
-              } catch (e) {
-                setState(() {
-                  _isLoadingReleases = false;
-                  _loadError = e.toString();
-                });
               }
-            }
 
-            // Fetch releases when dialog is built
-            if (_availableReleases.isEmpty && !_isLoadingReleases) {
-              fetchReleases();
-            }
+              if (_availableReleases.isEmpty && !_isLoadingReleases) {
+                fetchReleases();
+              }
 
-            return GlassDialog(
-              padding: EdgeInsets.zero,
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height * 0.8,
+              return DetailedSelectionScreen(
+                title: 'Select Release Version',
                 child: Column(
                   children: [
-                    GlassDialogHeader(
-                      icon: Icons.download,
-                      title: 'Select Release Version',
-                      badge: overrideRelease.isNotEmpty
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                    if (overrideRelease.isNotEmpty)
+                      GlassCard(
+                        outlined: true,
+                        elevation: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                size: 22,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                overrideRelease,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Current Release Override',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.color,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      overrideRelease,
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            )
-                          : null,
-                    ),
-
-                    // Content Section
+                            ],
+                          ),
+                        ),
+                      ),
+                    if (overrideRelease.isNotEmpty) const SizedBox(height: 12),
                     Expanded(
                       child: _isLoadingReleases
                           ? const Center(
@@ -1218,14 +1240,14 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   Text(
                                     'Loading available releases...',
                                     style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w500),
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600),
                                   ),
                                   SizedBox(height: 8),
                                   Text(
                                     'This may take a few seconds',
                                     style: TextStyle(
-                                        fontSize: 14, color: Colors.grey),
+                                        fontSize: 16, color: Colors.grey),
                                   ),
                                 ],
                               ),
@@ -1243,7 +1265,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         Text(
                                           'Failed to Load Releases',
                                           style: TextStyle(
-                                            fontSize: 20,
+                                            fontSize: 24,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.red.shade300,
                                           ),
@@ -1252,18 +1274,17 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         Text(
                                           _loadError!,
                                           textAlign: TextAlign.center,
-                                          style: const TextStyle(fontSize: 16),
+                                          style: const TextStyle(fontSize: 18),
                                         ),
                                         const SizedBox(height: 24),
                                         GlassButton(
                                           onPressed: fetchReleases,
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(Icons.refresh,
-                                                  size: 20),
-                                              const SizedBox(width: 8),
-                                              const Text('Retry',
+                                            children: const [
+                                              Icon(Icons.refresh, size: 20),
+                                              SizedBox(width: 8),
+                                              Text('Retry',
                                                   style:
                                                       TextStyle(fontSize: 18)),
                                             ],
@@ -1284,7 +1305,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           Text(
                                             'No Releases Found',
                                             style: TextStyle(
-                                                fontSize: 20,
+                                                fontSize: 24,
                                                 fontWeight: FontWeight.bold),
                                           ),
                                           SizedBox(height: 8),
@@ -1298,28 +1319,17 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         ],
                                       ),
                                     )
-                                  : Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          // Section headers and list
-                                          Expanded(
-                                            child: _buildReleasesList(),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                  : _buildReleasesList(),
                     ),
                   ],
                 ),
-              ),
-            );
-          },
-        );
-      },
-    ).then((_) {
+              );
+            },
+          );
+        },
+      ),
+    )
+        .then((_) {
       // Cleanup when dialog is closed
       if (mounted) {
         setState(() {
@@ -1329,7 +1339,45 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     });
   }
 
-  /// Builds the modernized releases list with compact visual hierarchy
+  Widget _buildReleaseSectionHeader({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color accent,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the modernized releases list with Orion-style hierarchy
   Widget _buildReleasesList() {
     final regularReleases =
         _availableReleases.where((r) => !r.startsWith('BRANCH_')).toList();
@@ -1339,63 +1387,23 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     return ListView(
       children: [
         if (regularReleases.isNotEmpty) ...[
-          // Compact Stable Releases Section
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.verified, size: 14, color: Colors.green.shade300),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Stable Releases',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green.shade300,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _buildReleaseSectionHeader(
+            icon: Icons.verified,
+            title: 'Stable Releases',
+            subtitle: 'Recommended for normal use',
+            accent: Colors.green.shade300,
           ),
           ...regularReleases
               .map((release) => _buildReleaseItem(release, isStable: true)),
         ],
         if (branchReleases.isNotEmpty && regularReleases.isNotEmpty)
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
         if (branchReleases.isNotEmpty) ...[
-          // Compact Development Branches Section
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.science, size: 14, color: Colors.orange.shade300),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Development Branches',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange.shade300,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _buildReleaseSectionHeader(
+            icon: Icons.science,
+            title: 'Development Branches',
+            subtitle: 'Experimental and branch builds',
+            accent: Colors.orange.shade300,
           ),
           ...branchReleases
               .map((release) => _buildReleaseItem(release, isStable: false)),
@@ -1404,13 +1412,14 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     );
   }
 
-  /// Builds an individual release item with compact styling
+  /// Builds an individual release item with Orion card styling
   Widget _buildReleaseItem(String release, {required bool isStable}) {
     final isSelected = overrideRelease == release;
     final releaseDate = _releaseDates[release] ?? 'Unknown date';
+    final accent = isStable ? Colors.green.shade300 : Colors.orange.shade300;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       child: GlassCard(
         elevation: isSelected ? 2.0 : 1.0,
         outlined: true,
@@ -1431,22 +1440,20 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
           },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                // Compact Release Icon
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
                     color: isSelected
                         ? Theme.of(context)
                             .colorScheme
                             .primary
                             .withValues(alpha: 0.2)
-                        : (isStable ? Colors.green : Colors.orange)
-                            .withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
+                        : accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     isSelected
@@ -1454,15 +1461,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         : (isStable ? Icons.verified : Icons.science),
                     color: isSelected
                         ? Theme.of(context).colorScheme.primary
-                        : (isStable
-                            ? Colors.green.shade300
-                            : Colors.orange.shade300),
-                    size: 18,
+                        : accent,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(width: 10),
-
-                // Compact Release Info
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1470,28 +1473,30 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       Text(
                         release,
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
                           color: isSelected
                               ? Theme.of(context).colorScheme.primary
                               : null,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         releaseDate,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           color: Theme.of(context).textTheme.bodySmall?.color,
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                // Compact Selection Indicator
+                const SizedBox(width: 8),
                 Container(
-                  width: 20,
-                  height: 20,
+                  width: 24,
+                  height: 24,
                   decoration: BoxDecoration(
                     color: isSelected
                         ? Theme.of(context).colorScheme.primary
@@ -1499,10 +1504,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     border: isSelected
                         ? null
                         : Border.all(color: Theme.of(context).dividerColor),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: isSelected
-                      ? const Icon(Icons.check, color: Colors.white, size: 14)
+                      ? const Icon(Icons.check, color: Colors.white, size: 16)
                       : null,
                 ),
               ],
