@@ -579,48 +579,59 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     }
 
     final count = _selectedFileKeys.length;
+    final isSingle = count == 1;
+    final dialogTitle = isSingle ? 'Delete File' : 'Delete Files';
+    final targetLabel = isSingle
+        ? _resolveSelectionDisplayName(_selectedFileKeys.first)
+        : '$count files';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => GlassAlertDialog(
         title: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(
               Icons.delete_forever_rounded,
-              size: 26,
               color: Theme.of(context).colorScheme.error,
+              size: 32,
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Delete Files',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+            Expanded(
+              child: Text(
+                dialogTitle,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.bold,
                 ),
-                Text(
-                  '$count selected',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade400,
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
-        content: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Are you sure you want to delete the selected files?'),
-            SizedBox(height: 8),
-            Text(
+            Text.rich(
+              TextSpan(
+                text: 'You are about to delete ',
+                children: [
+                  TextSpan(
+                    text: targetLabel,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const TextSpan(text: '.\nDo you want to continue?'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
               'This action cannot be undone.',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                decoration: TextDecoration.underline,
+              ),
             ),
           ],
         ),
@@ -708,6 +719,25 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       return '$pathValue|$name|$parentPath|$lastModified';
     }
     return '$parentPath|$name|$lastModified';
+  }
+
+  String _resolveSelectionDisplayName(String selectionKey) {
+    final provider = Provider.of<FilesProvider>(context, listen: false);
+    for (final item in provider.items) {
+      if (item is OrionApiFile && _selectionKey(item) == selectionKey) {
+        final itemName = item.name.trim();
+        if (itemName.isNotEmpty) return itemName;
+        final fromPath = path.basename(item.path).trim();
+        if (fromPath.isNotEmpty) return fromPath;
+      }
+    }
+
+    if (!selectionKey.startsWith('plate:')) {
+      final fallback = path.basename(_selectionKeyToPath(selectionKey)).trim();
+      if (fallback.isNotEmpty) return fallback;
+    }
+
+    return 'this file';
   }
 
   String _selectionKeyToPath(String key) {

@@ -573,41 +573,29 @@ class DetailScreenState extends State<DetailScreen> {
   }
 
   Future<void> launchDeleteDialog() async {
+    final fileName = widget.fileName;
+
     final bool? deleteConfirmed = await showDialog<bool>(
       barrierDismissible: false,
       context: context,
       builder: (BuildContext context) {
         return GlassAlertDialog(
           title: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(
                 Icons.delete_forever_rounded,
                 color: Theme.of(context).colorScheme.error,
-                size: 26,
+                size: 32,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Delete File',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.fileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Delete File',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -615,20 +603,26 @@ class DetailScreenState extends State<DetailScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Are you sure you want to delete this file?',
-                style: TextStyle(
-                  fontSize: 18,
-                  height: 1.5,
+            children: [
+              Text.rich(
+                TextSpan(
+                  text: 'You are about to delete ',
+                  children: [
+                    TextSpan(
+                      text: fileName,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const TextSpan(text: '.\nDo you want to continue?'),
+                  ],
                 ),
               ),
-              SizedBox(height: 8),
-              Text(
+              const SizedBox(height: 10),
+              const Text(
                 'This action cannot be undone.',
                 style: TextStyle(
-                  fontSize: 18,
-                  height: 1.5,
+                  decoration: TextDecoration.underline,
                 ),
               ),
             ],
@@ -640,7 +634,7 @@ class DetailScreenState extends State<DetailScreen> {
                 minimumSize: const Size(0, 60),
               ),
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+              child: const Text('Cancel'),
             ),
             GlassButton(
               tint: GlassButtonTint.negative,
@@ -670,7 +664,7 @@ class DetailScreenState extends State<DetailScreen> {
                   if (mounted) Navigator.of(context).pop(false);
                 }
               },
-              child: const Text('Delete', style: TextStyle(fontSize: 22)),
+              child: const Text('Delete'),
             ),
           ],
         );
