@@ -24,6 +24,7 @@ import 'package:orion/backend_service/providers/notification_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_notification_types.dart';
+import 'package:orion/util/orion_config.dart';
 
 /// Installs a watcher that will show a GlassAlertDialog for each new
 /// notification reported by [NotificationProvider]. The provided [context]
@@ -239,6 +240,15 @@ class NotificationWatcher {
                         child: const Text('Close'),
                       ),
                     ];
+              final devMode =
+                  OrionConfig().getFlag('developerMode', category: 'advanced');
+              final rawMessage = (item.text ?? '').trim();
+              final displayTitle = devMode
+                  ? getNanoTypeTitle(item.type)
+                  : getNanoNotificationDisplayTitle(item.type, item.text);
+              final displayMessage = devMode
+                  ? (rawMessage.isNotEmpty ? rawMessage : '(no text)')
+                  : getNanoNotificationDisplayMessage(item.type, item.text);
 
               return GlassAlertDialog(
                 title: Row(
@@ -251,7 +261,7 @@ class NotificationWatcher {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                        getNanoTypeTitle(item.type),
+                        displayTitle,
                         style: const TextStyle(
                           color: Colors.orangeAccent,
                           fontWeight: FontWeight.bold,
@@ -261,7 +271,7 @@ class NotificationWatcher {
                   ],
                 ),
                 content: Text(
-                  item.text ?? '(no text)',
+                  displayMessage,
                   textAlign: TextAlign.start,
                 ),
                 actions: actionButtons,
