@@ -67,11 +67,11 @@ class GlassChoiceChip extends StatelessWidget {
         theme.colorScheme.surface,
       );
       final selectedFill = Color.alphaBlend(
-        primary.withValues(alpha: isDark ? 0.14 : 0.10),
+        primary.withValues(alpha: isDark ? 0.22 : 0.10),
         theme.colorScheme.surface,
       );
       final outlineColor = primary.withValues(
-        alpha: isDark ? (selected ? 0.22 : 0.12) : (selected ? 0.35 : 0.12),
+        alpha: isDark ? (selected ? 0.34 : 0.12) : (selected ? 0.35 : 0.12),
       );
 
       final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
@@ -117,35 +117,29 @@ class GlassChoiceChip extends StatelessWidget {
     // Glass theme - create glassmorphic choice chip
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
     final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
     final fillOpacity =
         GlassPlatformConfig.surfaceOpacity(0.1, emphasize: false);
     final borderWidth = selected ? 1.6 : 1.2;
     final selectedTint = primary.withValues(
-      alpha: theme.brightness == Brightness.dark ? 0.18 : 0.12,
+      alpha: isDark ? 0.26 : 0.12,
     );
-    final borderColor = selected
-        ? primary.withValues(
-            alpha: theme.brightness == Brightness.dark ? 0.42 : 0.32,
-          )
-        : Colors.white.withValues(alpha: 0.16);
+    final borderBaseColor = selected ? primary : Colors.white;
+    final borderAlpha = selected ? (isDark ? 0.56 : 0.32) : 0.16;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: double.infinity,
       height: 48,
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        border: Border.all(
-          color: borderColor,
-          width: borderWidth,
-        ),
-      ),
       child: GlassEffect(
         borderRadius: borderRadius,
         sigma: glassBlurSigma,
         opacity: fillOpacity,
-        borderWidth: 1.0,
+        borderWidth: borderWidth,
+        borderColor: borderBaseColor,
+        borderAlpha: borderAlpha,
+        useRawBorderAlpha: true,
         emphasizeBorder: false,
         interactiveSurface: true,
         floatingSurface: false,
