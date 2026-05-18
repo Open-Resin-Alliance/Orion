@@ -98,6 +98,63 @@ class _ConnectionErrorDialogContentState
     extends State<_ConnectionErrorDialogContent> {
   Timer? _tick;
 
+  Widget _buildDialogActions({
+    required VoidCallback retryNow,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (isDark) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GlassButton(
+            tint: GlassButtonTint.warn,
+            onPressed: retryNow,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 60),
+            ),
+            child: const Text('Retry now'),
+          ),
+          const SizedBox(height: 10),
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 60),
+            ),
+            child: const Text('Close'),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: GlassButton(
+            tint: GlassButtonTint.warn,
+            onPressed: retryNow,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: const Text('Retry now'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: const Text('Close'),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -128,6 +185,7 @@ class _ConnectionErrorDialogContentState
   @override
   Widget build(BuildContext context) {
     final statusProv = Provider.of<StatusProvider>(context);
+    final scheme = Theme.of(context).colorScheme;
     final pollAttempts = statusProv.pollAttemptCount;
     final sseAttempts = statusProv.sseAttemptCount;
     final next = statusProv.nextRetryAt;
@@ -189,7 +247,7 @@ class _ConnectionErrorDialogContentState
           children: [
             Icon(
               Icons.wifi_off,
-              color: Colors.orange.shade600,
+              color: scheme.primary,
               size: 26,
             ),
             const SizedBox(width: 16),
@@ -208,7 +266,7 @@ class _ConnectionErrorDialogContentState
                         : 'Attempting to reconnect...',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey.shade400,
+                      color: scheme.onSurface.withValues(alpha: 0.72),
                       fontFamily: 'monospace',
                     ),
                   ),
@@ -308,28 +366,7 @@ class _ConnectionErrorDialogContentState
           ],
         ),
         actions: [
-          Row(
-            children: [
-              Flexible(
-                child: GlassButton(
-                  onPressed: retryNow,
-                  style:
-                      ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child: const Text('Retry now'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: GlassButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(0, 60),
-                      backgroundColor: Colors.transparent),
-                  child: const Text('Close'),
-                ),
-              ),
-            ],
-          ),
+          _buildDialogActions(retryNow: retryNow),
         ],
       );
     }
@@ -340,7 +377,7 @@ class _ConnectionErrorDialogContentState
         children: [
           Icon(
             Icons.wifi_off,
-            color: Colors.orange.shade600,
+            color: scheme.primary,
             size: 26,
           ),
           const SizedBox(width: 16),
@@ -363,8 +400,10 @@ class _ConnectionErrorDialogContentState
                       final maxAttempts = statusProv.maxReconnectAttempts;
                       if (attempts > 0) {
                         return Text('($attempts/$maxAttempts)',
-                            style: const TextStyle(
-                                fontSize: 16, color: Colors.white70));
+                            style: TextStyle(
+                                fontSize: 16,
+                                color:
+                                    scheme.onSurface.withValues(alpha: 0.72)));
                       }
                       return const SizedBox.shrink();
                     }),
@@ -392,27 +431,7 @@ class _ConnectionErrorDialogContentState
         ],
       ),
       actions: [
-        Row(
-          children: [
-            Flexible(
-              child: GlassButton(
-                onPressed: retryNow,
-                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                child: const Text('Retry now'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: GlassButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 60),
-                    backgroundColor: Colors.transparent),
-                child: const Text('Close'),
-              ),
-            ),
-          ],
-        ),
+        _buildDialogActions(retryNow: retryNow),
       ],
     );
   }
