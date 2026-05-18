@@ -530,33 +530,60 @@ class WifiScreenState extends State<WifiScreen> {
     final bool showDisconnectAction = connectionType != 'ethernet' ||
         (Platform.isMacOS && connectionType == 'ethernet');
 
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              buildNameCard(
-                connectionType == 'ethernet'
-                    ? 'Connected to Ethernet'
-                    : currentSSID,
-                action: showDisconnectAction ? _buildDisconnectButton() : null,
-              ),
-              buildInfoCard('IP Address', net['ip'] ?? ''),
-              buildInfoCard('MAC Address', net['mac'] ?? ''),
-              if (connectionType == 'ethernet')
-                buildInfoCard('Link Speed', net['speed'] ?? ''),
-              if (connectionType != 'ethernet')
-                buildInfoCard(
-                  'Signal Strength',
-                  wifiProvider.getSignalQuality(wifiProvider.signalStrength),
-                ),
-            ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // QR column is flex:2 of total width minus the gap
+        final totalWidth = constraints.maxWidth;
+        final qrColumnWidth = (totalWidth - 16) * 2 / 5;
+        // QR card: width minus 32px padding, then square
+        final qrSize = (qrColumnWidth - 32).clamp(80.0, 400.0);
+        // Total height = qrSize + 32px card padding
+        final columnHeight = qrSize + 32;
+
+        final leftCards = [
+          buildNameCard(
+            connectionType == 'ethernet'
+                ? 'Connected to Ethernet'
+                : currentSSID,
+            action: showDisconnectAction ? _buildDisconnectButton() : null,
           ),
-        ),
-        const SizedBox(width: 16),
-        buildQrView(context, net['ip'] ?? ''),
-      ],
+          buildInfoCard('IP Address', net['ip'] ?? ''),
+          buildInfoCard('MAC Address', net['mac'] ?? ''),
+          if (connectionType == 'ethernet')
+            buildInfoCard('Link Speed', net['speed'] ?? ''),
+          if (connectionType != 'ethernet')
+            buildInfoCard(
+              'Signal Strength',
+              wifiProvider.getSignalQuality(wifiProvider.signalStrength),
+            ),
+        ];
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: SizedBox(
+                height: columnHeight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (int i = 0; i < leftCards.length; i++) ...[
+                      Expanded(child: leftCards[i]),
+                      if (i < leftCards.length - 1) const SizedBox(height: 0),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: buildQrView(context, net['ip'] ?? ''),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -564,10 +591,11 @@ class WifiScreenState extends State<WifiScreen> {
     return GlassCard(
       elevation: 1.0,
       outlined: true,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-        title: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Text(
@@ -650,29 +678,32 @@ class WifiScreenState extends State<WifiScreen> {
   }
 
   Widget buildQrView(BuildContext context, String ipAddress) {
-    return Center(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: GlassCard(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final qrSize = (constraints.maxWidth - 32).clamp(80.0, 400.0);
+        return GlassCard(
           elevation: 1.0,
           outlined: true,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: QrImageView(
-              data: 'http://$ipAddress',
-              version: QrVersions.auto,
-              size: 250,
-              eyeStyle: QrEyeStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              dataModuleStyle: QrDataModuleStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                dataModuleShape: QrDataModuleShape.circle,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: QrImageView(
+                data: 'http://$ipAddress',
+                version: QrVersions.auto,
+                size: qrSize,
+                eyeStyle: QrEyeStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                dataModuleStyle: QrDataModuleStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  dataModuleShape: QrDataModuleShape.circle,
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
