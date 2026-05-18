@@ -553,11 +553,6 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         'Starting calibration: model=${_selectedModel?.name} (id=${_selectedModel?.id}), resin=${_selectedResin?.name}, start=$_startingExposure, increment=$_exposureIncrement');
 
     // Build a human-readable sequence of exposures for each of the six test pieces
-    final exposuresList = List.generate(6, (i) {
-      final value = _startingExposure + (_exposureIncrement * i);
-      return '${value.toStringAsFixed(1)}s';
-    }).join(' → ');
-
     // Show unified pre-calibration overlay with info and checklist
     final confirmed = await Navigator.of(context).push<bool>(
       PageRouteBuilder(
@@ -574,7 +569,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         pageBuilder: (context, _, __) => _PreCalibrationOverlay(
           calibrationModelName: _selectedModel!.name,
           resinProfileName: _selectedResin?.name,
-          exposuresList: exposuresList,
+          startingExposure: _startingExposure,
+          exposureIncrement: _exposureIncrement,
           calibrationModelId: _selectedModel!.id,
         ),
       ),
@@ -996,13 +992,15 @@ class _ResinProfilePickerScreen extends StatelessWidget {
 class _PreCalibrationOverlay extends StatelessWidget {
   final String calibrationModelName;
   final String? resinProfileName;
-  final String exposuresList;
+  final double startingExposure;
+  final double exposureIncrement;
   final int calibrationModelId;
 
   const _PreCalibrationOverlay({
     required this.calibrationModelName,
     this.resinProfileName,
-    required this.exposuresList,
+    required this.startingExposure,
+    required this.exposureIncrement,
     required this.calibrationModelId,
   });
 
@@ -1010,252 +1008,305 @@ class _PreCalibrationOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final isGlass =
         Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return GlassApp(
       child: Scaffold(
         backgroundColor: isGlass
             ? Colors.transparent
             : Theme.of(context).colorScheme.surface,
-        appBar: AppBar(
-          backgroundColor: isGlass
-              ? Colors.transparent
-              : Theme.of(context).colorScheme.surface,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(
-                PhosphorIconsFill.flask,
-                size: 28,
-                color: Theme.of(context).colorScheme.primary,
+              // ── Header ──────────────────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIconsFill.flask, size: 24, color: primary),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      calibrationModelName,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: primary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Text(
-                calibrationModelName,
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary),
-              ),
-            ],
-          ),
-          centerTitle: true,
-        ),
-        body: LayoutBuilder(builder: (context, constraints) {
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              if (resinProfileName != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  resinProfileName!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.5),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+
+              const SizedBox(height: 20),
+
+              // ── Body ─────────────────────────────────────────────────
+              Expanded(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Resin info
-                    if (resinProfileName != null) ...[
-                      Text(
-                        resinProfileName!,
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: Colors.grey.shade300,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    // Two-column layout
-                    IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Left box - What's happening
-                          Expanded(
-                            child: GlassCard(
-                              outlined: true,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          PhosphorIconsFill.info,
-                                          size: 20,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'What\'s Happening',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey.shade300,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Six test pieces will be printed with progressively increasing exposure times to help you find the optimal cure time for this resin.',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.grey.shade400,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-
-                          // Right box - Checklist
-                          Expanded(
-                            child: GlassCard(
-                              outlined: true,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          PhosphorIconsFill.clipboardText,
-                                          size: 20,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Pre-Flight Check',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey.shade300,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildChecklistItem(context,
-                                        'Correct resin is filled into the vat.'),
-                                    const SizedBox(height: 10),
-                                    _buildChecklistItem(
-                                        context, 'The build plate is clean.'),
-                                    const SizedBox(height: 10),
-                                    _buildChecklistItem(context,
-                                        'The vat is clear of any debris.'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-                    GlassCard(
-                      outlined: true,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Center(
+                    // Left – What's happening
+                    Expanded(
+                      child: GlassCard(
+                        outlined: true,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                'Exposure Sequence',
+                                'WHAT WILL HAPPEN',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade300,
-                                  letterSpacing: 0.5,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.45),
+                                  letterSpacing: 1.2,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 16),
                               Text(
-                                exposuresList,
+                                'Six test pieces will be printed back-to-back, each with a slightly longer exposure than the last.',
                                 style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  letterSpacing: 0.3,
+                                  fontSize: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.75),
+                                  height: 1.55,
                                 ),
-                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              _buildStatRow(
+                                context,
+                                icon: Icon(PhosphorIcons.timer()),
+                                label: 'Starting exposure',
+                                value:
+                                    '${startingExposure.toStringAsFixed(1)} s',
+                                primary: primary,
+                              ),
+                              const SizedBox(height: 10),
+                              _buildStatRow(
+                                context,
+                                icon: Icon(PhosphorIcons.arrowRight()),
+                                label: 'Step between pieces',
+                                value:
+                                    '+${exposureIncrement.toStringAsFixed(1)} s',
+                                primary: primary,
+                              ),
+                              const SizedBox(height: 10),
+                              _buildStatRow(
+                                context,
+                                icon: Icon(PhosphorIcons.arrowLineRight()),
+                                label: 'Final exposure',
+                                value:
+                                    '${(startingExposure + exposureIncrement * 5).toStringAsFixed(1)} s',
+                                primary: primary,
                               ),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 85), // Space for FABs
+
+                    const SizedBox(width: 16),
+
+                    // Right – Pre-flight checklist
+                    Expanded(
+                      child: GlassCard(
+                        outlined: true,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PRE-FLIGHT CHECK',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.45),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _buildChecklistItem(context,
+                                        'Correct resin is filled into the vat.'),
+                                    _buildChecklistItem(
+                                        context, 'The build plate is clean.'),
+                                    _buildChecklistItem(context,
+                                        'The vat is clear of any debris.'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
-                ), // end Column
-              ), // end Padding
-            ), // end ConstrainedBox
-          ); // end SingleChildScrollView
-        }),
-        floatingActionButton: SizedBox(
-          width: MediaQuery.of(context).size.width - 32,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GlassFloatingActionButton.extended(
-                tint: GlassButtonTint.negative,
-                heroTag: 'cancel',
-                onPressed: () => Navigator.of(context).pop(false),
-                label: 'Cancel',
-                icon: Icon(PhosphorIcons.x()),
-                scale: 1.2,
-                iconAfterLabel: false,
+                ),
               ),
-              GlassFloatingActionButton.extended(
-                tint: GlassButtonTint.positive,
-                heroTag: 'start',
-                onPressed: () => Navigator.of(context).pop(true),
-                label: 'Start Print',
-                icon: Icon(PhosphorIcons.play()),
-                scale: 1.2,
-                iconAfterLabel: true,
+
+              const SizedBox(height: 16),
+
+              // ── Action buttons ────────────────────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: GlassButton(
+                      tint: GlassButtonTint.negative,
+                      onPressed: () => Navigator.of(context).pop(false),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(PhosphorIcons.x(), size: 20),
+                          const SizedBox(width: 10),
+                          const Text('Cancel', style: TextStyle(fontSize: 20)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: GlassButton(
+                      tint: GlassButtonTint.positive,
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Start Print',
+                              style: TextStyle(fontSize: 20)),
+                          const SizedBox(width: 10),
+                          Icon(PhosphorIcons.play(), size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }
 
-  Widget _buildChecklistItem(BuildContext context, String text) {
+  Widget _buildStatRow(
+    BuildContext context, {
+    required Widget icon,
+    required String label,
+    required String value,
+    required Color primary,
+  }) {
     return Row(
       children: [
-        Icon(
-          PhosphorIcons.checkCircle(),
-          size: 22,
-          color: Colors.green.shade400,
+        IconTheme(
+          data: IconThemeData(
+            size: 18,
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
+          child: icon,
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
-            text,
+            label,
             style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey.shade300,
-              height: 1.3,
+              fontSize: 15,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
             ),
           ),
         ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: primary,
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildChecklistItem(BuildContext context, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Colors.green.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            PhosphorIconsFill.checkCircle,
+            size: 20,
+            color: Colors.green.shade400,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.85),
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
