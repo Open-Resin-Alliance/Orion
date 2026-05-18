@@ -48,6 +48,12 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   double _startingExposure = 1.0; // seconds
   double _exposureIncrement = 0.2; // seconds
 
+  int _currentTestPiecesCount() {
+    final count =
+        _selectedModel?.testPiecesCount ?? _selectedModel?.models ?? 6;
+    return count > 0 ? count : 6;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -556,7 +562,9 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     _log.info(
         'Starting calibration: model=${_selectedModel?.name} (id=${_selectedModel?.id}), resin=${_selectedResin?.name}, start=$_startingExposure, increment=$_exposureIncrement');
 
-    // Build a human-readable sequence of exposures for each of the six test pieces
+    final testPiecesCount = _currentTestPiecesCount();
+
+    // Build a human-readable sequence of exposures for the selected model's piece count
     // Show unified pre-calibration overlay with info and checklist
     final confirmed = await Navigator.of(context).push<bool>(
       PageRouteBuilder(
@@ -576,6 +584,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
           startingExposure: _startingExposure,
           exposureIncrement: _exposureIncrement,
           calibrationModelId: _selectedModel!.id,
+          testPiecesCount: testPiecesCount,
         ),
       ),
     );
@@ -617,7 +626,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
 
       // Calculate exposure times
       final exposureTimes = List.generate(
-        6,
+        testPiecesCount,
         (i) => _startingExposure + (_exposureIncrement * i),
       );
 
@@ -999,6 +1008,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
   final double startingExposure;
   final double exposureIncrement;
   final int calibrationModelId;
+  final int testPiecesCount;
 
   const _PreCalibrationOverlay({
     required this.calibrationModelName,
@@ -1006,6 +1016,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
     required this.startingExposure,
     required this.exposureIncrement,
     required this.calibrationModelId,
+    required this.testPiecesCount,
   });
 
   @override
@@ -1082,20 +1093,20 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               Text(
                                 'WHAT WILL HAPPEN',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurface
-                                      .withValues(alpha: 0.45),
+                                      .withValues(alpha: 0.55),
                                   letterSpacing: 1.2,
                                 ),
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Six test pieces will be printed back-to-back, each with a slightly longer exposure than the last.',
+                                '$testPiecesCount test pieces will be printed back-to-back, each with a slightly longer exposure than the last.',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurface
@@ -1127,7 +1138,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
                                 icon: Icon(PhosphorIcons.arrowLineRight()),
                                 label: 'Final exposure',
                                 value:
-                                    '${(startingExposure + exposureIncrement * 5).toStringAsFixed(1)} s',
+                                    '${(startingExposure + exposureIncrement * (testPiecesCount - 1)).toStringAsFixed(1)} s',
                                 primary: primary,
                               ),
                             ],
@@ -1151,12 +1162,12 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               Text(
                                 'PRE-FLIGHT CHECK',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurface
-                                      .withValues(alpha: 0.45),
+                                      .withValues(alpha: 0.55),
                                   letterSpacing: 1.2,
                                 ),
                               ),

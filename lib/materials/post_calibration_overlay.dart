@@ -86,7 +86,6 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
   Widget build(BuildContext context) {
     final isGlass =
         Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
-    final primary = Theme.of(context).colorScheme.primary;
 
     return GlassApp(
       child: Scaffold(
@@ -95,86 +94,140 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             : Theme.of(context).colorScheme.surface,
         body: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Header ──────────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _currentStep == 0
-                        ? PhosphorIcons.checkCircle()
-                        : PhosphorIconsFill.magnifyingGlass,
-                    size: 24,
-                    color: _currentStep == 0 ? Colors.green.shade400 : primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    _currentStep == 0
-                        ? 'Calibration Complete'
-                        : 'Evaluate Test Print',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          _currentStep == 0 ? Colors.green.shade400 : primary,
-                    ),
-                  ),
-                ],
-              ),
-              if (widget.resinProfileName != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _currentStep == 0 ? '' : widget.resinProfileName!,
-                  style: TextStyle(
-                    fontSize: _currentStep == 0 ? 4 : 18,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.5),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-
-              const SizedBox(height: 12),
-
-              // ── Body ─────────────────────────────────────────────────
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
-                  switchInCurve: Curves.easeInOut,
-                  switchOutCurve: Curves.easeInOut,
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.05, 0),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: _currentStep == 0
-                      ? _buildQrCodeView()
-                      : _buildEvaluationView(),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ── Action buttons ────────────────────────────────────────
-              _buildActionButtons(context),
-            ],
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            child: _currentStep == 0
+                ? _buildStep0Content(context)
+                : _buildStep1Content(context),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStep0Content(BuildContext context) {
+    return Column(
+      key: const ValueKey('step0'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Header ──────────────────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              PhosphorIcons.checkCircle(),
+              size: 24,
+              color: Colors.green.shade400,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Calibration Complete',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade400,
+              ),
+            ),
+          ],
+        ),
+        if (widget.resinProfileName != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            '',
+            style: TextStyle(
+              fontSize: 4,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+
+        const SizedBox(height: 12),
+
+        // ── Body ─────────────────────────────────────────────────
+        Expanded(
+          child: _buildQrCodeView(),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Action buttons ────────────────────────────────────────
+        _buildActionButtons(context),
+      ],
+    );
+  }
+
+  Widget _buildStep1Content(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Column(
+      key: const ValueKey('step1'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Header ──────────────────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              PhosphorIconsFill.magnifyingGlass,
+              size: 24,
+              color: primary,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Evaluate Test Print',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: primary,
+              ),
+            ),
+          ],
+        ),
+        if (widget.resinProfileName != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            widget.resinProfileName!,
+            style: TextStyle(
+              fontSize: 18,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+
+        const SizedBox(height: 12),
+
+        // ── Body ─────────────────────────────────────────────────
+        Expanded(
+          child: _buildEvaluationView(),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Action buttons ────────────────────────────────────────
+        _buildActionButtons(context),
+      ],
     );
   }
 
@@ -371,39 +424,41 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 outlined: true,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'EVALUATION GUIDE',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: onSurface.withValues(alpha: 0.45),
-                          letterSpacing: 1.2,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'EVALUATION GUIDE',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: onSurface.withValues(alpha: 0.55),
+                            letterSpacing: 1.2,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Use the evaluation guide to correctly identify the optimal exposure from your calibration print.',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: onSurface.withValues(alpha: 0.75),
-                          height: 1.55,
+                        const SizedBox(height: 16),
+                        Text(
+                          'Use the evaluation guide to correctly identify the optimal exposure from your calibration print.',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: onSurface.withValues(alpha: 0.75),
+                            height: 1.55,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      _buildGuideItem(
-                        context,
-                        'Scan the QR code with your phone to open the ${widget.calibrationModelName} evaluation guide.',
-                      ),
-                      const SizedBox(height: 10),
-                      _buildGuideItem(
-                        context,
-                        'Read it thoroughly before selecting the optimal exposure on the next screen.',
-                      ),
-                    ],
+                        const SizedBox(height: 20),
+                        _buildGuideItem(
+                          context,
+                          'Scan the QR code with your phone to open the ${widget.calibrationModelName} evaluation guide.',
+                        ),
+                        const SizedBox(height: 10),
+                        _buildGuideItem(
+                          context,
+                          'Read it thoroughly before selecting the optimal exposure on the next screen.',
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

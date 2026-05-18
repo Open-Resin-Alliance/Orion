@@ -18,6 +18,7 @@ class CalibrationModel {
   final int id;
   final String name;
   final int models;
+  final int testPiecesCount;
   final int? resinRequired;
   final int? height;
   final String? evaluationGuideUrl;
@@ -26,6 +27,7 @@ class CalibrationModel {
     required this.id,
     required this.name,
     required this.models,
+    required this.testPiecesCount,
     this.resinRequired,
     this.height,
     this.evaluationGuideUrl,
@@ -33,10 +35,28 @@ class CalibrationModel {
 
   factory CalibrationModel.fromJson(Map<String, dynamic> json) {
     final info = json['info'] as Map<String, dynamic>?;
+
+    int? _toInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value);
+      return null;
+    }
+
+    final parsedModels = _toInt(json['models']) ?? 0;
+    final parsedTestPieces =
+        _toInt(json['testPiecesCount']) ?? _toInt(info?['testPiecesCount']);
+
+    // Fallback chain: explicit testPiecesCount -> models -> legacy default (6).
+    final effectiveTestPieces = (parsedTestPieces ?? parsedModels) > 0
+        ? (parsedTestPieces ?? parsedModels)
+        : 6;
+
     return CalibrationModel(
-      id: json['id'] as int,
+      id: _toInt(json['id']) ?? 0,
       name: json['name'] as String,
-      models: json['models'] as int,
+      models: parsedModels,
+      testPiecesCount: effectiveTestPieces,
       resinRequired: info?['resinRequired'] as int?,
       height: info?['height'] as int?,
       evaluationGuideUrl: info?['evaluationGuideUrl'] as String?,
