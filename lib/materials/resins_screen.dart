@@ -25,6 +25,7 @@ import 'package:orion/glasser/glasser.dart';
 // error dialog util removed (delete flow not present); import kept out for now
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class ResinsScreen extends StatefulWidget {
   const ResinsScreen({super.key});
@@ -215,7 +216,10 @@ class ResinsScreenState extends State<ResinsScreen> {
         : Theme.of(context).dividerColor.withValues(alpha: 0.35);
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final fillColor = isDefault
+    final isGlassMode =
+        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+
+    final fillColor = isDefault && !isGlassMode
         ? Colors.green.shade400.withValues(alpha: 0.08)
         : (isDarkMode
             ? Color.alphaBlend(
@@ -224,10 +228,14 @@ class ResinsScreenState extends State<ResinsScreen> {
               )
             : null);
 
+    final accentColorForCard =
+        isDefault && isGlassMode ? Colors.green.shade400 : null;
+
     return GlassCard(
       elevation: isDefault ? 2 : 1,
       outlined: false,
       color: fillColor,
+      accentColor: accentColorForCard,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _onSelectResin(resin, provider),
