@@ -306,7 +306,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                     const Expanded(
                       child: AutoSizeText(
                         'Return to Home',
-                        style: TextStyle(fontSize: 26),
+                        style: TextStyle(fontSize: 24),
                         minFontSize: 20,
                         maxLines: 1,
                         overflowReplacement: Padding(
@@ -314,7 +314,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                           child: Center(
                             child: Text(
                               'Home',
-                              style: TextStyle(fontSize: 26),
+                              style: TextStyle(fontSize: 24),
                             ),
                           ),
                         ),
@@ -354,7 +354,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                       child: AutoSizeText(
                         'Emergency Stop',
                         style: TextStyle(
-                          fontSize: 26,
+                          fontSize: 24,
                           color: _apiErrorState
                               ? null
                               : Theme.of(context).colorScheme.error,
@@ -367,7 +367,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                             child: Text(
                               'Stop',
                               style: TextStyle(
-                                fontSize: 26,
+                                fontSize: 24,
                                 color: _apiErrorState
                                     ? null
                                     : Theme.of(context).colorScheme.error,
@@ -448,7 +448,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                                 Expanded(
                                   child: AutoSizeText(
                                     topLabel,
-                                    style: const TextStyle(fontSize: 26),
+                                    style: const TextStyle(fontSize: 24),
                                     minFontSize: 20,
                                     maxLines: 1,
                                     textAlign: TextAlign.center,
@@ -460,7 +460,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                                           topLabel == 'Move to Floor'
                                               ? 'Floor'
                                               : 'Top',
-                                          style: const TextStyle(fontSize: 26),
+                                          style: const TextStyle(fontSize: 24),
                                         ),
                                       ),
                                     ),
