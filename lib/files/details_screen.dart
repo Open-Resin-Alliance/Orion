@@ -170,11 +170,10 @@ class DetailScreenState extends State<DetailScreen> {
             subdirectory: widget.fileSubdirectory,
             fileName: widget.fileName,
             file: OrionApiFile(
-              path: widget.fileSubdirectory == ''
-                  ? widget.fileName
-                  : '${widget.fileSubdirectory}/${widget.fileName}',
-              name: widget.fileName,
-              parentPath: widget.fileSubdirectory,
+              path: meta.fileData.path,
+              name: meta.fileData.name,
+              parentPath: meta.fileData.parentPath,
+              lastModified: meta.fileData.lastModified,
             ),
             size: 'Large',
           );

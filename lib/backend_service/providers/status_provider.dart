@@ -582,7 +582,7 @@ class StatusProvider extends ChangeNotifier {
                   path: path,
                   name: fileData.name,
                   parentPath: subdir,
-                  lastModified: 0,
+                  lastModified: fileData.lastModified ?? 0,
                   locationCategory: fileData.locationCategory,
                 );
                 await _fetchAndHandleThumbnail(
@@ -1121,7 +1121,7 @@ class StatusProvider extends ChangeNotifier {
               path: path,
               name: fileData.name,
               parentPath: subdir,
-              lastModified: 0,
+              lastModified: fileData.lastModified ?? 0,
               locationCategory: fileData.locationCategory,
             );
             await _fetchAndHandleThumbnail(
