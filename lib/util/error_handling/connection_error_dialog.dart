@@ -101,33 +101,6 @@ class _ConnectionErrorDialogContentState
   Widget _buildDialogActions({
     required VoidCallback retryNow,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (isDark) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          GlassButton(
-            tint: GlassButtonTint.warn,
-            onPressed: retryNow,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 60),
-            ),
-            child: const Text('Retry now'),
-          ),
-          const SizedBox(height: 10),
-          GlassButton(
-            tint: GlassButtonTint.neutral,
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 60),
-            ),
-            child: const Text('Close'),
-          ),
-        ],
-      );
-    }
-
     return Row(
       children: [
         Expanded(
