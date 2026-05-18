@@ -124,7 +124,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         padding: EdgeInsets.only(
           left: OrionSpacing.screenHorizontal - 4.0,
           right: OrionSpacing.screenHorizontal - 4.0,
-          top: OrionSpacing.screenTop,
+          top: OrionSpacing.settingsScreenPaddingTightTop.top,
           bottom: OrionSpacing.screenBottomNavClearance,
         ),
         child: Column(
@@ -217,34 +217,38 @@ class CalibrationScreenState extends State<CalibrationScreen> {
             ),
             const SizedBox(height: 16),
             // Bottom Buttons: Reset | Start
-            Row(
-              children: [
-                Expanded(
-                  flex: 9,
-                  child: GlassButton(
-                    tint: GlassButtonTint.negative,
-                    onPressed: () => _resetValues(resinsProvider),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 65),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 9,
+                    child: GlassButton(
+                      tint: GlassButtonTint.negative,
+                      onPressed: () => _resetValues(resinsProvider),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child:
+                          const Text('Reset', style: TextStyle(fontSize: 22)),
                     ),
-                    child: const Text('Reset', style: TextStyle(fontSize: 22)),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 11,
-                  child: GlassButton(
-                    tint: GlassButtonTint.positive,
-                    onPressed:
-                        _selectedResin == null ? null : _startCalibration,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 65),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 11,
+                    child: GlassButton(
+                      tint: GlassButtonTint.positive,
+                      onPressed:
+                          _selectedResin == null ? null : _startCalibration,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child: const Text('Start Calibration',
+                          style: TextStyle(fontSize: 22)),
                     ),
-                    child: const Text('Start Calibration',
-                        style: TextStyle(fontSize: 22)),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

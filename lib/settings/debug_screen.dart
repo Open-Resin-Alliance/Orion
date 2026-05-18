@@ -324,7 +324,7 @@ class DebugScreenState extends State<DebugScreen> {
 
     return Scaffold(
       body: Padding(
-        padding: OrionSpacing.settingsScreenPadding,
+        padding: OrionSpacing.settingsScreenPaddingTightTop,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

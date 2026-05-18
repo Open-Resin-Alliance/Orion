@@ -525,9 +525,9 @@ class UpdateScreenState extends State<UpdateScreen>
     return Scaffold(
       body: Padding(
         padding: EdgeInsets.only(
-          left: OrionSpacing.settingsScreenHorizontal,
-          right: OrionSpacing.settingsScreenHorizontal,
-          top: OrionSpacing.screenTop,
+          left: OrionSpacing.settingsScreenPaddingTightTop.left,
+          right: OrionSpacing.settingsScreenPaddingTightTop.right,
+          top: OrionSpacing.settingsScreenPaddingTightTop.top,
           bottom: OrionSpacing.screenBottomNavClearance,
         ),
         child: Row(

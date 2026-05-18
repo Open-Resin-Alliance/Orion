@@ -66,7 +66,7 @@ class ResinsScreenState extends State<ResinsScreen> {
             padding: EdgeInsets.only(
               left: OrionSpacing.screenHorizontal - 4.0,
               right: OrionSpacing.screenHorizontal - 4.0,
-              top: OrionSpacing.screenTop,
+              top: OrionSpacing.settingsScreenPaddingTightTop.top,
             ),
             child: Column(
               children: [
@@ -240,7 +240,10 @@ class ResinsScreenState extends State<ResinsScreen> {
             ),
           ),
           child: Padding(
-            padding: OrionSpacing.compactCardPadding,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
+            ),
             child: Row(
               children: [
                 if (isDefault) ...[

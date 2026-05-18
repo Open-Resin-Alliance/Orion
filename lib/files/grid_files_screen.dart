@@ -874,6 +874,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
   /// Build content using LocalFilesProvider (filesystem-based)
   Widget _buildLocalFilesContent(BuildContext context) {
+    final isGlassTheme = context.watch<ThemeProvider>().isGlassTheme;
+
     return Consumer<LocalFilesProvider>(
       builder: (context, provider, child) {
         // If the provider reports an error at any time, show the dialog once
@@ -895,10 +897,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final crossCount =
             MediaQuery.of(context).orientation == Orientation.landscape ? 4 : 2;
         return Padding(
-          padding: const EdgeInsets.only(
-              left: OrionSpacing.gridScreenHorizontal,
-              right: OrionSpacing.gridScreenHorizontal,
-              bottom: 10),
+          padding: EdgeInsets.only(
+            left: OrionSpacing.gridScreenHorizontal,
+            right: OrionSpacing.gridScreenHorizontal,
+            top: isGlassTheme ? 1.0 : 0.0,
+            bottom: 10,
+          ),
           child: GridView.builder(
             controller: _scrollController,
             cacheExtent: 300,
@@ -924,6 +928,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
   /// Build content using FilesProvider (API-based)
   Widget _buildApiFilesContent(BuildContext context) {
+    final isGlassTheme = context.watch<ThemeProvider>().isGlassTheme;
+
     return Consumer<FilesProvider>(
       builder: (context, provider, child) {
         // If the provider reports an error at any time, show the dialog once
@@ -947,10 +953,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final crossCount =
             MediaQuery.of(context).orientation == Orientation.landscape ? 4 : 2;
         return Padding(
-          padding: const EdgeInsets.only(
-              left: OrionSpacing.gridScreenHorizontal,
-              right: OrionSpacing.gridScreenHorizontal,
-              bottom: 10),
+          padding: EdgeInsets.only(
+            left: OrionSpacing.gridScreenHorizontal,
+            right: OrionSpacing.gridScreenHorizontal,
+            top: isGlassTheme ? 1.0 : 0.0,
+            bottom: 10,
+          ),
           child: GridView.builder(
             controller: _scrollController,
             cacheExtent: 300,

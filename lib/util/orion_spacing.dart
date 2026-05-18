@@ -64,6 +64,15 @@ abstract final class OrionSpacing {
     horizontal: settingsScreenHorizontal,
   );
 
+  // For screens rendered directly under OrionAppBar, a tiny top offset keeps
+  // content from feeling visually glued to the bar while remaining tighter
+  // than the regular `screenTop` spacing.
+  static const EdgeInsets settingsScreenPaddingTightTop = EdgeInsets.only(
+    left: settingsScreenHorizontal,
+    right: settingsScreenHorizontal,
+    top: 1.0,
+  );
+
   static const double listGap = 8.0;
   static const double compactListGap = 4.0;
 

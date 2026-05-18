@@ -93,6 +93,24 @@ class GlassCard extends StatelessWidget {
       // than adding a separate outer border which looks visually detached.
       ShapeBorder? effectiveShape = shape;
 
+      // Keep dark-mode card corners consistent with GlassButton when callers
+      // don't provide an explicit shape.
+      if (isDarkMode && effectiveShape == null) {
+        final baseRounded = RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(glassCornerRadius),
+        );
+        if (outlined) {
+          effectiveShape = baseRounded.copyWith(
+            side: BorderSide(
+              color: theme.colorScheme.primary.withValues(alpha: 0.18),
+              width: 1.2,
+            ),
+          );
+        } else {
+          effectiveShape = baseRounded;
+        }
+      }
+
       if (accentColor != null) {
         // Determine a sensible border radius to preserve the caller's shape
         // when possible, otherwise fall back to the standard corner radius.
@@ -204,8 +222,11 @@ class GlassCard extends StatelessWidget {
         );
       }
 
-      final card = outlined
-          ? Card.outlined(
+      final bool useExplicitDarkOutlinedRendering =
+          outlined && isDarkMode && accentColor == null;
+
+      final card = useExplicitDarkOutlinedRendering
+          ? Card(
               margin: margin ?? const EdgeInsets.all(4.0),
               color: effectiveCardColor,
               elevation: elevation,
@@ -213,14 +234,23 @@ class GlassCard extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               child: cardInner,
             )
-          : Card(
-              margin: margin ?? const EdgeInsets.all(4.0),
-              color: effectiveCardColor,
-              elevation: elevation,
-              shape: effectiveShape,
-              clipBehavior: Clip.antiAlias,
-              child: cardInner,
-            );
+          : outlined
+              ? Card.outlined(
+                  margin: margin ?? const EdgeInsets.all(4.0),
+                  color: effectiveCardColor,
+                  elevation: elevation,
+                  shape: effectiveShape,
+                  clipBehavior: Clip.antiAlias,
+                  child: cardInner,
+                )
+              : Card(
+                  margin: margin ?? const EdgeInsets.all(4.0),
+                  color: effectiveCardColor,
+                  elevation: elevation,
+                  shape: effectiveShape,
+                  clipBehavior: Clip.antiAlias,
+                  child: cardInner,
+                );
 
       return card;
     }
