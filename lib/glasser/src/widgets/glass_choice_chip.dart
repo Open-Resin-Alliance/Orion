@@ -76,10 +76,12 @@ class GlassChoiceChip extends StatelessWidget {
 
       final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
       final textStyle = TextStyle(
+        fontFamily: 'AtkinsonHyperlegible',
         color: selected
             ? primary
             : theme.colorScheme.onSurface.withValues(alpha: 0.85),
         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        fontSize: 22,
       );
 
       return SizedBox.expand(
