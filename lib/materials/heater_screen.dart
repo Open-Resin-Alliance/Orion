@@ -24,6 +24,7 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class HeaterScreen extends StatefulWidget {
@@ -201,7 +202,7 @@ class HeaterScreenState extends State<HeaterScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 65),
               ),
-              child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+              child: const Text('Cancel'),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -209,7 +210,7 @@ class HeaterScreenState extends State<HeaterScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 65),
               ),
-              child: const Text('Start', style: TextStyle(fontSize: 22)),
+              child: const Text('Start'),
             ),
           ],
         ),
@@ -232,7 +233,10 @@ class HeaterScreenState extends State<HeaterScreen>
       backgroundColor: Colors.transparent,
       body: Padding(
         padding: const EdgeInsets.only(
-            left: 16.0, right: 16.0, top: 8.0, bottom: 16.0),
+            left: OrionSpacing.screenHorizontal,
+            right: OrionSpacing.screenHorizontal,
+            top: OrionSpacing.screenTop,
+            bottom: 16.0),
         child: isLandscape
             ? buildLandscapeLayout(context,
                 manual: manual,

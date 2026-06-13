@@ -16,9 +16,13 @@ class UpdateManager extends ChangeNotifier {
   Timer? _debounceTimer;
   bool _suppressNotifications = false;
   bool _promptAcknowledgedThisSession = false;
+  static const String _remindLaterKeyField = 'remindLaterKey';
 
-  UpdateManager(this.orionProvider, this.athenaProvider) {
-    _startTimer();
+  UpdateManager(this.orionProvider, this.athenaProvider,
+      {bool enableAutoChecks = true}) {
+    if (enableAutoChecks) {
+      _startTimer();
+    }
     OrionConfig.addChangeListener(_onConfigChanged);
   }
 
@@ -101,13 +105,72 @@ class UpdateManager extends ChangeNotifier {
     final remindTime = DateTime.now().add(const Duration(hours: 24));
     _config.setString('remindLater', remindTime.toIso8601String(),
         category: 'updates');
+    _config.setString(_remindLaterKeyField, _currentUpdateNotificationKey(),
+        category: 'updates');
     notifyListeners();
+  }
+
+  String _currentUpdateNotificationKey() {
+    final parts = <String>[];
+
+    // Orion component
+    var orionCurrent = orionProvider.currentVersion.trim();
+    var orionLatest = orionProvider.latestVersion.trim();
+    var orionRelease = orionProvider.release.trim();
+    final persistedOrionCurrent =
+        _config.getString('orion.current', category: 'updates').trim();
+    final persistedOrionLatest =
+        _config.getString('orion.latest', category: 'updates').trim();
+    final persistedOrionRelease =
+        _config.getString('orion.release', category: 'updates').trim();
+
+    final shouldIncludeOrion = orionProvider.isUpdateAvailable ||
+        (orionCurrent.isEmpty &&
+            orionLatest.isEmpty &&
+            persistedOrionCurrent.isNotEmpty &&
+            persistedOrionLatest.isNotEmpty);
+
+    if (shouldIncludeOrion) {
+      if (orionCurrent.isEmpty) orionCurrent = persistedOrionCurrent;
+      if (orionLatest.isEmpty) orionLatest = persistedOrionLatest;
+      if (orionRelease.isEmpty) orionRelease = persistedOrionRelease;
+      parts.add(
+          'orion:${orionRelease.isNotEmpty ? orionRelease : '-'}:${orionCurrent.isNotEmpty ? orionCurrent : '-'}>${orionLatest.isNotEmpty ? orionLatest : '-'}');
+    }
+
+    // Athena component
+    var athenaCurrent = athenaProvider.currentVersion.trim();
+    var athenaLatest = athenaProvider.latestVersion.trim();
+    var athenaChannel = athenaProvider.channel.trim();
+    final persistedAthenaCurrent =
+        _config.getString('athena.current', category: 'updates').trim();
+    final persistedAthenaLatest =
+        _config.getString('athena.latest', category: 'updates').trim();
+    final persistedAthenaChannel =
+        _config.getString('athena.channel', category: 'updates').trim();
+
+    final shouldIncludeAthena = athenaProvider.shouldNotify ||
+        (athenaCurrent.isEmpty &&
+            athenaLatest.isEmpty &&
+            persistedAthenaCurrent.isNotEmpty &&
+            persistedAthenaLatest.isNotEmpty);
+
+    if (shouldIncludeAthena) {
+      if (athenaCurrent.isEmpty) athenaCurrent = persistedAthenaCurrent;
+      if (athenaLatest.isEmpty) athenaLatest = persistedAthenaLatest;
+      if (athenaChannel.isEmpty) athenaChannel = persistedAthenaChannel;
+      parts.add(
+          'athena:${athenaChannel.isNotEmpty ? athenaChannel : '-'}:${athenaCurrent.isNotEmpty ? athenaCurrent : '-'}>${athenaLatest.isNotEmpty ? athenaLatest : '-'}');
+    }
+
+    if (parts.isEmpty) return 'none';
+    return parts.join('|');
   }
 
   /// Clear pending update flags and suppress notifications.
   /// Call this before starting an update to ensure stale notifications
   /// don't resurface if the app restarts during the update process.
-  /// 
+  ///
   /// [components] specifies which component(s) to clear. Defaults to all.
   void clearPendingUpdates(
       {Set<UpdateComponent> components = const {
@@ -132,6 +195,8 @@ class UpdateManager extends ChangeNotifier {
     if (components.contains(UpdateComponent.orion) &&
         components.contains(UpdateComponent.athena)) {
       _config.setFlag('available', false, category: 'updates');
+      _config.setString('remindLater', '', category: 'updates');
+      _config.setString(_remindLaterKeyField, '', category: 'updates');
     }
 
     notifyListeners();
@@ -179,7 +244,12 @@ class UpdateManager extends ChangeNotifier {
     if (remindStr.isNotEmpty) {
       final remindTime = DateTime.tryParse(remindStr);
       if (remindTime != null && DateTime.now().isBefore(remindTime)) {
-        return false;
+        final remindKey =
+            _config.getString(_remindLaterKeyField, category: 'updates');
+        // If the key matches, this is the same update bundle and snooze applies.
+        if (remindKey == _currentUpdateNotificationKey()) {
+          return false;
+        }
       }
     }
     return true;

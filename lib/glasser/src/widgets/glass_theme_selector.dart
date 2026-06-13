@@ -18,6 +18,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:orion/util/orion_config.dart';
 import '../../../util/providers/theme_provider.dart';
 import '../constants.dart';
 import '../glass_effect.dart';
@@ -54,54 +55,76 @@ class GlassThemeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final config = OrionConfig();
+    final disableLightMode =
+        config.getFlag('disableLightMode', category: 'vendor');
+    final disableDarkMode =
+        config.getFlag('disableDarkMode', category: 'vendor');
+    final disableGlassMode =
+        config.getFlag('disableGlassMode', category: 'vendor');
+
+    final List<Widget> modeCards = [];
+
+    if (!disableLightMode) {
+      modeCards.add(
+        Expanded(
+          child: _ThemeCard(
+            mode: OrionThemeMode.light,
+            isSelected: selectedTheme == OrionThemeMode.light,
+            onTap: () => onThemeChanged(OrionThemeMode.light),
+            icon: PhosphorIcons.sun(),
+            label: 'Light',
+            primaryColor: Colors.blue,
+            backgroundColor: Colors.white,
+            textColor: Colors.black87,
+          ),
+        ),
+      );
+    }
+
+    if (!disableDarkMode) {
+      if (modeCards.isNotEmpty) modeCards.add(const SizedBox(width: 12));
+      modeCards.add(
+        Expanded(
+          child: _ThemeCard(
+            mode: OrionThemeMode.dark,
+            isSelected: selectedTheme == OrionThemeMode.dark,
+            onTap: () => onThemeChanged(OrionThemeMode.dark),
+            icon: PhosphorIcons.moonStars(),
+            label: 'Dark',
+            primaryColor: Colors.blue,
+            backgroundColor: const Color(0xFF1E1E1E),
+            textColor: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    if (!disableGlassMode) {
+      if (modeCards.isNotEmpty) modeCards.add(const SizedBox(width: 12));
+      modeCards.add(
+        Expanded(
+          child: _ThemeCard(
+            mode: OrionThemeMode.glass,
+            isSelected: selectedTheme == OrionThemeMode.glass,
+            onTap: () => onThemeChanged(OrionThemeMode.glass),
+            icon: PhosphorIcons.drop(),
+            label: 'Glass',
+            primaryColor: Colors.white,
+            backgroundColor: Colors.transparent,
+            textColor: Colors.white,
+            isGlass: true,
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _ThemeCard(
-                  mode: OrionThemeMode.light,
-                  isSelected: selectedTheme == OrionThemeMode.light,
-                  onTap: () => onThemeChanged(OrionThemeMode.light),
-                  icon: PhosphorIcons.sun(),
-                  label: 'Light',
-                  primaryColor: Colors.blue,
-                  backgroundColor: Colors.white,
-                  textColor: Colors.black87,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ThemeCard(
-                  mode: OrionThemeMode.dark,
-                  isSelected: selectedTheme == OrionThemeMode.dark,
-                  onTap: () => onThemeChanged(OrionThemeMode.dark),
-                  icon: PhosphorIcons.moonStars(),
-                  label: 'Dark',
-                  primaryColor: Colors.blue,
-                  backgroundColor: const Color(0xFF1E1E1E),
-                  textColor: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ThemeCard(
-                  mode: OrionThemeMode.glass,
-                  isSelected: selectedTheme == OrionThemeMode.glass,
-                  onTap: () => onThemeChanged(OrionThemeMode.glass),
-                  icon: PhosphorIcons.drop(),
-                  label: 'Glass',
-                  primaryColor: Colors.white,
-                  backgroundColor: Colors.transparent,
-                  textColor: Colors.white,
-                  isGlass: true,
-                ),
-              ),
-            ],
-          ),
+          if (modeCards.isNotEmpty) Row(children: modeCards),
         ],
       ),
     );

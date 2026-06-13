@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:fading_edge_scrollview/fading_edge_scrollview.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:orion/util/install_locator.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
@@ -323,7 +324,7 @@ class DebugScreenState extends State<DebugScreen> {
 
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0),
+        padding: OrionSpacing.settingsScreenPaddingTightTop,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

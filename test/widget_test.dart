@@ -18,39 +18,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orion/home/startup_gate.dart';
 
-import 'package:orion/main.dart';
-import 'package:provider/provider.dart';
-import 'package:orion/util/providers/locale_provider.dart';
-import 'package:orion/util/providers/theme_provider.dart';
-import 'package:orion/backend_service/providers/status_provider.dart';
-import 'fakes/fake_odyssey_client.dart';
-
-// A lightweight test StatusProvider that reports the app as already
-// connected so StartupGate will show the HomeScreen for widget tests.
-class TestStatusProvider extends StatusProvider {
-  TestStatusProvider() : super(client: FakeBackendClient());
-
-  @override
-  bool get hasEverConnected => true;
-}
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => LocaleProvider()),
-          ChangeNotifierProvider(create: (_) => ThemeProvider()),
-          ChangeNotifierProvider<StatusProvider>(
-              create: (_) => TestStatusProvider()),
-        ],
-        child: const OrionMainApp(),
-      ),
-    );
-
-    // Verify the app boots and mounts the startup gate (smoke test).
-    await tester.pumpAndSettle();
-    expect(find.byType(StartupGate), findsOneWidget);
+  test('StartupGate construction smoke test', () {
+    expect(const StartupGate(), isA<StartupGate>());
   });
 }

@@ -19,7 +19,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
-import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/home/onboarding_screen.dart';
 import 'package:orion/home/home_screen.dart';
 import 'package:orion/home/startup_screen.dart';
@@ -38,6 +39,7 @@ class StartupGate extends StatefulWidget {
 
 class _StartupGateState extends State<StartupGate> {
   late StatusProvider _statusProv;
+  final BackendService _backendService = BackendService();
   bool _isAthena = false;
   bool _isSimulated = false;
   bool _athenaReady = false;
@@ -72,7 +74,9 @@ class _StartupGateState extends State<StartupGate> {
       final cfg = OrionConfig();
       _isSimulated = cfg.getFlag('simulated', category: 'developer') ||
           cfg.getFlag('simulated', category: 'advanced');
-      _isAthena = cfg.isNanoDlpMode() &&
+      final supportsAthena = _backendService
+          .supportsCapability(BackendCapabilities.supportsAthena);
+      _isAthena = supportsAthena &&
           cfg.getMachineModelName().toLowerCase().contains('athena');
     } catch (_) {
       _isAthena = false;
@@ -110,22 +114,13 @@ class _StartupGateState extends State<StartupGate> {
     // When we see the backend become available, kick off Athena IoT checks
     try {
       final prov = Provider.of<StatusProvider>(context, listen: false);
-      if (_isAthena && !_isSimulated && !_athenaReady && prov.hasEverConnected) {
+      if (_isAthena &&
+          !_isSimulated &&
+          !_athenaReady &&
+          prov.hasEverConnected) {
         _ensureAthenaReady();
       }
     } catch (_) {}
-  }
-
-  String _resolveNanodlpBaseUrl() {
-    try {
-      final cfg = OrionConfig();
-      final base = cfg.getString('nanodlp.base_url', category: 'advanced');
-      final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
-      final custom = cfg.getString('customUrl', category: 'advanced');
-      if (base.isNotEmpty) return base;
-      if (useCustom && custom.isNotEmpty) return custom;
-    } catch (_) {}
-    return 'http://localhost';
   }
 
   Future<void> _ensureAthenaReady() async {
@@ -133,14 +128,12 @@ class _StartupGateState extends State<StartupGate> {
     if (_checkingAthena) return;
     _checkingAthena = true;
     try {
-      final base = _resolveNanodlpBaseUrl();
-      final client =
-          AthenaIotClient(base, requestTimeout: const Duration(seconds: 3));
       // Retry a few times with backoff
       const maxAttempts = 6;
       for (var attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-          final model = await client.getPrinterDataModel();
+          final model = await _backendService.getAthenaPrinterDataModel(
+              requestTimeout: const Duration(seconds: 3));
           if (model != null) {
             _athenaReady = true;
             if (mounted) setState(() {});
@@ -158,6 +151,7 @@ class _StartupGateState extends State<StartupGate> {
   @override
   void dispose() {
     try {
+      _backendService.dispose();
       _statusProv.removeListener(_onStatusChange);
       // Ensure notifications are unsuppressed when leaving startup
       Provider.of<UpdateManager>(context, listen: false).suppressNotifications =
@@ -173,7 +167,7 @@ class _StartupGateState extends State<StartupGate> {
 
     final requireAthenaReady = _isAthena && !_isSimulated;
     final backendReady =
-      prov.hasEverConnected && (!requireAthenaReady || _athenaReady);
+        prov.hasEverConnected && (!requireAthenaReady || _athenaReady);
     final isReadyToProceed =
         _animationsComplete && backendReady && _checkForUpdatesComplete;
 

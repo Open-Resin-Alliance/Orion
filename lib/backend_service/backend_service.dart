@@ -16,33 +16,70 @@
 */
 
 import 'dart:typed_data';
+import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_feature_flags.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_printer_data.dart';
+import 'package:orion/backend_service/domain/models.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_simulated_client.dart';
-import 'package:orion/backend_service/nanodlp/models/nano_import_request.dart';
 import 'package:orion/util/orion_config.dart';
 
 /// BackendService is a small façade that selects a concrete
 /// `BackendClient` implementation at runtime. This centralizes the
 /// point where an alternative backend implementation (different API)
 /// can be swapped in without changing providers or UI code.
+///
+/// As of Phase 0 refactoring, backends are registered via BackendRegistry
+/// and selected at runtime based on configuration, eliminating scattered
+/// type checks and direct client instantiation throughout the codebase.
 class BackendService implements BackendClient {
+  static final _log = Logger('BackendService');
+  static BackendService? _sharedInstance;
+  static bool _sharedListenerRegistered = false;
+
   BackendClient _delegate;
 
   /// Default constructor: picks the concrete implementation based on
   /// configuration (or defaults to the HTTP adapter). The selected
   /// delegate may be reloaded later by calling [reloadFromConfig].
-  BackendService({BackendClient? delegate})
-      : _delegate = delegate ?? _chooseFromConfig() {
-    _registerConfigListener();
+  ///
+  /// By default this returns a shared singleton instance to avoid repeatedly
+  /// constructing backend clients in call sites that invoke `BackendService()`
+  /// inside polling loops or one-shot helper calls.
+  factory BackendService({BackendClient? delegate}) {
+    // Explicit delegate injection should create an isolated instance.
+    if (delegate != null) {
+      return BackendService._internal(
+        delegate: delegate,
+        registerSharedConfigListener: false,
+      );
+    }
+
+    return _sharedInstance ??= BackendService._internal(
+      delegate: _chooseFromConfig(),
+      registerSharedConfigListener: true,
+    );
+  }
+
+  BackendService._internal({
+    BackendClient? delegate,
+    required bool registerSharedConfigListener,
+  }) : _delegate = delegate ?? _chooseFromConfig() {
+    if (registerSharedConfigListener) {
+      _registerConfigListener();
+    }
   }
 
   // Automatically reload the delegate when the on-disk config is updated.
   // We register a listener with OrionConfig so onboarding or settings
   // flows that call setString()/setFlag() cause the backend to re-evaluate.
   void _registerConfigListener() {
+    if (_sharedListenerRegistered) return;
     OrionConfig.addChangeListener(_handleConfigChange);
+    _sharedListenerRegistered = true;
   }
 
   void _handleConfigChange() {
@@ -55,6 +92,8 @@ class BackendService implements BackendClient {
 
   /// Dispose the backend service and remove any registered listeners.
   void dispose() {
+    // The shared singleton intentionally keeps its listener for app lifetime.
+    if (identical(this, _sharedInstance)) return;
     try {
       OrionConfig.removeChangeListener(_handleConfigChange);
     } catch (_) {}
@@ -76,18 +115,34 @@ class BackendService implements BackendClient {
   static BackendClient _chooseFromConfig() {
     try {
       final cfg = OrionConfig();
+
       // Developer-mode simulated backend flag (developer.simulated = true)
+      // Simulated client is still special-cased for testing.
       final simulated = cfg.getFlag('simulated', category: 'developer');
       if (simulated) {
+        _log.info('Creating simulated NanoDLP client (developer mode)');
         return NanoDlpSimulatedClient();
       }
-      if (cfg.isNanoDlpMode()) {
-        // Return the NanoDLP adapter when explicitly requested in config.
-        return NanoDlpHttpClient();
+
+      // Use registry to select the backend ID and create client directly.
+      final configuredBackend = cfg.getString('backend', category: 'advanced');
+      final backendId =
+          configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
+      final registry = BackendRegistry();
+      final module = registry.getModule(backendId);
+
+      if (module != null) {
+        _log.info('Selected backend: $backendId from registry');
+        return module.createClient();
       }
-    } catch (_) {
-      // ignore config errors and fall back
+
+      _log.warning(
+          'Backend module not registered: $backendId, falling back to Odyssey');
+    } catch (e, st) {
+      _log.warning('Error choosing backend from config', e, st);
     }
+
+    // Fallback to Odyssey
     return OdysseyHttpClient();
   }
 
@@ -100,13 +155,27 @@ class BackendService implements BackendClient {
   @override
   Future<bool> usbAvailable() => _delegate.usbAvailable();
 
-  /// Invalidate cached file listings (NanoDLP plates cache).
+  /// Invalidate cached file listings when supported by the backend.
   /// Call this when files may have been modified externally (e.g., deleted via WebUI).
+  /// Backends that don't support caching (e.g., Odyssey) will no-op.
   void invalidateFilesCache() {
-    if (_delegate is NanoDlpHttpClient) {
-      (_delegate as NanoDlpHttpClient).invalidatePlatesCache();
+    // Check if current backend supports cache invalidation via registry.
+    final cfg = OrionConfig();
+    final configuredBackend = cfg.getString('backend', category: 'advanced');
+    final backendId = configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
+    final registry = BackendRegistry();
+
+    final supportsCaching = registry.supportsCapability(
+            backendId, BackendCapabilities.supportsCacheInvalidation) ??
+        false;
+
+    if (!supportsCaching) {
+      _log.fine('Backend $backendId does not support cache invalidation');
+      return;
     }
-    // Other backends don't cache, so no action needed
+
+    _delegate.invalidateCache();
+    _log.fine('Invalidated backend cache for $backendId');
   }
 
   @override
@@ -133,18 +202,121 @@ class BackendService implements BackendClient {
   Future<Map<String, dynamic>> deleteFile(String location, String filePath) =>
       _delegate.deleteFile(location, filePath);
 
-  /// Import a file from USB/local storage to NanoDLP's internal storage.
+  /// Import a file from USB/local storage to the backend's internal storage.
   ///
-  /// This is a NanoDLP-specific feature. If the current backend is not NanoDLP,
-  /// this will throw an UnsupportedError.
+  /// This is only supported on backends that declare import capability.
+  /// Check [supportsCapability] before calling to avoid errors.
   ///
   /// Returns the plate ID if successful, null if ID couldn't be determined.
-  Future<int?> importFile(NanoImportRequest request) async {
-    if (_delegate is NanoDlpHttpClient) {
-      return (_delegate as NanoDlpHttpClient).importFile(request);
+  /// Throws UnsupportedError if backend doesn't support file import.
+  @override
+  Future<int?> importFile(FileImportRequest request) async {
+    // Check if current backend supports file import via registry.
+    final cfg = OrionConfig();
+    final configuredBackend = cfg.getString('backend', category: 'advanced');
+    final backendId = configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
+
+    final supportsImport =
+        supportsCapability(BackendCapabilities.supportsImportFile);
+
+    if (!supportsImport) {
+      throw UnsupportedError(
+          'File import is not supported by backend: $backendId');
     }
-    throw UnsupportedError(
-        'File import is only supported with NanoDLP backend');
+
+    return _delegate.importFile(request);
+  }
+
+  @override
+  Future<void> invalidateCache() => _delegate.invalidateCache();
+
+  @override
+  Future<ResinSettings?> getResinSettings(int profileId) =>
+      _delegate.getResinSettings(profileId);
+
+  @override
+  Future<void> saveResinExposure(int profileId, double normalCureTime) =>
+      _delegate.saveResinExposure(profileId, normalCureTime);
+
+  @override
+  Future<void> saveResinSettings(int profileId, ResinSettings settings) =>
+      _delegate.saveResinSettings(profileId, settings);
+
+  /// Convenience method to check if the current backend supports a capability.
+  /// Returns false if capability is not found or backend is not registered.
+  bool supportsCapability(String capabilityName) {
+    try {
+      final cfg = OrionConfig();
+      final configuredBackend = cfg.getString('backend', category: 'advanced');
+      final backendId =
+          configuredBackend.isEmpty ? 'odyssey' : configuredBackend;
+      final registry = BackendRegistry();
+      return registry.supportsCapability(backendId, capabilityName) ?? false;
+    } catch (e) {
+      _log.warning('Error checking capability: $capabilityName', e);
+      return false;
+    }
+  }
+
+  String _resolveAthenaBaseUrl() {
+    try {
+      final cfg = OrionConfig();
+      final base = cfg.getString('nanodlp.base_url', category: 'advanced');
+      final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
+      final custom = cfg.getString('customUrl', category: 'advanced');
+      if (base.isNotEmpty) return base;
+      if (useCustom && custom.isNotEmpty) return custom;
+    } catch (_) {}
+    return 'http://localhost';
+  }
+
+  AthenaIotClient? _createAthenaClient({Duration? requestTimeout}) {
+    if (!supportsCapability(BackendCapabilities.supportsAthenaUpdates)) {
+      return null;
+    }
+    final athenaBase = _resolveAthenaBaseUrl();
+    return AthenaIotClient(athenaBase, requestTimeout: requestTimeout);
+  }
+
+  /// Fetch typed Athena printer_data via backend capability-gated access.
+  Future<AthenaPrinterData?> getAthenaPrinterDataModel(
+      {Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return null;
+      return await client.getPrinterDataModel();
+    } catch (e, st) {
+      _log.warning('Failed to fetch Athena printer_data model', e, st);
+      return null;
+    }
+  }
+
+  /// Fetch typed Athena feature_flags via backend capability-gated access.
+  Future<AthenaFeatureFlags?> getAthenaFeatureFlagsModel(
+      {Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return null;
+      return await client.getFeatureFlagsModel();
+    } catch (e, st) {
+      _log.warning('Failed to fetch Athena feature_flags model', e, st);
+      return null;
+    }
+  }
+
+  /// Fetch Athena printer_data through the backend façade.
+  ///
+  /// Returns an empty map when Athena updates are not supported or when
+  /// data is temporarily unavailable.
+  Future<Map<String, dynamic>> getAthenaPrinterData() async {
+    try {
+      final model = await getAthenaPrinterDataModel();
+      return model?.toJson() ?? <String, dynamic>{};
+    } catch (e, st) {
+      _log.warning(
+          'Failed to fetch Athena printer_data via BackendService', e, st);
+      return <String, dynamic>{};
+    }
   }
 
   @override

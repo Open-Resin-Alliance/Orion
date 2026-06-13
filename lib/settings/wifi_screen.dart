@@ -31,6 +31,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/wifi_provider.dart';
 
 class WifiScreen extends StatefulWidget {
@@ -312,7 +313,7 @@ class WifiScreenState extends State<WifiScreen> {
                   return Center(
                     child: SingleChildScrollView(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: OrionSpacing.settingsScreenPadding,
                         child: isLandscape
                             ? buildLandscapeLayout(context, currentSSID, net,
                                 networks, connectionType)
@@ -342,137 +343,131 @@ class WifiScreenState extends State<WifiScreen> {
                   await wifiProvider.scanNetworks();
                 },
                 child: ListView.builder(
+                  padding: OrionSpacing.settingsScreenPadding,
                   itemCount: networks.length,
                   itemBuilder: (context, index) {
                     final network = networks[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GlassCard(
-                        elevation: 1,
-                        outlined: true,
-                        child: ListTile(
-                          key: ValueKey(network['SSID']),
-                          title: Text(network['SSID'] ?? '',
-                              style: const TextStyle(fontSize: 22)),
-                          subtitle: Text(
-                              'Signal Strength: ${network['SIGNAL']} dBm',
-                              style: const TextStyle(fontSize: 18)),
-                          trailing: _getSignalStrengthIcon(
-                              int.tryParse(network['SIGNAL'] ?? '0') ?? 0,
-                              wifiProvider.platform),
-                          onTap: () {
-                            showDialog(
-                              barrierDismissible: false,
-                              context: context,
-                              builder: (BuildContext context) {
-                                return GlassAlertDialog(
-                                  title: Center(
-                                      child: Text(
-                                          'Connect to ${network['SSID']}')),
-                                  content: SizedBox(
-                                    width:
-                                        MediaQuery.of(context).size.width * 0.5,
-                                    child: Consumer<WiFiProvider>(
-                                      builder: (context, wifiProvider, child) {
-                                        final isConnecting =
-                                            wifiProvider.isConnecting;
-                                        return Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            Opacity(
-                                              opacity: isConnecting ? 0.0 : 1.0,
-                                              child: SingleChildScrollView(
-                                                child: Column(
-                                                  children: [
-                                                    SpawnOrionTextField(
-                                                      key: wifiPasswordKey,
-                                                      keyboardHint:
-                                                          'Enter Password',
-                                                      locale: Localizations
-                                                              .localeOf(context)
-                                                          .toString(),
+                    return GlassCard(
+                      elevation: 1,
+                      outlined: true,
+                      child: ListTile(
+                        key: ValueKey(network['SSID']),
+                        title: Text(network['SSID'] ?? '',
+                            style: const TextStyle(fontSize: 22)),
+                        subtitle: Text(
+                            'Signal Strength: ${network['SIGNAL']} dBm',
+                            style: const TextStyle(fontSize: 18)),
+                        trailing: _getSignalStrengthIcon(
+                            int.tryParse(network['SIGNAL'] ?? '0') ?? 0,
+                            wifiProvider.platform),
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return GlassAlertDialog(
+                                title: Center(
+                                    child:
+                                        Text('Connect to ${network['SSID']}')),
+                                content: SizedBox(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.5,
+                                  child: Consumer<WiFiProvider>(
+                                    builder: (context, wifiProvider, child) {
+                                      final isConnecting =
+                                          wifiProvider.isConnecting;
+                                      return Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Opacity(
+                                            opacity: isConnecting ? 0.0 : 1.0,
+                                            child: SingleChildScrollView(
+                                              child: Column(
+                                                children: [
+                                                  SpawnOrionTextField(
+                                                    key: wifiPasswordKey,
+                                                    keyboardHint:
+                                                        'Enter Password',
+                                                    locale:
+                                                        Localizations.localeOf(
+                                                                context)
+                                                            .toString(),
+                                                  ),
+                                                  if (_connectionFailed)
+                                                    const SizedBox(height: 20),
+                                                  if (_connectionFailed)
+                                                    const Text(
+                                                      'Connection failed. Please try again.',
+                                                      style: TextStyle(
+                                                          color: Colors.red,
+                                                          fontSize: 20),
                                                     ),
-                                                    if (_connectionFailed)
-                                                      const SizedBox(
-                                                          height: 20),
-                                                    if (_connectionFailed)
-                                                      const Text(
-                                                        'Connection failed. Please try again.',
-                                                        style: TextStyle(
-                                                            color: Colors.red,
-                                                            fontSize: 20),
-                                                      ),
-                                                    OrionKbExpander(
-                                                        textFieldKey:
-                                                            wifiPasswordKey),
-                                                  ],
-                                                ),
+                                                  OrionKbExpander(
+                                                      textFieldKey:
+                                                          wifiPasswordKey),
+                                                ],
                                               ),
                                             ),
-                                            IgnorePointer(
-                                              child: Opacity(
-                                                opacity:
-                                                    isConnecting ? 1.0 : 0.0,
-                                                child: const SizedBox(
-                                                  height: 60,
-                                                  width: 60,
-                                                  child:
-                                                      CircularProgressIndicator(),
-                                                ),
+                                          ),
+                                          IgnorePointer(
+                                            child: Opacity(
+                                              opacity: isConnecting ? 1.0 : 0.0,
+                                              child: const SizedBox(
+                                                height: 60,
+                                                width: 60,
+                                                child:
+                                                    CircularProgressIndicator(),
                                               ),
                                             ),
-                                          ],
-                                        );
-                                      },
-                                    ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
-                                  actions: [
-                                    GlassButton(
-                                      tint: GlassButtonTint.negative,
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                        setState(() {
-                                          _connectionFailed = false;
-                                        });
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        minimumSize: const Size(90, 60),
-                                      ),
-                                      child: const Text('Close',
-                                          style: TextStyle(fontSize: 20)),
+                                ),
+                                actions: [
+                                  GlassButton(
+                                    tint: GlassButtonTint.negative,
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      setState(() {
+                                        _connectionFailed = false;
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(90, 60),
                                     ),
-                                    GlassButton(
-                                      tint: GlassButtonTint.positive,
-                                      onPressed: () {
-                                        if (!wifiProvider.isConnecting) {
-                                          if (Theme.of(context).platform ==
-                                              TargetPlatform.linux) {
-                                            _handleConnectToNetwork(
-                                                network['SSID']!,
-                                                wifiPasswordKey.currentState!
-                                                    .getCurrentText());
-                                          } else {
-                                            Future.delayed(
-                                                const Duration(seconds: 3), () {
-                                              if (mounted) {
-                                                Navigator.of(context).pop();
-                                              }
-                                            });
-                                          }
+                                    child: const Text('Close'),
+                                  ),
+                                  GlassButton(
+                                    tint: GlassButtonTint.positive,
+                                    onPressed: () {
+                                      if (!wifiProvider.isConnecting) {
+                                        if (Theme.of(context).platform ==
+                                            TargetPlatform.linux) {
+                                          _handleConnectToNetwork(
+                                              network['SSID']!,
+                                              wifiPasswordKey.currentState!
+                                                  .getCurrentText());
+                                        } else {
+                                          Future.delayed(
+                                              const Duration(seconds: 3), () {
+                                            if (mounted) {
+                                              Navigator.of(context).pop();
+                                            }
+                                          });
                                         }
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        minimumSize: const Size(90, 60),
-                                      ),
-                                      child: const Text('Confirm',
-                                          style: TextStyle(fontSize: 20)),
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(90, 60),
                                     ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                        ),
+                                    child: const Text('Confirm'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
                       ),
                     );
                   },
@@ -532,33 +527,60 @@ class WifiScreenState extends State<WifiScreen> {
     final bool showDisconnectAction = connectionType != 'ethernet' ||
         (Platform.isMacOS && connectionType == 'ethernet');
 
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              buildNameCard(
-                connectionType == 'ethernet'
-                    ? 'Connected to Ethernet'
-                    : currentSSID,
-                action: showDisconnectAction ? _buildDisconnectButton() : null,
-              ),
-              buildInfoCard('IP Address', net['ip'] ?? ''),
-              buildInfoCard('MAC Address', net['mac'] ?? ''),
-              if (connectionType == 'ethernet')
-                buildInfoCard('Link Speed', net['speed'] ?? ''),
-              if (connectionType != 'ethernet')
-                buildInfoCard(
-                  'Signal Strength',
-                  wifiProvider.getSignalQuality(wifiProvider.signalStrength),
-                ),
-            ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // QR column is flex:2 of total width minus the gap
+        final totalWidth = constraints.maxWidth;
+        final qrColumnWidth = (totalWidth - 16) * 2 / 5;
+        // QR card: width minus 32px padding, then square
+        final qrSize = (qrColumnWidth - 32).clamp(80.0, 400.0);
+        // Total height = qrSize + 32px card padding
+        final columnHeight = qrSize + 32;
+
+        final leftCards = [
+          buildNameCard(
+            connectionType == 'ethernet'
+                ? 'Connected to Ethernet'
+                : currentSSID,
+            action: showDisconnectAction ? _buildDisconnectButton() : null,
           ),
-        ),
-        const SizedBox(width: 16),
-        buildQrView(context, net['ip'] ?? ''),
-      ],
+          buildInfoCard('IP Address', net['ip'] ?? ''),
+          buildInfoCard('MAC Address', net['mac'] ?? ''),
+          if (connectionType == 'ethernet')
+            buildInfoCard('Link Speed', net['speed'] ?? ''),
+          if (connectionType != 'ethernet')
+            buildInfoCard(
+              'Signal Strength',
+              wifiProvider.getSignalQuality(wifiProvider.signalStrength),
+            ),
+        ];
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: SizedBox(
+                height: columnHeight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (int i = 0; i < leftCards.length; i++) ...[
+                      Expanded(child: leftCards[i]),
+                      if (i < leftCards.length - 1) const SizedBox(height: 0),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: buildQrView(context, net['ip'] ?? ''),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -566,10 +588,11 @@ class WifiScreenState extends State<WifiScreen> {
     return GlassCard(
       elevation: 1.0,
       outlined: true,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-        title: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Text(
@@ -652,29 +675,32 @@ class WifiScreenState extends State<WifiScreen> {
   }
 
   Widget buildQrView(BuildContext context, String ipAddress) {
-    return Center(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: GlassCard(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final qrSize = (constraints.maxWidth - 32).clamp(80.0, 400.0);
+        return GlassCard(
           elevation: 1.0,
           outlined: true,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: QrImageView(
-              data: 'http://$ipAddress',
-              version: QrVersions.auto,
-              size: 250,
-              eyeStyle: QrEyeStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              dataModuleStyle: QrDataModuleStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                dataModuleShape: QrDataModuleShape.circle,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: QrImageView(
+                data: 'http://$ipAddress',
+                version: QrVersions.auto,
+                size: qrSize,
+                eyeStyle: QrEyeStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                dataModuleStyle: QrDataModuleStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  dataModuleShape: QrDataModuleShape.circle,
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

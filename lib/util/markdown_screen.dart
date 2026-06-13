@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
 
@@ -42,7 +43,7 @@ class MarkdownScreen extends StatelessWidget {
             ],
           ),
         body: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: OrionSpacing.screenPadding,
           child: changelog != null
               ? Markdown(
                   data: changelog!,

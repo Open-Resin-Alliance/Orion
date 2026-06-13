@@ -24,6 +24,7 @@ import 'package:orion/backend_service/providers/notification_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_notification_types.dart';
+import 'package:orion/util/orion_config.dart';
 
 /// Installs a watcher that will show a GlassAlertDialog for each new
 /// notification reported by [NotificationProvider]. The provided [context]
@@ -198,7 +199,7 @@ class NotificationWatcher {
                     onPressed: onPressed,
                     tint: tint,
                     style: style,
-                    child: Text(label, style: const TextStyle(fontSize: 22)),
+                    child: Text(label),
                   ),
                 );
               }
@@ -228,19 +229,26 @@ class NotificationWatcher {
               }
 
               final ordered = [...others, ...primary];
-
-              // Wrap with Flexible and padding; last item gets no trailing padding.
-              final buttons = ordered.asMap().entries.map<Widget>((entry) {
-                final idx = entry.key;
-                final widget = entry.value;
-                final isLast = idx == ordered.length - 1;
-                return Flexible(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: isLast ? 0.0 : 6.0),
-                    child: widget,
-                  ),
-                );
-              }).toList(growable: false);
+              final actionButtons = ordered.isNotEmpty
+                  ? ordered
+                  : [
+                      GlassButton(
+                        tint: GlassButtonTint.neutral,
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(0, 60)),
+                        child: const Text('Close'),
+                      ),
+                    ];
+              final devMode =
+                  OrionConfig().getFlag('developerMode', category: 'advanced');
+              final rawMessage = (item.text ?? '').trim();
+              final displayTitle = devMode
+                  ? getNanoTypeTitle(item.type)
+                  : getNanoNotificationDisplayTitle(item.type, item.text);
+              final displayMessage = devMode
+                  ? (rawMessage.isNotEmpty ? rawMessage : '(no text)')
+                  : getNanoNotificationDisplayMessage(item.type, item.text);
 
               return GlassAlertDialog(
                 title: Row(
@@ -253,27 +261,20 @@ class NotificationWatcher {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                        getNanoTypeTitle(item.type),
+                        displayTitle,
                         style: const TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.w600),
+                          color: Colors.orangeAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 12),
-                    Text(item.text ?? '(no text)',
-                        style: const TextStyle(
-                            fontSize: 22, color: Colors.white70),
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                  ],
+                content: Text(
+                  displayMessage,
+                  textAlign: TextAlign.start,
                 ),
-                actions: [
-                  Row(children: buttons),
-                ],
+                actions: actionButtons,
               );
             },
           );

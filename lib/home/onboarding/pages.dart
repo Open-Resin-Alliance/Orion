@@ -46,51 +46,60 @@ class OnboardingPages {
     List<WelcomeBubble> welcomeBubbles,
     Animation<double> holeAnimation,
   ) {
+    final lowGraphicsMode =
+        OrionConfig().getFlag('lowGraphicsMode', category: 'vendor');
+
     return Center(
       child: Listener(
         behavior: HitTestBehavior.translucent,
-        onPointerHover: (e) {
-          // apply a soft proximity-based gravity (attraction) when the cursor is near
-          final local = e.localPosition;
-          const threshold = 140.0;
-          for (var bubble in welcomeBubbles) {
-            final center = Offset(
-              bubble.position.dx + bubble.width / 2,
-              bubble.position.dy + bubble.height / 2,
-            );
-            final dist = (center - local).distance;
-            if (dist < threshold) {
-              final dir = (local - center).normalize();
-              final proximity = (1.0 - (dist / threshold)).clamp(0.0, 1.0);
-              final strength = 18.0 * proximity; // tuneable
-              final impulse =
-                  dir.scale(strength / bubble.mass, strength / bubble.mass);
-              // pull toward pointer (gravity)
-              bubble.velocity += impulse;
-              bubble.addProximityTrail(local);
-            }
-          }
-        },
-        onPointerDown: (e) {
-          final local = e.localPosition;
-          const threshold = 160.0;
-          for (var bubble in welcomeBubbles) {
-            final center = Offset(
-              bubble.position.dx + bubble.width / 2,
-              bubble.position.dy + bubble.height / 2,
-            );
-            final dist = (center - local).distance;
-            if (dist < threshold) {
-              final dir = (local - center).normalize();
-              final proximity = (1.0 - (dist / threshold)).clamp(0.0, 1.0);
-              final strength = 56.0 * proximity;
-              final impulse =
-                  dir.scale(strength / bubble.mass, strength / bubble.mass);
-              bubble.velocity += impulse;
-              bubble.addProximityTrail(local);
-            }
-          }
-        },
+        onPointerHover: lowGraphicsMode
+            ? null
+            : (e) {
+                // apply a soft proximity-based gravity (attraction) when the cursor is near
+                final local = e.localPosition;
+                const threshold = 140.0;
+                for (var bubble in welcomeBubbles) {
+                  final center = Offset(
+                    bubble.position.dx + bubble.width / 2,
+                    bubble.position.dy + bubble.height / 2,
+                  );
+                  final dist = (center - local).distance;
+                  if (dist < threshold) {
+                    final dir = (local - center).normalize();
+                    final proximity =
+                        (1.0 - (dist / threshold)).clamp(0.0, 1.0);
+                    final strength = 18.0 * proximity; // tuneable
+                    final impulse = dir.scale(
+                        strength / bubble.mass, strength / bubble.mass);
+                    // pull toward pointer (gravity)
+                    bubble.velocity += impulse;
+                    bubble.addProximityTrail(local);
+                  }
+                }
+              },
+        onPointerDown: lowGraphicsMode
+            ? null
+            : (e) {
+                final local = e.localPosition;
+                const threshold = 160.0;
+                for (var bubble in welcomeBubbles) {
+                  final center = Offset(
+                    bubble.position.dx + bubble.width / 2,
+                    bubble.position.dy + bubble.height / 2,
+                  );
+                  final dist = (center - local).distance;
+                  if (dist < threshold) {
+                    final dir = (local - center).normalize();
+                    final proximity =
+                        (1.0 - (dist / threshold)).clamp(0.0, 1.0);
+                    final strength = 56.0 * proximity;
+                    final impulse = dir.scale(
+                        strength / bubble.mass, strength / bubble.mass);
+                    bubble.velocity += impulse;
+                    bubble.addProximityTrail(local);
+                  }
+                }
+              },
         child: Stack(
           children: [
             // Opaque background layer that reveals the underlying page
@@ -171,6 +180,7 @@ class OnboardingPages {
                         opacity: bubble.opacity,
                         child: _GlassBubble(
                           bubble: bubble,
+                          interactionsEnabled: !lowGraphicsMode,
                         ),
                       ),
                     );
@@ -726,10 +736,12 @@ class OnboardingPages {
 /// A glassmorphic-aware welcome bubble for the onboarding screen
 class _GlassBubble extends StatefulWidget {
   final WelcomeBubble bubble;
+  final bool interactionsEnabled;
 
   const _GlassBubble({
     Key? key,
     required this.bubble,
+    this.interactionsEnabled = true,
   }) : super(key: key);
 
   @override
@@ -938,81 +950,85 @@ class _GlassBubbleState extends State<_GlassBubble>
       ));
     }
 
+    final bubbleContent = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Trails
+        ...trailWidgets,
+        // Bubble
+        Container(
+          padding: EdgeInsets.all(widget.bubble.padding),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                primary.withValues(alpha: 0.95),
+                secondary.withValues(alpha: 0.85),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(widget.bubble.size),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: 0.12),
+                blurRadius: 18,
+                offset: Offset(0, 6),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
+            border: Border.all(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onPrimaryContainer
+                  .withValues(alpha: 0.06),
+              width: 1.0,
+            ),
+          ),
+          child: Text(
+            widget.bubble.message,
+            style: TextStyle(
+              fontFamily: 'AtkinsonHyperlegible',
+              fontFamilyFallback: ['NotoSansCJK'],
+              fontSize: widget.bubble.size * 0.82,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+
     return Transform.translate(
       offset: Offset(driftX, driftY),
       child: Transform.rotate(
         angle: rot,
         child: Transform.scale(
           scale: pulse,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            onHover: _onHover,
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTapDown: _onTapDown,
-              onPanUpdate: _onPanUpdate,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Trails
-                  ...trailWidgets,
-                  // Bubble
-                  Container(
-                    padding: EdgeInsets.all(widget.bubble.padding),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          primary.withValues(alpha: 0.95),
-                          secondary.withValues(alpha: 0.85),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(widget.bubble.size),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.12),
-                          blurRadius: 18,
-                          offset: Offset(0, 6),
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onPrimaryContainer
-                            .withValues(alpha: 0.06),
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Text(
-                      widget.bubble.message,
-                      style: TextStyle(
-                        fontFamily: 'AtkinsonHyperlegible',
-                        fontFamilyFallback: ['NotoSansCJK'],
-                        fontSize: widget.bubble.size * 0.82,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
+          child: widget.interactionsEnabled
+              ? MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  onHover: _onHover,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTapDown: _onTapDown,
+                    onPanUpdate: _onPanUpdate,
+                    child: bubbleContent,
                   ),
-                ],
-              ),
-            ),
-          ),
+                )
+              : bubbleContent,
         ),
       ),
     );

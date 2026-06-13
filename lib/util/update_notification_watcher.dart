@@ -171,10 +171,7 @@ class UpdateNotificationWatcher {
                 updateManager.remindLater();
                 Navigator.of(ctx).pop();
               },
-              child: const Text(
-                'Remind Later',
-                style: TextStyle(fontSize: 22),
-              ),
+              child: const Text('Remind Later'),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -186,10 +183,7 @@ class UpdateNotificationWatcher {
                 Navigator.of(ctx).pop();
                 context.go('/updates');
               },
-              child: const Text(
-                'Update Now',
-                style: TextStyle(fontSize: 22),
-              ),
+              child: const Text('Update Now'),
             ),
           ],
         ),

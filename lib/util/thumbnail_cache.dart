@@ -128,6 +128,35 @@ class ThumbnailCache {
         break;
       }
     }
+
+    // Secondary fallback: some backends can report a different path token for
+    // the same file across sessions (e.g. changing plate identifiers). Reuse
+    // a same-location/same-basename entry when available so disk/memory cache
+    // survives app restarts.
+    if (fallbackKey == null) {
+      final requestedBase = p.basename(file.path).toLowerCase();
+      final requestedLastModified = _normalizedLastModified(file.lastModified);
+      if (requestedLastModified <= 0) {
+        // Avoid basename-only matches when mtime is unknown; this can return
+        // the wrong thumbnail for duplicate filenames in different folders.
+      } else {
+        final suffix = _cacheKeySuffix(size, stlVariant, themeColor);
+        for (final k in _cache.keys.toList().reversed) {
+          if (!k.startsWith('$location|') || !k.endsWith(suffix)) continue;
+          final parts = k.split('|');
+          if (parts.length < 3) continue;
+          final cachedLastModified = int.tryParse(parts[2]) ?? 0;
+          if (cachedLastModified != requestedLastModified) {
+            continue;
+          }
+          final cachedPath = parts[1];
+          if (p.basename(cachedPath).toLowerCase() == requestedBase) {
+            fallbackKey = k;
+            break;
+          }
+        }
+      }
+    }
     if (fallbackKey != null) {
       final fallback = _cache[fallbackKey];
       if (fallback != null && !_isExpired(fallback.timestamp)) {
@@ -146,6 +175,8 @@ class ThumbnailCache {
         final key = _cacheKey(location, file, size,
             variant: stlVariant, themeColor: themeColor);
         _store(key, diskBytes);
+        _log.fine(
+            'thumbnail disk hit: location=$location path=${file.path} size=$size bytes=${diskBytes.length}');
         return Future.value(diskBytes);
       }
     } catch (_) {
@@ -737,6 +768,9 @@ class ThumbnailCache {
       // Fallback: Search same path+size+variant regardless of mtime key so
       // disk cache remains effective when timestamp precision drifts.
       final keyPrefix = '$location|${file.path}|';
+      final requestedBase = p.basename(file.path).toLowerCase();
+      final requestedLastModified = _normalizedLastModified(file.lastModified);
+      final suffix = _cacheKeySuffix(size, variant, themeColor);
       final candidates =
           dir.listSync().whereType<File>().toList(growable: false)
             ..sort((a, b) {
@@ -748,8 +782,24 @@ class ThumbnailCache {
             });
       for (final f in candidates) {
         final decoded = Uri.decodeComponent(p.basename(f.path));
-        if (decoded.startsWith(keyPrefix) &&
-            decoded.endsWith(_cacheKeySuffix(size, variant, themeColor))) {
+        final directPathMatch =
+            decoded.startsWith(keyPrefix) && decoded.endsWith(suffix);
+
+        bool basenameMatch = false;
+        if (!directPathMatch &&
+            decoded.startsWith('$location|') &&
+            decoded.endsWith(suffix)) {
+          final parts = decoded.split('|');
+          if (parts.length >= 3) {
+            final cachedPath = parts[1];
+            final cachedLastModified = int.tryParse(parts[2]) ?? 0;
+            basenameMatch = requestedLastModified > 0 &&
+                p.basename(cachedPath).toLowerCase() == requestedBase &&
+                cachedLastModified == requestedLastModified;
+          }
+        }
+
+        if (directPathMatch || basenameMatch) {
           try {
             // If TTL is enabled, check file age and treat as stale if older
             // than configured TTL. Stale files are scheduled for deletion

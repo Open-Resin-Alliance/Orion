@@ -153,6 +153,120 @@ void main() {
       expect(sw.elapsed, lessThan(const Duration(milliseconds: 300)));
     });
   });
+
+  group('NanoDlpHttpClient profile edits', () {
+    test('editProfile accepts non-auth 302 redirect as success', () async {
+      http.Client mockFactory() => MockClient((request) async {
+            expect(request.method, 'POST');
+            expect(request.url.path, endsWith('/profile/edit/simple/1000'));
+
+            expect(request.bodyFields['CureTime'], '1.5');
+            expect(request.bodyFields['SupportLayerNumber'], '8');
+
+            return http.Response(
+              '',
+              302,
+              headers: {'location': '/profile/list'},
+            );
+          });
+
+      final client = NanoDlpHttpClient(clientFactory: mockFactory);
+      final resp = await client.editProfile(1000, {
+        'CureTime': 1.5,
+        'SupportLayerNumber': 8,
+      });
+
+      expect(resp['status'], 302);
+      expect(resp['location'], '/profile/list');
+    });
+
+    test('editProfile fails on login redirect', () async {
+      http.Client mockFactory() => MockClient((request) async {
+            return http.Response(
+              '',
+              302,
+              headers: {'location': '/login'},
+            );
+          });
+
+      final client = NanoDlpHttpClient(clientFactory: mockFactory);
+
+      await expectLater(
+        client.editProfile(1000, {'CureTime': 1.5}),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('saveResinExposure posts merged full settings payload', () async {
+      var profileFetchCount = 0;
+      var profileEditCount = 0;
+
+      http.Client mockFactory() => MockClient((request) async {
+            if (request.url.path.endsWith('/profile/json/1000')) {
+              profileFetchCount++;
+              return http.Response(
+                json.encode({
+                  'ProfileID': 1000,
+                  'CureTime': 2.5,
+                  'SupportCureTime': 10.0,
+                  'WaitHeight': 1.8,
+                  'SupportLayerNumber': 8,
+                  'TopWait': 1.2,
+                  'WaitAfterPrint': 1.2,
+                }),
+                200,
+                headers: {'content-type': 'application/json'},
+              );
+            }
+
+            if (request.url.path.endsWith('/profile/edit/simple/1000')) {
+              profileEditCount++;
+              expect(request.method, 'POST');
+
+              // Updated exposure
+              expect(request.bodyFields['CureTime'], '1.5');
+
+              // Existing values preserved
+              expect(request.bodyFields['SupportCureTime'], '10.0');
+              expect(request.bodyFields['TopDistance'], '1.8');
+              expect(request.bodyFields['WaitHeight'], '1.8');
+              expect(request.bodyFields['SupportLayerNumber'], '8');
+              expect(request.bodyFields['TopWait'], '1.2');
+              expect(request.bodyFields['WaitAfterPrint'], '1.2');
+
+              return http.Response('', 302,
+                  headers: {'location': '/profile/list'});
+            }
+
+            return http.Response('not found', 404);
+          });
+
+      final client = NanoDlpHttpClient(clientFactory: mockFactory);
+      await client.saveResinExposure(1000, 1.5);
+
+      expect(profileFetchCount, 1);
+      expect(profileEditCount, 1);
+    });
+
+    test('saveResinExposure fails safely when profile cannot be loaded',
+        () async {
+      var profileEditCount = 0;
+
+      http.Client mockFactory() => MockClient((request) async {
+            if (request.url.path.endsWith('/profile/edit/simple/1000')) {
+              profileEditCount++;
+            }
+            return http.Response('not found', 404);
+          });
+
+      final client = NanoDlpHttpClient(clientFactory: mockFactory);
+      await expectLater(
+        client.saveResinExposure(1000, 1.5),
+        throwsA(isA<StateError>()),
+      );
+      expect(profileEditCount, 0);
+    });
+  });
 }
 
 class _NeverCompletesClient extends http.BaseClient {

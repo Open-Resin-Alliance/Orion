@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:logging/logging.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/util/orion_config.dart';
@@ -97,6 +98,36 @@ class _ConnectionErrorDialogContentState
     extends State<_ConnectionErrorDialogContent> {
   Timer? _tick;
 
+  Widget _buildDialogActions({
+    required VoidCallback retryNow,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: GlassButton(
+            tint: GlassButtonTint.warn,
+            onPressed: retryNow,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: const Text('Retry now'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: const Text('Close'),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -127,6 +158,7 @@ class _ConnectionErrorDialogContentState
   @override
   Widget build(BuildContext context) {
     final statusProv = Provider.of<StatusProvider>(context);
+    final scheme = Theme.of(context).colorScheme;
     final pollAttempts = statusProv.pollAttemptCount;
     final sseAttempts = statusProv.sseAttemptCount;
     final next = statusProv.nextRetryAt;
@@ -150,9 +182,16 @@ class _ConnectionErrorDialogContentState
       String targetUri = '';
       try {
         final cfg = OrionConfig();
-        backendName = cfg.getString('backend', category: 'advanced');
-        final isNano = cfg.isNanoDlpMode();
-        if (isNano) {
+        final configuredBackend =
+            cfg.getString('backend', category: 'advanced');
+        final backendId =
+            configuredBackend.isEmpty ? BackendIds.odyssey : configuredBackend;
+        backendName = configuredBackend;
+        final registry = BackendRegistry();
+        final supportsAthena = registry.supportsCapability(
+                backendId, BackendCapabilities.supportsAthena) ??
+            false;
+        if (supportsAthena) {
           final base = cfg.getString('nanodlp.base_url', category: 'advanced');
           final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
           final custom = cfg.getString('customUrl', category: 'advanced');
@@ -163,14 +202,14 @@ class _ConnectionErrorDialogContentState
           } else {
             targetUri = 'http://localhost';
           }
-          if (backendName.isEmpty) backendName = 'NanoDLP';
+          if (backendName.isEmpty) backendName = backendId;
         } else {
           final custom = cfg.getString('customUrl', category: 'advanced');
           final useCustom = cfg.getFlag('useCustomUrl', category: 'advanced');
           targetUri = (useCustom && custom.isNotEmpty)
               ? custom
               : 'http://localhost:12357';
-          if (backendName.isEmpty) backendName = 'Odyssey';
+          if (backendName.isEmpty) backendName = backendId;
         }
       } catch (_) {
         // best-effort: leave strings empty if config read fails
@@ -181,7 +220,7 @@ class _ConnectionErrorDialogContentState
           children: [
             Icon(
               Icons.wifi_off,
-              color: Colors.orange.shade600,
+              color: scheme.primary,
               size: 26,
             ),
             const SizedBox(width: 16),
@@ -200,7 +239,7 @@ class _ConnectionErrorDialogContentState
                         : 'Attempting to reconnect...',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey.shade400,
+                      color: scheme.onSurface.withValues(alpha: 0.72),
                       fontFamily: 'monospace',
                     ),
                   ),
@@ -300,29 +339,7 @@ class _ConnectionErrorDialogContentState
           ],
         ),
         actions: [
-          Row(
-            children: [
-              Flexible(
-                child: GlassButton(
-                  onPressed: retryNow,
-                  style:
-                      ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child:
-                      const Text('Retry now', style: TextStyle(fontSize: 20)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: GlassButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(0, 60),
-                      backgroundColor: Colors.transparent),
-                  child: const Text('Close', style: TextStyle(fontSize: 20)),
-                ),
-              ),
-            ],
-          ),
+          _buildDialogActions(retryNow: retryNow),
         ],
       );
     }
@@ -333,7 +350,7 @@ class _ConnectionErrorDialogContentState
         children: [
           Icon(
             Icons.wifi_off,
-            color: Colors.orange.shade600,
+            color: scheme.primary,
             size: 26,
           ),
           const SizedBox(width: 16),
@@ -356,8 +373,10 @@ class _ConnectionErrorDialogContentState
                       final maxAttempts = statusProv.maxReconnectAttempts;
                       if (attempts > 0) {
                         return Text('($attempts/$maxAttempts)',
-                            style: const TextStyle(
-                                fontSize: 16, color: Colors.white70));
+                            style: TextStyle(
+                                fontSize: 16,
+                                color:
+                                    scheme.onSurface.withValues(alpha: 0.72)));
                       }
                       return const SizedBox.shrink();
                     }),
@@ -385,27 +404,7 @@ class _ConnectionErrorDialogContentState
         ],
       ),
       actions: [
-        Row(
-          children: [
-            Flexible(
-              child: GlassButton(
-                onPressed: retryNow,
-                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                child: const Text('Retry now', style: TextStyle(fontSize: 20)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: GlassButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 60),
-                    backgroundColor: Colors.transparent),
-                child: const Text('Close', style: TextStyle(fontSize: 20)),
-              ),
-            ),
-          ],
-        ),
+        _buildDialogActions(retryNow: retryNow),
       ],
     );
   }

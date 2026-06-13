@@ -21,12 +21,14 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
+import 'package:orion/backend_service/backend_registry.dart';
+import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
-import 'package:orion/util/orion_config.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/orion_spacing.dart';
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -39,7 +41,7 @@ class ExposureScreen extends StatefulWidget {
 
 class ExposureScreenState extends State<ExposureScreen> {
   final _logger = Logger('Exposure');
-  final _config = OrionConfig();
+  final BackendService _backendService = BackendService();
   CancelableOperation? _exposureOperation;
   Completer<void>? _exposureCompleter;
 
@@ -49,7 +51,9 @@ class ExposureScreenState extends State<ExposureScreen> {
   Future<void> exposeScreen(String type) async {
     int delayTime = 1; // Odyssey requires a 1 second delay before exposure
 
-    if (_config.isNanoDlpMode()) {
+    final supportsCalibration = _backendService
+        .supportsCapability(BackendCapabilities.supportsCalibration);
+    if (supportsCalibration) {
       delayTime = 0;
     }
 
@@ -223,6 +227,12 @@ class ExposureScreenState extends State<ExposureScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => getApiStatus());
   }
 
+  @override
+  void dispose() {
+    _backendService.dispose();
+    super.dispose();
+  }
+
   Future<void> getApiStatus() async {
     try {
       final provider = Provider.of<ConfigProvider>(context, listen: false);
@@ -253,7 +263,7 @@ class ExposureScreenState extends State<ExposureScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: OrionSpacing.screenPaddingWithBottomNav,
         child: isLandscape
             ? buildLandscapeLayout(context)
             : buildPortraitLayout(context),
@@ -267,7 +277,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         Expanded(
           child: buildExposureButtons(context),
         ),
-        const SizedBox(width: 32),
+        const SizedBox(width: OrionSpacing.controlGap),
         Expanded(
           child: buildChoiceCards(context),
         ),
@@ -281,7 +291,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         Expanded(
           child: buildExposureButtons(context),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: buildChoiceCards(context),
         ),
@@ -331,7 +341,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 30),
+                    const SizedBox(width: OrionSpacing.controlGap),
                     Expanded(
                       child: GlassButton(
                         onPressed:
@@ -370,7 +380,7 @@ class ExposureScreenState extends State<ExposureScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: Row(
             children: [
@@ -405,7 +415,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 30),
+              const SizedBox(width: OrionSpacing.controlGap),
               Expanded(
                 child: GlassButton(
                   onPressed:
@@ -447,49 +457,48 @@ class ExposureScreenState extends State<ExposureScreen> {
   Widget buildChoiceCards(BuildContext context) {
     final values = [3, 10, 30, 'Persistent'];
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(values.length, (index) {
-        final value = values[index];
-        return Flexible(
-          child: Padding(
-            padding: EdgeInsets.only(
-                bottom: index < values.length - 1
-                    ? 25.0
-                    : 0.0), // Add padding only if it's not the last item
-            child: GlassChoiceChip(
-              label: SizedBox(
-                width: double.infinity,
-                child: Text(
-                  value is int ? '$value Seconds' : value as String,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 22, // Adjust the font size here.
+      children: [
+        for (int index = 0; index < values.length; index++) ...[
+          Expanded(
+            child: Builder(builder: (context) {
+              final value = values[index];
+              return GlassChoiceChip(
+                label: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    value is int ? '$value Seconds' : value as String,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 22,
+                    ),
                   ),
                 ),
-              ),
-              selected: exposureTime ==
-                  (value is int
-                      ? value
-                      : (value == 'Persistent'
-                          ? 999999
-                          : int.parse(value as String))),
-              onSelected: _apiErrorState
-                  ? null
-                  : (selected) {
-                      if (selected) {
-                        setState(() {
-                          exposureTime = value is int
-                              ? value
-                              : (value == 'Persistent'
-                                  ? 999999
-                                  : int.parse(value as String));
-                        });
-                      }
-                    },
-            ),
+                selected: exposureTime ==
+                    (value is int
+                        ? value
+                        : (value == 'Persistent'
+                            ? 999999
+                            : int.parse(value as String))),
+                onSelected: _apiErrorState
+                    ? null
+                    : (selected) {
+                        if (selected) {
+                          setState(() {
+                            exposureTime = value is int
+                                ? value
+                                : (value == 'Persistent'
+                                    ? 999999
+                                    : int.parse(value as String));
+                          });
+                        }
+                      },
+              );
+            }),
           ),
-        );
-      }),
+          if (index < values.length - 1)
+            const SizedBox(height: OrionSpacing.controlGap),
+        ],
+      ],
     );
   }
 }

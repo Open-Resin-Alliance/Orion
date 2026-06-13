@@ -19,9 +19,10 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
-import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:orion/widgets/zoom_value_editor_dialog.dart';
@@ -50,6 +51,64 @@ class EditResinScreenState extends State<EditResinScreen> {
   late Map<String, dynamic> _initial;
   bool _saving = false;
 
+  ResinSettings _settingsFromMeta(Map<String, dynamic> meta) {
+    num asNum(dynamic v, num fallback) {
+      if (v is num) return v;
+      if (v is String) return num.tryParse(v) ?? fallback;
+      return fallback;
+    }
+
+    final customValues = (meta['CustomValues'] is Map<String, dynamic>)
+        ? (meta['CustomValues'] as Map<String, dynamic>)
+        : <String, dynamic>{};
+
+    dynamic pick(String normalized, List<String> aliases, dynamic fallback) {
+      if (meta.containsKey(normalized)) return meta[normalized];
+      for (final key in aliases) {
+        if (meta.containsKey(key)) return meta[key];
+      }
+      if (customValues.containsKey(normalized)) return customValues[normalized];
+      for (final key in aliases) {
+        if (customValues.containsKey(key)) return customValues[key];
+      }
+      return fallback;
+    }
+
+    return ResinSettings(
+      burnInCureTime:
+          asNum(pick('burn_in_cure_time', ['SupportCureTime'], 10.0), 10.0)
+              .toDouble(),
+      normalCureTime:
+          asNum(pick('normal_cure_time', ['CureTime'], 8.0), 8.0).toDouble(),
+      liftAfterPrint: asNum(
+              pick('lift_after_print',
+                  ['TopDistance', 'WaitHeight', 'LiftAfterPrint'], 5.0),
+              5.0)
+          .toDouble(),
+      burnInCount:
+          asNum(pick('burn_in_count', ['SupportLayerNumber'], 3), 3).toInt(),
+      waitAfterCure: asNum(
+              pick('wait_after_cure', ['WaitAfterPrint', 'WaitAfterCure'], 2.0),
+              2.0)
+          .toDouble(),
+      waitAfterLife: asNum(pick('wait_after_life', ['WaitAfterLift'], 2.0), 2.0)
+          .toDouble(),
+    );
+  }
+
+  void _applySettings(ResinSettings settings, {bool setInitial = false}) {
+    _burnInTime = settings.burnInCureTime;
+    _normalTime = settings.normalCureTime;
+    _liftAfter = settings.liftAfterPrint;
+    _burnInCount = settings.burnInCount;
+    _waitAfterCure = settings.waitAfterCure;
+    _waitAfterLife = settings.waitAfterLife;
+
+    if (setInitial) {
+      _initial = settings.toNormalizedMap();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -58,69 +117,33 @@ class EditResinScreenState extends State<EditResinScreen> {
     // profile JSON from the backend (when supported) and, if available,
     // overwrite the in-memory fields with the authoritative values.
     final meta = widget.resin?.meta ?? {};
-    final norm = NanoProfile.normalizeForEdit(meta);
-
-    _burnInTime = (norm['burn_in_cure_time'] as num).toDouble();
-    _normalTime = (norm['normal_cure_time'] as num).toDouble();
-    _liftAfter = norm['lift_after_print'] as double;
-    _burnInCount = norm['burn_in_count'] as int;
-    _waitAfterCure = (norm['wait_after_cure'] as num).toDouble();
-    _waitAfterLife = (norm['wait_after_life'] as num).toDouble();
-
-    _initial = Map<String, dynamic>.from(norm);
+    final fallbackSettings = _settingsFromMeta(meta);
+    _applySettings(fallbackSettings, setInitial: true);
 
     // Fetch and normalize detailed profile data (model handles backend
     // specifics). This keeps the UI simple and backend-agnostic.
     Future(() async {
       try {
-        final svc = BackendService();
-        final details = await NanoProfile.getResinProfileDetails(
-            widget.resin?.meta ?? {}, svc);
-        if (details.isEmpty) return;
-
-        final mergedMeta = details['meta'] as Map<String, dynamic>? ?? {};
-        final normalized = details['normalized'] as Map<String, dynamic>? ?? {};
-
+        int? profileId;
         try {
-          _log.fine(
-              'Applying normalized profile values preview=${normalized.toString()}');
-        } catch (_) {}
+          profileId = ResinsProvider.resolveProfileIdFromMeta(meta);
+        } catch (_) {
+          profileId = null;
+        }
+        if (profileId == null || profileId == 0) return;
+
+        final svc = BackendService();
+        final settings = await svc.getResinSettings(profileId);
+        if (settings == null) return;
 
         if (!mounted) return;
         setState(() {
-          _loadFromMeta(mergedMeta);
-          _burnInTime = (normalized['burn_in_cure_time'] as num?)?.toDouble() ??
-              _burnInTime;
-          _normalTime = (normalized['normal_cure_time'] as num?)?.toDouble() ??
-              _normalTime;
-          _liftAfter = normalized['lift_after_print'] as double? ?? _liftAfter;
-          _burnInCount = normalized['burn_in_count'] as int? ?? _burnInCount;
-          _waitAfterCure =
-              (normalized['wait_after_cure'] as num?)?.toDouble() ??
-                  _waitAfterCure;
-          _waitAfterLife =
-              (normalized['wait_after_life'] as num?)?.toDouble() ??
-                  _waitAfterLife;
+          _applySettings(settings, setInitial: true);
         });
       } catch (e, st) {
         _log.fine('Failed to fetch or apply profile details', e, st);
       }
     });
-  }
-
-  void _loadFromMeta(Map<String, dynamic> meta) {
-    // Delegate normalization to the NanoProfile model so the UI remains
-    // backend-agnostic and we avoid duplicating candidate-key logic here.
-    final normalized = NanoProfile.normalizeForEdit(meta);
-
-    _burnInTime = (normalized['burn_in_cure_time'] as num?)?.toDouble() ?? 10.0;
-    _normalTime = (normalized['normal_cure_time'] as num?)?.toDouble() ?? 8.0;
-    _liftAfter = normalized['lift_after_print'] as double? ?? 5.0;
-    _burnInCount = normalized['burn_in_count'] as int? ?? 3;
-    _waitAfterCure = (normalized['wait_after_cure'] as num?)?.toDouble() ?? 2.0;
-    _waitAfterLife = (normalized['wait_after_life'] as num?)?.toDouble() ?? 2.0;
-
-    _initial = Map<String, dynamic>.from(normalized);
   }
 
   void _reset() {
@@ -166,11 +189,15 @@ class EditResinScreenState extends State<EditResinScreen> {
 
     try {
       final svc = BackendService();
-      // Convert our normalized fields to backend-specific format using the
-      // model layer (keeps UI backend-agnostic)
-      final backendFields = NanoProfile.denormalizeForBackend(result);
-      final resp = await svc.editProfile(profileId, backendFields);
-      _log.fine('editProfile response: $resp');
+      final settings = ResinSettings(
+        burnInCureTime: _burnInTime,
+        normalCureTime: _normalTime,
+        liftAfterPrint: _liftAfter,
+        burnInCount: _burnInCount,
+        waitAfterCure: _waitAfterCure,
+        waitAfterLife: _waitAfterLife,
+      );
+      await svc.saveResinSettings(profileId, settings);
 
       if (mounted) {
         setState(() {
@@ -195,7 +222,7 @@ class EditResinScreenState extends State<EditResinScreen> {
           context: context,
           builder: (context) => GlassAlertDialog(
             title: const Text('Profile Saved',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -285,7 +312,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Done', style: TextStyle(fontSize: 22)),
+                child: const Text('Done'),
               ),
             ],
           ),
@@ -295,7 +322,7 @@ class EditResinScreenState extends State<EditResinScreen> {
       // Return the submitted result (or backend response) to the caller so
       // callers can update UI immediately.
       if (mounted) {
-        Navigator.of(context).pop(resp.isNotEmpty ? resp : result);
+        Navigator.of(context).pop(result);
       }
     } catch (e, st) {
       _log.severe('Failed to post profile edits', e, st);
@@ -394,7 +421,10 @@ class EditResinScreenState extends State<EditResinScreen> {
         ),
         body: Padding(
           padding: const EdgeInsets.only(
-              left: 16.0, right: 16.0, bottom: 20.0, top: 8.0),
+              left: OrionSpacing.screenHorizontal,
+              right: OrionSpacing.screenHorizontal,
+              top: OrionSpacing.screenTop,
+              bottom: 20.0),
           child: Column(
             children: [
               Expanded(

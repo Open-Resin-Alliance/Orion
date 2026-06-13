@@ -32,6 +32,7 @@ import 'package:orion/status/status_screen.dart';
 import 'dart:typed_data';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -169,11 +170,10 @@ class DetailScreenState extends State<DetailScreen> {
             subdirectory: widget.fileSubdirectory,
             fileName: widget.fileName,
             file: OrionApiFile(
-              path: widget.fileSubdirectory == ''
-                  ? widget.fileName
-                  : '${widget.fileSubdirectory}/${widget.fileName}',
-              name: widget.fileName,
-              parentPath: widget.fileSubdirectory,
+              path: meta.fileData.path,
+              name: meta.fileData.name,
+              parentPath: meta.fileData.parentPath,
+              lastModified: meta.fileData.lastModified,
             ),
             size: 'Large',
           );
@@ -321,12 +321,12 @@ class DetailScreenState extends State<DetailScreen> {
                                 BoxConstraints constraints) {
                               return isLandScape
                                   ? Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 16, right: 16, bottom: 20),
+                                      padding: OrionSpacing.screenPaddingNoTop
+                                          .copyWith(bottom: 20),
                                       child: buildLandscapeLayout(context))
                                   : Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 16, right: 16, bottom: 20),
+                                      padding: OrionSpacing.screenPaddingNoTop
+                                          .copyWith(bottom: 20),
                                       child: buildPortraitLayout(context));
                             },
                           )),
@@ -445,8 +445,8 @@ class DetailScreenState extends State<DetailScreen> {
                 ),
               ),
               const SizedBox(width: 16.0),
-              Flexible(
-                flex: 0,
+              Expanded(
+                flex: 2,
                 child: buildThumbnailView(context),
               ),
             ],
@@ -454,7 +454,7 @@ class DetailScreenState extends State<DetailScreen> {
         ),
         const SizedBox(height: 20),
         Padding(
-          padding: const EdgeInsets.only(left: 5.0, right: 5.0),
+          padding: EdgeInsets.zero,
           child: buildPrintButtons(),
         ),
       ],
@@ -475,6 +475,7 @@ class DetailScreenState extends State<DetailScreen> {
     return GlassCard(
       outlined: true,
       elevation: 1.0,
+      margin: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
       child: cardContent,
     );
   }
@@ -523,6 +524,7 @@ class DetailScreenState extends State<DetailScreen> {
 
         return GlassCard(
           outlined: true,
+          margin: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
           child: cardChild,
         );
       },
@@ -567,47 +569,36 @@ class DetailScreenState extends State<DetailScreen> {
     return Center(
       child: GlassCard(
         outlined: true,
+        margin: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
         child: cardContent,
       ),
     );
   }
 
   Future<void> launchDeleteDialog() async {
+    final fileName = widget.fileName;
+
     final bool? deleteConfirmed = await showDialog<bool>(
       barrierDismissible: false,
       context: context,
       builder: (BuildContext context) {
         return GlassAlertDialog(
           title: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(
                 Icons.delete_forever_rounded,
                 color: Theme.of(context).colorScheme.error,
-                size: 26,
+                size: 32,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Delete File',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.fileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Delete File',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -615,20 +606,26 @@ class DetailScreenState extends State<DetailScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Are you sure you want to delete this file?',
-                style: TextStyle(
-                  fontSize: 18,
-                  height: 1.5,
+            children: [
+              Text.rich(
+                TextSpan(
+                  text: 'You are about to delete ',
+                  children: [
+                    TextSpan(
+                      text: fileName,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const TextSpan(text: '.\nDo you want to continue?'),
+                  ],
                 ),
               ),
-              SizedBox(height: 8),
-              Text(
+              const SizedBox(height: 10),
+              const Text(
                 'This action cannot be undone.',
                 style: TextStyle(
-                  fontSize: 18,
-                  height: 1.5,
+                  decoration: TextDecoration.underline,
                 ),
               ),
             ],
@@ -640,7 +637,7 @@ class DetailScreenState extends State<DetailScreen> {
                 minimumSize: const Size(0, 60),
               ),
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+              child: const Text('Cancel'),
             ),
             GlassButton(
               tint: GlassButtonTint.negative,
@@ -670,7 +667,7 @@ class DetailScreenState extends State<DetailScreen> {
                   if (mounted) Navigator.of(context).pop(false);
                 }
               },
-              child: const Text('Delete', style: TextStyle(fontSize: 22)),
+              child: const Text('Delete'),
             ),
           ],
         );

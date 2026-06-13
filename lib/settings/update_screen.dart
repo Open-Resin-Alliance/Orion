@@ -30,7 +30,10 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/update_progress.dart';
 import 'package:orion/util/markdown_screen.dart';
 import 'package:orion/util/orion_config.dart';
-import 'package:orion/backend_service/nanodlp/nanodlp_http_client.dart';
+import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/backend_registry.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class UpdateScreen extends StatefulWidget {
   const UpdateScreen({super.key});
@@ -43,6 +46,7 @@ class UpdateScreenState extends State<UpdateScreen>
     with TickerProviderStateMixin {
   final Logger _logger = Logger('UpdateScreen');
   final OrionConfig _config = OrionConfig();
+  final BackendService _backendService = BackendService();
   late AnimationController _pulseController;
 
   @override
@@ -71,6 +75,7 @@ class UpdateScreenState extends State<UpdateScreen>
 
   @override
   void dispose() {
+    _backendService.dispose();
     _pulseController.dispose();
     super.dispose();
   }
@@ -109,62 +114,62 @@ class UpdateScreenState extends State<UpdateScreen>
 
   Future<void> _offerResetChannel(BuildContext ctx) async {
     final resetConfirmed = await showDialog<bool>(
-      context: ctx,
-      barrierDismissible: false,
-      builder: (dctx) => GlassAlertDialog(
-        title: Row(
-          children: [
-            PhosphorIcon(
-              PhosphorIcons.arrowClockwise(),
-              color: Colors.greenAccent,
-              size: 32,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Reset Update Channel',
-                style: const TextStyle(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (dctx) => GlassAlertDialog(
+            title: Row(
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.arrowClockwise(),
                   color: Colors.greenAccent,
-                  fontWeight: FontWeight.bold,
+                  size: 32,
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Reset Update Channel',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        content: const Text(
-          'Would you like to switch back to the stable update channel?\n\n'
-          'This is recommended for production builds.',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-        ),
-        actions: [
-          GlassButton(
-            tint: GlassButtonTint.neutral,
-            onPressed: () => Navigator.of(dctx).pop(false),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-            child: const Text('Keep Development Channel',
-                style: TextStyle(fontSize: 18)),
+            content: const Text(
+              'Would you like to switch back to the stable update channel?\n\n'
+              'This is recommended for production builds.',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.neutral,
+                onPressed: () => Navigator.of(dctx).pop(false),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: const Text('Keep Development Channel'),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () => Navigator.of(dctx).pop(true),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: const Text('Reset to Stable'),
+              ),
+            ],
           ),
-          GlassButton(
-            tint: GlassButtonTint.positive,
-            onPressed: () => Navigator.of(dctx).pop(true),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-            child: const Text('Reset to Stable',
-                style: TextStyle(fontSize: 18)),
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
 
     if (resetConfirmed) {
       try {
-        final nano = NanoDlpHttpClient();
-        await nano.manualCommand('[[Exec echo "stable" > /home/pi/channel]]');
+        final backend = BackendService();
+        await backend
+            .manualCommand('[[Exec echo "stable" > /home/pi/channel]]');
         _logger.info('Update channel reset to stable');
-        
+
         // Refresh AthenaOS update status to reflect the new channel
         if (ctx.mounted) {
-          final athenaProvider = Provider.of<AthenaUpdateProvider>(ctx, listen: false);
+          final athenaProvider =
+              Provider.of<AthenaUpdateProvider>(ctx, listen: false);
           await athenaProvider.checkForUpdates();
         }
       } catch (e) {
@@ -214,16 +219,14 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('I Accept',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('I Accept'),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.positive,
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel'),
                   ),
                 ],
               ),
@@ -273,16 +276,14 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel'),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.negative,
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Continue',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Continue'),
                   ),
                 ],
               ),
@@ -334,16 +335,14 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Update Now',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Update Now'),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.positive,
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel',
-                        style: TextStyle(fontSize: 20)),
+                    child: const Text('Cancel'),
                   ),
                 ],
               ),
@@ -390,10 +389,7 @@ class UpdateScreenState extends State<UpdateScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text(
-                'Dismiss',
-                style: TextStyle(fontSize: 20),
-              ),
+              child: const Text('Dismiss'),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -403,10 +399,7 @@ class UpdateScreenState extends State<UpdateScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text(
-                'Update Now',
-                style: TextStyle(fontSize: 20),
-              ),
+              child: const Text('Update Now'),
             )
           ],
         );
@@ -422,7 +415,8 @@ class UpdateScreenState extends State<UpdateScreen>
   }
 
   Future<void> _triggerAthenaUpdate(BuildContext ctx) async {
-    final athenaProvider = Provider.of<AthenaUpdateProvider>(ctx, listen: false);
+    final athenaProvider =
+        Provider.of<AthenaUpdateProvider>(ctx, listen: false);
     final isMasterBranch = athenaProvider.channel == 'master';
 
     bool confirmed = false;
@@ -470,16 +464,16 @@ class UpdateScreenState extends State<UpdateScreen>
                 GlassButton(
                   tint: GlassButtonTint.negative,
                   onPressed: () => Navigator.of(dctx).pop(false),
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child:
-                      const Text('Dismiss', style: TextStyle(fontSize: 20)),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                  child: const Text('Dismiss'),
                 ),
                 GlassButton(
                   tint: GlassButtonTint.positive,
                   onPressed: () => Navigator.of(dctx).pop(true),
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child:
-                      const Text('Update Now', style: TextStyle(fontSize: 20)),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                  child: const Text('Update Now'),
                 ),
               ],
             ),
@@ -517,8 +511,8 @@ class UpdateScreenState extends State<UpdateScreen>
     // Trigger the update in the background
     // The system will reboot, so we don't need to dismiss the overlay
     try {
-      final nano = NanoDlpHttpClient();
-      await nano.updateBackend();
+      final backend = BackendService();
+      await backend.updateBackend();
       messageNotifier.value = 'AthenaOS Update intitiated!';
     } catch (e) {
       _logger.warning('AthenaOS update error: $e');
@@ -530,7 +524,12 @@ class UpdateScreenState extends State<UpdateScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: EdgeInsets.only(
+          left: OrionSpacing.settingsScreenPaddingTightTop.left,
+          right: OrionSpacing.settingsScreenPaddingTightTop.right,
+          top: OrionSpacing.settingsScreenPaddingTightTop.top,
+          bottom: OrionSpacing.screenBottomNavClearance,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -631,18 +630,25 @@ class UpdateScreenState extends State<UpdateScreen>
                         children: [
                           // Header
                           Builder(builder: (ctx) {
-                            final cfg = _config;
-                            final isNano = cfg.isNanoDlpMode();
                             final model =
-                                cfg.getMachineModelName().toLowerCase();
-                            final isAthena = model.contains('athena');
-                            final isMasterBranch =
-                                isNano && isAthena && athenaProvider.channel == 'master';
+                                _config.getMachineModelName().toLowerCase();
+                            final supportsAthena =
+                                _backendService.supportsCapability(
+                                    BackendCapabilities.supportsAthena);
+                            final supportsAthenaUpdates =
+                                _backendService.supportsCapability(
+                                    BackendCapabilities.supportsAthenaUpdates);
+                            final isAthena =
+                                supportsAthena && model.contains('athena');
+                            final isMasterBranch = supportsAthenaUpdates &&
+                                isAthena &&
+                                athenaProvider.channel == 'master';
 
                             String headerText;
-                            if (isNano && isAthena) {
-                              headerText =
-                                  isMasterBranch ? 'AthenaOS Internal' : 'AthenaOS';
+                            if (supportsAthenaUpdates && isAthena) {
+                              headerText = isMasterBranch
+                                  ? 'AthenaOS Internal'
+                                  : 'AthenaOS';
                             } else {
                               headerText = 'Backend';
                             }
@@ -652,7 +658,7 @@ class UpdateScreenState extends State<UpdateScreen>
                                 PhosphorIcon(
                                   isMasterBranch
                                       ? PhosphorIcons.warning()
-                                      : (isNano && isAthena
+                                      : (supportsAthenaUpdates && isAthena
                                           ? PhosphorIconsFill.info
                                           : PhosphorIconsFill.info),
                                   color: isMasterBranch
@@ -699,6 +705,70 @@ class UpdateScreenState extends State<UpdateScreen>
     );
   }
 
+  Widget _buildStatusChip({
+    required BuildContext context,
+    required String label,
+    required Color accent,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isGlassTheme = context.watch<ThemeProvider>().isGlassTheme;
+
+    final materialFill = Color.alphaBlend(
+      accent.withValues(alpha: isDark ? 0.14 : 0.07),
+      theme.colorScheme.surface,
+    );
+
+    Widget chipChild = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: accent,
+        ),
+      ),
+    );
+
+    if (!isGlassTheme) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: materialFill,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.22),
+            width: 1.2,
+          ),
+        ),
+        child: chipChild,
+      );
+    }
+
+    final glassFill = Color.alphaBlend(
+      accent.withValues(alpha: 0.75),
+      Colors.white,
+    );
+
+    return GlassEffect(
+      borderRadius: BorderRadius.circular(6),
+      sigma: glassBlurSigma,
+      opacity: GlassPlatformConfig.surfaceOpacity(
+        0.12,
+        emphasize: true,
+      ),
+      color: glassFill,
+      borderWidth: 1.5,
+      borderColor: accent,
+      borderAlpha: 0.45,
+      useRawBorderAlpha: true,
+      emphasizeBorder: true,
+      interactiveSurface: false,
+      floatingSurface: false,
+      child: chipChild,
+    );
+  }
+
   Widget _buildOrionContent(OrionUpdateProvider provider) {
     if (provider.rateLimitExceeded) {
       return Column(
@@ -737,24 +807,12 @@ class UpdateScreenState extends State<UpdateScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Status badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.orangeAccent.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(6),
-              border:
-                  Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
-            ),
-            child: Text(
-              provider.betaUpdatesOverride
-                  ? (provider.preRelease ? 'BLEEDING EDGE' : 'ROLLBACK')
-                  : 'UPDATE AVAILABLE',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.orangeAccent,
-              ),
-            ),
+          _buildStatusChip(
+            context: context,
+            accent: Colors.orangeAccent,
+            label: provider.betaUpdatesOverride
+                ? (provider.preRelease ? 'BLEEDING EDGE' : 'ROLLBACK')
+                : 'UPDATE AVAILABLE',
           ),
           const SizedBox(height: 12),
 
@@ -826,22 +884,10 @@ class UpdateScreenState extends State<UpdateScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: Colors.greenAccent.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(6),
-            border:
-                Border.all(color: Colors.greenAccent.withValues(alpha: 0.5)),
-          ),
-          child: const Text(
-            'UP TO DATE',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.greenAccent,
-            ),
-          ),
+        _buildStatusChip(
+          context: context,
+          accent: Colors.greenAccent,
+          label: 'UP TO DATE',
         ),
         const SizedBox(height: 12),
         Text(
@@ -862,12 +908,14 @@ class UpdateScreenState extends State<UpdateScreen>
   }
 
   Widget _buildBackendContent(AthenaUpdateProvider ap) {
-    final cfg = _config;
-    final isNano = cfg.isNanoDlpMode();
-    final model = cfg.getMachineModelName().toLowerCase();
-    final isAthena = model.contains('athena');
+    final model = _config.getMachineModelName().toLowerCase();
+    final supportsAthena =
+        _backendService.supportsCapability(BackendCapabilities.supportsAthena);
+    final supportsAthenaUpdates = _backendService
+        .supportsCapability(BackendCapabilities.supportsAthenaUpdates);
+    final isAthena = supportsAthena && model.contains('athena');
 
-    if (isNano && isAthena) {
+    if (supportsAthenaUpdates && isAthena) {
       if (ap.isChecking) {
         return const Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -890,38 +938,16 @@ class UpdateScreenState extends State<UpdateScreen>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: isMasterBranch
-                    ? Colors.redAccent.withValues(alpha: 0.2)
-                    : (isBetaChannel && isSameVersion
-                        ? Colors.redAccent.withValues(alpha: 0.12)
-                        : Colors.orangeAccent.withValues(alpha: 0.2)),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                    color: isMasterBranch
-                        ? Colors.redAccent.withValues(alpha: 0.5)
-                        : (isBetaChannel && isSameVersion
-                            ? Colors.redAccent.withValues(alpha: 0.5)
-                            : Colors.orangeAccent.withValues(alpha: 0.5))),
-              ),
-              child: Text(
-                isMasterBranch
-                    ? 'INTERNAL BUILD'
-                    : (isBetaChannel && isSameVersion
-                        ? 'BETA VERSION'
-                        : 'UPDATE AVAILABLE'),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isMasterBranch
-                      ? Colors.redAccent
-                      : (isBetaChannel && isSameVersion
-                          ? Colors.redAccent
-                          : Colors.orangeAccent),
-                ),
-              ),
+            _buildStatusChip(
+              context: context,
+              accent: (isMasterBranch || (isBetaChannel && isSameVersion))
+                  ? Colors.redAccent
+                  : Colors.orangeAccent,
+              label: isMasterBranch
+                  ? 'INTERNAL BUILD'
+                  : (isBetaChannel && isSameVersion
+                      ? 'BETA VERSION'
+                      : 'UPDATE AVAILABLE'),
             ),
             const SizedBox(height: 12),
             Text(
@@ -974,22 +1000,10 @@ class UpdateScreenState extends State<UpdateScreen>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.greenAccent.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                    color: Colors.greenAccent.withValues(alpha: 0.5)),
-              ),
-              child: const Text(
-                'UP TO DATE',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.greenAccent,
-                ),
-              ),
+            _buildStatusChip(
+              context: context,
+              accent: Colors.greenAccent,
+              label: 'UP TO DATE',
             ),
             const SizedBox(height: 12),
             Text(

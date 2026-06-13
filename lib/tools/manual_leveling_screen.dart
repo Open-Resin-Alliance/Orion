@@ -28,6 +28,7 @@ import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 
 class ManualLevelingScreen extends StatefulWidget {
@@ -126,7 +127,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 65),
             ),
-            child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+            child: const Text('Cancel'),
           ),
           GlassButton(
             tint: confirmTint,
@@ -134,7 +135,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 65),
             ),
-            child: Text(confirmLabel, style: const TextStyle(fontSize: 22)),
+            child: Text(confirmLabel),
           ),
         ],
       ),
@@ -320,8 +321,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.only(
-                left: 20.0, right: 20.0, top: 8.0, bottom: 20.0),
+            padding: OrionSpacing.screenPaddingWithBottomNav,
             child: Column(
               children: [
                 Expanded(
@@ -357,7 +357,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: LayoutBuilder(
             builder: (context, constraints) {
               // Calculate widths to match the body columns exactly.
@@ -407,46 +407,41 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
   Widget buildChoiceCards(BuildContext context) {
     final values = [0.01, 0.1, 1.0, 5.0];
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(values.length, (index) {
-        final value = values[index];
-        String label;
-        if (value < 1.0) {
-          label = '${(value * 1000).round()} µm';
-        } else {
-          label =
-              '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} mm';
-        }
+      children: [
+        for (int index = 0; index < values.length; index++) ...[
+          Expanded(
+            child: Builder(builder: (context) {
+              final value = values[index];
+              final label = value < 1.0
+                  ? '${(value * 1000).round()} µm'
+                  : '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} mm';
 
-        return Flexible(
-          child: Padding(
-            padding: EdgeInsets.only(
-                bottom: index < values.length - 1
-                    ? 25.0
-                    : 0.0), // Add padding only if it's not the last item
-            child: GlassChoiceChip(
-              label: SizedBox(
-                width: double.infinity,
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22),
+              return GlassChoiceChip(
+                label: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 22),
+                  ),
                 ),
-              ),
-              selected: step == value,
-              onSelected: _apiErrorState
-                  ? null
-                  : (selected) {
-                      if (selected) {
-                        setState(() {
-                          step = value;
-                        });
-                      }
-                    },
-            ),
+                selected: step == value,
+                onSelected: _apiErrorState
+                    ? null
+                    : (selected) {
+                        if (selected) {
+                          setState(() {
+                            step = value;
+                          });
+                        }
+                      },
+              );
+            }),
           ),
-        );
-      }),
+          if (index < values.length - 1)
+            const SizedBox(height: OrionSpacing.controlGap),
+        ],
+      ],
     );
   }
 
@@ -831,7 +826,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                         size: 30,
                         color: _apiErrorState
                             ? null
-                            : Theme.of(context).colorScheme.onErrorContainer),
+                            : Theme.of(context).colorScheme.error),
                     Expanded(
                       child: AutoSizeText(
                         'Emergency Stop',
@@ -839,7 +834,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           fontSize: 24,
                           color: _apiErrorState
                               ? null
-                              : Theme.of(context).colorScheme.onErrorContainer,
+                              : Theme.of(context).colorScheme.error,
                         ),
                         maxLines: 1,
                         minFontSize: 20,
@@ -852,9 +847,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                                 fontSize: 24,
                                 color: _apiErrorState
                                     ? null
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .onErrorContainer,
+                                    : Theme.of(context).colorScheme.error,
                               ),
                             ),
                           ),

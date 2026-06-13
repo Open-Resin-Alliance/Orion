@@ -66,10 +66,12 @@ FileData _$FileDataFromJson(Map<String, dynamic> json) => FileData(
       name: json['name'] as String,
       path: json['path'] as String,
       locationCategory: json['location_category'] as String?,
+      lastModified: (json['last_modified'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$FileDataToJson(FileData instance) => <String, dynamic>{
       'name': instance.name,
       'path': instance.path,
       'location_category': instance.locationCategory,
+      'last_modified': instance.lastModified,
     };

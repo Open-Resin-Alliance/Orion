@@ -19,9 +19,11 @@ class ZoomValueEditorDialog extends StatefulWidget {
   final String suffix;
   final int decimals;
   final double? step;
+
   /// When true (default), zoom is automatically disabled for dense ranges
   /// where total steps ( (max-min)/step ) are <= 40.
   final bool disableZoomWhenDense;
+
   /// Radius in step points to include on each side when zooming. For example,
   /// radius=15 with step=0.1 yields a zoom window of 3.0 total span centered
   /// around the current value (31 points including the current).
@@ -75,7 +77,8 @@ class ZoomValueEditorDialog extends StatefulWidget {
   State<ZoomValueEditorDialog> createState() => _ZoomValueEditorDialogState();
 }
 
-class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with SingleTickerProviderStateMixin {
+class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
+    with SingleTickerProviderStateMixin {
   late double _currentValue;
   String? _tempEditValue; // Temporary unclamped value while editing
   bool _isZoomed = false;
@@ -197,8 +200,8 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
 
     // Preserve the thumb's relative position on screen (avoid jump-to-center).
     final anchorFraction = totalRange > 0
-      ? ((_currentValue - widget.min) / totalRange).clamp(0.0, 1.0)
-      : 0.5;
+        ? ((_currentValue - widget.min) / totalRange).clamp(0.0, 1.0)
+        : 0.5;
 
     double zMin = _currentValue - (anchorFraction * zoomSpan);
     double zMax = zMin + zoomSpan;
@@ -312,19 +315,22 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
             GestureDetector(
               onTap: _isEditingNumeric ? null : _editNumericValue,
               child: MouseRegion(
-                cursor: _isEditingNumeric ? MouseCursor.defer : SystemMouseCursors.click,
+                cursor: _isEditingNumeric
+                    ? MouseCursor.defer
+                    : SystemMouseCursors.click,
                 child: AnimatedBuilder(
                   animation: _cursorBlinkController,
                   builder: (context, _) {
                     String valueStr;
                     bool showCursor = false;
-                    
+
                     if (_tempEditValue != null) {
                       showCursor = true;
                       // Editing mode: format with placeholder dashes
                       if (_tempEditValue!.isEmpty) {
                         // Empty: show just integer placeholder dashes
-                        final intPlaces = widget.max.toString().split('.')[0].length;
+                        final intPlaces =
+                            widget.max.toString().split('.')[0].length;
                         valueStr = '−' * intPlaces;
                       } else {
                         valueStr = _tempEditValue!;
@@ -333,7 +339,8 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
                           final parts = valueStr.split('.');
                           if (parts[1].length < activeDecimals) {
                             // Has decimal but incomplete, pad with dashes
-                            valueStr += '−' * (activeDecimals - parts[1].length);
+                            valueStr +=
+                                '−' * (activeDecimals - parts[1].length);
                           }
                         }
                       }
@@ -343,19 +350,20 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
                           ? _currentValue.round().toString()
                           : _currentValue.toStringAsFixed(activeDecimals);
                     }
-                    
+
                     final baseStyle = TextStyle(
-                      fontSize: 46,
-                      fontWeight: FontWeight.w700,
-                      height: 1.0,
-                      color: activeColor,
-                      shadows: null,
-                      fontFamily: 'AtkinsonHyperlegible'
-                    );
+                        fontSize: 46,
+                        fontWeight: FontWeight.w700,
+                        height: 1.0,
+                        color: activeColor,
+                        shadows: null,
+                        fontFamily: 'AtkinsonHyperlegible');
 
                     final spans = <TextSpan>[];
-                    
-                    if (_isZoomed && valueStr.isNotEmpty && _tempEditValue == null) {
+
+                    if (_isZoomed &&
+                        valueStr.isNotEmpty &&
+                        _tempEditValue == null) {
                       final stepForHighlight = activeStep;
                       if (stepForHighlight > 0) {
                         final dimColor = activeColor.withValues(alpha: 0.5);
@@ -370,19 +378,24 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
                         for (var i = 0; i < valueStr.length; i++) {
                           final ch = valueStr[i];
                           if (ch == '-' || ch == '−') {
-                            spans.add(TextSpan(text: ch, style: baseStyle.copyWith(color: dimColor)));
+                            spans.add(TextSpan(
+                                text: ch,
+                                style: baseStyle.copyWith(color: dimColor)));
                             continue;
                           }
                           if (ch == '.') {
                             spans.add(TextSpan(text: ch, style: baseStyle));
-                            currentExp = -1; // next digit is the first fractional
+                            currentExp =
+                                -1; // next digit is the first fractional
                             continue;
                           }
-                          if (ch.codeUnitAt(0) >= 48 && ch.codeUnitAt(0) <= 57) {
+                          if (ch.codeUnitAt(0) >= 48 &&
+                              ch.codeUnitAt(0) <= 57) {
                             final shouldDim = currentExp > thresholdExp;
                             spans.add(TextSpan(
                               text: ch,
-                              style: baseStyle.copyWith(color: shouldDim ? dimColor : activeColor),
+                              style: baseStyle.copyWith(
+                                  color: shouldDim ? dimColor : activeColor),
                             ));
                             currentExp -= 1;
                           } else {
@@ -394,8 +407,9 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
                       }
                     } else {
                       // Build spans with blinking dashes in edit mode
-                      bool editingDecimals = showCursor && _tempEditValue!.contains('.');
-                      
+                      bool editingDecimals =
+                          showCursor && _tempEditValue!.contains('.');
+
                       for (var i = 0; i < valueStr.length; i++) {
                         final ch = valueStr[i];
                         // Make placeholder dashes blink based on editing position
@@ -408,16 +422,17 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
                               break;
                             }
                           }
-                          
+
                           // Blink integer dashes when editing integers, decimal dashes when editing decimals
-                          bool shouldBlink = (isBeforeDecimal && !editingDecimals) || 
-                                           (!isBeforeDecimal && editingDecimals);
-                          
+                          bool shouldBlink =
+                              (isBeforeDecimal && !editingDecimals) ||
+                                  (!isBeforeDecimal && editingDecimals);
+
                           spans.add(TextSpan(
                             text: ch,
                             style: baseStyle.copyWith(
                               color: activeColor.withValues(
-                                alpha: shouldBlink 
+                                alpha: shouldBlink
                                     ? 0.3 + (0.7 * _cursorBlinkController.value)
                                     : 0.3,
                               ),
@@ -429,7 +444,8 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
                       }
                     }
                     if (widget.suffix.isNotEmpty) {
-                      spans.add(TextSpan(text: widget.suffix, style: baseStyle));
+                      spans
+                          .add(TextSpan(text: widget.suffix, style: baseStyle));
                     }
                     return RichText(
                       key: _valueDisplayKey,
@@ -537,7 +553,8 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
                               (v / originalStep).roundToDouble() * originalStep;
                           _currentValue = precision == 0
                               ? snapped.roundToDouble()
-                              : double.parse(snapped.toStringAsFixed(precision));
+                              : double.parse(
+                                  snapped.toStringAsFixed(precision));
                         });
                       },
                     ),
@@ -608,10 +625,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
             minimumSize: const Size(120, 60),
           ),
           onPressed: () => Navigator.of(context).pop(null),
-          child: const Text(
-            'Cancel',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: const Text('Cancel'),
         ),
         GlassButton(
           tint: GlassButtonTint.positive,
@@ -619,10 +633,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog> with Sing
             minimumSize: const Size(120, 60),
           ),
           onPressed: () => Navigator.of(context).pop(_currentValue),
-          child: const Text(
-            'Save',
-            style: TextStyle(fontSize: 22),
-          ),
+          child: const Text('Save'),
         ),
       ],
     );

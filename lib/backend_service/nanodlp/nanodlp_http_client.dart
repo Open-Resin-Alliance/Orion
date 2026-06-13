@@ -29,9 +29,9 @@ import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_machine.dart';
-import 'package:orion/backend_service/nanodlp/models/nano_import_request.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 
@@ -96,6 +96,15 @@ class NanoDlpHttpClient implements BackendClient {
   http.Client _createClient() {
     final inner = _clientFactory();
     return _TimeoutHttpClient(inner, _requestTimeout, _log, 'NanoDLP');
+  }
+
+  AthenaIotClient _createAthenaClient({Duration? requestTimeout}) {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    return AthenaIotClient(
+      baseNoSlash,
+      clientFactory: _clientFactory,
+      requestTimeout: requestTimeout ?? _requestTimeout,
+    );
   }
 
   // Timestamp when this client instance was created. Used to avoid
@@ -279,11 +288,9 @@ class NanoDlpHttpClient implements BackendClient {
         }
       }
 
-      final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       // Use a longer timeout (10s) for kinematic status as the endpoint can be slow
-      final athena = AthenaIotClient(baseNoSlash,
-          clientFactory: _clientFactory,
-          requestTimeout: const Duration(seconds: 10));
+      final athena =
+          _createAthenaClient(requestTimeout: const Duration(seconds: 10));
       final kin = await athena.getKinematicStatusModel();
       if (kin == null) {
         _kinematicCache = null;
@@ -435,7 +442,8 @@ class NanoDlpHttpClient implements BackendClient {
   ///
   /// Throws an exception if the request fails.
   /// Returns the plate ID if successful, null if ID couldn't be determined.
-  Future<int?> importFile(NanoImportRequest request) async {
+  @override
+  Future<int?> importFile(FileImportRequest request) async {
     try {
       final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
       final uri = Uri.parse('$baseNoSlash/plate/add');
@@ -474,7 +482,7 @@ class NanoDlpHttpClient implements BackendClient {
 
       // Add form fields: Path (job name) and ProfileID
       httpRequest.fields['Path'] = request.jobName;
-      httpRequest.fields['ProfileID'] = request.profileId;
+      httpRequest.fields['ProfileID'] = request.profileId.toString();
 
       // Set Accept header to match WebUI behavior
       httpRequest.headers['Accept'] =
@@ -536,6 +544,49 @@ class NanoDlpHttpClient implements BackendClient {
     _platesCacheTime = null;
     _platesCacheFuture = null;
     _log.fine('Plates cache invalidated');
+  }
+
+  @override
+  Future<void> invalidateCache() async {
+    invalidatePlatesCache();
+  }
+
+  @override
+  Future<ResinSettings?> getResinSettings(int profileId) async {
+    final profileJson = await getProfileJson(profileId);
+    if (profileJson.isEmpty) return null;
+    final normalized = NanoProfile.normalizeForEdit(profileJson);
+    return ResinSettings.fromNormalizedMap(normalized);
+  }
+
+  @override
+  Future<void> saveResinExposure(int profileId, double normalCureTime) async {
+    // NanoDLP's profile edit endpoint may treat omitted fields as zero/default.
+    // To keep single-value updates non-destructive, fetch current settings and
+    // submit a full merged payload.
+    final existing = await getResinSettings(profileId);
+    if (existing == null) {
+      throw StateError(
+          'Unable to load existing resin settings for profile $profileId');
+    }
+
+    final merged = ResinSettings(
+      burnInCureTime: existing.burnInCureTime,
+      normalCureTime: normalCureTime,
+      liftAfterPrint: existing.liftAfterPrint,
+      burnInCount: existing.burnInCount,
+      waitAfterCure: existing.waitAfterCure,
+      waitAfterLife: existing.waitAfterLife,
+    );
+
+    await saveResinSettings(profileId, merged);
+  }
+
+  @override
+  Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
+    final backendFields =
+        NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
+    await editProfile(profileId, backendFields);
   }
 
   // --- Unimplemented / TODOs ---
@@ -677,8 +728,7 @@ class NanoDlpHttpClient implements BackendClient {
           // payloads when available on Athena-derived NanoDLP installs.
           final vendor = <String, dynamic>{};
           try {
-            final athena = AthenaIotClient(baseNoSlash,
-                clientFactory: _clientFactory, requestTimeout: _requestTimeout);
+            final athena = _createAthenaClient();
             final athenaDataModel = await athena.getPrinterDataModel();
             if (athenaDataModel != null) {
               vendor['athena_printer_data'] = athenaDataModel.toJson();
@@ -1851,9 +1901,35 @@ class NanoDlpHttpClient implements BackendClient {
       });
 
       final resp = await client.post(uri, body: body);
-      if (resp.statusCode != 200 && resp.statusCode != 201) {
-        _log.warning('editProfile failed: ${resp.statusCode} ${resp.body}');
-        throw Exception('editProfile failed: ${resp.statusCode}');
+      final status = resp.statusCode;
+
+      // NanoDLP commonly replies to successful form POSTs with a redirect
+      // (302/303) back to the profile page. Treat non-auth redirects as
+      // success, similar to import/delete flows.
+      if (status >= 300 && status < 400) {
+        final locationRaw = (resp.headers['location'] ?? '').trim();
+        final location = locationRaw.toLowerCase();
+        final looksLikeAuthRedirect = location.contains('login') ||
+            location.contains('signin') ||
+            location.contains('auth');
+
+        if (looksLikeAuthRedirect) {
+          _log.warning(
+              'editProfile failed auth redirect: $status location=$locationRaw');
+          throw Exception('editProfile failed: $status (auth redirect)');
+        }
+
+        _log.info(
+            'editProfile redirect treated as success: $status location=$locationRaw');
+        return {
+          'status': status,
+          if (locationRaw.isNotEmpty) 'location': locationRaw,
+        };
+      }
+
+      if (status != 200 && status != 201 && status != 204) {
+        _log.warning('editProfile failed: $status ${resp.body}');
+        throw Exception('editProfile failed: $status');
       }
 
       if (resp.body.trim().isEmpty) return {};

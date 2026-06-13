@@ -27,6 +27,8 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
+import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/widgets/selection_screens.dart';
 import 'package:orion/widgets/zoom_value_editor_dialog.dart';
 import 'package:orion/util/orion_config.dart';
 
@@ -42,33 +44,48 @@ class CalibrationScreenState extends State<CalibrationScreen> {
 
   CalibrationModel? _selectedModel;
   ResinProfile? _selectedResin;
+  int? _lastImageFetchRequestModelId;
   double _startingExposure = 1.0; // seconds
   double _exposureIncrement = 0.2; // seconds
+
+  int _currentTestPiecesCount() {
+    final count =
+        _selectedModel?.testPiecesCount ?? _selectedModel?.models ?? 6;
+    return count > 0 ? count : 6;
+  }
 
   @override
   void initState() {
     super.initState();
-    // Refresh data and set default model after first frame when provider is available
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    // Initialize from cache immediately; refresh in background.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final resinsProvider =
           Provider.of<ResinsProvider>(context, listen: false);
 
-      // Refresh to get latest data from backend
-      await resinsProvider.refresh();
+      // Prefer cached/provider-selected model immediately.
+      final providerModel = resinsProvider.selectedCalibrationModel;
+      if (mounted && _selectedModel == null && providerModel != null) {
+        setState(() {
+          _selectedModel = providerModel;
+          _selectedResin = resinsProvider.getRecommendedResin(_selectedModel);
+        });
+        _lastImageFetchRequestModelId = providerModel.id;
+        unawaited(resinsProvider.ensureCalibrationImage(providerModel.id));
+      }
 
-      // Initialize the screen selection from the provider's selected
-      // calibration model (the provider guarantees one will be selected
-      // when models are available).
-      if (mounted) {
-        final providerModel = resinsProvider.selectedCalibrationModel;
-        if (_selectedModel == null && providerModel != null) {
+      // Refresh latest data without blocking first paint.
+      unawaited(resinsProvider.refresh().then((_) {
+        if (!mounted) return;
+        final refreshedModel = resinsProvider.selectedCalibrationModel;
+        if (_selectedModel == null && refreshedModel != null) {
           setState(() {
-            _selectedModel = providerModel;
-            // Pre-select a recommended resin profile for this model.
+            _selectedModel = refreshedModel;
             _selectedResin = resinsProvider.getRecommendedResin(_selectedModel);
           });
+          _lastImageFetchRequestModelId = refreshedModel.id;
+          unawaited(resinsProvider.ensureCalibrationImage(refreshedModel.id));
         }
-      }
+      }));
     });
   }
 
@@ -87,13 +104,35 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     // Use provider's user-visible resin list so locked/vendor profiles
     // (e.g. NanoDLP AFP templates) are hidden from calibration flows.
     final resins = resinsProvider.userResins;
-    final isLoading = resinsProvider.isLoading;
+    final hasResins = resins.isNotEmpty;
+    final hasModels = resinsProvider.calibrationModels.isNotEmpty;
+    final isResinsLoading = resinsProvider.isLoading && !hasResins;
+    final isModelsLoading = resinsProvider.isLoading && !hasModels;
+
+    // If the selected model has no cached image, force-fetch it immediately.
+    final selectedId = _selectedModel?.id;
+    if (selectedId != null) {
+      final selectedImage = resinsProvider.calibrationImageUrl(selectedId);
+      final shouldRequest = (selectedImage == null || selectedImage.isEmpty) &&
+          _lastImageFetchRequestModelId != selectedId;
+      if (shouldRequest) {
+        _lastImageFetchRequestModelId = selectedId;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          unawaited(resinsProvider.ensureCalibrationImage(selectedId));
+        });
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.only(
-            left: 16.0, right: 16.0, top: 4.0, bottom: 4.0),
+        padding: EdgeInsets.only(
+          left: OrionSpacing.screenHorizontal - 4.0,
+          right: OrionSpacing.screenHorizontal - 4.0,
+          top: OrionSpacing.settingsScreenPaddingTightTop.top,
+          bottom: OrionSpacing.screenBottomNavClearance,
+        ),
         child: Column(
           children: [
             Expanded(
@@ -109,15 +148,15 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                         Expanded(
                           child: _buildCompactCard(
                             title: 'Resin Profile',
-                            value: isLoading
+                            value: isResinsLoading
                                 ? 'Loading...'
                                 : (_selectedResin?.name ?? 'Select Resin'),
-                            onTap: isLoading
+                            onTap: isResinsLoading
                                 ? () {}
                                 : () => _selectResinProfile(resins),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         // Starting Exposure
                         Expanded(
                           child: _buildCompactCard(
@@ -138,7 +177,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         // Exposure Increment
                         Expanded(
                           child: _buildCompactCard(
@@ -168,12 +207,12 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                     flex: 11,
                     child: _buildLargeModelSelectorCard(
                       model: _selectedModel,
-                      isLoading: isLoading,
+                      isLoading: isModelsLoading,
                       imageUrl: _selectedModel != null
                           ? resinsProvider
                               .calibrationImageUrl(_selectedModel!.id)
                           : null,
-                      onTap: isLoading
+                      onTap: isModelsLoading
                           ? () {}
                           : () => _selectCalibrationModel(
                               resinsProvider.calibrationModels),
@@ -184,34 +223,38 @@ class CalibrationScreenState extends State<CalibrationScreen> {
             ),
             const SizedBox(height: 16),
             // Bottom Buttons: Reset | Start
-            Row(
-              children: [
-                Expanded(
-                  flex: 9,
-                  child: GlassButton(
-                    tint: GlassButtonTint.negative,
-                    onPressed: () => _resetValues(resinsProvider),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 65),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 9,
+                    child: GlassButton(
+                      tint: GlassButtonTint.negative,
+                      onPressed: () => _resetValues(resinsProvider),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child:
+                          const Text('Reset', style: TextStyle(fontSize: 22)),
                     ),
-                    child: const Text('Reset', style: TextStyle(fontSize: 22)),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 11,
-                  child: GlassButton(
-                    tint: GlassButtonTint.positive,
-                    onPressed:
-                        _selectedResin == null ? null : _startCalibration,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 65),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 11,
+                    child: GlassButton(
+                      tint: GlassButtonTint.positive,
+                      onPressed:
+                          _selectedResin == null ? null : _startCalibration,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child: const Text('Start Calibration',
+                          style: TextStyle(fontSize: 22)),
                     ),
-                    child: const Text('Start Calibration',
-                        style: TextStyle(fontSize: 22)),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -473,212 +516,24 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       return;
     }
 
-    await showDialog(
-      context: context,
-      builder: (context) => GlassDialog(
-        padding: EdgeInsets.zero,
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: MediaQuery.of(context).size.height * 0.8,
-          child: Column(
-            children: [
-              // Header Section
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color:
-                          Theme.of(context).dividerColor.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.science, size: 24),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Select Calibration Model',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    if (_selectedModel != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _selectedModel!.name,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: const EdgeInsets.all(4),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      tooltip: 'Close',
-                    ),
-                  ],
-                ),
-              ),
-
-              // Content Section with image-based selection
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: models.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final model = entry.value;
-                      final isSelected = _selectedModel == model;
-                      final resinsProvider =
-                          Provider.of<ResinsProvider>(context, listen: false);
-                      final imageUrl =
-                          resinsProvider.calibrationImageUrl(model.id);
-
-                      return Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                              left: index > 0 ? 6 : 0,
-                              right: index < models.length - 1 ? 6 : 0),
-                          child: GlassCard(
-                            elevation: isSelected ? 2.0 : 1.0,
-                            outlined: true,
-                            color: isSelected
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .primaryContainer
-                                    .withValues(alpha: 0.3)
-                                : null,
-                            child: InkWell(
-                              onTap: () {
-                                // Update both the screen state and provider's
-                                // selected calibration model so the choice is
-                                // visible app-wide. Keep the user's resin
-                                // selection (don't reset it).
-                                setState(() {
-                                  _selectedModel = model;
-                                });
-                                resinsProvider
-                                    .setSelectedCalibrationModelId(model.id);
-                                Navigator.of(context).pop();
-                              },
-                              borderRadius: BorderRadius.circular(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  // Image preview
-                                  Expanded(
-                                    child: ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(
-                                          top: Radius.circular(16)),
-                                      child: imageUrl != null
-                                          ? Image.network(
-                                              imageUrl,
-                                              fit: BoxFit.contain,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                return Container(
-                                                  color: Colors.grey.shade800,
-                                                  child: const Icon(Icons.image,
-                                                      size: 64,
-                                                      color: Colors.grey),
-                                                );
-                                              },
-                                            )
-                                          : Container(
-                                              color: Colors.grey.shade800,
-                                              child: const Center(
-                                                  child:
-                                                      CircularProgressIndicator()),
-                                            ),
-                                    ),
-                                  ),
-
-                                  // Model name and selection indicator
-                                  Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            model.name,
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: isSelected
-                                                  ? Theme.of(context)
-                                                      .colorScheme
-                                                      .primary
-                                                  : null,
-                                            ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          width: 24,
-                                          height: 24,
-                                          decoration: BoxDecoration(
-                                            color: isSelected
-                                                ? Theme.of(context)
-                                                    .colorScheme
-                                                    .primary
-                                                : Colors.transparent,
-                                            border: isSelected
-                                                ? null
-                                                : Border.all(
-                                                    color: Theme.of(context)
-                                                        .dividerColor,
-                                                    width: 2),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: isSelected
-                                              ? const Icon(Icons.check,
-                                                  color: Colors.white, size: 16)
-                                              : null,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    final selected = await Navigator.of(context).push<CalibrationModel>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => _CalibrationModelPickerScreen(
+          models: models,
+          selectedModel: _selectedModel,
         ),
       ),
     );
+
+    if (selected == null || !mounted) return;
+    final resinsProvider = Provider.of<ResinsProvider>(context, listen: false);
+    setState(() {
+      _selectedModel = selected;
+    });
+    resinsProvider.setSelectedCalibrationModelId(selected.id);
+    _lastImageFetchRequestModelId = selected.id;
+    unawaited(resinsProvider.ensureCalibrationImage(selected.id));
   }
 
   Future<void> _selectResinProfile(List<ResinProfile> resins) async {
@@ -686,203 +541,30 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       return;
     }
 
-    await showDialog(
-      context: context,
-      builder: (context) => GlassDialog(
-        padding: EdgeInsets.zero,
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: MediaQuery.of(context).size.height * 0.8,
-          child: Column(
-            children: [
-              // Header Section
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color:
-                          Theme.of(context).dividerColor.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.water_drop, size: 24),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Select Resin Profile',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    if (_selectedResin != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _selectedResin!.name,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: const EdgeInsets.all(4),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      tooltip: 'Close',
-                    ),
-                  ],
-                ),
-              ),
-
-              // Content Section
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ListView.separated(
-                    itemCount: resins.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final resin = resins[index];
-                      final isSelected = _selectedResin == resin;
-                      final meta = resin.meta;
-                      final parts = <String>[];
-                      if (meta['viscosity'] != null) {
-                        parts.add('Viscosity: ${meta['viscosity']}');
-                      }
-                      if (meta['exposure'] != null) {
-                        parts.add('Exposure: ${meta['exposure']}');
-                      }
-
-                      return GlassCard(
-                        elevation: isSelected ? 2.0 : 1.0,
-                        outlined: true,
-                        color: isSelected
-                            ? Theme.of(context)
-                                .colorScheme
-                                .primaryContainer
-                                .withValues(alpha: 0.3)
-                            : null,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              _selectedResin = resin;
-                            });
-                            Navigator.of(context).pop();
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                // Resin Icon
-
-                                // Resin Info
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        resin.name,
-                                        style: TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w600,
-                                          color: isSelected
-                                              ? Theme.of(context)
-                                                  .colorScheme
-                                                  .primary
-                                              : null,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (parts.isNotEmpty)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 4.0),
-                                          child: Text(
-                                            parts.join(' • '),
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.color,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Selection Indicator
-                                Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Colors.transparent,
-                                    border: isSelected
-                                        ? null
-                                        : Border.all(
-                                            color:
-                                                Theme.of(context).dividerColor,
-                                            width: 2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: isSelected
-                                      ? const Icon(Icons.check,
-                                          color: Colors.white, size: 16)
-                                      : null,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
+    final selected = await Navigator.of(context).push<ResinProfile>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => _ResinProfilePickerScreen(
+          title: 'Select Resin Profile',
+          resins: resins,
+          selectedResin: _selectedResin,
         ),
       ),
     );
+
+    if (selected == null || !mounted) return;
+    setState(() {
+      _selectedResin = selected;
+    });
   }
 
   void _startCalibration() async {
     _log.info(
         'Starting calibration: model=${_selectedModel?.name} (id=${_selectedModel?.id}), resin=${_selectedResin?.name}, start=$_startingExposure, increment=$_exposureIncrement');
 
-    // Build a human-readable sequence of exposures for each of the six test pieces
-    final exposuresList = List.generate(6, (i) {
-      final value = _startingExposure + (_exposureIncrement * i);
-      return '${value.toStringAsFixed(1)}s';
-    }).join(' → ');
+    final testPiecesCount = _currentTestPiecesCount();
 
+    // Build a human-readable sequence of exposures for the selected model's piece count
     // Show unified pre-calibration overlay with info and checklist
     final confirmed = await Navigator.of(context).push<bool>(
       PageRouteBuilder(
@@ -899,8 +581,10 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         pageBuilder: (context, _, __) => _PreCalibrationOverlay(
           calibrationModelName: _selectedModel!.name,
           resinProfileName: _selectedResin?.name,
-          exposuresList: exposuresList,
+          startingExposure: _startingExposure,
+          exposureIncrement: _exposureIncrement,
           calibrationModelId: _selectedModel!.id,
+          testPiecesCount: testPiecesCount,
         ),
       ),
     );
@@ -942,7 +626,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
 
       // Calculate exposure times
       final exposureTimes = List.generate(
-        6,
+        testPiecesCount,
         (i) => _startingExposure + (_exposureIncrement * i),
       );
 
@@ -1020,276 +704,624 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   }
 }
 
+class _CalibrationModelPickerScreen extends StatelessWidget {
+  final List<CalibrationModel> models;
+  final CalibrationModel? selectedModel;
+
+  const _CalibrationModelPickerScreen({
+    required this.models,
+    required this.selectedModel,
+  });
+
+  Widget _buildModelTile({
+    required BuildContext context,
+    required CalibrationModel model,
+    required bool isSelected,
+    required String? imageUrl,
+  }) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return GlassCard(
+      elevation: isSelected ? 2.0 : 1.0,
+      outlined: false,
+      color: isSelected
+          ? Theme.of(context)
+              .colorScheme
+              .primaryContainer
+              .withValues(alpha: 0.3)
+          : null,
+      child: InkWell(
+        onTap: () => Navigator.of(context).pop(model),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      height: 96,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.black.withValues(alpha: 0.12),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: imageUrl != null
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey.shade800,
+                                    child: const Icon(
+                                      Icons.image_not_supported_outlined,
+                                      size: 36,
+                                      color: Colors.grey,
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
+                                color: Colors.grey.shade800,
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  model.name,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    color: isSelected ? primary : null,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHighest
+                                            .withValues(alpha: 0.45),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.view_module_outlined,
+                                            size: 12,
+                                            color: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.color,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${model.models} ${model.models == 1 ? 'piece' : 'pieces'}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.color,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (model.resinRequired != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? primary.withValues(alpha: 0.2)
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceContainerHighest
+                                                  .withValues(alpha: 0.35),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.water_drop_outlined,
+                                              size: 12,
+                                              color: isSelected
+                                                  ? primary
+                                                  : Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.color,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${model.resinRequired} ml',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: isSelected
+                                                    ? primary
+                                                    : Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.color,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected)
+                Positioned(
+                  right: 10,
+                  bottom: 10,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: primary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resinsProvider = Provider.of<ResinsProvider>(context, listen: false);
+
+    return DetailedSelectionScreen(
+      title: 'Select Calibration Model',
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const spacing = 10.0;
+          final columns = constraints.maxWidth < 560 ? 1 : 2;
+          const sizingRows = 2;
+          final tileWidth =
+              (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
+          final tileHeight =
+              (constraints.maxHeight - ((sizingRows - 1) * spacing)) /
+                  sizingRows;
+          final lockedAspectRatio = tileWidth / tileHeight;
+          final fitWithoutScroll = models.length <= 4;
+
+          final delegate = SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: spacing,
+            crossAxisSpacing: spacing,
+            childAspectRatio: lockedAspectRatio,
+          );
+
+          return GridView.builder(
+            physics: fitWithoutScroll
+                ? const NeverScrollableScrollPhysics()
+                : const BouncingScrollPhysics(),
+            itemCount: models.length,
+            gridDelegate: delegate,
+            itemBuilder: (context, index) {
+              final model = models[index];
+              final isSelected = selectedModel?.id == model.id;
+              final imageUrl = resinsProvider.calibrationImageUrl(model.id);
+
+              return _buildModelTile(
+                context: context,
+                model: model,
+                isSelected: isSelected,
+                imageUrl: imageUrl,
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ResinProfilePickerScreen extends StatelessWidget {
+  final String title;
+  final List<ResinProfile> resins;
+  final ResinProfile? selectedResin;
+
+  const _ResinProfilePickerScreen({
+    required this.title,
+    required this.resins,
+    required this.selectedResin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ResinProfileSelectionScreen(
+      title: title,
+      resins: resins,
+      selectedResinKey: selectedResin?.path ?? selectedResin?.name,
+      onSelected: (resin) {
+        Navigator.of(context).pop(resin);
+      },
+    );
+  }
+}
+
 /// Compact pre-calibration overlay
 /// Shows info and checklist in single screen
 class _PreCalibrationOverlay extends StatelessWidget {
   final String calibrationModelName;
   final String? resinProfileName;
-  final String exposuresList;
+  final double startingExposure;
+  final double exposureIncrement;
   final int calibrationModelId;
+  final int testPiecesCount;
 
   const _PreCalibrationOverlay({
     required this.calibrationModelName,
     this.resinProfileName,
-    required this.exposuresList,
+    required this.startingExposure,
+    required this.exposureIncrement,
     required this.calibrationModelId,
+    required this.testPiecesCount,
   });
 
   @override
   Widget build(BuildContext context) {
     final isGlass =
         Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return GlassApp(
       child: Scaffold(
         backgroundColor: isGlass
             ? Colors.transparent
             : Theme.of(context).colorScheme.surface,
-        appBar: AppBar(
-          backgroundColor: isGlass
-              ? Colors.transparent
-              : Theme.of(context).colorScheme.surface,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(
-                PhosphorIconsFill.flask,
-                size: 32,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                calibrationModelName,
-                style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary),
-              ),
-            ],
-          ),
-          centerTitle: true,
-        ),
-        body: SafeArea(
-          child: LayoutBuilder(builder: (context, constraints) {
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Resin info
-                      if (resinProfileName != null) ...[
-                        Text(
-                          resinProfileName!,
-                          style: TextStyle(
-                            fontSize: 22,
-                            color: Colors.grey.shade300,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      // Two-column layout
-                      IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Left box - What's happening
-                            Expanded(
-                              child: GlassCard(
-                                outlined: true,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            PhosphorIconsFill.info,
-                                            size: 20,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'What\'s Happening',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.grey.shade300,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        'Six test pieces will be printed with progressively increasing exposure times to help you find the optimal cure time for this resin.',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          color: Colors.grey.shade400,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Right box - Checklist
-                            Expanded(
-                              child: GlassCard(
-                                outlined: true,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            PhosphorIconsFill.clipboardText,
-                                            size: 20,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Pre-Flight Check',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.grey.shade300,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _buildChecklistItem(context,
-                                          'Correct resin is filled into the vat.'),
-                                      const SizedBox(height: 10),
-                                      _buildChecklistItem(
-                                          context, 'The build plate is clean.'),
-                                      const SizedBox(height: 10),
-                                      _buildChecklistItem(context,
-                                          'The vat is clear of any debris.'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+              // ── Header ──────────────────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIconsFill.flask, size: 24, color: primary),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      calibrationModelName,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: primary,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              if (resinProfileName != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  resinProfileName!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.5),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
 
-                      const SizedBox(height: 8),
-                      GlassCard(
+              const SizedBox(height: 20),
+
+              // ── Body ─────────────────────────────────────────────────
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Left – What's happening
+                    Expanded(
+                      child: GlassCard(
                         outlined: true,
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Exposure Sequence',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade300,
-                                    letterSpacing: 0.5,
-                                  ),
-                                  textAlign: TextAlign.center,
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text(
+                                'WHAT WILL HAPPEN',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.55),
+                                  letterSpacing: 1.2,
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  exposuresList,
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                    letterSpacing: 0.3,
-                                  ),
-                                  textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                '$testPiecesCount test pieces will be printed back-to-back, each with a slightly longer exposure than the last.',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.75),
+                                  height: 1.55,
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 20),
+                              _buildStatRow(
+                                context,
+                                icon: Icon(PhosphorIcons.timer()),
+                                label: 'Starting exposure',
+                                value:
+                                    '${startingExposure.toStringAsFixed(1)} s',
+                                primary: primary,
+                              ),
+                              const SizedBox(height: 10),
+                              _buildStatRow(
+                                context,
+                                icon: Icon(PhosphorIcons.arrowRight()),
+                                label: 'Step between pieces',
+                                value:
+                                    '+${exposureIncrement.toStringAsFixed(1)} s',
+                                primary: primary,
+                              ),
+                              const SizedBox(height: 10),
+                              _buildStatRow(
+                                context,
+                                icon: Icon(PhosphorIcons.arrowLineRight()),
+                                label: 'Final exposure',
+                                value:
+                                    '${(startingExposure + exposureIncrement * (testPiecesCount - 1)).toStringAsFixed(1)} s',
+                                primary: primary,
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 85), // Space for FABs
-                    ],
-                  ), // end Column
-                ), // end Padding
-              ), // end ConstrainedBox
-            ); // end SingleChildScrollView
-          }), // end LayoutBuilder
-        ),
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GlassFloatingActionButton.extended(
-                tint: GlassButtonTint.negative,
-                heroTag: 'cancel',
-                onPressed: () => Navigator.of(context).pop(false),
-                label: 'Cancel',
-                icon: Icon(PhosphorIcons.x()),
-                scale: 1.2,
-                iconAfterLabel: false,
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // Right – Pre-flight checklist
+                    Expanded(
+                      child: GlassCard(
+                        outlined: true,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PRE-FLIGHT CHECK',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.55),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _buildChecklistItem(context,
+                                        'Correct resin is filled into the vat.'),
+                                    _buildChecklistItem(
+                                        context, 'The build plate is clean.'),
+                                    _buildChecklistItem(context,
+                                        'The vat is clear of any debris.'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              GlassFloatingActionButton.extended(
-                tint: GlassButtonTint.positive,
-                heroTag: 'start',
-                onPressed: () => Navigator.of(context).pop(true),
-                label: 'Start Print',
-                icon: Icon(PhosphorIcons.play()),
-                scale: 1.2,
-                iconAfterLabel: true,
+
+              const SizedBox(height: 16),
+
+              // ── Action buttons ────────────────────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: GlassButton(
+                      tint: GlassButtonTint.negative,
+                      onPressed: () => Navigator.of(context).pop(false),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(PhosphorIcons.x(), size: 20),
+                          const SizedBox(width: 10),
+                          const Text('Cancel', style: TextStyle(fontSize: 20)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: GlassButton(
+                      tint: GlassButtonTint.positive,
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Start Print',
+                              style: TextStyle(fontSize: 20)),
+                          const SizedBox(width: 10),
+                          Icon(PhosphorIcons.play(), size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }
 
-  Widget _buildChecklistItem(BuildContext context, String text) {
+  Widget _buildStatRow(
+    BuildContext context, {
+    required Widget icon,
+    required String label,
+    required String value,
+    required Color primary,
+  }) {
     return Row(
       children: [
-        Icon(
-          PhosphorIcons.checkCircle(),
-          size: 22,
-          color: Colors.green.shade400,
+        IconTheme(
+          data: IconThemeData(
+            size: 18,
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
+          child: icon,
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
-            text,
+            label,
             style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey.shade300,
-              height: 1.3,
+              fontSize: 15,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
             ),
           ),
         ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: primary,
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildChecklistItem(BuildContext context, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Colors.green.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            PhosphorIconsFill.checkCircle,
+            size: 20,
+            color: Colors.green.shade400,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.85),
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

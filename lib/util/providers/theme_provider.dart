@@ -35,10 +35,14 @@ class ThemeProvider with ChangeNotifier {
   ThemeProvider() {
     // Initialize theme mode from config
     final savedThemeMode = _config.getString('themeMode', category: 'general');
-    _orionThemeMode = OrionThemeMode.values.firstWhere(
+    final resolvedMode = OrionThemeMode.values.firstWhere(
       (mode) => mode.name == savedThemeMode,
       orElse: () => OrionThemeMode.dark,
     );
+    _orionThemeMode = _resolveAllowedThemeMode(resolvedMode);
+    if (_orionThemeMode != resolvedMode) {
+      _config.setString('themeMode', _orionThemeMode.name, category: 'general');
+    }
 
     // Initialize color seed from config
     _colorSeed = _determineThemeColor();
@@ -70,9 +74,33 @@ class ThemeProvider with ChangeNotifier {
   bool get isGlassTheme => _orionThemeMode == OrionThemeMode.glass;
 
   void setThemeMode(OrionThemeMode mode) {
-    _orionThemeMode = mode;
-    _config.setString('themeMode', mode.name, category: 'general');
+    _orionThemeMode = _resolveAllowedThemeMode(mode);
+    _config.setString('themeMode', _orionThemeMode.name, category: 'general');
     notifyListeners();
+  }
+
+  OrionThemeMode _resolveAllowedThemeMode(OrionThemeMode requested) {
+    final disableLightMode =
+        _config.getFlag('disableLightMode', category: 'vendor');
+    final disableDarkMode =
+        _config.getFlag('disableDarkMode', category: 'vendor');
+    final disableGlassMode =
+        _config.getFlag('disableGlassMode', category: 'vendor');
+
+    final isRequestedDisabled = switch (requested) {
+      OrionThemeMode.light => disableLightMode,
+      OrionThemeMode.dark => disableDarkMode,
+      OrionThemeMode.glass => disableGlassMode,
+    };
+
+    if (!isRequestedDisabled) return requested;
+
+    if (!disableDarkMode) return OrionThemeMode.dark;
+    if (!disableLightMode) return OrionThemeMode.light;
+    if (!disableGlassMode) return OrionThemeMode.glass;
+
+    // Extreme edge-case: all modes disabled. Keep dark to preserve app stability.
+    return OrionThemeMode.dark;
   }
 
   // Backwards compatibility method

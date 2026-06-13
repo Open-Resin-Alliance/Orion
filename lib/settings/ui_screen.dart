@@ -27,6 +27,7 @@ import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/theme_color_selector.dart';
 import 'package:orion/util/orion_list_tile.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 
 class UIScreen extends StatefulWidget {
@@ -68,8 +69,7 @@ class _UIScreenState extends State<UIScreen> {
         ),
         body: SingleChildScrollView(
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+            padding: OrionSpacing.settingsScreenPaddingTightTop,
             child: Column(
               children: [
                 // Theme Mode Selector Card
@@ -367,42 +367,9 @@ class _UIScreenState extends State<UIScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Theme.of(context)
-                          .dividerColor
-                          .withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.nightlight_round, size: 22),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Select Standby Mode',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: const EdgeInsets.all(4),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      tooltip: 'Close',
-                    ),
-                  ],
-                ),
+              const GlassDialogHeader(
+                icon: Icons.nightlight_round,
+                title: 'Select Standby Mode',
               ),
               Padding(
                 padding: const EdgeInsets.all(16.0),

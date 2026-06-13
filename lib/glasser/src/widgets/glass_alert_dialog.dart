@@ -20,6 +20,7 @@ import 'package:provider/provider.dart';
 import '../../../util/providers/theme_provider.dart';
 import '../constants.dart';
 import '../glass_effect.dart';
+import 'glass_button.dart';
 import '../platform_config.dart';
 
 /// An alert dialog that automatically becomes glassmorphic when the glass theme is active.
@@ -62,19 +63,89 @@ class GlassAlertDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final borderRadius = BorderRadius.circular(glassCornerRadius);
+    final dialogConstraints = BoxConstraints(
+      minWidth: 280,
+      maxWidth: MediaQuery.of(context).size.width * 0.8,
+      maxHeight: MediaQuery.of(context).size.height * 0.8,
+    );
 
     if (!themeProvider.isGlassTheme) {
-      return AlertDialog(
-        title: title,
-        content: content,
-        actions: actions,
-        titlePadding: titlePadding,
-        contentPadding: contentPadding,
-        actionsPadding: actionsPadding,
+      return Dialog(
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+        shape: RoundedRectangleBorder(borderRadius: borderRadius),
+        child: ConstrainedBox(
+          constraints: dialogConstraints,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.28),
+                width: 1.2,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (title != null)
+                  Padding(
+                    padding: titlePadding,
+                    child: DefaultTextStyle(
+                      style: TextStyle(
+                        fontFamily: 'AtkinsonHyperlegible',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      child: title!,
+                    ),
+                  ),
+                if (content != null)
+                  Flexible(
+                    child: Padding(
+                      padding: contentPadding,
+                      child: DefaultTextStyle(
+                        style: TextStyle(
+                          fontFamily: 'AtkinsonHyperlegible',
+                          fontSize: 19,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.84),
+                          height: 1.45,
+                        ),
+                        child: content!,
+                      ),
+                    ),
+                  ),
+                if (actions != null && actions!.isNotEmpty)
+                  Padding(
+                    padding: actionsPadding,
+                    child: Row(
+                      children: actions!.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final action = entry.value;
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              left: index == 0 ? 0 : 6,
+                              right: index == actions!.length - 1 ? 0 : 6,
+                            ),
+                            child: _buildActionButton(action),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
-    final borderRadius = BorderRadius.circular(glassCornerRadius);
     final fillOpacity =
         GlassPlatformConfig.surfaceOpacity(0.12, emphasize: true);
     final shadow = GlassPlatformConfig.surfaceShadow(
@@ -89,11 +160,7 @@ class GlassAlertDialog extends StatelessWidget {
       insetPadding:
           const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: 280,
-          maxWidth: MediaQuery.of(context).size.width * 0.8,
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
-        ),
+        constraints: dialogConstraints,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -121,7 +188,7 @@ class GlassAlertDialog extends StatelessWidget {
                           style: const TextStyle(
                             fontFamily: 'AtkinsonHyperlegible',
                             fontSize: 24,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
                           child: title!,
@@ -134,8 +201,9 @@ class GlassAlertDialog extends StatelessWidget {
                           child: DefaultTextStyle(
                             style: const TextStyle(
                               fontFamily: 'AtkinsonHyperlegible',
-                              fontSize: 20,
+                              fontSize: 19,
                               color: Colors.white70,
+                              height: 1.45,
                             ),
                             child: content!,
                           ),
@@ -151,10 +219,10 @@ class GlassAlertDialog extends StatelessWidget {
                             return Expanded(
                               child: Padding(
                                 padding: EdgeInsets.only(
-                                  left: index == 0 ? 0 : 4,
-                                  right: index == actions!.length - 1 ? 0 : 4,
+                                  left: index == 0 ? 0 : 6,
+                                  right: index == actions!.length - 1 ? 0 : 6,
                                 ),
-                                child: _GlassTextButton(child: action),
+                                child: _buildActionButton(action),
                               ),
                             );
                           }).toList(),
@@ -171,76 +239,29 @@ class GlassAlertDialog extends StatelessWidget {
   }
 }
 
-/// Internal glass text button for alert dialog actions
-class _GlassTextButton extends StatelessWidget {
-  final Widget child;
-
-  const _GlassTextButton({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    if (!themeProvider.isGlassTheme) {
-      return child;
-    }
-
-    // Extract the onPressed and child from the TextButton
-    if (child is TextButton) {
-      final textButton = child as TextButton;
-      final borderRadius = BorderRadius.circular(8.0);
-      final isEnabled = textButton.onPressed != null;
-      final fillOpacity = GlassPlatformConfig.surfaceOpacity(
-        isEnabled ? 0.14 : 0.1,
-        emphasize: isEnabled,
-      );
-      final shadow = GlassPlatformConfig.interactiveShadow(
-        enabled: isEnabled,
-        blurRadius: 14,
-        yOffset: 3,
-        alpha: 0.16,
-      );
-
-      return Container(
-        decoration: BoxDecoration(
-          borderRadius: borderRadius,
-          boxShadow: shadow,
-        ),
-        child: GlassEffect(
-          borderRadius: borderRadius,
-          sigma: glassBlurSigma,
-          opacity: fillOpacity,
-          borderWidth: 1.2,
-          emphasizeBorder: isEnabled,
-          interactiveSurface: true,
-          child: Material(
-            color: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: borderRadius),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              borderRadius: borderRadius,
-              onTap: textButton.onPressed,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: DefaultTextStyle(
-                  style: const TextStyle(
-                    fontFamily: 'AtkinsonHyperlegible',
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  child: _buildButtonContentWithIcon(textButton.child!),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
+Widget _buildActionButton(Widget child) {
+  if (child is GlassButton) {
     return child;
   }
+
+  if (child is TextButton) {
+    final textButton = child;
+    final buttonLabel = _extractButtonLabel(textButton.child);
+    final tint = _resolveButtonTint(buttonLabel);
+
+    return GlassButton(
+      tint: tint,
+      onPressed: textButton.onPressed,
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(0, 60),
+      ),
+      child: _buildButtonContentWithIcon(
+        textButton.child ?? const SizedBox.shrink(),
+      ),
+    );
+  }
+
+  return child;
 }
 
 /// Helper function to add icons to button content based on text
@@ -281,7 +302,6 @@ Widget _buildButtonContentWithIcon(Widget originalChild) {
           Icon(
             icon,
             size: 18,
-            color: Colors.white,
           ),
           const SizedBox(width: 8),
           Text(originalChild.data ?? ''),
@@ -291,4 +311,43 @@ Widget _buildButtonContentWithIcon(Widget originalChild) {
   }
 
   return originalChild;
-} // Backwards compatibility alias
+}
+
+String _extractButtonLabel(Widget? child) {
+  if (child is Text) {
+    return child.data?.toLowerCase().trim() ?? '';
+  }
+
+  return '';
+}
+
+GlassButtonTint _resolveButtonTint(String label) {
+  if (label.contains('delete') ||
+      label.contains('remove') ||
+      label.contains('disconnect') ||
+      label.contains('forget')) {
+    return GlassButtonTint.negative;
+  }
+
+  if (label.contains('save') ||
+      label.contains('confirm') ||
+      label.contains('ok') ||
+      label.contains('yes') ||
+      label.contains('now') ||
+      label.contains('connect') ||
+      label.contains('apply') ||
+      label.contains('update')) {
+    return GlassButtonTint.positive;
+  }
+
+  if (label.contains('later') ||
+      label.contains('cancel') ||
+      label.contains('close') ||
+      label.contains('back') ||
+      label.contains('stay') ||
+      label.contains('skip')) {
+    return GlassButtonTint.neutral;
+  }
+
+  return GlassButtonTint.none;
+}

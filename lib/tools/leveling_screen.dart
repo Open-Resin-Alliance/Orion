@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -33,6 +34,7 @@ import 'package:orion/tools/manual_leveling_screen.dart';
 class LevelingScreen extends StatelessWidget {
   const LevelingScreen({super.key});
 
+  // ignore: unused_element
   Future<void> _showLevelingDialog(BuildContext context) async {
     final config = OrionConfig();
     final navigator = Navigator.of(context);
@@ -95,6 +97,7 @@ class LevelingScreen extends StatelessWidget {
           _buildOverlayRoute(
             _LevelingHomingScreen(
               homeIsUp: homeIsUp,
+              skipHome: false,
               shouldSkipHome: checkSmartHoming,
               onComplete: () {
                 showChecklist(variant);
@@ -164,133 +167,137 @@ class LevelingScreen extends StatelessWidget {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: OrionSpacing.screenPaddingWithBottomNav,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: GlassCard(
-                accentColor: null, //accent,
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+              child: _buildModeCard(
+                context,
+                title: 'Assisted Leveling',
+                description:
+                    'Guided leveling with automatic Z-axis homing and gap measurement.',
+                icon: PhosphorIcons.magicWand(),
+                accentColor: accent,
+                accentCard: false,
+                heroTag: 'start-assisted',
+                actionLabel: 'Coming Soon!',
+                actionTint: GlassButtonTint.none,
+                actionEnabled: false,
+                actionIcon: PhosphorIcon(PhosphorIcons.clockClockwise()),
+              ),
+            ),
+            const SizedBox(width: OrionSpacing.controlGap),
+            Expanded(
+              child: _buildModeCard(
+                context,
+                title: 'Manual Leveling',
+                description:
+                    'Manual Z-axis adjustment for experienced users who prefer direct control.',
+                icon: PhosphorIconsFill.wrench,
+                accentColor: accent,
+                accentCard: true,
+                heroTag: 'start-manual',
+                actionLabel: 'Manual Mode',
+                actionTint: GlassButtonTint.positive,
+                actionEnabled: true,
+                actionIcon: const Icon(PhosphorIconsFill.wrench),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    _buildOverlayRoute(const ManualLevelingScreen()),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeCard(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required IconData icon,
+    required Color accentColor,
+    required bool accentCard,
+    required String heroTag,
+    required String actionLabel,
+    required GlassButtonTint actionTint,
+    required bool actionEnabled,
+    required Widget actionIcon,
+    VoidCallback? onPressed,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      accentColor: accentCard ? accentColor : null,
+      child: Padding(
+        padding: OrionSpacing.cardPadding.copyWith(top: 16, bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: accentColor.withValues(alpha: isDark ? 0.14 : 0.10),
+                    border: Border.all(
+                      color:
+                          accentColor.withValues(alpha: isDark ? 0.35 : 0.24),
+                    ),
+                  ),
+                  child: Icon(icon, color: accentColor, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            PhosphorIcons.magicWand(),
-                            color: accent,
-                            size: 28,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              'Assisted Leveling',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 24,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: Text(
-                          'Step-by-step wizard to level your build plate perfectly. Ensures safe Z-homing and correct gap.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                height: 1.4,
-                                fontSize: 20,
-                              ),
+                      Text(
+                        title,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 24,
+                          height: 1.15,
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GlassFloatingActionButton.extended(
-                            heroTag: 'start-assisted',
-                            scale: 1.3,
-                            // icon: const Icon(Icons.play_arrow),
-                            label: 'Coming Soon!',
-                            tint: GlassButtonTint.none,
-                            onPressed: () =>
-                                null //_showLevelingDialog(context),
-                            ),
                       ),
                     ],
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: Center(
+                child: Text(
+                  description,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    height: 1.35,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: GlassCard(
-                accentColor: accent,
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            PhosphorIconsFill.wrench,
-                            color: accent,
-                            size: 28,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              'Manual Leveling',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 24,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: Text(
-                          'Direct control for advanced users. Manually jog the Z-axis and adjust screws without the wizard.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                height: 1.4,
-                                fontSize: 20,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GlassFloatingActionButton.extended(
-                          heroTag: 'start-manual',
-                          scale: 1.3,
-                          icon: const Icon(PhosphorIconsFill.wrench),
-                          label: 'Manual Mode',
-                          tint: GlassButtonTint.positive,
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              _buildOverlayRoute(const ManualLevelingScreen()),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+            const SizedBox(height: 16),
+            Center(
+              child: SizedBox(
+                width: double.infinity,
+                child: GlassFloatingActionButton.extended(
+                  heroTag: heroTag,
+                  scale: 1.2,
+                  icon: actionIcon,
+                  label: actionLabel,
+                  tint: actionTint,
+                  onPressed: actionEnabled ? onPressed : null,
                 ),
               ),
             ),
@@ -358,7 +365,7 @@ class _LevelingOverlayState extends State<_LevelingOverlay> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: OrionSpacing.screenPaddingNoTop,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -373,7 +380,7 @@ class _LevelingOverlayState extends State<_LevelingOverlay> {
           }),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -468,8 +475,9 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GlassCard(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: OrionSpacing.compactCardPadding,
             child: CheckboxListTile(
               activeColor: Colors.greenAccent,
               value: _haveRemovedResin,
@@ -483,8 +491,9 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
         ),
         const SizedBox(height: 8),
         GlassCard(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: OrionSpacing.compactCardPadding,
             child: CheckboxListTile(
               activeColor: Colors.greenAccent,
               value: _haveHexKeys,
@@ -498,8 +507,9 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
         ),
         const SizedBox(height: 8),
         GlassCard(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: OrionSpacing.compactCardPadding,
             child: CheckboxListTile(
               activeColor: Colors.greenAccent,
               value: _havePlate,
@@ -514,8 +524,9 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
         ),
         const SizedBox(height: 8),
         GlassCard(
+          margin: EdgeInsets.zero,
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: OrionSpacing.compactCardPadding,
             child: CheckboxListTile(
               activeColor: Colors.greenAccent,
               value: _haveClean,
@@ -834,7 +845,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               children: [
                 Selector<StatusProvider, double?>(
@@ -978,15 +989,16 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 GlassCard(
+                  margin: EdgeInsets.zero,
                   outlined: true,
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: OrionSpacing.cardPadding,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1034,7 +1046,7 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1113,7 +1125,7 @@ class _BuildArmSelectionScreen extends StatelessWidget {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1199,7 +1211,7 @@ class _BuildArmSelectionScreen extends StatelessWidget {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
@@ -1313,14 +1325,15 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 GlassCard(
+                  margin: EdgeInsets.zero,
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: OrionSpacing.cardPadding,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1351,7 +1364,7 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1548,7 +1561,7 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: OrionSpacing.screenPaddingNoTop,
             child: Column(
               children: [
                 Expanded(
@@ -1559,6 +1572,7 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
                       Expanded(
                         flex: 1,
                         child: GlassCard(
+                          margin: EdgeInsets.zero,
                           child: ClipRRect(
                             borderRadius:
                                 BorderRadius.circular(glassCornerRadius),
@@ -1594,8 +1608,9 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
                           children: [
                             Expanded(
                               child: GlassCard(
+                                margin: EdgeInsets.zero,
                                 child: Padding(
-                                  padding: const EdgeInsets.all(24.0),
+                                  padding: OrionSpacing.cardPadding,
                                   child: Center(
                                     child: SingleChildScrollView(
                                       child: Text(
@@ -1624,7 +1639,7 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
           ),
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: OrionSpacing.screenPaddingNoTop,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

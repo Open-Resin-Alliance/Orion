@@ -58,62 +58,127 @@ class GlassChoiceChip extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     if (!themeProvider.isGlassTheme) {
-      return ChoiceChip.elevated(
-        label: SizedBox(
-          width: double.infinity,
-          child: label,
-        ),
-        selected: selected,
-        onSelected: onSelected,
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      final primary = theme.colorScheme.primary;
+
+      final neutralFill = Color.alphaBlend(
+        Colors.white.withValues(alpha: isDark ? 0.05 : 0.018),
+        theme.colorScheme.surface,
       );
-    }
+      final selectedFill = Color.alphaBlend(
+        primary.withValues(alpha: isDark ? 0.22 : 0.10),
+        theme.colorScheme.surface,
+      );
+      final outlineColor = primary.withValues(
+        alpha: isDark ? (selected ? 0.34 : 0.12) : (selected ? 0.35 : 0.12),
+      );
 
-    // Glass theme - create glassmorphic choice chip
-    final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
-    final fillOpacity = GlassPlatformConfig.surfaceOpacity(
-      selected ? 0.22 : 0.1,
-      emphasize: selected,
-    );
-    final borderWidth = selected ? 2.2 : 1.2;
-    final glow = selected
-        ? GlassPlatformConfig.selectionGlow(blurRadius: 10, alpha: 0.24)
-        : null;
+      final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
+      final textStyle = TextStyle(
+        fontFamily: 'AtkinsonHyperlegible',
+        color: selected
+            ? primary
+            : theme.colorScheme.onSurface.withValues(alpha: 0.85),
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        fontSize: 22,
+      );
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      width: double.infinity,
-      height: 48,
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        boxShadow: glow,
-      ),
-      child: GlassEffect(
-        borderRadius: borderRadius,
-        sigma: glassBlurSigma,
-        opacity: fillOpacity,
-        borderWidth: borderWidth,
-        emphasizeBorder: selected,
-        interactiveSurface: true,
-        floatingSurface: false,
+      return SizedBox.expand(
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onSelected != null ? () => onSelected!(!selected) : null,
             borderRadius: borderRadius,
-            child: Center(
-              child: DefaultTextStyle(
-                style: TextStyle(
-                  fontFamily: 'AtkinsonHyperlegible',
-                  color: selected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.85),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 22,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                color: selected ? selectedFill : neutralFill,
+                border: Border.all(
+                  color: outlineColor,
+                  width: selected ? 1.4 : 1.2,
                 ),
-                child: label,
+              ),
+              alignment: Alignment.center,
+              child: DefaultTextStyle(
+                style: textStyle,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: label,
+                ),
               ),
             ),
           ),
+        ),
+      );
+    }
+
+    // Glass theme - create glassmorphic choice chip
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
+    final borderRadius = BorderRadius.circular(glassSmallCornerRadius);
+    final fillOpacity =
+        GlassPlatformConfig.surfaceOpacity(0.1, emphasize: false);
+    final borderWidth = selected ? 1.6 : 1.2;
+    final selectedTint = primary.withValues(
+      alpha: isDark ? 0.26 : 0.12,
+    );
+    final borderBaseColor = selected ? primary : Colors.white;
+    final borderAlpha = selected ? (isDark ? 0.56 : 0.32) : 0.16;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: double.infinity,
+      height: 48,
+      child: GlassEffect(
+        borderRadius: borderRadius,
+        sigma: glassBlurSigma,
+        opacity: fillOpacity,
+        borderWidth: borderWidth,
+        borderColor: borderBaseColor,
+        borderAlpha: borderAlpha,
+        useRawBorderAlpha: true,
+        emphasizeBorder: false,
+        interactiveSurface: true,
+        floatingSurface: false,
+        child: Stack(
+          children: [
+            if (selected)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: selectedTint,
+                      borderRadius: borderRadius,
+                    ),
+                  ),
+                ),
+              ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onSelected != null ? () => onSelected!(!selected) : null,
+                borderRadius: borderRadius,
+                child: Center(
+                  child: DefaultTextStyle(
+                    style: TextStyle(
+                      fontFamily: 'AtkinsonHyperlegible',
+                      color: selected
+                          ? primary.withValues(alpha: 0.96)
+                          : Colors.white.withValues(alpha: 0.85),
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 22,
+                    ),
+                    child: label,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
