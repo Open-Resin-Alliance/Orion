@@ -1,6 +1,6 @@
 /*
 * Orion - Move Z Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,12 +15,20 @@
 * limitations under the License.
 */
 
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
-import 'package:logging/logging.dart';
 
-import 'package:orion/api_services/api_services.dart';
+import 'package:auto_size_text/auto_size_text.dart';
+import 'package:logging/logging.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import 'package:provider/provider.dart';
+import 'package:orion/backend_service/providers/config_provider.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 
 class MoveZScreen extends StatefulWidget {
   const MoveZScreen({super.key});
@@ -31,7 +39,7 @@ class MoveZScreen extends StatefulWidget {
 
 class MoveZScreenState extends State<MoveZScreen> {
   final _logger = Logger('MoveZScreen');
-  final ApiService _api = ApiService();
+  // Use ConfigProvider for config data; ManualProvider for actions
 
   double maxZ = 0.0;
   double step = 0.1;
@@ -40,34 +48,85 @@ class MoveZScreenState extends State<MoveZScreen> {
   bool _apiErrorState = false;
   Map<String, dynamic>? status;
 
+  // Safe helper to show error dialogs without using a stale BuildContext.
+  // If a BuildContext is provided (usually from a builder), verify the
+  // Element is still mounted before showing the dialog. If omitted, use
+  // the State's context guarded by `mounted`.
+  void _safeShowError(String message, [BuildContext? maybeCtx]) {
+    if (maybeCtx != null) {
+      if (maybeCtx is Element) {
+        if (!maybeCtx.mounted) return;
+      }
+      showErrorDialog(maybeCtx, message);
+    } else {
+      if (!mounted) return;
+      showErrorDialog(context, message);
+    }
+  }
+
   Future<void> moveZ(double distance) async {
     try {
       _logger.info('Moving Z by $distance');
-      final status = await _api.getStatus();
-      final currentZ = status['physical_state']['z'];
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      final curZ = statusProvider.status?.physicalState.z ?? currentZ;
 
-      final newZ = (currentZ + distance).clamp(0, maxZ);
-      await _api.move(newZ);
+      final newZ = (curZ + distance).clamp(0.0, maxZ).toDouble();
+      final manual = Provider.of<ManualProvider>(context, listen: false);
+      final ok = await manual.move(newZ);
+      if (!ok) {
+        if (!mounted) return;
+        setState(() {
+          _apiErrorState = true;
+        });
+        _safeShowError('Failed to move Z');
+      }
     } catch (e) {
       _logger.severe('Failed to move Z: $e');
+      if (!mounted) return;
       setState(() {
         _apiErrorState = true;
       });
-      if (mounted) showErrorDialog(context, 'Failed to move Z');
+      _safeShowError('Failed to move Z');
     }
   }
 
   void getMaxZ() async {
     try {
-      Map<String, dynamic> config = await _api.getConfig();
-      setState(() {
-        maxZ = config['printer']['max_z'];
-      });
+      final provider = Provider.of<ConfigProvider>(context, listen: false);
+      if (provider.config != null) {
+        setState(() {
+          maxZ = provider.config?.machine?['printer']?['max_z'] ?? maxZ;
+        });
+      } else {
+        try {
+          await provider.refresh();
+          if (!mounted) return;
+          if (provider.config != null) {
+            // Safe to update state here because we're already async and not
+            // in the middle of a build.
+            setState(() {
+              maxZ = provider.config?.machine?['printer']?['max_z'] ?? maxZ;
+            });
+          }
+        } catch (e) {
+          // Provider rethrows on error; surface a dialog from the screen
+          // instead of letting the provider call notifyListeners during
+          // widget build.
+          if (!mounted) return;
+          setState(() {
+            _apiErrorState = true;
+          });
+          _safeShowError('BLUE-BANANA');
+          _logger.severe('Failed to refresh config: $e');
+        }
+      }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _apiErrorState = true;
       });
-      if (mounted) showErrorDialog(context, 'BLUE-BANANA');
+      _safeShowError('BLUE-BANANA');
       _logger.severe('Failed to get max Z: $e');
     }
   }
@@ -75,7 +134,10 @@ class MoveZScreenState extends State<MoveZScreen> {
   @override
   void initState() {
     super.initState();
-    getMaxZ();
+    // Defer config refresh work until after the first frame so that any
+    // notifyListeners() from providers won't run during the widget build
+    // phase and cause 'setState() or markNeedsBuild() called during build'.
+    WidgetsBinding.instance.addPostFrameCallback((_) => getMaxZ());
   }
 
   @override
@@ -84,7 +146,7 @@ class MoveZScreenState extends State<MoveZScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: OrionSpacing.screenPaddingWithBottomNav,
         child: isLandscape
             ? buildLandscapeLayout(context)
             : buildPortraitLayout(context),
@@ -105,7 +167,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Expanded(child: buildMoveButtons(context)),
-                    const SizedBox(width: 30),
+                    const SizedBox(width: OrionSpacing.controlGap),
                     Expanded(child: buildChoiceCards(context)),
                   ],
                 ),
@@ -113,7 +175,7 @@ class MoveZScreenState extends State<MoveZScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 30),
+        const SizedBox(width: OrionSpacing.controlGap),
         Expanded(child: buildControlButtons(context)),
       ],
     );
@@ -127,91 +189,92 @@ class MoveZScreenState extends State<MoveZScreen> {
           child: Row(
             children: [
               Expanded(child: buildMoveButtons(context)),
-              const SizedBox(width: 32),
+              const SizedBox(width: OrionSpacing.controlGap),
               Expanded(child: buildControlButtons(context)),
             ],
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(child: buildChoiceCards(context)),
       ],
     );
   }
 
   Widget buildChoiceCards(BuildContext context) {
-    final values = [0.1, 1.0, 10.0, 50.0];
+    final values = [0.1, 1.0, 10.0, 100.0];
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(values.length, (index) {
-        final value = values[index];
-        return Flexible(
-          child: Padding(
-            padding: EdgeInsets.only(
-                bottom: index < values.length - 1
-                    ? 25.0
-                    : 0.0), // Add padding only if it's not the last item
-            child: ChoiceChip.elevated(
+      children: [
+        for (int index = 0; index < values.length; index++) ...[
+          Expanded(
+            child: GlassChoiceChip(
               label: SizedBox(
                 width: double.infinity,
                 child: Text(
-                  '$value mm',
+                  '${values[index]} mm',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 22),
                 ),
               ),
-              selected: step == value,
+              selected: step == values[index],
               onSelected: _apiErrorState
                   ? null
                   : (selected) {
                       if (selected) {
                         setState(() {
-                          step = value;
+                          step = values[index];
                         });
                       }
                     },
             ),
           ),
-        );
-      }),
+          if (index < values.length - 1)
+            const SizedBox(height: OrionSpacing.controlGap),
+        ],
+      ],
     );
   }
 
   Widget buildMoveButtons(BuildContext context) {
-    final theme = Theme.of(context).copyWith(
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ButtonStyle(
-          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
-            (Set<WidgetState> states) {
-              return RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              );
-            },
-          ),
-          minimumSize: WidgetStateProperty.resolveWith<Size?>(
-            (Set<WidgetState> states) {
-              return const Size(double.infinity, double.infinity);
-            },
-          ),
-        ),
-      ),
-    );
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Expanded(
-          child: ElevatedButton(
-            onPressed: _apiErrorState ? null : () => moveZ(step),
-            style: theme.elevatedButtonTheme.style,
-            child: const Icon(Icons.arrow_upward, size: 50),
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () {
+                        final manual =
+                            Provider.of<ManualProvider>(context, listen: false);
+                        manual.moveDelta(step);
+                      },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, double.infinity),
+                ),
+                child: PhosphorIcon(PhosphorIcons.caretUp(), size: 60),
+              );
+            },
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
-          child: ElevatedButton(
-            onPressed: _apiErrorState ? null : () => moveZ(-step),
-            style: theme.elevatedButtonTheme.style,
-            child: const Icon(Icons.arrow_downward, size: 50),
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () {
+                        final manual =
+                            Provider.of<ManualProvider>(context, listen: false);
+                        manual.moveDelta(-step);
+                      },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, double.infinity),
+                ),
+                child: PhosphorIcon(PhosphorIcons.caretDown(), size: 60),
+              );
+            },
           ),
         ),
       ],
@@ -219,140 +282,200 @@ class MoveZScreenState extends State<MoveZScreen> {
   }
 
   Widget buildControlButtons(BuildContext context) {
-    final theme = Theme.of(context).copyWith(
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ButtonStyle(
-          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
-            (Set<WidgetState> states) {
-              return RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              );
-            },
-          ),
-          minimumSize: WidgetStateProperty.resolveWith<Size?>(
-            (Set<WidgetState> states) {
-              return const Size(double.infinity, double.infinity);
-            },
-          ),
-        ),
-      ),
-    );
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
         Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _apiErrorState
-                ? null
-                : () async {
-                    _logger.info('Moving to ZMAX');
-
-                    _api.move(maxZ);
-                  },
-            style: theme.elevatedButtonTheme.style,
-            icon: const Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: 20),
-                child: Icon(Icons.arrow_upward, size: 30),
-              ),
-            ),
-            label: const Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: 20),
-                child: AutoSizeText(
-                  'Move to Top Limit',
-                  style: TextStyle(fontSize: 24),
-                  minFontSize: 24,
-                  maxLines: 1,
-                  overflowReplacement: Text(
-                    'Top',
-                    style: TextStyle(fontSize: 24),
-                  ),
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () async {
+                        _logger.info('Moving to home position');
+                        final ok = await manual.manualHome();
+                        if (!ok) _safeShowError('GOLDEN-APE');
+                      },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, double.infinity),
                 ),
-              ),
-            ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    PhosphorIcon(PhosphorIconsFill.house, size: 34),
+                    const Expanded(
+                      child: AutoSizeText(
+                        'Return to Home',
+                        style: TextStyle(fontSize: 24),
+                        minFontSize: 20,
+                        maxLines: 1,
+                        overflowReplacement: Padding(
+                          padding: EdgeInsets.only(right: 20.0),
+                          child: Center(
+                            child: Text(
+                              'Home',
+                              style: TextStyle(fontSize: 24),
+                            ),
+                          ),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
-        const SizedBox(height: 25),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _apiErrorState
-                ? null
-                : () {
-                    _logger.info('Moving to ZMIN');
-                    _api.manualHome();
-                  },
-            style: theme.elevatedButtonTheme.style,
-            icon: const Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: 20),
-                child: Icon(Icons.home, size: 30),
-              ),
-            ),
-            label: const Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: 20),
-                child: AutoSizeText(
-                  'Return to Home',
-                  style: TextStyle(fontSize: 24),
-                  minFontSize: 24,
-                  maxLines: 1,
-                  overflowReplacement: Text(
-                    'Home',
-                    style: TextStyle(fontSize: 24),
-                  ),
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return GlassButton(
+                onPressed: _apiErrorState || manual.busy
+                    ? null
+                    : () async {
+                        _logger.severe('EMERGENCY STOP');
+                        final ok = await manual.emergencyStop();
+                        if (!ok) _safeShowError('CRITICAL');
+                      },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, double.infinity),
                 ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 25),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _apiErrorState
-                ? null
-                : () {
-                    _logger.severe('EMERGENCY STOP');
-                    _api.manualCommand('M112');
-                  },
-            style: theme.elevatedButtonTheme.style,
-            icon: Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 20),
-                child: Icon(Icons.stop,
-                    size: 30,
-                    color: _apiErrorState
-                        ? null
-                        : Theme.of(context).colorScheme.onErrorContainer),
-              ),
-            ),
-            label: Center(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: AutoSizeText(
-                  'Emergency Stop',
-                  style: TextStyle(
-                    fontSize: 24,
-                    color: _apiErrorState
-                        ? null
-                        : Theme.of(context).colorScheme.onErrorContainer,
-                  ),
-                  maxLines: 1,
-                  minFontSize: 24,
-                  overflowReplacement: Text('Stop',
-                      style: TextStyle(
-                        fontSize: 24,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    PhosphorIcon(PhosphorIconsFill.stop,
+                        size: 34,
                         color: _apiErrorState
                             ? null
-                            : Theme.of(context).colorScheme.onErrorContainer,
-                      )),
+                            : Theme.of(context).colorScheme.error),
+                    Expanded(
+                      child: AutoSizeText(
+                        'Emergency Stop',
+                        style: TextStyle(
+                          fontSize: 24,
+                          color: _apiErrorState
+                              ? null
+                              : Theme.of(context).colorScheme.error,
+                        ),
+                        maxLines: 1,
+                        minFontSize: 20,
+                        overflowReplacement: Padding(
+                          padding: EdgeInsets.only(right: 20.0),
+                          child: Center(
+                            child: Text(
+                              'Stop',
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: _apiErrorState
+                                    ? null
+                                    : Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: OrionSpacing.controlGap),
+        Expanded(
+          child: Consumer<ManualProvider>(
+            builder: (context, manual, _) {
+              return FutureBuilder<bool>(
+                future: manual.canMoveToTop(),
+                builder: (ctx, snap) {
+                  final supportsTop = snap.data == true;
+                  final enabled = !_apiErrorState &&
+                      !manual.busy &&
+                      (maxZ > 0.0 || supportsTop);
+                  // Primary button: automatically chooses between Move to Floor
+                  // and Move to Top based on vendor config (isHomePositionUp)
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: GlassButton(
+                          onPressed: !enabled
+                              ? null
+                              : () async {
+                                  try {
+                                    final cfg = OrionConfig();
+                                    if (cfg.isHomePositionUp()) {
+                                      _logger.info(
+                                          'Moving to Floor via moveToFloor()');
+                                      final ok = await manual.moveToFloor();
+                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                    } else if (supportsTop) {
+                                      _logger.info(
+                                          'Moving to device Top via moveToTop()');
+                                      final ok = await manual.moveToTop();
+                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                    } else {
+                                      _logger
+                                          .info('Moving to ZMAX (maxZ=$maxZ)');
+                                      final ok = await manual.move(maxZ);
+                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                    }
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    _safeShowError('GOLDEN-APE');
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            minimumSize:
+                                const Size(double.infinity, double.infinity),
+                          ),
+                          child: Builder(builder: (ctx) {
+                            final cfg = OrionConfig();
+                            final topLabel = cfg.isHomePositionUp()
+                                ? 'Move to Floor'
+                                : 'Move to Top';
+                            final icon = cfg.isHomePositionUp()
+                                ? PhosphorIcon(PhosphorIcons.caretLineDown(),
+                                    size: 34)
+                                : PhosphorIcon(PhosphorIcons.caretLineUp(),
+                                    size: 34);
+                            return Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                icon,
+                                Expanded(
+                                  child: AutoSizeText(
+                                    topLabel,
+                                    style: const TextStyle(fontSize: 24),
+                                    minFontSize: 20,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                    overflowReplacement: Padding(
+                                      padding:
+                                          const EdgeInsets.only(right: 20.0),
+                                      child: Center(
+                                        child: Text(
+                                          topLabel == 'Move to Floor'
+                                              ? 'Floor'
+                                              : 'Top',
+                                          style: const TextStyle(fontSize: 24),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ),
       ],

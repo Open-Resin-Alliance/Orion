@@ -1,6 +1,6 @@
 /*
 * Orion - Exposure Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,11 +16,20 @@
 */
 
 import 'dart:async';
+
 import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:orion/api_services/api_services.dart';
+
+import 'package:orion/backend_service/backend_registry.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/backend_service/providers/config_provider.dart';
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/orion_spacing.dart';
+
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class ExposureScreen extends StatefulWidget {
@@ -32,26 +41,56 @@ class ExposureScreen extends StatefulWidget {
 
 class ExposureScreenState extends State<ExposureScreen> {
   final _logger = Logger('Exposure');
-  final ApiService _api = ApiService();
+  final BackendService _backendService = BackendService();
   CancelableOperation? _exposureOperation;
   Completer<void>? _exposureCompleter;
 
   int exposureTime = 3;
   bool _apiErrorState = false;
 
-  void exposeScreen(String type) {
+  Future<void> exposeScreen(String type) async {
+    int delayTime = 1; // Odyssey requires a 1 second delay before exposure
+
+    final supportsCalibration = _backendService
+        .supportsCapability(BackendCapabilities.supportsCalibration);
+    if (supportsCalibration) {
+      delayTime = 0;
+    }
+
     try {
       _logger.info('Testing exposure for $exposureTime seconds');
-      _api.displayTest(type);
-      _api.manualCure(true);
-      showExposureDialog(context, exposureTime, type: type);
+      final manual = Provider.of<ManualProvider>(context, listen: false);
+
+      final okDisplay = await manual.displayTest(type);
+      if (!okDisplay) {
+        setState(() {
+          _apiErrorState = true;
+        });
+        if (mounted) showErrorDialog(context, 'Failed to start display test');
+        return;
+      }
+
+      final okCure = await manual.manualCure(true);
+      if (!okCure) {
+        setState(() {
+          _apiErrorState = true;
+        });
+        if (mounted) showErrorDialog(context, 'Failed to enable cure');
+        return;
+      }
+
+      showExposureDialog(context, exposureTime, delayTime, type: type);
       _exposureCompleter = Completer<void>();
       _exposureOperation = CancelableOperation.fromFuture(
         Future.any([
           Future.delayed(Duration(seconds: exposureTime)),
           _exposureCompleter!.future,
-        ]).then((_) {
-          _api.manualCure(false);
+        ]).then((_) async {
+          try {
+            await manual.manualCure(false);
+          } catch (e) {
+            _logger.warning('Failed to disable cure after exposure: $e');
+          }
         }),
       );
     } catch (e) {
@@ -63,7 +102,8 @@ class ExposureScreenState extends State<ExposureScreen> {
     }
   }
 
-  void showExposureDialog(BuildContext context, int countdownTime,
+  void showExposureDialog(
+      BuildContext context, int countdownTime, int delayTime,
       {String? type}) {
     _logger.info('Showing countdown dialog');
 
@@ -73,7 +113,7 @@ class ExposureScreenState extends State<ExposureScreen> {
       builder: (BuildContext context) {
         return StreamBuilder<int>(
           stream: (() async* {
-            await Future.delayed(const Duration(seconds: 1));
+            await Future.delayed(Duration(seconds: delayTime));
             yield* Stream.periodic(const Duration(milliseconds: 1),
                     (i) => countdownTime * 1000 - i)
                 .take((countdownTime * 1000) + 1);
@@ -89,91 +129,8 @@ class ExposureScreenState extends State<ExposureScreen> {
               return Container(); // Return an empty container when the countdown is over
             } else {
               return SafeArea(
-                child: Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ), // Rounded corners for the dialog
-                  insetPadding:
-                      const EdgeInsets.all(20), // Padding around the dialog
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.all(20.0), // Padding inside the dialog
-                    child: Column(
-                      mainAxisSize: MainAxisSize
-                          .min, // To make the dialog as big as its children
-                      children: [
-                        Text(
-                          type == 'White'
-                              ? 'Cleaning'
-                              : type != null
-                                  ? 'Testing $type'
-                                  : 'Exposing',
-                          style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight
-                                  .bold), // Title with larger, bold text
-                        ),
-                        const SizedBox(
-                            height:
-                                20), // Space between the title and the progress indicator
-                        Padding(
-                          padding: const EdgeInsets.only(
-                              left: 20.0, right: 20.0, top: 15.0, bottom: 20.0),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              SizedBox(
-                                height:
-                                    180, // Make the progress indicator larger
-                                width:
-                                    180, // Make the progress indicator larger
-                                child: CircularProgressIndicator(
-                                  value:
-                                      snapshot.data! / (countdownTime * 1000),
-                                  strokeWidth:
-                                      12, // Make the progress indicator thicker
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(10.0),
-                                child: (snapshot.data! / 1000) < 999
-                                    ? Text(
-                                        (snapshot.data! / 1000)
-                                            .toStringAsFixed(0),
-                                        style: const TextStyle(fontSize: 50),
-                                      )
-                                    : const Text(
-                                        'Testing',
-                                        style: TextStyle(fontSize: 30),
-                                      ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            try {
-                              _exposureOperation?.cancel();
-                              _exposureCompleter?.complete();
-                            } catch (e) {
-                              _logger.severe('Failed to stop exposure: $e');
-                            }
-                            Navigator.of(context, rootNavigator: true)
-                                .pop(true);
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.all(15.0),
-                            child: Text(
-                              'Stop Exposure',
-                              style: TextStyle(fontSize: 24),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                child: _buildExposureDialog(
+                    context, snapshot, countdownTime, type),
               );
             }
           },
@@ -182,20 +139,119 @@ class ExposureScreenState extends State<ExposureScreen> {
     );
   }
 
+  GlassDialog _buildExposureDialog(BuildContext context,
+      AsyncSnapshot<int> snapshot, int countdownTime, String? type) {
+    return GlassDialog(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 20.0), // Padding inside the dialog
+        child: Column(
+          mainAxisSize:
+              MainAxisSize.min, // To make the dialog as big as its children
+          children: [
+            Text(
+              type == 'White'
+                  ? 'Cleaning'
+                  : type != null
+                      ? 'Testing $type'
+                      : 'Exposing',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'AtkinsonHyperlegible',
+              ),
+            ),
+            const SizedBox(
+                height:
+                    20), // Space between the title and the progress indicator
+            Padding(
+              padding: const EdgeInsets.only(
+                  left: 20.0, right: 20.0, top: 15.0, bottom: 20.0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    height: 180, // Make the progress indicator larger
+                    width: 180, // Make the progress indicator larger
+                    child: CircularProgressIndicator(
+                      backgroundColor: Colors.grey.shade800,
+                      value: snapshot.data! / (countdownTime * 1000),
+                      strokeWidth: 12, // Make the progress indicator thicker
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: (snapshot.data! / 1000) < 999
+                        ? Text(
+                            (snapshot.data! / 1000).toStringAsFixed(0),
+                            style: const TextStyle(fontSize: 50),
+                          )
+                        : const Text(
+                            'Testing',
+                            style: TextStyle(fontSize: 30),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            GlassButton(
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(250, 70),
+                maximumSize: const Size(250, 70),
+              ),
+              onPressed: () {
+                try {
+                  _exposureOperation?.cancel();
+                  _exposureCompleter?.complete();
+                } catch (e) {
+                  _logger.severe('Failed to stop exposure: $e');
+                }
+                Navigator.of(context, rootNavigator: true).pop(true);
+              },
+              child: Text(
+                'Stop Exposure',
+                style: TextStyle(fontSize: 24),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    getApiStatus();
+    // Defer to after first frame to avoid provider notifications during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) => getApiStatus());
+  }
+
+  @override
+  void dispose() {
+    _backendService.dispose();
+    super.dispose();
   }
 
   Future<void> getApiStatus() async {
     try {
-      await _api.getConfig();
+      final provider = Provider.of<ConfigProvider>(context, listen: false);
+      if (provider.config == null) {
+        try {
+          await provider.refresh();
+        } catch (e) {
+          setState(() {
+            _apiErrorState = true;
+          });
+          if (mounted) showErrorDialog(context, 'BLUE-BANANA');
+          _logger.severe('Failed to refresh config: $e');
+        }
+      }
     } catch (e) {
       setState(() {
         _apiErrorState = true;
-        showErrorDialog(context, 'BLUE-BANANA');
       });
+      if (mounted) showErrorDialog(context, 'BLUE-BANANA');
       _logger.severe('Failed to get config: $e');
     }
   }
@@ -205,8 +261,9 @@ class ExposureScreenState extends State<ExposureScreen> {
     bool isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: OrionSpacing.screenPaddingWithBottomNav,
         child: isLandscape
             ? buildLandscapeLayout(context)
             : buildPortraitLayout(context),
@@ -220,7 +277,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         Expanded(
           child: buildExposureButtons(context),
         ),
-        const SizedBox(width: 32),
+        const SizedBox(width: OrionSpacing.controlGap),
         Expanded(
           child: buildChoiceCards(context),
         ),
@@ -234,7 +291,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         Expanded(
           child: buildExposureButtons(context),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: buildChoiceCards(context),
         ),
@@ -243,24 +300,6 @@ class ExposureScreenState extends State<ExposureScreen> {
   }
 
   Widget buildExposureButtons(BuildContext context) {
-    final theme = Theme.of(context).copyWith(
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ButtonStyle(
-          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
-            (Set<WidgetState> states) {
-              return RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  side: const BorderSide(color: Colors.transparent));
-            },
-          ),
-          minimumSize: WidgetStateProperty.resolveWith<Size?>(
-            (Set<WidgetState> states) {
-              return const Size(double.infinity, double.infinity);
-            },
-          ),
-        ),
-      ),
-    );
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -271,53 +310,64 @@ class ExposureScreenState extends State<ExposureScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton(
+                      child: GlassButton(
                         onPressed:
                             _apiErrorState ? null : () => exposeScreen('Grid'),
-                        style: theme.elevatedButtonTheme.style,
-                        child: const Column(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          minimumSize:
+                              const Size(double.infinity, double.infinity),
+                        ),
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             PhosphorIcon(
                               PhosphorIconsFill.checkerboard,
                               size: 40,
+                              color: _apiErrorState ? Colors.grey : null,
                             ),
-                            SizedBox(
-                                height:
-                                    8), // Add some space between the icon and the label
+                            const SizedBox(height: 8),
                             Text(
                               'Grid',
                               style: TextStyle(
                                 fontSize: 24,
+                                color: _apiErrorState ? Colors.grey : null,
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 30),
+                    const SizedBox(width: OrionSpacing.controlGap),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: _apiErrorState
-                            ? null
-                            : () => exposeScreen('Dimensions'),
-                        style: theme.elevatedButtonTheme.style,
-                        child: const Column(
+                      child: GlassButton(
+                        onPressed:
+                            _apiErrorState ? null : () => exposeScreen('Logo'),
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          minimumSize:
+                              const Size(double.infinity, double.infinity),
+                        ),
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             PhosphorIcon(
-                              PhosphorIconsFill.ruler,
+                              PhosphorIcons.linuxLogo(),
                               size: 40,
+                              color: _apiErrorState ? Colors.grey : null,
                             ),
-                            SizedBox(
-                                height:
-                                    8), // Add some space between the icon and the label
+                            const SizedBox(height: 8),
                             Text(
-                              'Measure',
+                              'Logo',
                               style: TextStyle(
                                 fontSize: 24,
+                                color: _apiErrorState ? Colors.grey : null,
                               ),
                             ),
                           ],
@@ -330,57 +380,67 @@ class ExposureScreenState extends State<ExposureScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: Row(
             children: [
               Expanded(
-                child: ElevatedButton(
+                child: GlassButton(
                   onPressed:
-                      _apiErrorState ? null : () => exposeScreen('Blank'),
-                  style: theme.elevatedButtonTheme.style,
+                      _apiErrorState ? null : () => exposeScreen('Measure'),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    minimumSize: const Size(double.infinity, double.infinity),
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       PhosphorIcon(
-                        PhosphorIcons.square(),
+                        PhosphorIcons.ruler(),
                         size: 40,
+                        color: _apiErrorState ? Colors.grey : null,
                       ),
-                      const SizedBox(
-                          height:
-                              8), // Add some space between the icon and the label
-                      const Text(
-                        'Blank',
+                      const SizedBox(height: 8),
+                      Text(
+                        'Measure',
                         style: TextStyle(
                           fontSize: 24,
+                          color: _apiErrorState ? Colors.grey : null,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 30),
+              const SizedBox(width: OrionSpacing.controlGap),
               Expanded(
-                child: ElevatedButton(
+                child: GlassButton(
                   onPressed:
                       _apiErrorState ? null : () => exposeScreen('White'),
-                  style: theme.elevatedButtonTheme.style,
-                  child: const Column(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    minimumSize: const Size(double.infinity, double.infinity),
+                  ),
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.cleaning_services,
+                      PhosphorIcon(
+                        PhosphorIcons.broom(),
                         size: 40,
+                        color: _apiErrorState ? Colors.grey : null,
                       ),
-                      SizedBox(
-                          height:
-                              8), // Add some space between the icon and the label
+                      const SizedBox(height: 8),
                       Text(
                         'Clean',
                         style: TextStyle(
                           fontSize: 24,
+                          color: _apiErrorState ? Colors.grey : null,
                         ),
                       ),
                     ],
@@ -397,49 +457,48 @@ class ExposureScreenState extends State<ExposureScreen> {
   Widget buildChoiceCards(BuildContext context) {
     final values = [3, 10, 30, 'Persistent'];
     return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(values.length, (index) {
-        final value = values[index];
-        return Flexible(
-          child: Padding(
-            padding: EdgeInsets.only(
-                bottom: index < values.length - 1
-                    ? 25.0
-                    : 0.0), // Add padding only if it's not the last item
-            child: ChoiceChip.elevated(
-              label: SizedBox(
-                width: double.infinity,
-                child: Text(
-                  value is int ? '$value Seconds' : value as String,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 22, // Adjust the font size here.
+      children: [
+        for (int index = 0; index < values.length; index++) ...[
+          Expanded(
+            child: Builder(builder: (context) {
+              final value = values[index];
+              return GlassChoiceChip(
+                label: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    value is int ? '$value Seconds' : value as String,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 22,
+                    ),
                   ),
                 ),
-              ),
-              selected: exposureTime ==
-                  (value is int
-                      ? value
-                      : (value == 'Persistent'
-                          ? 999999
-                          : int.parse(value as String))),
-              onSelected: _apiErrorState
-                  ? null
-                  : (selected) {
-                      if (selected) {
-                        setState(() {
-                          exposureTime = value is int
-                              ? value
-                              : (value == 'Persistent'
-                                  ? 999999
-                                  : int.parse(value as String));
-                        });
-                      }
-                    },
-            ),
+                selected: exposureTime ==
+                    (value is int
+                        ? value
+                        : (value == 'Persistent'
+                            ? 999999
+                            : int.parse(value as String))),
+                onSelected: _apiErrorState
+                    ? null
+                    : (selected) {
+                        if (selected) {
+                          setState(() {
+                            exposureTime = value is int
+                                ? value
+                                : (value == 'Persistent'
+                                    ? 999999
+                                    : int.parse(value as String));
+                          });
+                        }
+                      },
+              );
+            }),
           ),
-        );
-      }),
+          if (index < values.length - 1)
+            const SizedBox(height: OrionSpacing.controlGap),
+        ],
+      ],
     );
   }
 }

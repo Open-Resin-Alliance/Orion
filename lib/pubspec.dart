@@ -3,7 +3,7 @@
 // ignore_for_file: public_member_api_docs, constant_identifier_names, avoid_classes_with_only_static_members
 
 mixin Pubspec {
-  static final buildDate = DateTime.utc(2024, 12, 2, 0, 24, 16);
+  static final buildDate = DateTime.utc(2025, 10, 1, 19, 10, 15);
 
   static const name = 'orion';
 
@@ -31,7 +31,7 @@ mixin Pubspec {
   static const versionIsPreRelease = false;
 
   static const environment = <dynamic, dynamic>{
-    'sdk': '>=2.18.5 <3.0.0',
+    'sdk': '>=3.2.0 <4.0.0',
   };
 
   static const dependencies = <dynamic, dynamic>{
@@ -42,45 +42,57 @@ mixin Pubspec {
     'english_words': '^4.0.0',
     'flutter_svg': '^2.0.9',
     'glob': '^2.1.2',
-    'go_router': '^14.1.2',
+    'go_router': '^16.0.0',
     'http': '^1.2.1',
+    'image': '^4.1.3',
     'ini': '^2.1.0',
-    'intl': '^0.19.0',
+    'intl': 'any',
     'path': 'any',
     'path_provider': '^2.1.0',
-    'permission_handler': '^11.0.1',
+    'permission_handler': '^12.0.1',
     'provider': '^6.1.2',
     'qr_flutter': '^4.0.0',
-    'vk': '^0.2.1',
     'window_size': <dynamic, dynamic>{
       'git': <dynamic, dynamic>{
         'url': 'https://github.com/google/flutter-desktop-embedding.git',
         'path': 'plugins/window_size',
       },
     },
-    'archive': '^3.4.2',
+    'archive': '^4.0.4',
     'auto_size_text': '^3.0.0',
     'crypto': '^3.0.2',
-    'phosphor_flutter': '^2.0.1',
+    'phosphor_flutter': '^2.1.0',
     'about': '^2.1.3',
     'pubspec_extract': '^2.0.5',
-    'flutter_markdown': '^0.6.23',
+    'flutter_markdown': '^0.7.6+2',
     'logging': '^1.2.0',
-    'toastification': '^2.0.0',
+    'toastification': '^3.0.2',
     'async': '^2.11.0',
     'fading_edge_scrollview': '^4.1.1',
+    'flex_seed_scheme': '^3.4.1',
+    'country_flags': '^3.2.0',
+    'animations': '^2.0.8',
+    'flutter_localizations': <dynamic, dynamic>{
+      'sdk': 'flutter',
+    },
+    'marquee': '^2.3.0',
+    'json_annotation': '^4.9.0',
   };
 
   static const dev_dependencies = <dynamic, dynamic>{
     'flutter_test': <dynamic, dynamic>{
       'sdk': 'flutter',
     },
-    'flutter_lints': '^4.0.0',
+    'flutter_lints': '^6.0.0',
+    'build_runner': '^2.4.10',
+    'json_serializable': '^6.8.0',
   };
 
   static const flutter = <dynamic, dynamic>{
+    'generate': true,
     'uses-material-design': true,
     'assets': <dynamic>[
+      'assets/',
       'assets/images/opensource.svg',
       'assets/images/placeholder.png',
       'assets/images/bsod.png',
@@ -111,5 +123,9 @@ mixin Pubspec {
         ],
       },
     ],
+  };
+
+  static const flutter_localizations = <dynamic, dynamic>{
+    'sdk': 'flutter',
   };
 }
