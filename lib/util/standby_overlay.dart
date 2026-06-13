@@ -79,8 +79,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   int _dimmingStartBrightness = 255;
   static const int _minBrightness = 13; // 5% of 255
   bool _isExitingStandby = false;
-  static const Duration _rgbResumeDelayAfterPrint = Duration(seconds: 30);
-  DateTime _rgbControlBlockedUntil = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _blockRgbInStandby = false;
 
   // Finished celebration state
   bool _celebrationActive = false;
@@ -238,6 +237,19 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         Provider.of<StandbySettingsProvider>(context, listen: false);
 
     if (!_isStandbyActive && widget.enabled && standbySettings.standbyEnabled) {
+      // Block RGB commands if there's been print activity since the last
+      // explicit wake — otherwise we'd disrupt the printer's internal LED
+      // control during/after a print.
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      final isActiveJob = (statusProvider.status?.isPrinting ?? false) ||
+          (statusProvider.status?.isPaused ?? false) ||
+          statusProvider.isPausing ||
+          statusProvider.isCanceling;
+      if (isActiveJob || _wasPrintingOrPaused) {
+        _blockRgbInStandby = true;
+      }
+
       setState(() {
         _isStandbyActive = true;
         _isExitingStandby = false;
@@ -247,8 +259,6 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _startBounce();
       _startDimming(); // Will check dimming config internally
       // Throttle background status polling while in standby if not printing.
-      final statusProvider =
-          Provider.of<StatusProvider>(context, listen: false);
       final isPrinting = statusProvider.status?.isPrinting ?? false;
       _syncStandbyThrottling(statusProvider, isPrinting);
     }
@@ -257,6 +267,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   void _deactivateStandby() {
     if (_isStandbyActive) {
       _isExitingStandby = true;
+      // User explicitly woke the printer — RGB is safe to use next standby.
+      _blockRgbInStandby = false;
       // Restore brightness immediately so screen and UI return together.
       _stopDimming();
       // Speed up the fade-out (return to app) significantly
@@ -365,26 +377,9 @@ class _StandbyOverlayState extends State<StandbyOverlay>
 
   Future<void> _applyStandbyLedProgress(double progress) async {
     if (!context.mounted || !_isStandbyActive || _isExitingStandby) return;
-
-    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
-    final isActiveJob = (statusProvider.status?.isPrinting ?? false) ||
-        (statusProvider.status?.isPaused ?? false) ||
-        statusProvider.isPausing ||
-        statusProvider.isCanceling;
-    if (isActiveJob) {
-      _rgbControlBlockedUntil = DateTime.now().add(_rgbResumeDelayAfterPrint);
-    }
-    final rgbControlLocked =
-        isActiveJob || DateTime.now().isBefore(_rgbControlBlockedUntil);
+    if (_blockRgbInStandby) return;
 
     final lighting = Provider.of<LightingProvider>(context, listen: false);
-
-    // Keep standby RGB completely hands-off while a job is active and for a
-    // cooldown period after the job leaves active states.
-    if (rgbControlLocked) {
-      return;
-    }
-
     await lighting.applyStandbyProgress(progress);
   }
 
@@ -480,24 +475,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _originalBrightness = 255;
       await _writeBrightness(_originalBrightness);
 
-      if (context.mounted) {
-        final statusProvider =
-            Provider.of<StatusProvider>(context, listen: false);
-        final isActiveJob = (statusProvider.status?.isPrinting ?? false) ||
-            (statusProvider.status?.isPaused ?? false) ||
-            statusProvider.isPausing ||
-            statusProvider.isCanceling;
-        if (isActiveJob) {
-          _rgbControlBlockedUntil =
-              DateTime.now().add(_rgbResumeDelayAfterPrint);
-        }
-        final rgbControlLocked =
-            isActiveJob || DateTime.now().isBefore(_rgbControlBlockedUntil);
-
-        if (rgbControlLocked) {
-          return;
-        }
-
+      if (context.mounted && !_blockRgbInStandby) {
         final lighting = Provider.of<LightingProvider>(context, listen: false);
         await lighting.setFullBrightness();
       }
@@ -515,23 +493,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     try {
       _pauseDimmingForCelebration();
       await _writeBrightness(255);
-      if (context.mounted) {
-        final statusProvider =
-            Provider.of<StatusProvider>(context, listen: false);
-        final isActiveJob = (statusProvider.status?.isPrinting ?? false) ||
-            (statusProvider.status?.isPaused ?? false) ||
-            statusProvider.isPausing ||
-            statusProvider.isCanceling;
-        if (isActiveJob) {
-          _rgbControlBlockedUntil =
-              DateTime.now().add(_rgbResumeDelayAfterPrint);
-        }
-        final rgbControlLocked =
-            isActiveJob || DateTime.now().isBefore(_rgbControlBlockedUntil);
-        if (rgbControlLocked) {
-          return;
-        }
-
+      if (context.mounted && !_blockRgbInStandby) {
         final lighting = Provider.of<LightingProvider>(context, listen: false);
         await lighting.setFullBrightness();
       }
@@ -782,9 +744,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         // Treat transitional states as active for throttling purposes.
         final isActiveJob =
             isPrinting || isPaused || isPausing || isCancelingTransition;
+        // Block RGB commands from the moment any print activity is detected
+        // until the user explicitly wakes the printer.
         if (isActiveJob) {
-          _rgbControlBlockedUntil =
-              DateTime.now().add(_rgbResumeDelayAfterPrint);
+          _blockRgbInStandby = true;
         }
         _syncStandbyThrottling(statusProvider, isActiveJob);
 
