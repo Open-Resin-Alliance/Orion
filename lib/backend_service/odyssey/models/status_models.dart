@@ -175,7 +175,13 @@ class FileData {
   final String path;
   @JsonKey(name: 'location_category')
   final String? locationCategory;
-  FileData({required this.name, required this.path, this.locationCategory});
+  @JsonKey(name: 'last_modified')
+  final int? lastModified;
+  FileData(
+      {required this.name,
+      required this.path,
+      this.locationCategory,
+      this.lastModified});
 
   factory FileData.fromJson(Map<String, dynamic> json) =>
       _$FileDataFromJson(json);

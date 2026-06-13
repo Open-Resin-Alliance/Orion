@@ -36,6 +36,8 @@ import 'package:orion/backend_service/odyssey/models/files_models.dart';
 import 'package:orion/files/details_screen.dart';
 import 'package:orion/files/import_progress_overlay.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
+import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/widgets/selection_screens.dart';
 
 class ImportScreen extends StatefulWidget {
   final String fileName;
@@ -411,7 +413,7 @@ class ImportScreenState extends State<ImportScreen> {
           title: const Text('Back'),
         ),
         body: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: OrionSpacing.screenPadding,
           child: Column(
             children: [
               Expanded(
@@ -594,192 +596,20 @@ class ImportScreenState extends State<ImportScreen> {
       return;
     }
 
-    await showDialog(
-      context: context,
-      builder: (context) => GlassDialog(
-        padding: EdgeInsets.zero,
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: MediaQuery.of(context).size.height * 0.8,
-          child: Column(
-            children: [
-              // Header Section
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color:
-                          Theme.of(context).dividerColor.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.water_drop, size: 24),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Select Resin Profile',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    if (_selectedResinKey != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          resins
-                              .firstWhere(
-                                (r) => (r.path ?? r.name) == _selectedResinKey,
-                                orElse: () => resins.first,
-                              )
-                              .name,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: const EdgeInsets.all(4),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                      tooltip: 'Close',
-                    ),
-                  ],
-                ),
-              ),
-
-              // Content Section
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ListView.separated(
-                    itemCount: resins.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final resin = resins[index];
-                      final resinKey = resin.path ?? resin.name;
-                      final isSelected = _selectedResinKey == resinKey;
-                      final meta = resin.meta;
-                      final parts = <String>[];
-                      if (meta['viscosity'] != null) {
-                        parts.add('Viscosity: ${meta['viscosity']}');
-                      }
-                      if (meta['exposure'] != null) {
-                        parts.add('Exposure: ${meta['exposure']}');
-                      }
-
-                      return GlassCard(
-                        elevation: isSelected ? 2.0 : 1.0,
-                        outlined: true,
-                        color: isSelected
-                            ? Theme.of(context)
-                                .colorScheme
-                                .primaryContainer
-                                .withValues(alpha: 0.3)
-                            : null,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              _selectedResinKey = resinKey;
-                            });
-                            Navigator.of(context).pop();
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 20),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        resin.name,
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w500,
-                                          color: isSelected
-                                              ? Theme.of(context)
-                                                  .colorScheme
-                                                  .primary
-                                              : null,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (parts.isNotEmpty) ...[
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          parts.join(' • '),
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.color,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Colors.transparent,
-                                    border: isSelected
-                                        ? null
-                                        : Border.all(
-                                            color:
-                                                Theme.of(context).dividerColor,
-                                            width: 2),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: isSelected
-                                      ? const Icon(Icons.check,
-                                          color: Colors.white, size: 18)
-                                      : null,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
+    final selectedKey = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => _ImportResinProfilePickerScreen(
+          resins: resins,
+          selectedResinKey: _selectedResinKey,
         ),
       ),
     );
+
+    if (selectedKey == null || !mounted) return;
+    setState(() {
+      _selectedResinKey = selectedKey;
+    });
   }
 
   Widget _buildActionButtons(BuildContext context) {
@@ -826,6 +656,28 @@ class ImportScreenState extends State<ImportScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ImportResinProfilePickerScreen extends StatelessWidget {
+  final List<ResinProfile> resins;
+  final String? selectedResinKey;
+
+  const _ImportResinProfilePickerScreen({
+    required this.resins,
+    required this.selectedResinKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ResinProfileSelectionScreen(
+      title: 'Select Resin Profile',
+      resins: resins,
+      selectedResinKey: selectedResinKey,
+      onSelected: (resin) {
+        Navigator.of(context).pop(resin.path ?? resin.name);
+      },
     );
   }
 }

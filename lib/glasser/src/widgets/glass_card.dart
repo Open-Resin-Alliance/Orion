@@ -68,12 +68,48 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final theme = Theme.of(context);
 
     if (!themeProvider.isGlassTheme) {
+      final bool isDarkMode = theme.brightness == Brightness.dark;
+
+      // For non-glass dark mode, apply subtle primary-tinted styling like buttons
+      // unless explicitly outlined or using an accent color.
+      final Color? effectiveCardColor = color ??
+          (outlined && isDarkMode
+              ? Color.alphaBlend(
+                  Colors.white.withValues(alpha: 0.04),
+                  theme.colorScheme.surface,
+                )
+              : (!outlined && isDarkMode && accentColor == null
+                  ? Color.alphaBlend(
+                      Colors.white.withValues(alpha: 0.05),
+                      theme.colorScheme.surface,
+                    )
+                  : null));
+
       // For non-glass theme, prefer to apply the accent color to the Card's
       // existing border (shape side) so the accent tints the card edge rather
       // than adding a separate outer border which looks visually detached.
       ShapeBorder? effectiveShape = shape;
+
+      // Keep dark-mode card corners consistent with GlassButton when callers
+      // don't provide an explicit shape.
+      if (isDarkMode && effectiveShape == null) {
+        final baseRounded = RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(glassCornerRadius),
+        );
+        if (outlined) {
+          effectiveShape = baseRounded.copyWith(
+            side: BorderSide(
+              color: theme.colorScheme.primary.withValues(alpha: 0.18),
+              width: 1.2,
+            ),
+          );
+        } else {
+          effectiveShape = baseRounded;
+        }
+      }
 
       if (accentColor != null) {
         // Determine a sensible border radius to preserve the caller's shape
@@ -87,9 +123,14 @@ class GlassCard extends StatelessWidget {
           // If there is no custom shape or it's a RoundedRectangleBorder,
           // construct a RoundedRectangleBorder that includes a stroked side so
           // the accent color appears as the card's border.
+          // In dark mode, make accent outlines more subtle.
+          final accentAlpha = isDarkMode ? 0.22 : 1.0;
           effectiveShape = RoundedRectangleBorder(
             borderRadius: resolvedRadius,
-            side: BorderSide(color: accentColor!, width: 1.4),
+            side: BorderSide(
+              color: accentColor!.withValues(alpha: accentAlpha),
+              width: 1.4,
+            ),
           );
         } else {
           // If the provided shape is not a RoundedRectangleBorder we can't
@@ -98,14 +139,14 @@ class GlassCard extends StatelessWidget {
           final card = outlined
               ? Card.outlined(
                   margin: margin ?? const EdgeInsets.all(4.0),
-                  color: color,
+                  color: effectiveCardColor,
                   elevation: elevation,
                   shape: shape,
                   child: child,
                 )
               : Card(
                   margin: margin ?? const EdgeInsets.all(4.0),
-                  color: color,
+                  color: effectiveCardColor,
                   elevation: elevation,
                   shape: shape,
                   child: child,
@@ -115,11 +156,36 @@ class GlassCard extends StatelessWidget {
             margin: margin ?? const EdgeInsets.all(4.0),
             decoration: BoxDecoration(
               borderRadius: resolvedRadius,
-              border: Border.all(color: accentColor!, width: 1.4),
+              border: Border.all(
+                color: accentColor!.withValues(
+                  alpha: isDarkMode ? 0.22 : 1.0,
+                ),
+                width: 1.4,
+              ),
             ),
             child: card,
           );
         }
+      }
+
+      // For non-glass dark mode without accent, add subtle primary-tinted outline
+      if (!outlined &&
+          isDarkMode &&
+          accentColor == null &&
+          (effectiveShape == null ||
+              effectiveShape is RoundedRectangleBorder)) {
+        final BorderRadius resolvedRadius =
+            effectiveShape is RoundedRectangleBorder
+                ? effectiveShape.borderRadius as BorderRadius
+                : BorderRadius.circular(glassCornerRadius);
+
+        effectiveShape = RoundedRectangleBorder(
+          borderRadius: resolvedRadius,
+          side: BorderSide(
+            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+            width: 1.2,
+          ),
+        );
       }
 
       // Compose a child that includes a subtly tinted overlay when an accent
@@ -156,23 +222,35 @@ class GlassCard extends StatelessWidget {
         );
       }
 
-      final card = outlined
-          ? Card.outlined(
+      final bool useExplicitDarkOutlinedRendering =
+          outlined && isDarkMode && accentColor == null;
+
+      final card = useExplicitDarkOutlinedRendering
+          ? Card(
               margin: margin ?? const EdgeInsets.all(4.0),
-              color: color,
+              color: effectiveCardColor,
               elevation: elevation,
               shape: effectiveShape,
               clipBehavior: Clip.antiAlias,
               child: cardInner,
             )
-          : Card(
-              margin: margin ?? const EdgeInsets.all(4.0),
-              color: color,
-              elevation: elevation,
-              shape: effectiveShape,
-              clipBehavior: Clip.antiAlias,
-              child: cardInner,
-            );
+          : outlined
+              ? Card.outlined(
+                  margin: margin ?? const EdgeInsets.all(4.0),
+                  color: effectiveCardColor,
+                  elevation: elevation,
+                  shape: effectiveShape,
+                  clipBehavior: Clip.antiAlias,
+                  child: cardInner,
+                )
+              : Card(
+                  margin: margin ?? const EdgeInsets.all(4.0),
+                  color: effectiveCardColor,
+                  elevation: elevation,
+                  shape: effectiveShape,
+                  clipBehavior: Clip.antiAlias,
+                  child: cardInner,
+                );
 
       return card;
     }
@@ -189,6 +267,27 @@ class GlassCard extends StatelessWidget {
     final hasAccent = accentColor != null;
     final tintColor = accentColor;
 
+    final double? requestedElevation = elevation;
+    final bool customElevationProvided = requestedElevation != null;
+
+    // When callers provide `elevation` in glass mode, map it to the same
+    // interactive shadow style family used by GlassButton so cards can
+    // visually lift in a comparable way.
+    final List<BoxShadow>? resolvedShadow = customElevationProvided
+        ? (requestedElevation <= 0
+            ? null
+            : GlassPlatformConfig.interactiveShadow(
+                enabled: true,
+                blurRadius: (12 + (requestedElevation * 4)).clamp(8, 28),
+                yOffset: (2 + requestedElevation).clamp(1, 10),
+                alpha: (0.08 + (requestedElevation * 0.02)).clamp(0.08, 0.22),
+              ))
+        : GlassPlatformConfig.surfaceShadow(
+            blurRadius: outlined ? 14 : 16,
+            yOffset: outlined ? 3 : 4,
+            alpha: outlined ? 0.14 : 0.12,
+          );
+
     // Provide a blended white base when tinted so the glass stays frosted
     // but carries the accent color subtly (matching GlassButton behavior).
     Color? blendedFillColor;
@@ -201,11 +300,7 @@ class GlassCard extends StatelessWidget {
       margin: margin ?? const EdgeInsets.all(4.0), // Default Card margin
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        boxShadow: GlassPlatformConfig.surfaceShadow(
-          blurRadius: outlined ? 14 : 16,
-          yOffset: outlined ? 3 : 4,
-          alpha: outlined ? 0.14 : 0.12,
-        ),
+        boxShadow: resolvedShadow,
         // In the glass theme, prefer drawing the border via GlassEffect so
         // we avoid a doubled border (outer Container + inner GlassEffect).
         // The material/non-glass branch still draws an outer border.

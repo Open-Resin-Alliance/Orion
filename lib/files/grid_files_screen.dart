@@ -46,6 +46,7 @@ import 'package:orion/util/orion_api_filesystem/orion_api_directory.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_file.dart';
 import 'package:orion/util/orion_api_filesystem/orion_api_item.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/util/stl_thumbnail.dart';
@@ -87,7 +88,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   bool _isUSB = false;
   bool _usbAvailable = false;
   bool _apiErrorState = false;
-  bool _isLoading = false;
+  bool _isLoading = true; // true until initial prewarm completes
   bool _isNavigating = false;
   bool _isNanoDlp = false;
   bool _useLocalFilesProvider = false; // Use local filesystem instead of API
@@ -163,6 +164,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             _defaultDirectory = provider.baseDirectory;
             _directory = _defaultDirectory;
           }
+          await _prewarmThumbnailCache(provider, 'Usb');
         } else {
           // Load from FilesProvider (API)
           final provider = Provider.of<FilesProvider>(context, listen: false);
@@ -186,7 +188,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             _defaultDirectory = homeDir;
             _directory = _defaultDirectory;
           }
+          await _prewarmThumbnailCache(provider, _isUSB ? 'Usb' : 'Local');
         }
+        if (mounted) setState(() => _isLoading = false);
       }
     });
   }
@@ -217,14 +221,16 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   // Build a cache key similar to ThumbnailCache._cacheKey so we can
   // de-duplicate requests at this layer too.
   String _thumbCacheKey(String location, OrionApiFile file, String size,
-      {String? variant}) {
+      {String? variant, Color? themeColor}) {
     final rawLastModified = file.lastModified ?? 0;
     final lastModified = rawLastModified > 999999999999
         ? (rawLastModified / 1000).round()
         : rawLastModified;
     // Match the format used by ThumbnailCache._cacheKey so we can
     // de-duplicate identical requests at this layer.
-    final base = '$location|${file.path}|$lastModified|$size';
+    final colorSuffix =
+        themeColor != null ? '|${themeColor.value.toRadixString(16)}' : '';
+    final base = '$location|${file.path}|$lastModified|$size$colorSuffix';
     if (variant == null || variant.isEmpty) return base;
     return '$base|$variant';
   }
@@ -253,12 +259,18 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     String? stlVariant,
     Color? themeColor,
   }) {
-    final key = _thumbCacheKey(location, file, size, variant: stlVariant);
+    final key = _thumbCacheKey(
+      location,
+      file,
+      size,
+      variant: stlVariant,
+      themeColor: themeColor,
+    );
 
     final processedHit = _processedThumbnailCache[key];
     if (processedHit != null && processedHit.isNotEmpty) {
       _touchProcessedCache(key, processedHit);
-      return Future.value(processedHit);
+      return SynchronousFuture<Uint8List?>(processedHit);
     }
 
     // If we already started or queued this request, return the existing future
@@ -312,8 +324,15 @@ class GridFilesScreenState extends State<GridFilesScreen> {
   }) {
     final stlVariant =
         _resolveStlVariantForCache(fileName, file, advanceCycle: false);
-    final themeColor = Theme.of(context).colorScheme.primary;
-    final key = _thumbCacheKey(location, file, size, variant: stlVariant);
+    final isStl = fileName.toLowerCase().endsWith('.stl');
+    final themeColor = isStl ? Theme.of(context).colorScheme.primary : null;
+    final key = _thumbCacheKey(
+      location,
+      file,
+      size,
+      variant: stlVariant,
+      themeColor: themeColor,
+    );
     final existing = _thumbnailFutureCache[key];
     if (existing != null) {
       _touchFutureCache(key, existing);
@@ -386,10 +405,79 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       final fileName = f.name;
       final stlVariant =
           _resolveStlVariantForCache(fileName, f, advanceCycle: false);
-      return _thumbCacheKey(location, f, 'Small', variant: stlVariant);
+      final isStl = fileName.toLowerCase().endsWith('.stl');
+      final themeColor = isStl ? Theme.of(context).colorScheme.primary : null;
+      return _thumbCacheKey(
+        location,
+        f,
+        'Small',
+        variant: stlVariant,
+        themeColor: themeColor,
+      );
     }).toSet();
     _thumbnailFutureCache.removeWhere((key, _) => !allowed.contains(key));
     _processedThumbnailCache.removeWhere((key, _) => !allowed.contains(key));
+  }
+
+  /// Pre-populate [_processedThumbnailCacheGlobal] from disk for all files in
+  /// the current view so the grid can show images without per-item spinners.
+  /// STL files are skipped (they require runtime rendering, not a simple disk
+  /// read).  Items already in the processed cache are also skipped.
+  /// A 2-second wall-clock timeout prevents this from blocking the UI
+  /// indefinitely when many files are uncached.
+  Future<void> _prewarmThumbnailCache(dynamic provider, String location) async {
+    final List<OrionApiItem> items = List<OrionApiItem>.from(provider.items);
+    final files = items.whereType<OrionApiFile>().toList();
+    if (files.isEmpty) return;
+
+    const maxParallel = 4;
+    final tasks = <Future<void> Function()>[];
+
+    for (final file in files) {
+      final fileName = path.basename(file.path);
+      final lower = fileName.toLowerCase();
+      // STL thumbnails are rendered at runtime, not stored as simple image data.
+      if (lower.endsWith('.stl')) continue;
+
+      final subdirectory = provider is LocalFilesProvider
+          ? _resolveLocalSubdirectoryForFile(file, provider)
+          : _resolveSubdirectoryForFile(file);
+
+      final key = _thumbCacheKey(location, file, 'Small');
+      if (_processedThumbnailCache.containsKey(key)) continue;
+
+      tasks.add(() async {
+        try {
+          final rawBytes = await ThumbnailCache.instance.getThumbnail(
+            location: location,
+            subdirectory: subdirectory,
+            fileName: fileName,
+            file: file,
+            size: 'Small',
+          );
+          final bytes =
+              await _postProcessGridThumbnail(rawBytes, size: 'Small');
+          if (bytes != null && bytes.isNotEmpty) {
+            _touchProcessedCache(key, bytes);
+          }
+        } catch (_) {}
+      });
+    }
+
+    if (tasks.isEmpty) return;
+
+    // Run in batches to avoid saturating I/O; cap total time at 2 s.
+    Future<void> runBatched() async {
+      for (int i = 0; i < tasks.length; i += maxParallel) {
+        final batch = tasks.skip(i).take(maxParallel).map((t) => t()).toList();
+        await Future.wait(batch);
+      }
+    }
+
+    await Future.any([
+      runBatched(),
+      Future.delayed(const Duration(seconds: 2)),
+    ]);
   }
 
   void _processThumbnailQueue() {
@@ -513,6 +601,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final currentPaths = currentFiles.map((f) => f.path).toList();
         ThumbnailCache.instance.validateAndCleanup('Usb', currentPaths);
         _pruneThumbnailFutureCache('Usb', currentFiles);
+        await _prewarmThumbnailCache(provider, 'Usb');
       } else {
         final provider = Provider.of<FilesProvider>(context, listen: false);
         await provider.loadItems(_isUSB ? 'Usb' : 'Local', _subdirectory);
@@ -524,6 +613,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         ThumbnailCache.instance
             .validateAndCleanup(_isUSB ? 'Usb' : 'Local', currentPaths);
         _pruneThumbnailFutureCache(_isUSB ? 'Usb' : 'Local', currentFiles);
+        await _prewarmThumbnailCache(provider, _isUSB ? 'Usb' : 'Local');
       }
       setState(() {
         _isLoading = false;
@@ -579,48 +669,59 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     }
 
     final count = _selectedFileKeys.length;
+    final isSingle = count == 1;
+    final dialogTitle = isSingle ? 'Delete File' : 'Delete Files';
+    final targetLabel = isSingle
+        ? _resolveSelectionDisplayName(_selectedFileKeys.first)
+        : '$count files';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => GlassAlertDialog(
         title: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(
               Icons.delete_forever_rounded,
-              size: 26,
               color: Theme.of(context).colorScheme.error,
+              size: 32,
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Delete Files',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+            Expanded(
+              child: Text(
+                dialogTitle,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.bold,
                 ),
-                Text(
-                  '$count selected',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade400,
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
-        content: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Are you sure you want to delete the selected files?'),
-            SizedBox(height: 8),
-            Text(
+            Text.rich(
+              TextSpan(
+                text: 'You are about to delete ',
+                children: [
+                  TextSpan(
+                    text: targetLabel,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const TextSpan(text: '.\nDo you want to continue?'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
               'This action cannot be undone.',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                decoration: TextDecoration.underline,
+              ),
             ),
           ],
         ),
@@ -708,6 +809,25 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       return '$pathValue|$name|$parentPath|$lastModified';
     }
     return '$parentPath|$name|$lastModified';
+  }
+
+  String _resolveSelectionDisplayName(String selectionKey) {
+    final provider = Provider.of<FilesProvider>(context, listen: false);
+    for (final item in provider.items) {
+      if (item is OrionApiFile && _selectionKey(item) == selectionKey) {
+        final itemName = item.name.trim();
+        if (itemName.isNotEmpty) return itemName;
+        final fromPath = path.basename(item.path).trim();
+        if (fromPath.isNotEmpty) return fromPath;
+      }
+    }
+
+    if (!selectionKey.startsWith('plate:')) {
+      final fallback = path.basename(_selectionKeyToPath(selectionKey)).trim();
+      if (fallback.isNotEmpty) return fallback;
+    }
+
+    return 'this file';
   }
 
   String _selectionKeyToPath(String key) {
@@ -834,15 +954,19 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         body: (_isUSB && _useLocalFilesProvider)
             ? _buildLocalFilesContent(context)
             : _buildApiFilesContent(context),
-        floatingActionButton: _selectedFileKeys.isNotEmpty
-            ? _buildDeleteFab()
-            : _buildRefreshFab(),
+        floatingActionButton: _isLoading
+            ? null
+            : _selectedFileKeys.isNotEmpty
+                ? _buildDeleteFab()
+                : _buildRefreshFab(),
       ),
     );
   }
 
   /// Build content using LocalFilesProvider (filesystem-based)
   Widget _buildLocalFilesContent(BuildContext context) {
+    final isGlassTheme = context.watch<ThemeProvider>().isGlassTheme;
+
     return Consumer<LocalFilesProvider>(
       builder: (context, provider, child) {
         // If the provider reports an error at any time, show the dialog once
@@ -864,7 +988,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final crossCount =
             MediaQuery.of(context).orientation == Orientation.landscape ? 4 : 2;
         return Padding(
-          padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+          padding: EdgeInsets.only(
+            left: OrionSpacing.gridScreenHorizontal,
+            right: OrionSpacing.gridScreenHorizontal,
+            top: isGlassTheme ? 1.0 : 0.0,
+            bottom: 10,
+          ),
           child: GridView.builder(
             controller: _scrollController,
             cacheExtent: 300,
@@ -890,6 +1019,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
   /// Build content using FilesProvider (API-based)
   Widget _buildApiFilesContent(BuildContext context) {
+    final isGlassTheme = context.watch<ThemeProvider>().isGlassTheme;
+
     return Consumer<FilesProvider>(
       builder: (context, provider, child) {
         // If the provider reports an error at any time, show the dialog once
@@ -913,7 +1044,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final crossCount =
             MediaQuery.of(context).orientation == Orientation.landscape ? 4 : 2;
         return Padding(
-          padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+          padding: EdgeInsets.only(
+            left: OrionSpacing.gridScreenHorizontal,
+            right: OrionSpacing.gridScreenHorizontal,
+            top: isGlassTheme ? 1.0 : 0.0,
+            bottom: 10,
+          ),
           child: GridView.builder(
             controller: _scrollController,
             cacheExtent: 300,

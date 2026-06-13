@@ -24,6 +24,8 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/glasser/glasser.dart';
 // error dialog util removed (delete flow not present); import kept out for now
 import 'package:orion/backend_service/providers/resins_provider.dart';
+import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class ResinsScreen extends StatefulWidget {
   const ResinsScreen({super.key});
@@ -61,8 +63,12 @@ class ResinsScreenState extends State<ResinsScreen> {
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: Padding(
-            // Match other screens: narrow horizontal padding to maximize usable area
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 8.0),
+            // Account for card margins: cards have 4px margin, so reduce padding
+            padding: EdgeInsets.only(
+              left: OrionSpacing.screenHorizontal - 4.0,
+              right: OrionSpacing.screenHorizontal - 4.0,
+              top: OrionSpacing.settingsScreenPaddingTightTop.top,
+            ),
             child: Column(
               children: [
                 // Content
@@ -122,9 +128,7 @@ class ResinsScreenState extends State<ResinsScreen> {
                     }
 
                     // Show the active/default resin pinned at the top (if present),
-                    // followed by a divider and the remaining profiles. This gives
-                    // clearer visual separation between the chosen/default profile
-                    // and the rest.
+                    // followed by a subtle spacer and the remaining profiles.
                     return RefreshIndicator(
                       onRefresh: provider.refresh,
                       child: Builder(builder: (ctx) {
@@ -145,7 +149,7 @@ class ResinsScreenState extends State<ResinsScreen> {
                               .toList();
                           final total = 1 +
                               1 +
-                              otherItems.length; // selected + divider + others
+                              otherItems.length; // selected + spacer + others
                           return ListView.builder(
                             controller: _scrollController,
                             itemCount: total,
@@ -155,14 +159,13 @@ class ResinsScreenState extends State<ResinsScreen> {
                                 return _buildResinCard(selected!, provider);
                               }
                               if (index == 1) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                                  child: Divider(thickness: 1),
-                                );
+                                return const SizedBox(
+                                    height: OrionSpacing.compactListGap);
                               }
                               final resin = otherItems[index - 2];
                               return Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
+                                padding: const EdgeInsets.only(
+                                    top: OrionSpacing.compactListGap),
                                 child: _buildResinCard(resin, provider),
                               );
                             },
@@ -173,8 +176,8 @@ class ResinsScreenState extends State<ResinsScreen> {
                         return ListView.separated(
                           controller: _scrollController,
                           itemCount: items.length,
-                          separatorBuilder: (ctx, i) =>
-                              const SizedBox(height: 8),
+                          separatorBuilder: (ctx, i) => const SizedBox(
+                              height: OrionSpacing.compactListGap),
                           padding: EdgeInsets.zero,
                           itemBuilder: (context, index) {
                             final resin = items[index];
@@ -198,152 +201,186 @@ class ResinsScreenState extends State<ResinsScreen> {
     final parts = <String>[];
     if (meta['viscosity'] != null) parts.add('Viscosity: ${meta['viscosity']}');
     if (meta['exposure'] != null) parts.add('Exposure: ${meta['exposure']}');
-    // Determine a unique key for this resin (prefer path when available)
-    final key = resin.path ?? resin.name;
-    final isSelected = _selectedKey != null && _selectedKey == key;
 
-    final borderRadius = BorderRadius.circular(14);
+    final key = resin.path ?? resin.name;
     final isDefault =
         provider.activeResinKey != null && provider.activeResinKey == key;
     final isLocked = resin.locked;
+    final templatePrefix = RegExp(r'^\s*\[template\]\s*', caseSensitive: false);
+    final isTemplate = templatePrefix.hasMatch(resin.name);
+    final cleanedName = resin.name.replaceFirst(templatePrefix, '').trim();
+    final displayName = cleanedName.isEmpty ? resin.name : cleanedName;
 
-    // Build the card content as before
-    final card = GlassCard(
-      elevation: 2,
-      outlined: isSelected,
-      accentColor: isSelected ? Colors.green.shade400 : null,
-      accentOpacity: 0.06,
-      shape: RoundedRectangleBorder(borderRadius: borderRadius),
+    final outlineColor = isDefault
+        ? Colors.green.shade400.withValues(alpha: 0.55)
+        : Theme.of(context).dividerColor.withValues(alpha: 0.35);
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isGlassMode =
+        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+
+    final fillColor = isDefault && !isGlassMode
+        ? Colors.green.shade400.withValues(alpha: 0.08)
+        : (isDarkMode
+            ? Color.alphaBlend(
+                Colors.white.withValues(alpha: 0.05),
+                Theme.of(context).colorScheme.surface,
+              )
+            : null);
+
+    final accentColorForCard =
+        isDefault && isGlassMode ? Colors.green.shade400 : null;
+
+    return GlassCard(
+      elevation: isDefault ? 2 : 1,
+      outlined: false,
+      color: fillColor,
+      accentColor: accentColorForCard,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => _onSelectResin(resin, provider),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 12.0),
-          child: Row(
-            children: [
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (isDefault)
-                          GlassCard(
-                            accentColor: Colors.green.shade400,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: outlineColor,
+              width: isDefault ? 1.6 : 1.0,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
+            ),
+            child: Row(
+              children: [
+                if (isDefault) ...[
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade400.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.green.shade400.withValues(alpha: 0.55),
+                        width: 1,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: 14,
+                      color: Colors.green.shade300,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                // Name + meta
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (isTemplate) ...[
+                            Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0, vertical: 5.0),
+                                  horizontal: 9, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surface
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: Theme.of(context)
+                                      .dividerColor
+                                      .withValues(alpha: 0.3),
+                                  width: 1,
+                                ),
+                              ),
                               child: Text(
-                                'Default',
+                                'Template',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.green.shade400,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.color,
                                 ),
                               ),
                             ),
-                          ),
-                        if (isLocked)
-                          Padding(
-                            padding:
-                                EdgeInsets.only(left: isDefault ? 8.0 : 0.0),
-                            child: PhosphorIcon(
-                              PhosphorIconsFill.lockSimple,
-                              size: 22,
-                              color: Colors.grey.shade400,
-                            ),
-                          ),
-                        const SizedBox(width: 10.0),
-                        Expanded(
-                          child: Text(resin.name,
-                              maxLines: 2,
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: Text(
+                              displayName,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                  fontSize: 24, color: Colors.grey.shade50)),
-                        ),
-                      ],
-                    ),
-                    if (parts.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6.0),
-                        child: Text(parts.join(' • '),
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey.shade400)),
-                      ),
-                  ],
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Larger tappable edit affordance: include an explicit
-                  // label and generous hit target so users can reliably
-                  // tap Edit without accidentally selecting the profile.
-                  Opacity(
-                    opacity: resin.locked ? 0.28 : 1.0,
-                    child: Tooltip(
-                      message: resin.locked ? 'Locked' : 'Edit',
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap:
-                              resin.locked ? null : () => _onEditResin(resin),
-                          // Make the hit area wide so there's a buffer zone
-                          // between tapping the profile and the Edit control.
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0, vertical: 6.0),
-                            child: SizedBox(
-                              width: 110,
-                              height: 48,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  PhosphorIcon(PhosphorIcons.pencil(),
-                                      size: 26,
-                                      color: resin.locked
-                                          ? Colors.grey.shade400
-                                          : null),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Edit',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        color: resin.locked
-                                            ? Colors.grey.shade400
-                                            : Colors.grey.shade50,
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                ],
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: isDefault ? Colors.green.shade400 : null,
                               ),
                             ),
+                          ),
+                        ],
+                      ),
+                      if (parts.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2.0),
+                          child: Text(
+                            parts.join(' • '),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color:
+                                  Theme.of(context).textTheme.bodySmall?.color,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Edit affordance
+                Opacity(
+                  opacity: isLocked ? 0.35 : 1.0,
+                  child: Tooltip(
+                    message: isLocked ? 'Locked' : 'Edit',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: isLocked ? null : () => _onEditResin(resin),
+                      child: SizedBox(
+                        width: 110,
+                        height: 46,
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              PhosphorIcon(PhosphorIcons.pencil(),
+                                  size: 21, color: Colors.grey.shade200),
+                              const SizedBox(width: 7),
+                              Text(
+                                'Edit',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade200,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              )
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    );
-
-    // Add a subtle scale animation on selection to indicate feedback.
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 1.0, end: isSelected ? 1.01 : 1.0),
-      duration: const Duration(milliseconds: 180),
-      builder: (context, scale, child) {
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: card,
     );
   }
 

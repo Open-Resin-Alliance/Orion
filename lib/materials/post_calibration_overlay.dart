@@ -92,44 +92,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
         backgroundColor: isGlass
             ? Colors.transparent
             : Theme.of(context).colorScheme.surface,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _currentStep == 0
-                    ? PhosphorIcons.checkCircle()
-                    : PhosphorIconsFill.magnifyingGlass,
-                size: 36,
-                color: _currentStep == 0
-                    ? Colors.greenAccent
-                    : Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _currentStep == 0
-                        ? 'Calibration Complete!'
-                        : 'Evaluate Test Print',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          centerTitle: true,
-        ),
-        body: SafeArea(
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
             switchInCurve: Curves.easeInOut,
@@ -137,40 +101,144 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             transitionBuilder: (child, animation) {
               return FadeTransition(
                 opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.1, 0),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                ),
+                child: child,
               );
             },
-            child:
-                _currentStep == 0 ? _buildQrCodeView() : _buildEvaluationView(),
+            child: _currentStep == 0
+                ? _buildStep0Content(context)
+                : _buildStep1Content(context),
           ),
         ),
-        floatingActionButton: _buildFloatingActionButtons(),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }
 
-  Widget _buildFloatingActionButtons() {
-    if (_currentStep == 0) {
-      // QR code screen: only show next button
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildStep0Content(BuildContext context) {
+    return Column(
+      key: const ValueKey('step0'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Header ──────────────────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Left: Do Not Show Again toggle
-            GlassFloatingActionButton.extended(
-              heroTag: 'do_not_show',
+            Icon(
+              PhosphorIcons.checkCircle(),
+              size: 24,
+              color: Colors.green.shade400,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Calibration Complete',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade400,
+              ),
+            ),
+          ],
+        ),
+        if (widget.resinProfileName != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            '',
+            style: TextStyle(
+              fontSize: 4,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+
+        const SizedBox(height: 12),
+
+        // ── Body ─────────────────────────────────────────────────
+        Expanded(
+          child: _buildQrCodeView(),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Action buttons ────────────────────────────────────────
+        _buildActionButtons(context),
+      ],
+    );
+  }
+
+  Widget _buildStep1Content(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Column(
+      key: const ValueKey('step1'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Header ──────────────────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              PhosphorIconsFill.magnifyingGlass,
+              size: 24,
+              color: primary,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Evaluate Test Print',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: primary,
+              ),
+            ),
+          ],
+        ),
+        if (widget.resinProfileName != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            widget.resinProfileName!,
+            style: TextStyle(
+              fontSize: 18,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+
+        const SizedBox(height: 12),
+
+        // ── Body ─────────────────────────────────────────────────
+        Expanded(
+          child: _buildEvaluationView(),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Action buttons ────────────────────────────────────────
+        _buildActionButtons(context),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context) {
+    if (_currentStep == 0) {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.neutral,
               onPressed: () {
-                // Toggle and persist; if enabling skip, immediately show
-                // the evaluation screen so user doesn't have to press
-                // Next.
                 final newValue = !_doNotShowAgain;
                 try {
                   _config.setFlag(
@@ -186,60 +254,77 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   if (_doNotShowAgain) _currentStep = 1;
                 });
               },
-              label: 'Skip Guide',
-              icon: Icon(_doNotShowAgain
-                  ? PhosphorIcons.checkSquare()
-                  : PhosphorIcons.square()),
-              scale: 1.3,
-              iconAfterLabel: false,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _doNotShowAgain
+                        ? PhosphorIcons.checkSquare()
+                        : PhosphorIcons.square(),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Skip Guide', style: TextStyle(fontSize: 18)),
+                ],
+              ),
             ),
-            GlassFloatingActionButton.extended(
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: GlassButton(
               tint: GlassButtonTint.positive,
-              heroTag: 'next',
-              onPressed: () {
-                setState(() {
-                  _currentStep = 1;
-                });
-              },
-              label: 'Next',
-              icon: Icon(PhosphorIcons.caretRight()),
-              scale: 1.3,
-              iconAfterLabel: true,
+              onPressed: () => setState(() => _currentStep = 1),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Next', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Icon(PhosphorIcons.caretRight(), size: 20),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     } else {
-      // Evaluation screen: back, reconfigure, and save buttons
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            GlassFloatingActionButton.extended(
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
               tint: GlassButtonTint.neutral,
-              heroTag: 'back',
-              onPressed: () {
-                // If the guide was skipped by default, this button acts as
-                // a direct link to the guide. Otherwise it behaves as a
-                // regular Back button to return to the QR guide screen.
-                setState(() {
-                  _currentStep = 0;
-                });
-              },
-              label: _doNotShowAgain ? 'Guide' : 'Back',
-              icon: Icon(_doNotShowAgain
-                  ? PhosphorIcons.info()
-                  : PhosphorIcons.caretLeft()),
-              scale: 1.3,
-              iconAfterLabel: false,
+              onPressed: () => setState(() => _currentStep = 0),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _doNotShowAgain
+                        ? PhosphorIcons.info()
+                        : PhosphorIcons.caretLeft(),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _doNotShowAgain ? 'Guide' : 'Back',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(width: 12),
-            GlassFloatingActionButton.extended(
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GlassButton(
               tint: GlassButtonTint.negative,
-              heroTag: 'reconfigure',
               onPressed: () {
-                // Pop overlay and navigate to MaterialsScreen on the Calibration tab
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -248,41 +333,58 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   ),
                 );
               },
-              label: 'Reconfigure',
-              icon: Icon(PhosphorIconsFill.arrowCounterClockwise),
-              scale: 1.3,
-              iconAfterLabel: false,
-            ),
-            const Spacer(),
-            // When two pieces are selected allow fine-tuning between them.
-            if (_selectedPieces.length == 2)
-              GlassFloatingActionButton.extended(
-                tint: GlassButtonTint.positive,
-                heroTag: 'fine_tune',
-                onPressed: () {
-                  _showFineTuneDialog();
-                },
-                label: 'Fine-Tune',
-                icon: Icon(PhosphorIcons.slidersHorizontal()),
-                scale: 1.3,
-                iconAfterLabel: true,
-              )
-            else
-              GlassFloatingActionButton.extended(
-                tint: GlassButtonTint.positive,
-                heroTag: 'save',
-                onPressed: _selectedPieces.length != 1
-                    ? null
-                    : () {
-                        _saveOptimalExposure();
-                      },
-                label: 'Save',
-                icon: Icon(PhosphorIcons.check()),
-                scale: 1.3,
-                iconAfterLabel: true,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
               ),
-          ],
-        ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIconsFill.arrowCounterClockwise, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Reconfigure', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          if (_selectedPieces.length == 2)
+            Expanded(
+              child: GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: _showFineTuneDialog,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 65),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Fine-Tune', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Icon(PhosphorIcons.slidersHorizontal(), size: 20),
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed:
+                    _selectedPieces.length != 1 ? null : _saveOptimalExposure,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 65),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Save', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Icon(PhosphorIcons.check(), size: 20),
+                  ],
+                ),
+              ),
+            ),
+        ],
       );
     }
   }
@@ -306,167 +408,217 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             'https://docs.openresin.org/calibration/${widget.calibrationModelName.toLowerCase().replaceAll(' ', '-')}';
     }
 
-    return Padding(
+    return LayoutBuilder(
       key: const ValueKey('qr'),
-      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Scan the QR code for the ${widget.calibrationModelName} evaluation guide.',
-                style: const TextStyle(
-                  fontSize: 21,
-                  color: Colors.white70,
+      builder: (context, constraints) {
+        final qrSize = ((constraints.maxWidth / 2) - 40).clamp(80.0, 260.0);
+        final onSurface = Theme.of(context).colorScheme.onSurface;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // ── Left: description ──────────────────────────────────
+            Expanded(
+              child: GlassCard(
+                elevation: 1.0,
+                outlined: true,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'EVALUATION GUIDE',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: onSurface.withValues(alpha: 0.55),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Use the evaluation guide to correctly identify the optimal exposure from your calibration print.',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: onSurface.withValues(alpha: 0.75),
+                            height: 1.55,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildGuideItem(
+                          context,
+                          'Scan the QR code with your phone to open the ${widget.calibrationModelName} evaluation guide.',
+                        ),
+                        const SizedBox(height: 10),
+                        _buildGuideItem(
+                          context,
+                          'Read it thoroughly before selecting the optimal exposure on the next screen.',
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
-              Center(
-                child: GlassCard(
-                  elevation: 1.0,
-                  outlined: true,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
+            ),
+
+            const SizedBox(width: 16),
+
+            // ── Right: QR code ─────────────────────────────────────
+            Expanded(
+              child: GlassCard(
+                elevation: 1.0,
+                outlined: true,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Center(
                     child: QrImageView(
                       data: evaluationGuideUrl,
                       version: QrVersions.auto,
-                      size: 260,
+                      size: qrSize,
                       gapless: true,
                       errorCorrectionLevel: QrErrorCorrectLevel.M,
-                      eyeStyle: QrEyeStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                      eyeStyle: QrEyeStyle(color: onSurface),
                       dataModuleStyle: QrDataModuleStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
+                        color: onSurface,
                         dataModuleShape: QrDataModuleShape.circle,
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 40),
-        ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGuideItem(BuildContext context, String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 15,
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+        height: 1.55,
       ),
     );
   }
 
   Widget _buildEvaluationView() {
+    Widget pieceButton(int index) {
+      final pieceNumber = index + 1;
+      final exposure =
+          widget.startExposure + (widget.exposureIncrement * index);
+      final isSelected = _selectedPieces.contains(pieceNumber);
+
+      return Expanded(
+        child: GlassButton(
+          tint: isSelected ? GlassButtonTint.positive : GlassButtonTint.neutral,
+          onPressed: () {
+            setState(() {
+              if (isSelected) {
+                _selectedPieces.remove(pieceNumber);
+                return;
+              }
+
+              if (_selectedPieces.isEmpty) {
+                _selectedPieces.add(pieceNumber);
+                return;
+              }
+
+              if (_selectedPieces.length == 1) {
+                final existing = _selectedPieces.first;
+                if ((existing - pieceNumber).abs() == 1) {
+                  _selectedPieces.add(pieceNumber);
+                } else {
+                  _selectedPieces.clear();
+                  _selectedPieces.add(pieceNumber);
+                }
+                return;
+              }
+
+              _selectedPieces.removeAt(0);
+              _selectedPieces.add(pieceNumber);
+              final a = _selectedPieces[0];
+              final b = _selectedPieces[1];
+              if ((a - b).abs() != 1) {
+                _selectedPieces.clear();
+                _selectedPieces.add(pieceNumber);
+              }
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(double.infinity, double.infinity),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                '#$pieceNumber',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '${exposure.toStringAsFixed(1)}s',
+                style: TextStyle(fontSize: 20, color: Colors.grey.shade300),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Padding(
       key: const ValueKey('evaluation'),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 3x2 Grid
+          // Row 1: pieces 1–3
           Expanded(
-            child: Center(
-              child: GridView.builder(
-                shrinkWrap: true,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 2.3,
-                ),
-                itemCount: 6,
-                itemBuilder: (context, index) {
-                  final pieceNumber = index + 1;
-                  final exposure =
-                      widget.startExposure + (widget.exposureIncrement * index);
-                  final isSelected = _selectedPieces.contains(pieceNumber);
-
-                  return GlassButton(
-                    tint: isSelected
-                        ? GlassButtonTint.positive
-                        : GlassButtonTint.neutral,
-                    onPressed: () {
-                      setState(() {
-                        if (isSelected) {
-                          // Deselect if already selected
-                          _selectedPieces.remove(pieceNumber);
-                          return;
-                        }
-
-                        if (_selectedPieces.isEmpty) {
-                          // First selection
-                          _selectedPieces.add(pieceNumber);
-                          return;
-                        }
-
-                        if (_selectedPieces.length == 1) {
-                          final existing = _selectedPieces.first;
-                          if ((existing - pieceNumber).abs() == 1) {
-                            // Adjacent — select as second
-                            _selectedPieces.add(pieceNumber);
-                          } else {
-                            // Non-adjacent selection replaces prior choice
-                            _selectedPieces.clear();
-                            _selectedPieces.add(pieceNumber);
-                          }
-                          return;
-                        }
-
-                        // If two are already selected, replace the oldest with
-                        // the new selection, but ensure resulting pair are
-                        // adjacent; otherwise leave only the new selection.
-                        _selectedPieces.removeAt(0);
-                        _selectedPieces.add(pieceNumber);
-                        final a = _selectedPieces[0];
-                        final b = _selectedPieces[1];
-                        if ((a - b).abs() != 1) {
-                          // Not adjacent — clear other and keep only the new
-                          _selectedPieces.clear();
-                          _selectedPieces.add(pieceNumber);
-                        }
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          '#$pieceNumber',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${exposure.toStringAsFixed(1)}s',
-                          style: TextStyle(
-                            fontSize: 24,
-                            color: Colors.grey.shade300,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+            child: Row(
+              children: [
+                pieceButton(0),
+                const SizedBox(width: 10),
+                pieceButton(1),
+                const SizedBox(width: 10),
+                pieceButton(2),
+              ],
             ),
           ),
-
-          const SizedBox(height: 12),
-          const Text(
-            'Select the test piece that matches the evaluation guide.\n If unsure, select the two pieces that look best.',
+          const SizedBox(height: 10),
+          // Row 2: pieces 4–6
+          Expanded(
+            child: Row(
+              children: [
+                pieceButton(3),
+                const SizedBox(width: 10),
+                pieceButton(4),
+                const SizedBox(width: 10),
+                pieceButton(5),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Select the piece matching the guide. If unsure, pick the two that look best.',
             style: TextStyle(
-              fontSize: 18,
-              color: Colors.white70,
+              fontSize: 16,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.55),
             ),
             textAlign: TextAlign.center,
           ),
-          // Space for floating action buttons
-          const SizedBox(height: 85),
         ],
       ),
     );
@@ -593,7 +745,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               Navigator.of(context).pop(); // Close dialog
               widget.onComplete(); // Close overlay
             },
-            child: const Text('Done', style: TextStyle(fontSize: 22)),
+            child: const Text('Done'),
           ),
         ],
       ),
@@ -662,7 +814,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Cancel', style: TextStyle(fontSize: 22)),
+                child: const Text('Cancel'),
               ),
               GlassButton(
                 tint: GlassButtonTint.positive,
@@ -787,14 +939,13 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                             Navigator.of(context).pop();
                             widget.onComplete();
                           },
-                          child: const Text('Done',
-                              style: TextStyle(fontSize: 22)),
+                          child: const Text('Done'),
                         ),
                       ],
                     ),
                   );
                 },
-                child: const Text('Save', style: TextStyle(fontSize: 22)),
+                child: const Text('Save'),
               ),
             ],
           );

@@ -87,8 +87,10 @@ class GlassButton extends StatelessWidget {
     final effectiveTint = (onPressed == null) ? GlassButtonTint.none : tint;
     // Resolve palette; neutral needs the theme primary so use context-aware resolver.
     final tintPalette = _resolveTintPaletteWithContext(effectiveTint, context);
+    final baseMaterialStyle =
+        _baseNonGlassButtonStyle(context, tintColor: tintPalette?.color);
     final resolvedMaterialStyle =
-        tintPalette == null ? style : tintPalette.toButtonStyle().merge(style);
+        baseMaterialStyle.merge(tintPalette?.toButtonStyle()).merge(style);
 
     if (!themeProvider.isGlassTheme) {
       return Padding(
@@ -110,6 +112,90 @@ class GlassButton extends StatelessWidget {
       child: child,
     );
   }
+}
+
+ButtonStyle _baseNonGlassButtonStyle(BuildContext context, {Color? tintColor}) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  // For untinted buttons, use the seed primary as the outline tint so
+  // the border matches the text/icon color the theme already applies.
+  // The fill uses a plain surface elevation (white overlay) regardless of tint,
+  // keeping the inside neutral like card.outlined.
+  final effectiveTint = tintColor ?? theme.colorScheme.primary;
+
+  final neutralFill = Color.alphaBlend(
+    Colors.white.withValues(alpha: isDark ? 0.05 : 0.018),
+    theme.colorScheme.surface,
+  );
+
+  final tintedFill = tintColor != null
+      ? Color.alphaBlend(
+          tintColor.withValues(alpha: isDark ? 0.14 : 0.07),
+          theme.colorScheme.surface,
+        )
+      : neutralFill;
+
+  final disabledFill = Color.alphaBlend(
+    Colors.white.withValues(alpha: isDark ? 0.025 : 0.01),
+    theme.colorScheme.surface,
+  );
+
+  final outlineColor = effectiveTint;
+  final baseTextStyle =
+      (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
+    fontFamily: 'AtkinsonHyperlegible',
+    fontSize: 20,
+    fontWeight: FontWeight.w500,
+  );
+
+  return ButtonStyle(
+    backgroundColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.disabled)) {
+        return disabledFill;
+      }
+      return tintedFill;
+    }),
+    side: WidgetStateProperty.resolveWith((states) {
+      final isDisabled = states.contains(WidgetState.disabled);
+      final outlineAlpha = isDisabled ? 0.12 : 0.22;
+      return BorderSide(
+        color: outlineColor.withValues(alpha: outlineAlpha),
+        width: 1.2,
+      );
+    }),
+    shape: WidgetStateProperty.all(
+      RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(glassCornerRadius),
+      ),
+    ),
+    elevation: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.disabled)) return 0.5;
+      if (states.contains(WidgetState.pressed)) return 0.5;
+      if (states.contains(WidgetState.hovered) ||
+          states.contains(WidgetState.focused)) {
+        return 1.8;
+      }
+      return 1.2;
+    }),
+    shadowColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.disabled)) {
+        return Colors.black.withValues(alpha: 0.06);
+      }
+      return Colors.black.withValues(alpha: isDark ? 0.2 : 0.12);
+    }),
+    overlayColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.pressed)) {
+        return theme.colorScheme.onSurface.withValues(alpha: 0.08);
+      }
+      if (states.contains(WidgetState.hovered) ||
+          states.contains(WidgetState.focused)) {
+        return theme.colorScheme.onSurface.withValues(alpha: 0.04);
+      }
+      return null;
+    }),
+    textStyle: WidgetStateProperty.all(baseTextStyle),
+    surfaceTintColor: WidgetStateProperty.all(Colors.transparent),
+  );
 }
 
 /// Internal glassmorphic button implementation
@@ -391,15 +477,6 @@ class _GlassButtonTintPalette {
 
   ButtonStyle toButtonStyle() {
     return ButtonStyle(
-      // Use a light inner tint with a strong outline for material buttons so
-      // they visually match the glass variant (light fill + strong outline).
-      backgroundColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.disabled)) {
-          return color.withValues(alpha: 0.08);
-        }
-        // Light inner tint
-        return color.withValues(alpha: 0.10);
-      }),
       // Foreground (text/icon) should be full tint color for punchiness.
       foregroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
@@ -412,13 +489,6 @@ class _GlassButtonTintPalette {
           return color.withValues(alpha: 0.6);
         }
         return color;
-      }),
-      // Strong outline using side, and overlay uses a slightly stronger tint.
-      side: WidgetStateProperty.resolveWith((states) {
-        final c = states.contains(WidgetState.disabled)
-            ? color.withValues(alpha: 0.45)
-            : color.withValues(alpha: 0.75);
-        return BorderSide(color: c, width: 1.4);
       }),
       overlayColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.pressed)) {

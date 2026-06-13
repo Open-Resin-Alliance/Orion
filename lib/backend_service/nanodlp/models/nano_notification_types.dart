@@ -130,3 +130,45 @@ String getNanoTypeTitle(String? type) {
   final entry = lookup[type] ?? lookup['default'];
   return (entry?['title'] as String?) ?? 'Notification';
 }
+
+String _normalizeNotificationText(String? text) {
+  return (text ?? '').trim().toLowerCase();
+}
+
+/// Human-friendly dialog title, with optional text-aware intercepts.
+String getNanoNotificationDisplayTitle(String? type, String? text) {
+  final normalized = _normalizeNotificationText(text);
+
+  if (type == 'klipper-error') {
+    if (normalized.contains('m112') ||
+        normalized.contains('emergency stop') ||
+        normalized.contains('shutdown due to m112')) {
+      return 'Emergency Stop Activated';
+    }
+    if (normalized.contains('must home axis first')) {
+      return 'Homing Required';
+    }
+    return 'Warning';
+  }
+
+  return getNanoTypeTitle(type);
+}
+
+/// Human-friendly dialog message, with optional text-aware intercepts.
+String getNanoNotificationDisplayMessage(String? type, String? text) {
+  final raw = (text ?? '').trim();
+  final normalized = raw.toLowerCase();
+
+  if (type == 'klipper-error') {
+    if (normalized.contains('m112') ||
+        normalized.contains('emergency stop') ||
+        normalized.contains('shutdown due to m112')) {
+      return 'Printing was stopped for safety. Check the printer, then home the axes before continuing.';
+    }
+    if (normalized.contains('must home axis first')) {
+      return 'Please home the printer axes before performing this action.';
+    }
+  }
+
+  return raw.isNotEmpty ? raw : '(no details available)';
+}

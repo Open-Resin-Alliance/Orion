@@ -92,7 +92,7 @@ class AthenaUpdateProvider extends ChangeNotifier {
           .replace(queryParameters: params);
       _log.fine('Querying AthenaOS latest version: $uri');
 
-      final resp = await http.get(uri);
+      final resp = await http.get(uri).timeout(const Duration(seconds: 5));
       if (resp.statusCode != 200) {
         _log.warning('Olymp lookup failed: ${resp.statusCode} ${resp.body}');
         // Do not clear state on temporary network/server failure

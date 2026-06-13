@@ -39,6 +39,15 @@ ThemeData createLightTheme(Color seedColor) {
       brightness: Brightness.light,
       variant: FlexSchemeVariant.soft,
     ),
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: _FadePageTransitionsBuilder(),
+        TargetPlatform.iOS: _FadePageTransitionsBuilder(),
+        TargetPlatform.linux: _FadePageTransitionsBuilder(),
+        TargetPlatform.macOS: _FadePageTransitionsBuilder(),
+        TargetPlatform.windows: _FadePageTransitionsBuilder(),
+      },
+    ),
     appBarTheme: AppBarTheme(
       titleTextStyle: TextStyle(
         fontFamily: _primaryFontFamily,
@@ -53,20 +62,18 @@ ThemeData createLightTheme(Color seedColor) {
     ),
     // Ensure the TextTheme entries include the CJK fallback
     textTheme: _withCjkFallback(TextTheme(
-      bodyMedium:
-        TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
+      bodyMedium: TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
       titleLarge: TextStyle(
-        fontFamily: _primaryFontFamily,
-        fontSize: 20), // For AppBar title
+          fontFamily: _primaryFontFamily, fontSize: 20), // For AppBar title
     )),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       selectedLabelStyle: TextStyle(
-        fontFamily: _primaryFontFamily,
-        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontFamily: _primaryFontFamily,
+          fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       unselectedLabelStyle: TextStyle(
-        fontFamily: _primaryFontFamily,
-        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontFamily: _primaryFontFamily,
+          fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
@@ -95,6 +102,15 @@ ThemeData createDarkTheme(Color seedColor) {
       brightness: Brightness.dark,
       variant: FlexSchemeVariant.soft,
     ),
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: _FadePageTransitionsBuilder(),
+        TargetPlatform.iOS: _FadePageTransitionsBuilder(),
+        TargetPlatform.linux: _FadePageTransitionsBuilder(),
+        TargetPlatform.macOS: _FadePageTransitionsBuilder(),
+        TargetPlatform.windows: _FadePageTransitionsBuilder(),
+      },
+    ),
     appBarTheme: AppBarTheme(
       titleTextStyle: TextStyle(
         fontFamily: _primaryFontFamily,
@@ -108,20 +124,18 @@ ThemeData createDarkTheme(Color seedColor) {
       iconTheme: IconThemeData(size: 30, color: Colors.white),
     ),
     textTheme: _withCjkFallback(TextTheme(
-      bodyMedium:
-        TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
+      bodyMedium: TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
       titleLarge: TextStyle(
-        fontFamily: _primaryFontFamily,
-        fontSize: 20), // For AppBar title
+          fontFamily: _primaryFontFamily, fontSize: 20), // For AppBar title
     )),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       selectedLabelStyle: TextStyle(
-        fontFamily: _primaryFontFamily,
-        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontFamily: _primaryFontFamily,
+          fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       unselectedLabelStyle: TextStyle(
-        fontFamily: _primaryFontFamily,
-        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontFamily: _primaryFontFamily,
+          fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
           fontSize: 18),
       selectedIconTheme: IconThemeData(size: 30),
       unselectedIconTheme: IconThemeData(size: 30),
@@ -297,10 +311,39 @@ class _OpaquePageTransitionsBuilder extends PageTransitionsBuilder {
       ),
     );
 
-    // Use a simple fade transition
+    final fade = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeInOut,
+      reverseCurve: Curves.easeInOut,
+    );
+
+    // Use the same fade timing profile as non-glass transitions.
     return FadeTransition(
-      opacity: animation,
+      opacity: fade,
       child: wrappedChild,
+    );
+  }
+}
+
+/// Fade-only transitions for non-glass themes.
+class _FadePageTransitionsBuilder extends PageTransitionsBuilder {
+  @override
+  Widget buildTransitions<T extends Object?>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final fade = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeInOut,
+      reverseCurve: Curves.easeInOut,
+    );
+
+    return FadeTransition(
+      opacity: fade,
+      child: child,
     );
   }
 }

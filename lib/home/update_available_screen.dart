@@ -87,9 +87,11 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
   }
 
   Widget _buildAnimatedItem(Widget child, double start, double end) {
+    final safeStart = start.clamp(0.0, 1.0).toDouble();
+    final safeEnd = end.clamp(safeStart, 1.0).toDouble();
     final curve = CurvedAnimation(
       parent: _controller,
-      curve: Interval(start, end, curve: Curves.easeOutQuart),
+      curve: Interval(safeStart, safeEnd, curve: Curves.easeOutQuart),
     );
     return FadeTransition(
       opacity: curve,
@@ -231,7 +233,8 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                       0.5,
                       1.0,
                     ),
-                    if (!(orion.isUpdateAvailable && athena.updateAvailable)) ...[
+                    if (!(orion.isUpdateAvailable &&
+                        athena.updateAvailable)) ...[
                       const SizedBox(height: 32),
                       _buildAnimatedItem(
                         Row(
@@ -259,7 +262,7 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                           ],
                         ),
                         0.55,
-                        1.05,
+                        1.0,
                       ),
                     ],
                   ],

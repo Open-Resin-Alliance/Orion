@@ -76,10 +76,7 @@ void showErrorDialog(BuildContext context, String errorCode) {
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text(
-                'Close',
-                style: TextStyle(fontSize: 20),
-              ),
+              child: const Text('Close'),
             ),
           ],
         );

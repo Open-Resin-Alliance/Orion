@@ -172,8 +172,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child:
-                  const Text('Stay Connected', style: TextStyle(fontSize: 18)),
+              child: const Text('Stay Connected'),
             ),
             GlassButton(
               onPressed: () {
@@ -182,7 +181,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text('Disconnect', style: TextStyle(fontSize: 18)),
+              child: const Text('Disconnect'),
             ),
           ],
         );

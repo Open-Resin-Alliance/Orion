@@ -30,6 +30,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/l10n/generated/app_localizations.dart';
 import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/update_manager.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -103,7 +104,7 @@ class HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 10),
                   Padding(
-                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    padding: OrionSpacing.screenPaddingNoTop,
                     child: SizedBox(
                       height: 65,
                       width: 450,
@@ -130,7 +131,7 @@ class HomeScreenState extends State<HomeScreen> {
                       height: 20), // Add some spacing between the buttons
                   if (!isRemote)
                     Padding(
-                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      padding: OrionSpacing.screenPaddingNoTop,
                       child: SizedBox(
                         height: 65,
                         width: 450,
@@ -148,7 +149,7 @@ class HomeScreenState extends State<HomeScreen> {
                   if (!isRemote) const SizedBox(height: 20),
                   if (!isRemote)
                     Padding(
-                      padding: const EdgeInsets.only(left: 20, right: 20),
+                      padding: OrionSpacing.screenPaddingNoTop,
                       child: SizedBox(
                         height: 65,
                         width: 450,

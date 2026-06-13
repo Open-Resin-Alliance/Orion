@@ -40,6 +40,7 @@ export 'src/widgets/glass_floating_action_button.dart';
 export 'src/widgets/glass_card.dart';
 export 'src/widgets/glass_dialog.dart';
 export 'src/widgets/glass_alert_dialog.dart';
+export 'src/widgets/glass_dialog_header.dart';
 
 // Navigation widgets
 export 'src/widgets/glass_bottom_navigation_bar.dart';

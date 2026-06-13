@@ -22,6 +22,7 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:orion/widgets/zoom_value_editor_dialog.dart';
@@ -81,7 +82,7 @@ class EditResinScreenState extends State<EditResinScreen> {
           asNum(pick('normal_cure_time', ['CureTime'], 8.0), 8.0).toDouble(),
       liftAfterPrint: asNum(
               pick('lift_after_print',
-              ['TopDistance', 'WaitHeight', 'LiftAfterPrint'], 5.0),
+                  ['TopDistance', 'WaitHeight', 'LiftAfterPrint'], 5.0),
               5.0)
           .toDouble(),
       burnInCount:
@@ -311,7 +312,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Done', style: TextStyle(fontSize: 22)),
+                child: const Text('Done'),
               ),
             ],
           ),
@@ -420,7 +421,10 @@ class EditResinScreenState extends State<EditResinScreen> {
         ),
         body: Padding(
           padding: const EdgeInsets.only(
-              left: 16.0, right: 16.0, bottom: 20.0, top: 8.0),
+              left: OrionSpacing.screenHorizontal,
+              right: OrionSpacing.screenHorizontal,
+              top: OrionSpacing.screenTop,
+              bottom: 20.0),
           child: Column(
             children: [
               Expanded(

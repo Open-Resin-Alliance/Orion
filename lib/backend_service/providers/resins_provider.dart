@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_service.dart';
@@ -16,6 +18,7 @@ class CalibrationModel {
   final int id;
   final String name;
   final int models;
+  final int testPiecesCount;
   final int? resinRequired;
   final int? height;
   final String? evaluationGuideUrl;
@@ -24,6 +27,7 @@ class CalibrationModel {
     required this.id,
     required this.name,
     required this.models,
+    required this.testPiecesCount,
     this.resinRequired,
     this.height,
     this.evaluationGuideUrl,
@@ -31,10 +35,28 @@ class CalibrationModel {
 
   factory CalibrationModel.fromJson(Map<String, dynamic> json) {
     final info = json['info'] as Map<String, dynamic>?;
+
+    int? _toInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value);
+      return null;
+    }
+
+    final parsedModels = _toInt(json['models']) ?? 0;
+    final parsedTestPieces =
+        _toInt(json['testPiecesCount']) ?? _toInt(info?['testPiecesCount']);
+
+    // Fallback chain: explicit testPiecesCount -> models -> legacy default (6).
+    final effectiveTestPieces = (parsedTestPieces ?? parsedModels) > 0
+        ? (parsedTestPieces ?? parsedModels)
+        : 6;
+
     return CalibrationModel(
-      id: json['id'] as int,
+      id: _toInt(json['id']) ?? 0,
       name: json['name'] as String,
-      models: json['models'] as int,
+      models: parsedModels,
+      testPiecesCount: effectiveTestPieces,
       resinRequired: info?['resinRequired'] as int?,
       height: info?['height'] as int?,
       evaluationGuideUrl: info?['evaluationGuideUrl'] as String?,
@@ -54,6 +76,17 @@ class ResinsProvider extends ChangeNotifier {
 
   List<ResinProfile> _resins = [];
   List<ResinProfile> get resins => List.unmodifiable(_resins);
+
+  // In-memory cache of last fetched resins. Used to show cached data
+  // immediately on startup without a loading spinner.
+  static List<ResinProfile>? _cachedResins;
+  static int? _cachedActiveProfileId;
+  static String? _cachedActiveResinKey;
+
+  // In-memory cache of calibration models and their image URLs
+  static List<CalibrationModel>? _cachedCalibrationModels;
+  static Map<int, String?>? _cachedCalibrationImageUrls;
+  static int? _cachedSelectedCalibrationModelId;
 
   /// Convenience getter that returns only user-visible resins.
   ///
@@ -75,10 +108,48 @@ class ResinsProvider extends ChangeNotifier {
   // these during refresh so UI can display thumbnails without issuing
   // additional backend calls.
   final Map<int, String?> _calibrationImageUrls = {};
+  final Map<int, Future<void>> _inFlightCalibrationImageFetches = {};
 
   /// Returns the prefetched calibration image URL for [modelId], or null
   /// if not available yet or the backend didn't provide one.
   String? calibrationImageUrl(int modelId) => _calibrationImageUrls[modelId];
+
+  /// Ensures an image URL exists for [modelId]. If not cached, fetch it now.
+  ///
+  /// This method deduplicates concurrent fetches per model id.
+  Future<void> ensureCalibrationImage(
+    int modelId, {
+    bool notify = true,
+  }) async {
+    final existing = _calibrationImageUrls[modelId];
+    if (existing != null && existing.isNotEmpty) return;
+
+    final inFlight = _inFlightCalibrationImageFetches[modelId];
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+
+    final future = (() async {
+      try {
+        final url = await _service
+            .getCalibrationImageUrl(modelId)
+            .timeout(const Duration(seconds: 8), onTimeout: () => null);
+        if (url != null && url.isNotEmpty) {
+          _calibrationImageUrls[modelId] = url;
+          _cachedCalibrationImageUrls = Map.from(_calibrationImageUrls);
+          if (notify) notifyListeners();
+        }
+      } catch (_) {
+        // Keep graceful fallback when backend image endpoint fails.
+      } finally {
+        _inFlightCalibrationImageFetches.remove(modelId);
+      }
+    })();
+
+    _inFlightCalibrationImageFetches[modelId] = future;
+    await future;
+  }
 
   int? _selectedCalibrationModelId;
 
@@ -100,6 +171,7 @@ class ResinsProvider extends ChangeNotifier {
   /// Explicitly set the provider's selected calibration model id.
   void setSelectedCalibrationModelId(int? id) {
     _selectedCalibrationModelId = id;
+    _cachedSelectedCalibrationModelId = id;
     notifyListeners();
   }
 
@@ -175,7 +247,44 @@ class ResinsProvider extends ChangeNotifier {
 
   ResinsProvider({BackendService? service})
       : _service = service ?? BackendService() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => refresh());
+    // Load cached data immediately if available (no loading spinner)
+    if (_cachedResins != null && _cachedResins!.isNotEmpty) {
+      _resins = List.from(_cachedResins!);
+      _activeProfileId = _cachedActiveProfileId;
+      _activeResinKey = _cachedActiveResinKey;
+      _loading = false;
+    }
+
+    // Load cached calibration models and images
+    if (_cachedCalibrationModels != null &&
+        _cachedCalibrationModels!.isNotEmpty) {
+      _calibrationModels = List.from(_cachedCalibrationModels!);
+      if (_cachedCalibrationImageUrls != null) {
+        _calibrationImageUrls.addAll(_cachedCalibrationImageUrls!);
+      }
+      if (_cachedSelectedCalibrationModelId != null) {
+        _selectedCalibrationModelId = _cachedSelectedCalibrationModelId;
+      }
+      _loading = false;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_loading) {
+        // Only notify if we had to show loading spinner
+        notifyListeners();
+      } else {
+        // Cached data available, notify listeners and refresh in background
+        notifyListeners();
+        refresh();
+      }
+    });
+
+    // If no cache, fetch immediately
+    if ((_cachedResins == null || _cachedResins!.isEmpty) &&
+        (_cachedCalibrationModels == null ||
+            _cachedCalibrationModels!.isEmpty)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => refresh());
+    }
   }
 
   /// Try to extract a numeric profile id from a resin metadata map.
@@ -203,11 +312,34 @@ class ResinsProvider extends ChangeNotifier {
     return null;
   }
 
+  void _prefetchCalibrationImagesInBackground(
+    List<CalibrationModel> models,
+  ) {
+    unawaited(() async {
+      final missing = models.where((m) {
+        final v = _calibrationImageUrls[m.id];
+        return v == null || v.isEmpty;
+      }).toList(growable: false);
+      if (missing.isEmpty) return;
+
+      // Run all missing-image fetches concurrently for faster fill-in.
+      await Future.wait(
+        missing.map((m) => ensureCalibrationImage(m.id, notify: false)),
+      );
+
+      _cachedCalibrationImageUrls = Map.from(_calibrationImageUrls);
+      notifyListeners();
+    }());
+  }
+
   Future<void> refresh() async {
     _log.info('Refreshing resin profiles');
-    _loading = true;
-    _error = null;
-    notifyListeners();
+    // Only show loading spinner if we don't have cached data
+    if (_cachedResins == null || _cachedResins!.isEmpty) {
+      _loading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
       // Fetch calibration models from backend
@@ -223,20 +355,32 @@ class ResinsProvider extends ChangeNotifier {
         _selectedCalibrationModelId = _calibrationModels.first.id;
       }
 
-      // Prefetch calibration model images concurrently and cache them.
-      try {
-        final futures = _calibrationModels.map((m) async {
-          try {
-            final url = await _service.getCalibrationImageUrl(m.id);
-            _calibrationImageUrls[m.id] = url;
-          } catch (_) {
-            _calibrationImageUrls[m.id] = null;
-          }
-        }).toList();
-        await Future.wait(futures);
-      } catch (_) {
-        // Continue even if image prefetch fails for some models.
+      // Validate that the currently selected model still exists in the new list.
+      // If not (e.g., due to backend changes), reset to first model or null.
+      if (_selectedCalibrationModelId != null &&
+          _calibrationModels.isNotEmpty) {
+        final selectedExists =
+            _calibrationModels.any((m) => m.id == _selectedCalibrationModelId);
+        if (!selectedExists) {
+          _selectedCalibrationModelId = _calibrationModels.first.id;
+        }
       }
+
+      // Cache calibration model metadata immediately so UI can render fast.
+      _cachedCalibrationModels = List.from(_calibrationModels);
+      _cachedSelectedCalibrationModelId = _selectedCalibrationModelId;
+
+      // If selected/current model image is missing, force an immediate fetch.
+      final selectedId = _selectedCalibrationModelId;
+      if (selectedId != null) {
+        final selectedImage = _calibrationImageUrls[selectedId];
+        if (selectedImage == null || selectedImage.isEmpty) {
+          await ensureCalibrationImage(selectedId, notify: false);
+        }
+      }
+
+      // Start image prefetch in background (non-blocking).
+      _prefetchCalibrationImagesInBackground(_calibrationModels);
 
       // Try common locations the backend might expose.
       final resp = await _service.listItems('Resins', 100, 0, '');
@@ -301,6 +445,9 @@ class ResinsProvider extends ChangeNotifier {
             path: m['path'] as String?, meta: m, locked: locked);
       }).toList(growable: false);
 
+      // Cache the fetched resins for next app startup
+      _cachedResins = List.from(_resins);
+
       // Ask the backend for its notion of the current default profile id.
       try {
         _activeProfileId = await _service.getDefaultProfileId();
@@ -340,12 +487,19 @@ class ResinsProvider extends ChangeNotifier {
         _activeResinKey = null;
       }
 
+      // Cache the active profile for next app startup
+      _cachedActiveProfileId = _activeProfileId;
+      _cachedActiveResinKey = _activeResinKey;
+
       _loading = false;
       _error = null;
     } catch (e, st) {
       _log.severe('Failed to fetch resins', e, st);
       _error = e;
-      _resins = [];
+      // Only clear resins if we don't have cached data
+      if (_cachedResins == null || _cachedResins!.isEmpty) {
+        _resins = [];
+      }
       _loading = false;
     } finally {
       notifyListeners();
@@ -388,6 +542,9 @@ class ResinsProvider extends ChangeNotifier {
     await _service.setDefaultProfileId(did);
     _activeProfileId = did;
     _activeResinKey = resin.path ?? resin.name;
+    // Cache the new active profile for next app startup
+    _cachedActiveProfileId = did;
+    _cachedActiveResinKey = resin.path ?? resin.name;
     notifyListeners();
   }
 }

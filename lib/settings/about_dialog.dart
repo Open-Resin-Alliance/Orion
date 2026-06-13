@@ -24,24 +24,22 @@ import 'package:orion/glasser/src/widgets/glass_dialog.dart';
 /// An about dialog for Orion.
 class AboutDialog extends StatelessWidget {
   Widget _buildCloseButton(BuildContext context) {
-    return Align(
-      alignment: Alignment.topRight,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 12, right: 12),
-        child: GlassButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: ButtonStyle(
-            shape: WidgetStateProperty.all(const CircleBorder()),
-            elevation: WidgetStateProperty.all(0),
-            minimumSize: WidgetStateProperty.all(const Size(60, 60)),
-            maximumSize: WidgetStateProperty.all(const Size(60, 60)),
-            padding: WidgetStateProperty.all(EdgeInsets.zero),
-          ),
-          child: const Icon(
-            Icons.close,
-            size: 32,
-            color: Colors.white,
-          ),
+    return Positioned(
+      top: 12,
+      right: 12,
+      child: GlassButton(
+        onPressed: () => Navigator.of(context).pop(),
+        style: ButtonStyle(
+          shape: WidgetStateProperty.all(const CircleBorder()),
+          elevation: WidgetStateProperty.all(0),
+          minimumSize: WidgetStateProperty.all(const Size(60, 60)),
+          maximumSize: WidgetStateProperty.all(const Size(60, 60)),
+          padding: WidgetStateProperty.all(EdgeInsets.zero),
+        ),
+        child: const Icon(
+          Icons.close,
+          size: 32,
+          color: Colors.white,
         ),
       ),
     );
@@ -80,6 +78,7 @@ class AboutDialog extends StatelessWidget {
     final orientation = MediaQuery.of(context).orientation;
     return GlassDialog(
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           if (orientation == Orientation.portrait)
             _buildPortraitContent(context)
@@ -93,43 +92,38 @@ class AboutDialog extends StatelessWidget {
 
   /// Portrait layout: logo on top, then name/version, then legal, then buttons, all centered and spaced vertically.
   Widget _buildPortraitContent(BuildContext context) {
-    return Positioned.fill(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (applicationIcon != null) ...[
-                _buildIconContainer(),
-                const SizedBox(height: 18),
-              ],
-              Text(
-                applicationName,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                applicationVersion,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              _buildLegalText(context),
-              if (children != null && children!.isNotEmpty) ...[
-                const SizedBox(height: 28),
-                _buildPortraitActionButtons(context),
-              ],
-            ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (applicationIcon != null) ...[
+            _buildIconContainer(),
+            const SizedBox(height: 18),
+          ],
+          Text(
+            applicationName,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+            textAlign: TextAlign.center,
           ),
-        ),
+          const SizedBox(height: 4),
+          Text(
+            applicationVersion,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          _buildLegalText(context),
+          if (children != null && children!.isNotEmpty) ...[
+            const SizedBox(height: 28),
+            _buildPortraitActionButtons(context),
+          ],
+        ],
       ),
     );
   }
@@ -163,25 +157,20 @@ class AboutDialog extends StatelessWidget {
   }
 
   Widget _buildMainContent(BuildContext context) {
-    return Positioned.fill(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: 24),
-              _buildLegalText(context),
-              if (children != null && children!.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                _buildActionButtons(context),
-              ],
-            ],
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: 24),
+          _buildLegalText(context),
+          if (children != null && children!.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildActionButtons(context),
+          ],
+        ],
       ),
     );
   }
@@ -251,7 +240,7 @@ class AboutDialog extends StatelessWidget {
                 child: Text(
                   applicationLegalese,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        height: 3.0,
+                        height: 1.35,
                         fontSize: 18,
                       ),
                   textAlign: TextAlign.center,

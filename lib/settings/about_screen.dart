@@ -29,6 +29,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/pubspec.dart';
 import 'package:orion/themes/themes.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/backend_service/backend_service.dart';
@@ -110,7 +111,7 @@ class AboutScreenState extends State<AboutScreen> {
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+            padding: OrionSpacing.settingsScreenPadding,
             child: isLandscape
                 ? buildLandscapeLayout(context)
                 : buildPortraitLayout(context),
@@ -140,28 +141,51 @@ class AboutScreenState extends State<AboutScreen> {
   }
 
   Widget buildLandscapeLayout(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              buildNameCard(
-                  config.getString('machineName', category: 'machine')),
-              buildInfoCard(
-                'Serial Number',
-                kDebugMode
-                    ? 'DBG-0001-001'
-                    : config.getString('machineSerial', category: 'machine'),
-              ),
-              buildVersionCard(),
-              buildHardwareCard(),
-            ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+        final qrColumnWidth = (totalWidth - 16) * 2 / 5;
+        final qrSize = (qrColumnWidth - 32).clamp(80.0, 400.0);
+        final columnHeight = qrSize + 32;
+
+        final leftCards = [
+          buildNameCard(config.getString('machineName', category: 'machine')),
+          buildInfoCard(
+            'Serial Number',
+            kDebugMode
+                ? 'DBG-0001-001'
+                : config.getString('machineSerial', category: 'machine'),
           ),
-        ),
-        const SizedBox(width: 16),
-        buildQrView(context),
-      ],
+          buildVersionCard(),
+          buildHardwareCard(),
+        ];
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: SizedBox(
+                height: columnHeight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (int i = 0; i < leftCards.length; i++) ...[
+                      Expanded(child: leftCards[i]),
+                      if (i < leftCards.length - 1) const SizedBox(height: 0),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: buildQrView(context),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -288,133 +312,142 @@ class AboutScreenState extends State<AboutScreen> {
     return GlassCard(
       elevation: 1.0,
       outlined: true,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary),
-                overflow: TextOverflow.fade,
-                softWrap: false,
-              ),
-            ),
-            if (config.enableCustomName()) ...[
-              GlassButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  minimumSize: const Size(90, 50), // Same width as Edit button
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary),
+                  overflow: TextOverflow.fade,
+                  softWrap: false,
                 ),
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return GlassAlertDialog(
-                        title: const Center(child: Text('Custom Machine Name')),
-                        content: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.5,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                SpawnOrionTextField(
-                                  key: cNameTextFieldKey,
-                                  keyboardHint: 'Enter a custom name',
-                                  locale: Localizations.localeOf(context)
-                                      .toString(),
-                                  scrollController: _scrollController,
-                                  presetText: config.getString('machineName',
-                                      category: 'machine'),
-                                ),
-                                OrionKbExpander(
-                                    textFieldKey: cNameTextFieldKey),
-                              ],
+              ),
+              if (config.enableCustomName()) ...[
+                GlassButton(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    minimumSize:
+                        const Size(90, 50), // Same width as Edit button
+                  ),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return GlassAlertDialog(
+                          title:
+                              const Center(child: Text('Custom Machine Name')),
+                          content: SizedBox(
+                            width: MediaQuery.of(context).size.width * 0.5,
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  SpawnOrionTextField(
+                                    key: cNameTextFieldKey,
+                                    keyboardHint: 'Enter a custom name',
+                                    locale: Localizations.localeOf(context)
+                                        .toString(),
+                                    scrollController: _scrollController,
+                                    presetText: config.getString('machineName',
+                                        category: 'machine'),
+                                  ),
+                                  OrionKbExpander(
+                                      textFieldKey: cNameTextFieldKey),
+                                ],
+                              ),
                             ),
                           ),
+                          actions: [
+                            GlassButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(0, 60)),
+                              child: const Text('Close',
+                                  style: TextStyle(fontSize: 20)),
+                            ),
+                            GlassButton(
+                              onPressed: () {
+                                setState(() {
+                                  customName = cNameTextFieldKey.currentState!
+                                      .getCurrentText();
+                                  config.setString('machineName', customName,
+                                      category: 'machine');
+                                });
+                                Navigator.of(context).pop();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(0, 60)),
+                              child: const Text('Confirm',
+                                  style: TextStyle(fontSize: 20)),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Edit',
+                        style: TextStyle(
+                          fontSize: 20,
                         ),
-                        actions: [
-                          GlassButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            style: ElevatedButton.styleFrom(
-                                minimumSize: const Size(0, 60)),
-                            child: const Text('Close',
-                                style: TextStyle(fontSize: 20)),
-                          ),
-                          GlassButton(
-                            onPressed: () {
-                              setState(() {
-                                customName = cNameTextFieldKey.currentState!
-                                    .getCurrentText();
-                                config.setString('machineName', customName,
-                                    category: 'machine');
-                              });
-                              Navigator.of(context).pop();
-                            },
-                            style: ElevatedButton.styleFrom(
-                                minimumSize: const Size(0, 60)),
-                            child: const Text('Confirm',
-                                style: TextStyle(fontSize: 20)),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-                child: Row(
-                  children: [
-                    const Text(
-                      'Edit',
-                      style: TextStyle(
-                        fontSize: 20,
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    PhosphorIcon(PhosphorIcons.notePencil()),
-                  ],
+                      const SizedBox(width: 10),
+                      PhosphorIcon(PhosphorIcons.notePencil()),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget buildQrView(BuildContext context) {
-    return Center(
-      child: GestureDetector(
-        onTap: handleQrTap,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final qrSize = (constraints.maxWidth - 32).clamp(80.0, 400.0);
+        return GestureDetector(
+          onTap: handleQrTap,
           child: GlassCard(
             elevation: 1.0,
             outlined: true,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: QrImageView(
-                data: 'https://github.com/Open-Resin-Alliance/Orion',
-                version: QrVersions.auto,
-                size: 250,
-                eyeStyle: QrEyeStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                dataModuleStyle: QrDataModuleStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  dataModuleShape: QrDataModuleShape.circle,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: QrImageView(
+                  data: 'https://github.com/Open-Resin-Alliance/Orion',
+                  version: QrVersions.auto,
+                  size: qrSize,
+                  eyeStyle: QrEyeStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  dataModuleStyle: QrDataModuleStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    dataModuleShape: QrDataModuleShape.circle,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
