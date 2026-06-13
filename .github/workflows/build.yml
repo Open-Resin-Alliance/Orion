@@ -71,7 +71,6 @@ jobs:
       # Generate localization files
       - name: Generate Localizations
         run: flutter gen-l10n
-
       - run: flutter build linux
 
       - name: Get Version
