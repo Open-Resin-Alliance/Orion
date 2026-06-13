@@ -1,6 +1,6 @@
 /*
 * Orion - Themes
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,83 +15,244 @@
 * limitations under the License.
 */
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 
-final ThemeData themeLight = ThemeData(
-  fontFamily: 'AtkinsonHyperlegible',
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: const Color(0xff6750a4),
-    brightness: Brightness.light,
-  ),
-  appBarTheme: const AppBarTheme(
-    titleTextStyle: TextStyle(
-      fontFamily: 'AtkinsonHyperlegible',
-      fontSize: 30,
-      color: Colors.black,
-    ),
-    centerTitle: true,
-    toolbarHeight: 65,
-    iconTheme: IconThemeData(size: 30),
-  ),
-  textTheme: const TextTheme(
-    bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
-    titleLarge: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
-  ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    selectedLabelStyle:
-        TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-    unselectedLabelStyle:
-        TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-    selectedIconTheme: IconThemeData(size: 30),
-    unselectedIconTheme: IconThemeData(size: 30),
-  ),
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ButtonStyle(
-      minimumSize: WidgetStateProperty.all<Size>(
-          const Size(88, 50)), // Set the width and height
-    ),
-  ),
-  useMaterial3: true,
-);
+import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 
-final ThemeData themeDark = ThemeData(
-  fontFamily: 'AtkinsonHyperlegible',
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: const Color(0xff6750a4),
-    brightness: Brightness.dark,
-  ),
-  appBarTheme: const AppBarTheme(
-    titleTextStyle: TextStyle(
-      fontFamily: 'AtkinsonHyperlegible',
-      fontSize: 30,
-      color: Colors.white,
+// Variable fonts seem broken on Linux, so use Regular on Linux
+String get _primaryFontFamily {
+  if (Platform.isLinux) {
+    return 'AtkinsonHyperlegible';
+  }
+  return 'AtkinsonHyperlegible';
+}
+
+ThemeData createLightTheme(Color seedColor) {
+  return ThemeData(
+    fontFamily: _primaryFontFamily,
+    // Keep classic Atkinson as secondary fallback, then CJK
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+    colorScheme: SeedColorScheme.fromSeeds(
+      primaryKey: seedColor,
+      brightness: Brightness.light,
+      variant: FlexSchemeVariant.soft,
     ),
-    centerTitle: true,
-    toolbarHeight: 65,
-    iconTheme: IconThemeData(size: 30),
-  ),
-  textTheme: const TextTheme(
-    bodyMedium: TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 20),
-    titleLarge: TextStyle(
-        fontFamily: 'AtkinsonHyperlegible', fontSize: 20), // For AppBar title
-  ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    selectedLabelStyle:
-        TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-    unselectedLabelStyle:
-        TextStyle(fontFamily: 'AtkinsonHyperlegible', fontSize: 18),
-    selectedIconTheme: IconThemeData(size: 30),
-    unselectedIconTheme: IconThemeData(size: 30),
-  ),
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ButtonStyle(
-      minimumSize: WidgetStateProperty.all<Size>(
-          const Size(88, 50)), // Set the width and height
+    appBarTheme: AppBarTheme(
+      titleTextStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+        fontSize: 30,
+        color: Colors.black,
+      ),
+      centerTitle: false,
+      titleSpacing: 16.0,
+      toolbarHeight: 65,
+      iconTheme: IconThemeData(size: 30),
     ),
-  ),
-  useMaterial3: true,
-);
+    // Ensure the TextTheme entries include the CJK fallback
+    textTheme: _withCjkFallback(TextTheme(
+      bodyMedium:
+        TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
+      titleLarge: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontSize: 20), // For AppBar title
+    )),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      selectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontSize: 18),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontSize: 18),
+      selectedIconTheme: IconThemeData(size: 30),
+      unselectedIconTheme: IconThemeData(size: 30),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: WidgetStateProperty.all<Size>(
+            const Size(88, 50)), // Set the width and height
+        shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+      ),
+    ),
+    useMaterial3: true,
+  );
+}
+
+ThemeData createDarkTheme(Color seedColor) {
+  return ThemeData(
+    fontFamily: _primaryFontFamily,
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+    colorScheme: SeedColorScheme.fromSeeds(
+      primaryKey: seedColor,
+      brightness: Brightness.dark,
+      variant: FlexSchemeVariant.soft,
+    ),
+    appBarTheme: AppBarTheme(
+      titleTextStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+        fontSize: 30,
+        color: Colors.white,
+      ),
+      centerTitle: false,
+      titleSpacing: 16.0,
+      toolbarHeight: 65,
+      iconTheme: IconThemeData(size: 30, color: Colors.white),
+    ),
+    textTheme: _withCjkFallback(TextTheme(
+      bodyMedium:
+        TextStyle(fontFamily: _primaryFontFamily, fontSize: 20),
+      titleLarge: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontSize: 20), // For AppBar title
+    )),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      selectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontSize: 18),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+          fontSize: 18),
+      selectedIconTheme: IconThemeData(size: 30),
+      unselectedIconTheme: IconThemeData(size: 30),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: WidgetStateProperty.all<Size>(
+            const Size(88, 50)), // Set the width and height
+        shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+      ),
+    ),
+    useMaterial3: true,
+  );
+}
+
+ThemeData createGlassTheme(Color seedColor) {
+  return ThemeData(
+    fontFamily: _primaryFontFamily,
+    fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+    colorScheme: SeedColorScheme.fromSeeds(
+      primaryKey: seedColor,
+      brightness: Brightness.dark,
+      variant: FlexSchemeVariant.soft,
+    ),
+    scaffoldBackgroundColor: Colors.transparent,
+    // Use custom opaque transitions to prevent layering issues
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: _OpaquePageTransitionsBuilder(),
+        TargetPlatform.iOS: _OpaquePageTransitionsBuilder(),
+        TargetPlatform.linux: _OpaquePageTransitionsBuilder(),
+        TargetPlatform.macOS: _OpaquePageTransitionsBuilder(),
+        TargetPlatform.windows: _OpaquePageTransitionsBuilder(),
+      },
+    ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      titleTextStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontFamilyFallback: const ['AtkinsonHyperlegible', 'NotoSansCJK'],
+        fontSize: 30,
+        color: Colors.white,
+      ),
+      centerTitle: false,
+      titleSpacing: 16.0,
+      toolbarHeight: 65,
+      iconTheme: IconThemeData(size: 30, color: Colors.white),
+      foregroundColor: Colors.white,
+    ),
+    textTheme: _withCjkFallback(TextTheme(
+      bodyMedium: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontSize: 20,
+        color: Colors.white,
+      ),
+      titleLarge: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontSize: 20,
+        color: Colors.white,
+      ),
+    )),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: Colors.transparent,
+      selectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontSize: 18,
+        color: Colors.white,
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: _primaryFontFamily,
+        fontSize: 18,
+        color: Colors.white70,
+      ),
+      selectedIconTheme: IconThemeData(size: 30, color: Colors.white),
+      unselectedIconTheme: IconThemeData(size: 30, color: Colors.white70),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.all(Colors.transparent),
+        foregroundColor: WidgetStateProperty.all(Colors.white),
+        shadowColor: WidgetStateProperty.all(Colors.transparent),
+        elevation: WidgetStateProperty.all(0),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+        minimumSize: WidgetStateProperty.all(const Size(88, 50)),
+      ),
+    ),
+    dialogTheme: const DialogThemeData(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+    ),
+    useMaterial3: true,
+  );
+}
+
+// Helper to inject CJK fallback into every non-null TextStyle of a TextTheme.
+TextTheme _withCjkFallback(TextTheme t) {
+  TextStyle? applyFallback(TextStyle? s) {
+    if (s == null) return null;
+    // If already has fallback, keep it; otherwise add NotoSansCJK.
+    final existing = s.fontFamilyFallback ?? const <String>[];
+    if (existing.contains('NotoSansCJK')) return s;
+    return s.copyWith(fontFamilyFallback: [...existing, 'NotoSansCJK']);
+  }
+
+  return TextTheme(
+    displayLarge: applyFallback(t.displayLarge),
+    displayMedium: applyFallback(t.displayMedium),
+    displaySmall: applyFallback(t.displaySmall),
+    headlineLarge: applyFallback(t.headlineLarge),
+    headlineMedium: applyFallback(t.headlineMedium),
+    headlineSmall: applyFallback(t.headlineSmall),
+    titleLarge: applyFallback(t.titleLarge),
+    titleMedium: applyFallback(t.titleMedium),
+    titleSmall: applyFallback(t.titleSmall),
+    bodyLarge: applyFallback(t.bodyLarge),
+    bodyMedium: applyFallback(t.bodyMedium),
+    bodySmall: applyFallback(t.bodySmall),
+    labelLarge: applyFallback(t.labelLarge),
+    labelMedium: applyFallback(t.labelMedium),
+    labelSmall: applyFallback(t.labelSmall),
+  );
+}
 
 extension ColorBrightness on Color {
   Color withBrightness(double factor) {
@@ -101,5 +262,45 @@ extension ColorBrightness on Color {
     final increasedLightness = (hsl.lightness * factor).clamp(0.0, 1.0);
 
     return hsl.withLightness(increasedLightness).toColor();
+  }
+}
+
+/// Custom page transitions builder that uses an opaque background during transitions
+/// to prevent the glassmorphic layering issue
+class _OpaquePageTransitionsBuilder extends PageTransitionsBuilder {
+  @override
+  Widget buildTransitions<T extends Object?>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    // Wrap the child with an opaque background during transition
+    Widget wrappedChild = Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF4A148C), // Darker deep purple
+            Color(0xFF880E4F), // Darker vibrant pink
+            Color(0xFFE65100), // Darker rich orange
+          ],
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.5),
+        ),
+        child: child,
+      ),
+    );
+
+    // Use a simple fade transition
+    return FadeTransition(
+      opacity: animation,
+      child: wrappedChild,
+    );
   }
 }

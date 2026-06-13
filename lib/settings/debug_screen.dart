@@ -1,6 +1,6 @@
 /*
 * Orion - Debug Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -19,13 +19,16 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:fading_edge_scrollview/fading_edge_scrollview.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:orion/util/install_locator.dart';
+import 'package:provider/provider.dart';
+
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/providers/theme_provider.dart';
 
 class DebugScreen extends StatefulWidget {
-  final Function(ThemeMode) changeThemeMode;
-
-  const DebugScreen({super.key, required this.changeThemeMode});
+  const DebugScreen({super.key});
 
   @override
   DebugScreenState createState() => DebugScreenState();
@@ -95,10 +98,9 @@ class DebugScreenState extends State<DebugScreen> {
 
   Future<List<String>> _getLogMessages() async {
     try {
-      Directory logDir = await getApplicationSupportDirectory();
-      File logFile = File('${logDir.path}/app.log');
-      if (await logFile.exists()) {
-        List<String> lines = await logFile.readAsLines();
+      final file = await _resolveLogFile();
+      if (file != null && await file.exists()) {
+        List<String> lines = await file.readAsLines();
         return _groupLogMessages(lines);
       } else {
         return ['Log file not found.'];
@@ -106,6 +108,61 @@ class DebugScreenState extends State<DebugScreen> {
     } catch (e) {
       return ['Error reading log file: $e'];
     }
+  }
+
+  /// Resolve the most likely location of the runtime log file. Uses a
+  /// prioritized probe similar to `OrionConfig` so logs can be found even
+  /// when the runtime is packaged in `/opt` or the engine directory.
+  Future<File?> _resolveLogFile() async {
+    try {
+      // 1) Honor explicit env override
+      final env = Platform.environment['ORION_LOG_FILE'];
+      if (env != null && env.isNotEmpty) {
+        final f = File(env);
+        if (await f.exists()) return f;
+      }
+
+      // 2) Application support directory (preferred persistent location)
+      try {
+        final appSupport = await getApplicationSupportDirectory();
+        final f = File('${appSupport.path}/app.log');
+        if (await f.exists()) return f;
+      } catch (_) {}
+
+      // 3) Engine dir probe (packaged installs often place logs adjacent)
+      try {
+        final engineDir = findEngineDir();
+        if (engineDir != null && engineDir.isNotEmpty) {
+          final f = File('$engineDir/app.log');
+          if (await f.exists()) return f;
+          final parent = Directory(engineDir).parent.path;
+          final fp = File('$parent/app.log');
+          if (await fp.exists()) return fp;
+          final opt = File('/opt/app.log');
+          if (await opt.exists()) return opt;
+        }
+      } catch (_) {}
+
+      // 4) Executable directory
+      try {
+        final execDir = Directory(Platform.resolvedExecutable).parent.path;
+        final f = File('$execDir/app.log');
+        if (await f.exists()) return f;
+      } catch (_) {}
+
+      // 5) CWD
+      try {
+        final f = File('${Directory.current.path}/app.log');
+        if (await f.exists()) return f;
+      } catch (_) {}
+
+      // 6) Fallback: application support (even if file doesn't yet exist)
+      try {
+        final appSupport = await getApplicationSupportDirectory();
+        return File('${appSupport.path}/app.log');
+      } catch (_) {}
+    } catch (_) {}
+    return null;
   }
 
   List<String> _groupLogMessages(List<String> lines) {
@@ -191,7 +248,7 @@ class DebugScreenState extends State<DebugScreen> {
           .replaceAll('\n', ' ')
           .trim();
 
-      return Card(
+      return GlassCard(
         child: ListTile(
           title: Text(
             '$loggerName - $trimmedTimestamp',
@@ -202,10 +259,9 @@ class DebugScreenState extends State<DebugScreen> {
             style: const TextStyle(fontSize: 18),
           ),
           trailing: logLevel.isNotEmpty
-              ? Chip(
+              ? GlassChip(
                   label: Text(logLevel),
-                  backgroundColor:
-                      _getLogLevelColor(logLevel).withOpacity(0.35),
+                  backgroundColor: _getLogLevelColor(logLevel),
                 )
               : null,
         ),
@@ -277,107 +333,112 @@ class DebugScreenState extends State<DebugScreen> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: FadingEdgeScrollView.fromSingleChildScrollView(
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        scrollDirection: Axis.horizontal,
-                        child: IntrinsicHeight(
-                          child: Row(
-                            children: [
-                              FilterChip(
-                                label: Text(
-                                  'All (${logMessages.length})',
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                                selected: showInfo &&
-                                    showWarning &&
-                                    showConfig &&
-                                    showFine &&
-                                    showSevere,
-                                onSelected: (bool value) {
-                                  setState(() {
-                                    showInfo = value;
-                                    showWarning = value;
-                                    showConfig = value;
-                                    showFine = value;
-                                    showSevere = value;
-                                  });
-                                },
+                    child: Consumer<ThemeProvider>(
+                      builder: (context, themeProvider, child) {
+                        // Use FadingEdgeScrollView for all themes now that width constraints are fixed
+                        return FadingEdgeScrollView.fromSingleChildScrollView(
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: IntrinsicHeight(
+                              child: Row(
+                                children: [
+                                  GlassFilterChip(
+                                    label: Text(
+                                      'All (${logMessages.length})',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    selected: showInfo &&
+                                        showWarning &&
+                                        showConfig &&
+                                        showFine &&
+                                        showSevere,
+                                    onSelected: (bool value) {
+                                      setState(() {
+                                        showInfo = value;
+                                        showWarning = value;
+                                        showConfig = value;
+                                        showFine = value;
+                                        showSevere = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 12.0),
+                                  const VerticalDivider(
+                                    width: 1,
+                                    thickness: 1,
+                                  ),
+                                  const SizedBox(width: 12.0),
+                                  GlassFilterChip(
+                                    label: Text(
+                                      'INFO (${logCounts['INFO'] ?? 0})',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    selected: showInfo,
+                                    onSelected: (bool value) {
+                                      setState(() {
+                                        showInfo = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8.0),
+                                  GlassFilterChip(
+                                    label: Text(
+                                      'CONFIG (${logCounts['CONFIG'] ?? 0})',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    selected: showConfig,
+                                    onSelected: (bool value) {
+                                      setState(() {
+                                        showConfig = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8.0),
+                                  GlassFilterChip(
+                                    label: Text(
+                                      'FINE (${logCounts['FINE'] ?? 0})',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    selected: showFine,
+                                    onSelected: (bool value) {
+                                      setState(() {
+                                        showFine = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8.0),
+                                  GlassFilterChip(
+                                    label: Text(
+                                      'WARNING (${logCounts['WARNING'] ?? 0})',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    selected: showWarning,
+                                    onSelected: (bool value) {
+                                      setState(() {
+                                        showWarning = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 8.0),
+                                  GlassFilterChip(
+                                    label: Text(
+                                      'SEVERE (${logCounts['SEVERE'] ?? 0})',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    selected: showSevere,
+                                    onSelected: (bool value) {
+                                      setState(() {
+                                        showSevere = value;
+                                      });
+                                    },
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12.0),
-                              const VerticalDivider(
-                                width: 1,
-                                thickness: 1,
-                              ),
-                              const SizedBox(width: 12.0),
-                              FilterChip(
-                                label: Text(
-                                  'INFO (${logCounts['INFO'] ?? 0})',
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                                selected: showInfo,
-                                onSelected: (bool value) {
-                                  setState(() {
-                                    showInfo = value;
-                                  });
-                                },
-                              ),
-                              const SizedBox(width: 8.0),
-                              FilterChip(
-                                label: Text(
-                                  'CONFIG (${logCounts['CONFIG'] ?? 0})',
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                                selected: showConfig,
-                                onSelected: (bool value) {
-                                  setState(() {
-                                    showConfig = value;
-                                  });
-                                },
-                              ),
-                              const SizedBox(width: 8.0),
-                              FilterChip(
-                                label: Text(
-                                  'FINE (${logCounts['FINE'] ?? 0})',
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                                selected: showFine,
-                                onSelected: (bool value) {
-                                  setState(() {
-                                    showFine = value;
-                                  });
-                                },
-                              ),
-                              const SizedBox(width: 8.0),
-                              FilterChip(
-                                label: Text(
-                                  'WARNING (${logCounts['WARNING'] ?? 0})',
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                                selected: showWarning,
-                                onSelected: (bool value) {
-                                  setState(() {
-                                    showWarning = value;
-                                  });
-                                },
-                              ),
-                              const SizedBox(width: 8.0),
-                              FilterChip(
-                                label: Text(
-                                  'SEVERE (${logCounts['SEVERE'] ?? 0})',
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                                selected: showSevere,
-                                onSelected: (bool value) {
-                                  setState(() {
-                                    showSevere = value;
-                                  });
-                                },
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -400,22 +461,27 @@ class DebugScreenState extends State<DebugScreen> {
                   Column(
                     children: [
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: currentPage > 0 ? previousPage : null,
-                          style: theme.elevatedButtonTheme.style,
+                          child: GlassButton(
+                        style: theme.elevatedButtonTheme.style,
+                        onPressed: currentPage > 0 ? previousPage : () {},
+                        child: Opacity(
+                          opacity: currentPage > 0 ? 1.0 : 0.5,
                           child: const Icon(Icons.arrow_back_ios_outlined,
                               size: 40),
                         ),
-                      ),
+                      )),
                       const SizedBox(height: 16.0),
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed:
-                              currentPage < totalPages - 1 ? nextPage : null,
+                        child: GlassButton(
                           style: theme.elevatedButtonTheme.style,
-                          child: const Icon(
-                            Icons.arrow_forward_ios_outlined,
-                            size: 40,
+                          onPressed:
+                              currentPage < totalPages - 1 ? nextPage : () {},
+                          child: Opacity(
+                            opacity: currentPage < totalPages - 1 ? 1.0 : 0.5,
+                            child: const Icon(
+                              Icons.arrow_forward_ios_outlined,
+                              size: 40,
+                            ),
                           ),
                         ),
                       ),

@@ -1,6 +1,6 @@
 /*
 * Orion - Markdown Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,7 +17,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:flutter_markdown/flutter_markdown.dart';
+
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
 
 class MarkdownScreen extends StatelessWidget {
   final String? filename;
@@ -27,31 +32,37 @@ class MarkdownScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(filename ?? 'Changelog'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: changelog != null
-            ? Markdown(
-                data: changelog!,
-                styleSheet: _getMarkdownStyleSheet(context),
-              )
-            : FutureBuilder(
-                future: rootBundle.loadString(filename!),
-                builder:
-                    (BuildContext context, AsyncSnapshot<String> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done) {
-                    return Markdown(
-                      data: snapshot.data ?? '',
-                      styleSheet: _getMarkdownStyleSheet(context),
-                    );
-                  } else {
-                    return const CircularProgressIndicator();
-                  }
-                },
-              ),
+    return GlassApp(
+      child: Scaffold(
+        appBar: OrionAppBar(
+            title: Text(filename ?? 'Markdown Document'),
+            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            actions: <Widget>[
+              SystemStatusWidget(),
+            ],
+          ),
+        body: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: changelog != null
+              ? Markdown(
+                  data: changelog!,
+                  styleSheet: _getMarkdownStyleSheet(context),
+                )
+              : FutureBuilder(
+                  future: rootBundle.loadString(filename!),
+                  builder:
+                      (BuildContext context, AsyncSnapshot<String> snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done) {
+                      return Markdown(
+                        data: snapshot.data ?? '',
+                        styleSheet: _getMarkdownStyleSheet(context),
+                      );
+                    } else {
+                      return const CircularProgressIndicator();
+                    }
+                  },
+                ),
+        ),
       ),
     );
   }

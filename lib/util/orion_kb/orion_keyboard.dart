@@ -1,6 +1,6 @@
 /*
 * Orion - Orion Keyboard
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
 * limitations under the License.
 */
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+
 import 'package:orion/util/localization.dart';
 
 class OrionKeyboard extends StatefulWidget {
@@ -104,12 +106,15 @@ class OrionKeyboardState extends State<OrionKeyboard> {
   }
 
   Widget buildRow(String rowCharacters, {bool hasShiftAndBackspace = false}) {
+    final sideKeyFlex = hasShiftAndBackspace ? 3 : 1;
+    final letterKeyFlex = hasShiftAndBackspace ? 2 : 1;
     return Expanded(
       child: Row(
         children: [
           SizedBox(width: hasShiftAndBackspace ? 10 : 0),
           if (hasShiftAndBackspace)
             Expanded(
+              flex: sideKeyFlex,
               child: ValueListenableBuilder<bool>(
                 valueListenable: _isCapsEnabled,
                 builder: (context, isCapsEnabled, child) {
@@ -153,6 +158,7 @@ class OrionKeyboardState extends State<OrionKeyboard> {
               .split('')
               .expand((char) => [
                     Expanded(
+                      flex: letterKeyFlex,
                       child: ValueListenableBuilder<bool>(
                         valueListenable: _isShiftEnabled,
                         builder: (context, isShiftEnabled, child) {
@@ -177,8 +183,9 @@ class OrionKeyboardState extends State<OrionKeyboard> {
           SizedBox(width: hasShiftAndBackspace ? 10 : 0),
           if (hasShiftAndBackspace)
             Expanded(
+              flex: sideKeyFlex,
               child: KeyboardButton(
-                text: "⌫",
+                text: "BACKSPACE",
                 isShiftEnabled: _isShiftEnabled,
                 isCapsEnabled: _isCapsEnabled,
                 controller: widget.controller,
@@ -228,7 +235,7 @@ class OrionKeyboardState extends State<OrionKeyboard> {
             child: KeyboardButton(
               text: MediaQuery.of(context).orientation == Orientation.landscape
                   ? keyboardLayout['bottomRow3']!
-                  : '↵',
+                  : 'ENTER',
               isShiftEnabled: ValueNotifier<bool>(false),
               isCapsEnabled: _isCapsEnabled,
               controller: widget.controller,
@@ -243,7 +250,7 @@ class OrionKeyboardState extends State<OrionKeyboard> {
   }
 }
 
-class KeyboardButton extends StatelessWidget {
+class KeyboardButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
   final TextEditingController controller;
@@ -251,6 +258,18 @@ class KeyboardButton extends StatelessWidget {
   final ValueNotifier<bool> isCapsEnabled;
   final ValueNotifier<bool> isSymbolKeyboardShown;
   final ValueNotifier<bool> isSecondarySymbolKeyboardShown;
+
+  static const Set<String> _functionKeyLabels = {
+    '⇧',
+    '⇪',
+    'BACKSPACE',
+    '123',
+    'abc',
+    'return',
+    'ENTER',
+    '#+=',
+    '123\u200B',
+  };
 
   const KeyboardButton({
     super.key,
@@ -264,48 +283,63 @@ class KeyboardButton extends StatelessWidget {
   });
 
   @override
+  State<KeyboardButton> createState() => _KeyboardButtonState();
+}
+
+class _KeyboardButtonState extends State<KeyboardButton> {
+  DateTime? _lastShiftTapTime;
+  static const _doubleTapWindow = Duration(milliseconds: 300);
+
+  @override
   Widget build(BuildContext context) {
+    final isPrimary = widget.text == 'return' || widget.text == 'ENTER';
+    final isShiftKey = widget.text == '⇧';
+    final isCapsKey = widget.text == '⇪';
+    final isShiftActive = widget.isShiftEnabled.value;
+    final isCapsActive = widget.isCapsEnabled.value;
+    final isEmphasized = isPrimary ||
+        (isShiftKey && isShiftActive) ||
+        (isCapsKey && isCapsActive);
+    final colorScheme = Theme.of(context).colorScheme;
+    final backgroundColor = isPrimary
+        ? colorScheme.primary.withValues(alpha: 0.8)
+        : colorScheme.onPrimaryContainer.withValues(alpha: 0.12);
+    final borderColor = isPrimary
+        ? colorScheme.primary.withValues(alpha: 0.3)
+        : Colors.white.withValues(alpha: 0.1);
+    final labelColor =
+        (isPrimary || (isShiftKey && isShiftActive && !isCapsActive))
+            ? Theme.of(context).canvasColor
+            : Colors.white;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
-      child: SizedBox(
-        height: double.infinity,
-        child: TextButton(
-          style: TextButton.styleFrom(
-            backgroundColor: _getButtonBackgroundColor(context),
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(25)),
+      child: Material(
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isEmphasized
+                ? colorScheme.primary.withValues(alpha: 0.8)
+                : backgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isEmphasized
+                  ? colorScheme.primary.withValues(alpha: 0.3)
+                  : borderColor,
+              width: 1.0,
             ),
           ),
-          onPressed: () {
-            _handleKey(text, context);
-          },
-          child: Container(
-            alignment: Alignment.center,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: isShiftEnabled,
-              builder: (context, isShiftEnabled, child) {
-                if (text == "123" ||
-                    text == "abc" ||
-                    text == "return" ||
-                    text == '↵' ||
-                    text == "#+=" ||
-                    text == "123\u200B") {
-                  return FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      text,
-                      style: const TextStyle(fontSize: 23),
-                    ),
-                  );
-                }
-                return FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    isShiftEnabled ? text.toUpperCase() : text.toLowerCase(),
-                    style: const TextStyle(fontSize: 23),
-                  ),
-                );
-              },
+          child: InkWell(
+            onTap: () => _handleKey(widget.text, context),
+            splashColor: Colors.white.withValues(alpha: 0.2),
+            highlightColor: Colors.white.withValues(alpha: 0.1),
+            child: Center(
+              child: _buildLabel(
+                context,
+                color: labelColor,
+              ),
             ),
           ),
         ),
@@ -315,111 +349,150 @@ class KeyboardButton extends StatelessWidget {
 
   void _handleKey(String text, BuildContext context) {
     if (text == "123\u200B" || text == "#+=") {
-      isSecondarySymbolKeyboardShown.value =
-          !isSecondarySymbolKeyboardShown.value;
+      widget.isSecondarySymbolKeyboardShown.value =
+          !widget.isSecondarySymbolKeyboardShown.value;
     } else if (text == "123") {
-      isSecondarySymbolKeyboardShown.value = false;
-      isSymbolKeyboardShown.value = !isSymbolKeyboardShown.value;
+      widget.isSecondarySymbolKeyboardShown.value = false;
+      widget.isSymbolKeyboardShown.value = !widget.isSymbolKeyboardShown.value;
     } else if (text == "abc") {
-      isSecondarySymbolKeyboardShown.value = false;
-      isSymbolKeyboardShown.value = false;
+      widget.isSecondarySymbolKeyboardShown.value = false;
+      widget.isSymbolKeyboardShown.value = false;
     } else if (text == "⇧") {
       _handleShiftKey();
     } else if (text == "⇪") {
       _handleCapsLockKey();
-    } else if (text == "⌫") {
+    } else if (text == "BACKSPACE") {
       _handleBackspaceKey();
-    } else if (text == "return" || text == '↵') {
+    } else if (text == "return" || text == 'ENTER') {
       _handleReturnKey(context);
-    } else if (text != "123" && text != "return" && text != "↵") {
+    } else if (text != "123" && text != "return" && text != "ENTER") {
       _handleAlphanumericKey(text);
     }
   }
 
   void _handleShiftKey() {
-    if (isShiftEnabled.value) {
-      isCapsEnabled.value = true;
+    final now = DateTime.now();
+
+    // Check for double-tap: only if shift is currently enabled
+    if (widget.isShiftEnabled.value &&
+        !widget.isCapsEnabled.value &&
+        _lastShiftTapTime != null &&
+        now.difference(_lastShiftTapTime!) < _doubleTapWindow) {
+      // Quick double-tap detected: enable caps lock
+      widget.isCapsEnabled.value = true;
+      widget.isShiftEnabled.value = true;
+      _lastShiftTapTime = null; // Reset
     } else {
-      isShiftEnabled.value = true;
+      // Single tap: toggle shift
+      if (widget.isShiftEnabled.value && !widget.isCapsEnabled.value) {
+        widget.isShiftEnabled.value = false;
+        _lastShiftTapTime = null; // Reset when toggling off
+      } else {
+        widget.isShiftEnabled.value = true;
+        _lastShiftTapTime = now; // Set timer when enabling
+      }
     }
   }
 
   void _handleCapsLockKey() {
-    if (isCapsEnabled.value) {
-      isCapsEnabled.value = false;
-      isShiftEnabled.value = false;
+    if (widget.isCapsEnabled.value) {
+      widget.isCapsEnabled.value = false;
+      widget.isShiftEnabled.value = false;
+      _lastShiftTapTime = null;
     } else {
-      isCapsEnabled.value = true;
-      isShiftEnabled.value = true;
+      widget.isCapsEnabled.value = true;
+      widget.isShiftEnabled.value = true;
+      _lastShiftTapTime = null;
     }
   }
 
   void _handleBackspaceKey() {
-    if (controller.text.isNotEmpty && controller.text != '\u200B') {
-      controller.text =
-          controller.text.substring(0, controller.text.length - 1);
+    if (widget.controller.text.isNotEmpty &&
+        widget.controller.text != '\u200B') {
+      widget.controller.text = widget.controller.text
+          .substring(0, widget.controller.text.length - 1);
     }
   }
 
   void _handleReturnKey(BuildContext context) {
-    Navigator.of(context).pop(controller.text);
+    Navigator.of(context).pop(widget.controller.text);
   }
 
   void _handleAlphanumericKey(String text) {
     String key;
-    if (isCapsEnabled.value || isShiftEnabled.value) {
+    if (widget.isCapsEnabled.value || widget.isShiftEnabled.value) {
       key = text.toUpperCase();
     } else {
       key = text.toLowerCase();
     }
-    controller.text += key;
+    widget.controller.text += key;
     // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
-    controller.notifyListeners();
-    if (!isCapsEnabled.value) {
-      isShiftEnabled.value = false;
+    widget.controller.notifyListeners();
+    if (!widget.isCapsEnabled.value) {
+      widget.isShiftEnabled.value = false;
+      _lastShiftTapTime = null;
     }
   }
 
-  // This method returns the background color for the keyboard button based on the text value.
-  // The brightness of the color is determined by the theme mode.
-  Color? _getButtonBackgroundColor(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildLabel(
+    BuildContext context, {
+    required Color color,
+    FontWeight fontWeight = FontWeight.w500,
+  }) {
+    // Use icons for special keys
+    if (widget.text == 'BACKSPACE') {
+      return Icon(
+        PhosphorIconsFill.backspace,
+        color: color,
+        size: 24,
+      );
+    }
+    if (widget.text == 'ENTER') {
+      return Icon(
+        PhosphorIcons.arrowBendDownLeft(),
+        color: color,
+        size: 24,
+      );
+    }
+    if (widget.text == '⇧') {
+      return Icon(
+        PhosphorIcons.caretUp(),
+        color: color,
+        size: 24,
+      );
+    }
+    if (widget.text == '⇪') {
+      return Icon(
+        PhosphorIcons.caretDoubleUp(),
+        color: color,
+        size: 24,
+      );
+    }
 
-    const lightBrightness = {
-      'stdKey': 0.100,
-      'altKey': 0.200,
-      'highlight': 0.300,
-    };
-
-    const darkBrightness = {
-      'stdKey': 0.080,
-      'altKey': 0.050,
-      'highlight': 0.200,
-    };
-
-    final brightnessMap = isDarkMode ? darkBrightness : lightBrightness;
-
-    final lookupTable = {
-      '⇧': isShiftEnabled.value
-          ? brightnessMap['highlight']
-          : brightnessMap['altKey'],
-      '⇪': isCapsEnabled.value
-          ? brightnessMap['highlight']
-          : brightnessMap['altKey'],
-      '⌫': brightnessMap['altKey'],
-      '123': brightnessMap['altKey'],
-      'abc': brightnessMap['altKey'],
-      'return': brightnessMap['altKey'],
-      '↵': brightnessMap['altKey'],
-      '#+=': brightnessMap['altKey'],
-      '123\u200B': brightnessMap['altKey'],
-    };
-
-    final brightness =
-        (lookupTable[text] ?? brightnessMap['stdKey']!).clamp(0.0, 1.0);
-    return Theme.of(context)
-        .colorScheme
-        .onPrimaryContainer
-        .withOpacity(brightness);
+    return ValueListenableBuilder<bool>(
+      valueListenable: widget.isShiftEnabled,
+      builder: (context, isShiftActive, child) {
+        final bool lockCase = _isFunctionKey(widget.text);
+        final String displayText = lockCase
+            ? widget.text
+            : (isShiftActive
+                ? widget.text.toUpperCase()
+                : widget.text.toLowerCase());
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            displayText,
+            style: TextStyle(
+              fontSize: 24,
+              color: color,
+              fontWeight: fontWeight,
+            ),
+          ),
+        );
+      },
+    );
   }
+
+  bool _isFunctionKey(String keyLabel) =>
+      KeyboardButton._functionKeyLabels.contains(keyLabel);
 }

@@ -1,6 +1,6 @@
 /*
 * Orion - Orion Keyboard Modal
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -21,10 +21,12 @@ import 'package:orion/util/orion_kb/orion_keyboard.dart';
 class OrionKbModal extends ModalRoute<String> {
   final TextEditingController textController;
   final String locale;
+  final Widget? floatingOverlay;
 
   OrionKbModal({
     required this.textController,
     required this.locale,
+    this.floatingOverlay,
   });
 
   @override
@@ -37,7 +39,7 @@ class OrionKbModal extends ModalRoute<String> {
   bool get barrierDismissible => true;
 
   @override
-  Color get barrierColor => Colors.black.withOpacity(0);
+  Color get barrierColor => Colors.black.withValues(alpha: 0);
 
   @override
   String? get barrierLabel => null;
@@ -48,36 +50,58 @@ class OrionKbModal extends ModalRoute<String> {
   @override
   Widget buildPage(BuildContext context, Animation<double> animation,
       Animation<double> secondaryAnimation) {
-    final width = MediaQuery.of(context).size.width;
-    final height = MediaQuery.of(context).size.height;
-    final radius = (width > height) ? width / 30 : height / 30;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    final keyboardHeightFactor = isLandscape ? 0.5 : 0.4;
+    final keyboardHeight =
+        MediaQuery.of(context).size.height * keyboardHeightFactor;
+    final borderRadius = BorderRadius.only(
+      topLeft: Radius.circular(24),
+      topRight: Radius.circular(24),
+    );
+
     return Material(
       type: MaterialType.transparency,
-      child: SafeArea(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).canvasColor,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(radius),
-              topRight: Radius.circular(radius),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                spreadRadius: 2,
-                blurRadius: 10,
-                offset: const Offset(0, 5),
+      child: Stack(
+        children: [
+          if (floatingOverlay != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: keyboardHeight + 24,
+              child: SafeArea(
+                bottom: false,
+                child: Center(child: floatingOverlay!),
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0),
-            child: OrionKeyboard(
-              controller: textController,
-              locale: locale,
+            ),
+          SafeArea(
+            top: false,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).canvasColor,
+                  borderRadius: borderRadius,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      spreadRadius: 2,
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5.0),
+                  child: OrionKeyboard(
+                    controller: textController,
+                    locale: locale,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
