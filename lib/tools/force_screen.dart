@@ -114,6 +114,7 @@ class ForceSensorScreenState extends State<ForceSensorScreen> {
       try {
         await manual.manualTareForceSensor();
       } catch (_) {
+        if (!context.mounted) return;
         showErrorDialog(context, 'BLUE-BANANA');
       }
     }

@@ -17,7 +17,6 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
@@ -733,79 +732,119 @@ class _CalibrationModelPickerScreen extends StatelessWidget {
       child: InkWell(
         onTap: () => Navigator.of(context).pop(model),
         borderRadius: BorderRadius.circular(16),
-        child: Container(
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      height: 96,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: Colors.black.withValues(alpha: 0.12),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: imageUrl != null
-                            ? Image.network(
-                                imageUrl,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey.shade800,
-                                    child: const Icon(
-                                      Icons.image_not_supported_outlined,
-                                      size: 36,
-                                      color: Colors.grey,
-                                    ),
-                                  );
-                                },
-                              )
-                            : Container(
-                                color: Colors.grey.shade800,
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                      ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    height: 96,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.black.withValues(alpha: 0.12),
                     ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  model.name,
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                    color: isSelected ? primary : null,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: imageUrl != null
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey.shade800,
+                                  child: const Icon(
+                                    Icons.image_not_supported_outlined,
+                                    size: 36,
+                                    color: Colors.grey,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                );
+                              },
+                            )
+                          : Container(
+                              color: Colors.grey.shade800,
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                model.name,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected ? primary : null,
                                 ),
-                                const SizedBox(height: 6),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: [
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerHighest
+                                          .withValues(alpha: 0.45),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.view_module_outlined,
+                                          size: 12,
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.color,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${model.models} ${model.models == 1 ? 'piece' : 'pieces'}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.color,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (model.resinRequired != null)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 8,
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .surfaceContainerHighest
-                                            .withValues(alpha: 0.45),
+                                        color: isSelected
+                                            ? primary.withValues(alpha: 0.2)
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest
+                                                .withValues(alpha: 0.35),
                                         borderRadius:
                                             BorderRadius.circular(999),
                                       ),
@@ -813,50 +852,21 @@ class _CalibrationModelPickerScreen extends StatelessWidget {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
-                                            Icons.view_module_outlined,
+                                            Icons.water_drop_outlined,
                                             size: 12,
-                                            color: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.color,
+                                            color: isSelected
+                                                ? primary
+                                                : Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.color,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            '${model.models} ${model.models == 1 ? 'piece' : 'pieces'}',
+                                            '${model.resinRequired} ml',
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
-                                              color: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.color,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (model.resinRequired != null)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? primary.withValues(alpha: 0.2)
-                                              : Theme.of(context)
-                                                  .colorScheme
-                                                  .surfaceContainerHighest
-                                                  .withValues(alpha: 0.35),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.water_drop_outlined,
-                                              size: 12,
                                               color: isSelected
                                                   ? primary
                                                   : Theme.of(context)
@@ -864,61 +874,47 @@ class _CalibrationModelPickerScreen extends StatelessWidget {
                                                       .bodySmall
                                                       ?.color,
                                             ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              '${model.resinRequired} ml',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: isSelected
-                                                    ? primary
-                                                    : Theme.of(context)
-                                                        .textTheme
-                                                        .bodySmall
-                                                        ?.color,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                          ),
+                                        ],
                                       ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                    ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isSelected)
-                Positioned(
-                  right: 10,
-                  bottom: 10,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: primary,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Positioned(
+                right: 10,
+                bottom: 10,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

@@ -429,7 +429,7 @@ class ThumbnailCache {
       {String? variant, Color? themeColor}) {
     final lastModified = _normalizedLastModified(file.lastModified);
     final colorSuffix =
-        themeColor != null ? '|${themeColor.value.toRadixString(16)}' : '';
+        themeColor != null ? '|${themeColor.toARGB32().toRadixString(16)}' : '';
     final base = '$location|${file.path}|$lastModified|$size$colorSuffix';
     if (variant == null || variant.isEmpty) return base;
     return '$base|$variant';
@@ -448,7 +448,7 @@ class ThumbnailCache {
 
   String _cacheKeySuffix(String size, String? variant, Color? themeColor) {
     final colorSuffix =
-        themeColor != null ? '|${themeColor.value.toRadixString(16)}' : '';
+        themeColor != null ? '|${themeColor.toARGB32().toRadixString(16)}' : '';
     final base = size.isEmpty ? '' : '|$size';
     if (variant == null || variant.isEmpty) return '$base$colorSuffix';
     return '$base$colorSuffix|$variant';

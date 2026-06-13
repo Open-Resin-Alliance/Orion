@@ -652,7 +652,7 @@ class _HoldToAccelerateButtonState extends State<_HoldToAccelerateButton> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             color: widget.enabled
-                ? theme.colorScheme.primary.withOpacity(0.1)
+                ? theme.colorScheme.primary.withValues(alpha: 0.1)
                 : Colors.transparent,
           ),
           child: Icon(

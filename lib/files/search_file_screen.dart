@@ -39,7 +39,7 @@ class SearchFileScreenState extends State<SearchFileScreen> {
   bool isLoading = false;
   String searchText = '';
 
-  Directory getInitialDir(platform) {
+  Directory getInitialDir(TargetPlatform platform) {
     switch (platform) {
       case TargetPlatform.macOS:
         return Directory('/Users/${Platform.environment['USER']}/Documents');

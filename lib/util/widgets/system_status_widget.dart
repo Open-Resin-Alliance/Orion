@@ -181,10 +181,15 @@ class SystemStatusWidgetState extends State<SystemStatusWidget> {
 
     // Collect positive targets (greater than 0)
     final positives = <double>[];
-    if (insideTarget != null && insideTarget > 0) positives.add(insideTarget);
-    if (chamberTarget != null && chamberTarget > 0)
+    if (insideTarget != null && insideTarget > 0) {
+      positives.add(insideTarget);
+    }
+    if (chamberTarget != null && chamberTarget > 0) {
       positives.add(chamberTarget);
-    if (ptcTarget != null && ptcTarget > 0) positives.add(ptcTarget);
+    }
+    if (ptcTarget != null && ptcTarget > 0) {
+      positives.add(ptcTarget);
+    }
 
     // If we have any positive targets, effectiveTarget is their max.
     // If not, but at least one raw target was explicitly provided and equals

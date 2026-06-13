@@ -169,7 +169,7 @@ class NotificationWatcher {
                     }
                   } finally {
                     try {
-                      Navigator.of(ctx).pop();
+                      if (ctx.mounted) Navigator.of(ctx).pop();
                     } catch (_) {}
                   }
                 }

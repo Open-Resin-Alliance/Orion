@@ -55,3 +55,4 @@ vendor.cfg
 .github/copilot-instructions.md
 lib/l10n/generated/
 lib/l10n/generated/*
+simulated_backend_state.json

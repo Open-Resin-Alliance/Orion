@@ -356,8 +356,9 @@ class ManualProvider extends ChangeNotifier {
       // If neither check succeeded, emit a warning so callers know refresh
       // didn't retrieve any state. If at least one succeeded, prefer the
       // partial state and avoid noisy warnings.
-      if (!quiet)
+      if (!quiet) {
         _log.warning('refreshHeaterEnabled failed: no backend responses');
+      }
       return false;
     }
     return true;

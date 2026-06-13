@@ -117,10 +117,12 @@ class AthenaFeatureManager {
       }
       // Additional hardware attributes exposed by Athena - include them
       // alongside the canonical hardwareFeatures map so callers can opt-in.
-      if (flags.hasCameraFlash != null)
+      if (flags.hasCameraFlash != null) {
         hw['hasCameraFlash'] = flags.hasCameraFlash;
-      if (flags.hasSmartpower != null)
+      }
+      if (flags.hasSmartpower != null) {
         hw['hasSmartpower'] = flags.hasSmartpower;
+      }
 
       final Map<String, dynamic> featureFlags = {};
       if (hw.isNotEmpty) featureFlags['hardwareFeatures'] = hw;

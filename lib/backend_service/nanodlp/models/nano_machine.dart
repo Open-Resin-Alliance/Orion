@@ -59,7 +59,7 @@ class NanoMachine {
   @JsonKey(name: 'CustomValues')
   final Map<String, String>? customValues;
 
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   Map<String, dynamic> raw = {};
 
   NanoMachine({

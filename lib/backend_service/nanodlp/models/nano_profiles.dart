@@ -16,7 +16,7 @@ class NanoProfile {
   final String? title;
 
   // Preserve the raw payload for callers that need vendor-specific fields
-  @JsonKey(ignore: true)
+  @JsonKey(includeFromJson: false, includeToJson: false)
   Map<String, dynamic> raw = {};
 
   NanoProfile({this.profileId, this.title, Map<String, dynamic>? raw}) {
@@ -158,8 +158,9 @@ class NanoProfile {
       try {
         // call getProfileJson on the fetcher if available
         final raw = await fetcher.getProfileJson(pid);
-        if (raw is Map && raw.isNotEmpty)
+        if (raw is Map && raw.isNotEmpty) {
           fetched = Map<String, dynamic>.from(raw);
+        }
       } catch (_) {
         // ignore fetch errors and fall back to provided meta
         fetched = {};

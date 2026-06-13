@@ -27,7 +27,7 @@ import 'package:intl/intl.dart';
 
 ScrollController _scrollController = ScrollController();
 
-Directory getInitialDir(platform) {
+Directory getInitialDir(TargetPlatform platform) {
   switch (platform) {
     case TargetPlatform.macOS:
       return Directory('/Users/${Platform.environment['USER']}/Documents');
@@ -58,7 +58,7 @@ class FilesScreenState extends State<FilesScreen> {
 
   @override
   void initState() {
-    _directory = getInitialDir(context);
+    _directory = getInitialDir(Theme.of(context).platform);
     _files = [];
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {

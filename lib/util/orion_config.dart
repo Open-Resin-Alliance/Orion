@@ -148,8 +148,9 @@ class OrionConfig {
     // so later vendor.cfg/orion.cfg checks can find packaged files.
     try {
       final execDir = path.dirname(Platform.resolvedExecutable);
-      if (execDir.isNotEmpty && !candidates.contains(execDir))
+      if (execDir.isNotEmpty && !candidates.contains(execDir)) {
         candidates.add(execDir);
+      }
     } catch (_) {}
 
     try {
@@ -159,20 +160,27 @@ class OrionConfig {
 
     try {
       // Directory containing the running executable (useful for packaged installs)
+
       final execDir = path.dirname(Platform.resolvedExecutable);
-      if (execDir.isNotEmpty) candidates.add(execDir);
+      if (execDir.isNotEmpty) {
+        candidates.add(execDir);
+      }
     } catch (_) {}
 
     try {
       // Directory containing the script (Dart VM)
       final scriptDir = path.dirname(Platform.script.toFilePath());
-      if (scriptDir.isNotEmpty) candidates.add(scriptDir);
+      if (scriptDir.isNotEmpty) {
+        candidates.add(scriptDir);
+      }
     } catch (_) {}
 
     // Common system locations
     candidates.add('/opt');
     final home = Platform.environment['HOME'];
-    if (home != null && home.isNotEmpty) candidates.add(home);
+    if (home != null && home.isNotEmpty) {
+      candidates.add(home);
+    }
     candidates.add('/home/pi');
 
     // Also consider some absolute config file locations that are commonly used
@@ -182,8 +190,9 @@ class OrionConfig {
     }
     // Also check root-level installer locations like /opt/orion.cfg and /home/pi/orion.cfg
     candidateFiles.add('/opt/orion.cfg');
-    if (home != null && home.isNotEmpty)
+    if (home != null && home.isNotEmpty) {
       candidateFiles.add(path.join(home, 'orion.cfg'));
+    }
     candidateFiles.add('/home/pi/orion.cfg');
 
     for (final f in candidateFiles) {
@@ -206,8 +215,9 @@ class OrionConfig {
       vendorCandidateFiles.add(path.join(d, 'vendor.cfg'));
     }
     vendorCandidateFiles.add('/opt/vendor.cfg');
-    if (home != null && home.isNotEmpty)
+    if (home != null && home.isNotEmpty) {
       vendorCandidateFiles.add(path.join(home, 'vendor.cfg'));
+    }
     vendorCandidateFiles.add('/home/pi/vendor.cfg');
 
     for (final f in vendorCandidateFiles) {
@@ -774,8 +784,9 @@ class OrionConfig {
     try {
       final cfg = _getConfig();
       final userFF = cfg['userFeatureFlags'];
-      if (userFF is Map<String, dynamic>)
+      if (userFF is Map<String, dynamic>) {
         merged.addAll(Map<String, dynamic>.from(userFF));
+      }
       final topFF = cfg['featureFlags'];
       if (topFF is Map<String, dynamic>) {
         topFF.forEach((k, v) {

@@ -36,16 +36,16 @@ class CalibrationModel {
   factory CalibrationModel.fromJson(Map<String, dynamic> json) {
     final info = json['info'] as Map<String, dynamic>?;
 
-    int? _toInt(dynamic value) {
+    int? toInt(dynamic value) {
       if (value is int) return value;
       if (value is num) return value.toInt();
       if (value is String) return int.tryParse(value);
       return null;
     }
 
-    final parsedModels = _toInt(json['models']) ?? 0;
+    final parsedModels = toInt(json['models']) ?? 0;
     final parsedTestPieces =
-        _toInt(json['testPiecesCount']) ?? _toInt(info?['testPiecesCount']);
+        toInt(json['testPiecesCount']) ?? toInt(info?['testPiecesCount']);
 
     // Fallback chain: explicit testPiecesCount -> models -> legacy default (6).
     final effectiveTestPieces = (parsedTestPieces ?? parsedModels) > 0
@@ -53,7 +53,7 @@ class CalibrationModel {
         : 6;
 
     return CalibrationModel(
-      id: _toInt(json['id']) ?? 0,
+      id: toInt(json['id']) ?? 0,
       name: json['name'] as String,
       models: parsedModels,
       testPiecesCount: effectiveTestPieces,
