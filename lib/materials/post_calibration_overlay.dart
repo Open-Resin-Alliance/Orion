@@ -626,6 +626,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
   void _saveOptimalExposure() async {
     if (_selectedPieces.isEmpty) return;
+    final nav = Navigator.of(context);
 
     final pieceNumber = _selectedPieces.first;
     final optimalExposure =
@@ -653,10 +654,11 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       // Continue to show success dialog even if save fails
       // The user can manually adjust settings if needed
     }
-    if (!context.mounted) return;
+    final navCtx = nav.context;
+    if (!navCtx.mounted) return;
 
     showDialog(
-      context: context,
+      context: navCtx,
       builder: (context) => GlassAlertDialog(
         title: const Text('Calibration Complete',
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
@@ -823,7 +825,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   minimumSize: const Size(100, 65),
                 ),
                 onPressed: () async {
-                  Navigator.of(context).pop();
+                  final nav = Navigator.of(context);
+                  nav.pop();
 
                   // Fetch current profile to get the actual previous exposure time
                   double previousExposure = widget.startExposure;
@@ -845,10 +848,11 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   } catch (e) {
                     _logger.warning('Failed to save fine-tuned exposure: $e');
                   }
-                  if (!context.mounted) return;
+                  final fineTuneCtx = nav.context;
+                  if (!fineTuneCtx.mounted) return;
 
                   showDialog(
-                    context: context,
+                    context: fineTuneCtx,
                     builder: (context) => GlassAlertDialog(
                       title: const Text('Calibration Complete',
                           style: TextStyle(

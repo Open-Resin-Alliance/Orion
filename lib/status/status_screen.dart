@@ -301,8 +301,8 @@ class StatusScreenState extends State<StatusScreen> {
         _log.info(
             'Detected calibration print completion, showing post-calibration overlay');
 
-        final nav = Navigator.of(context);
         if (!mounted) return;
+        final nav = Navigator.of(context);
 
         // Navigate home first (use isFirst to avoid named route mismatch)
         nav.popUntil((route) => route.isFirst);
@@ -1301,10 +1301,11 @@ class StatusScreenState extends State<StatusScreen> {
             .getFileThumbnail(
                 fileData.locationCategory ?? 'Local', fileData.path, 'Large')
             .then((bytes) async {
+          final ctx = context;
+          if (!ctx.mounted) return;
           try {
             if (bytes.isNotEmpty) {
-              if (!context.mounted) return;
-              await precacheImage(MemoryImage(bytes), context);
+              await precacheImage(MemoryImage(bytes), ctx);
             }
           } catch (_) {
             // ignore precache failures

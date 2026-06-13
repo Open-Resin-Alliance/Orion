@@ -192,15 +192,13 @@ class DetailScreenState extends State<DetailScreen> {
       }
 
       // Clear the thumbnail-loading flag when the future completes (success or error).
-      if (thumbFuture != null) {
-        thumbFuture.whenComplete(() {
-          if (mounted) {
-            setState(() {
-              _isThumbnailLoading = false;
-            });
-          }
-        });
-      }
+      thumbFuture.whenComplete(() {
+        if (mounted) {
+          setState(() {
+            _isThumbnailLoading = false;
+          });
+        }
+      });
 
       // If metadata is incomplete, schedule a retry to refresh it.
       if (!_isMetadataReady(meta)) {
@@ -643,6 +641,7 @@ class DetailScreenState extends State<DetailScreen> {
                 minimumSize: const Size(0, 60),
               ),
               onPressed: () async {
+                final navigator = Navigator.of(context);
                 try {
                   final provider =
                       Provider.of<FilesProvider>(context, listen: false);
@@ -655,14 +654,14 @@ class DetailScreenState extends State<DetailScreen> {
                   if (ok) {
                     _logger
                         .info('File ${widget.fileName} deleted successfully');
-                    if (mounted) Navigator.of(context).pop(true);
+                    if (navigator.context.mounted) navigator.pop(true);
                   } else {
                     _logger.severe('Failed to delete file ${widget.fileName}');
-                    if (mounted) Navigator.of(context).pop(false);
+                    if (navigator.context.mounted) navigator.pop(false);
                   }
                 } catch (e) {
                   _logger.severe('Failed to delete file ${widget.fileName}', e);
-                  if (mounted) Navigator.of(context).pop(false);
+                  if (navigator.context.mounted) navigator.pop(false);
                 }
               },
               child: const Text('Delete'),
@@ -710,6 +709,7 @@ class DetailScreenState extends State<DetailScreen> {
                     DetailScreen._isDefaultDir(widget.fileSubdirectory)
                         ? widget.fileName
                         : path.join(widget.fileSubdirectory, widget.fileName);
+                final navigator = Navigator.of(context);
 
                 // Attempt to obtain the already-fetched Large thumbnail bytes
                 // so StatusScreen can render immediately. This is best-effort
@@ -729,16 +729,13 @@ class DetailScreenState extends State<DetailScreen> {
                 final ok =
                     await provider.startPrint(widget.fileLocation, filePath);
                 if (ok) {
-                  if (!context.mounted) return;
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => StatusScreen(
-                          newPrint: true,
-                          initialThumbnailBytes: thumbBytes,
-                          initialFilePath: filePath,
-                        ),
-                      ));
+                  navigator.push(MaterialPageRoute(
+                    builder: (context) => StatusScreen(
+                      newPrint: true,
+                      initialThumbnailBytes: thumbBytes,
+                      initialFilePath: filePath,
+                    ),
+                  ));
                 } else {
                   _logger.severe('Failed to start print');
                 }

@@ -77,7 +77,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
       }
       showErrorDialog(maybeCtx, message);
     } else {
-      if (!mounted) return;
+      if (!context.mounted) return;
       showErrorDialog(context, message);
     }
   }
@@ -155,13 +155,19 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
       confirmTint: GlassButtonTint.negative,
     );
     if (!confirmed) return;
+    if (!mounted) return;
 
     final manual = Provider.of<ManualProvider>(context, listen: false);
     _logger.info('Reset Z offset button pressed');
     _setOptimisticOffset(0.0);
+    final nav = Navigator.of(context);
 
     final ok = await manual.resetZOffset();
-    if (!ok) _safeShowError('GOLDEN-APE');
+    if (!ok) {
+      final navCtx = nav.context;
+      if (!navCtx.mounted) return;
+      showErrorDialog(navCtx, 'GOLDEN-APE');
+    }
     if (!mounted) return;
 
     final statusProvider = Provider.of<StatusProvider>(context, listen: false);
@@ -183,13 +189,19 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
       confirmTint: GlassButtonTint.warn,
     );
     if (!confirmed) return;
+    if (!mounted) return;
 
     final manual = Provider.of<ManualProvider>(context, listen: false);
     _logger.info('Set Z offset button pressed (Z=$currentZ)');
     _setOptimisticOffset(currentZ);
+    final nav = Navigator.of(context);
 
     final ok = await manual.setZOffset(currentZ);
-    if (!ok) _safeShowError('GOLDEN-APE');
+    if (!ok) {
+      final navCtx = nav.context;
+      if (!navCtx.mounted) return;
+      showErrorDialog(navCtx, 'GOLDEN-APE');
+    }
     if (!mounted) return;
 
     final statusProvider = Provider.of<StatusProvider>(context, listen: false);
@@ -625,8 +637,11 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                               : () async {
                                   _logger.info('Moving to home position');
                                   final ok = await manual.manualHome();
-                                  if (!ok) _safeShowError('GOLDEN-APE');
-                                  if (!mounted) return;
+                                  if (!ok) {
+                                    if (!mounted) return;
+                                    _safeShowError('GOLDEN-APE');
+                                  }
+                                  if (!context.mounted) return;
                                   final statusProvider =
                                       Provider.of<StatusProvider>(context,
                                           listen: false);
@@ -667,26 +682,35 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                                       _logger.info(
                                           'Moving to Floor via moveToFloor()');
                                       final ok = await manual.moveToFloor();
-                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                      if (!ok) {
+                                        if (!mounted) return;
+                                        _safeShowError('GOLDEN-APE');
+                                      }
                                     } else if (supportsTop) {
                                       _logger.info(
                                           'Moving to device Top via moveToTop()');
                                       final ok = await manual.moveToTop();
-                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                      if (!ok) {
+                                        if (!mounted) return;
+                                        _safeShowError('GOLDEN-APE');
+                                      }
                                     } else {
                                       _logger
                                           .info('Moving to ZMAX (maxZ=$maxZ)');
                                       final ok = await manual.move(maxZ);
-                                      if (!ok) _safeShowError('GOLDEN-APE');
+                                      if (!ok) {
+                                        if (!mounted) return;
+                                        _safeShowError('GOLDEN-APE');
+                                      }
                                     }
-                                    if (!mounted) return;
+                                    if (!context.mounted) return;
                                     final statusProvider =
                                         Provider.of<StatusProvider>(context,
                                             listen: false);
                                     await statusProvider
                                         .refreshKinematicStatus();
                                   } catch (e) {
-                                    if (!mounted) return;
+                                    if (!context.mounted) return;
                                     _safeShowError('GOLDEN-APE');
                                   }
                                 },
@@ -809,8 +833,11 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                     : () async {
                         _logger.severe('EMERGENCY STOP');
                         final ok = await manual.emergencyStop();
-                        if (!ok) _safeShowError('CRITICAL');
-                        if (!mounted) return;
+                        if (!ok) {
+                          if (!mounted) return;
+                          _safeShowError('CRITICAL');
+                        }
+                        if (!context.mounted) return;
                         final statusProvider =
                             Provider.of<StatusProvider>(context, listen: false);
                         statusProvider.clearHomedStatus();

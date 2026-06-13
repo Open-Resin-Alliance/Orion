@@ -125,8 +125,10 @@ class ImportScreenState extends State<ImportScreen> {
     final titleNotifier = ValueNotifier<String>('IMPORTING FILE');
 
     // Show import progress overlay
+    late final navigator = Navigator.of(context);
+    late final messenger = ScaffoldMessenger.of(context);
     if (mounted) {
-      Navigator.of(context).push(
+      navigator.push(
         MaterialPageRoute(
           builder: (context) => ImportProgressOverlay(
             progress: progressNotifier,
@@ -255,9 +257,9 @@ class ImportScreenState extends State<ImportScreen> {
 
               if (mounted) {
                 // Close overlay and navigate to DetailsScreen
-                Navigator.of(context).pop(); // Close overlay
+                navigator.pop(); // Close overlay
 
-                final result = await Navigator.of(context).push(
+                final result = await navigator.push(
                   MaterialPageRoute(
                     builder: (context) => DetailScreen(
                       fileName: newFile!.name,
@@ -268,7 +270,7 @@ class ImportScreenState extends State<ImportScreen> {
                   ),
                 );
                 if (mounted) {
-                  Navigator.of(context).pop(
+                  navigator.pop(
                     result ?? <String, dynamic>{'switchToLocal': true},
                   );
                 }
@@ -288,8 +290,8 @@ class ImportScreenState extends State<ImportScreen> {
               await Future.delayed(const Duration(milliseconds: 800));
 
               if (mounted) {
-                Navigator.of(context).pop(); // Close overlay
-                Navigator.of(context).pop(true); // Go back to files screen
+                navigator.pop(); // Close overlay
+                navigator.pop(true); // Go back to files screen
               }
             }
           }
@@ -304,9 +306,9 @@ class ImportScreenState extends State<ImportScreen> {
         await Future.delayed(const Duration(milliseconds: 1000));
         if (!context.mounted) return;
 
-        Navigator.of(context).pop(); // Close overlay
+        navigator.pop(); // Close overlay
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Failed to import file: $e')),
         );
       }

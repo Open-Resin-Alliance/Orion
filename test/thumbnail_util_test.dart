@@ -29,8 +29,10 @@ void main() {
 
     // Create a temp directory to act as the platform temp dir and mock
     final platformTemp = Directory.systemTemp.createTempSync('orion_test_tmp');
+    final binding = TestDefaultBinaryMessengerBinding.instance;
     final channel = const MethodChannel('plugins.flutter.io/path_provider');
-    channel.setMockMethodCallHandler((MethodCall call) async {
+    binding.defaultBinaryMessenger.setMockMethodCallHandler(channel,
+        (MethodCall call) async {
       if (call.method == 'getTemporaryDirectory') return platformTemp.path;
       return null;
     });
@@ -59,7 +61,7 @@ void main() {
       await f.delete();
     } catch (_) {}
     try {
-      channel.setMockMethodCallHandler(null);
+      binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
       await platformTemp.delete(recursive: true);
     } catch (_) {}
   });

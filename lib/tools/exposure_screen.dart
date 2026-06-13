@@ -60,6 +60,7 @@ class ExposureScreenState extends State<ExposureScreen> {
     try {
       _logger.info('Testing exposure for $exposureTime seconds');
       final manual = Provider.of<ManualProvider>(context, listen: false);
+      final nav = Navigator.of(context);
 
       final okDisplay = await manual.displayTest(type);
       if (!okDisplay) {
@@ -79,8 +80,9 @@ class ExposureScreenState extends State<ExposureScreen> {
         return;
       }
 
-      if (!context.mounted) return;
-      showExposureDialog(context, exposureTime, delayTime, type: type);
+      final navCtx = nav.context;
+      if (!navCtx.mounted) return;
+      showExposureDialog(navCtx, exposureTime, delayTime, type: type);
       _exposureCompleter = Completer<void>();
       _exposureOperation = CancelableOperation.fromFuture(
         Future.any([

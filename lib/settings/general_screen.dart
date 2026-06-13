@@ -647,6 +647,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         : 'Clearing custom settings and restarting now.';
 
                                     // Show rebooting message then reboot
+                                    if (!context.mounted) return;
                                     showDialog(
                                       context: context,
                                       barrierDismissible: false,
@@ -964,6 +965,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     ),
                     tint: GlassButtonTint.warn,
                     onPressed: () async {
+                      final nav = Navigator.of(context);
                       final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => GlassAlertDialog(
@@ -996,9 +998,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       if (confirmed) {
                         try {
                           // Show clearing message
-                          if (!context.mounted) return;
+                          final navCtx = nav.context;
+                          if (!navCtx.mounted) return;
                           showDialog(
-                            context: context,
+                            context: navCtx,
                             barrierDismissible: false,
                             builder: (ctx) => const GlassAlertDialog(
                               title: Text('Clearing Cache'),

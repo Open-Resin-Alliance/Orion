@@ -589,8 +589,10 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
       if (doSkip) {
         _log.info(
             'Homing screen shown; skipping homing command and moving to top');
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        final manual = Provider.of<ManualProvider>(context, listen: false);
         try {
-          final manual = Provider.of<ManualProvider>(context, listen: false);
           // If we're already very high (>=50mm) move down a little first to
           // ensure the subsequent moveToTop has a reliable travel start.
           final statusProvider =
@@ -632,36 +634,37 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
           _log.info('moveToTop returned: $started');
           _moveInitiated = true;
           if (!started) {
-            if (!mounted) return;
             _log.warning('moveToTop() returned false');
-            ScaffoldMessenger.of(context).showSnackBar(
+            messenger.showSnackBar(
               const SnackBar(content: Text('Failed to start move-to-top')),
             );
           }
         } catch (e) {
           _log.severe('moveToTop() threw', e);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(content: Text('Move failed: ${e.toString()}')),
           );
         }
       } else {
         _log.info('Homing screen shown; issuing manualHome()');
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
         try {
+          if (!mounted) return;
           final manual = Provider.of<ManualProvider>(context, listen: false);
           final started = await manual.manualHome();
           _log.info('manualHome returned: $started');
           if (!started) {
-            if (!mounted) return;
             _log.warning('manualHome() returned false');
-            ScaffoldMessenger.of(context).showSnackBar(
+            messenger.showSnackBar(
               const SnackBar(content: Text('Failed to start homing')),
             );
           }
         } catch (e) {
           _log.severe('manualHome() threw', e);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(content: Text('Homing failed: ${e.toString()}')),
           );
         }

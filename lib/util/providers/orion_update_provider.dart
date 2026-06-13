@@ -298,14 +298,14 @@ class OrionUpdateProvider extends ChangeNotifier {
     return false;
   }
 
-  void _openUpdateDialog(BuildContext context, String initialMessage) {
+  void _openUpdateDialog(NavigatorState navigator, String initialMessage) {
     message.value = initialMessage;
     if (_isDialogOpen) return;
     _isDialogOpen = true;
     progress.value = 0.0;
 
     showDialog<void>(
-      context: context,
+      context: navigator.context,
       barrierDismissible: false,
       builder: (BuildContext ctx) {
         return UpdateProgressOverlay(
@@ -440,9 +440,9 @@ class OrionUpdateProvider extends ChangeNotifier {
     return fallback;
   }
 
-  void _dismissUpdateDialog(BuildContext context) {
-    if (_isDialogOpen && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
+  void _dismissUpdateDialog(NavigatorState navigator) {
+    if (_isDialogOpen && navigator.canPop()) {
+      navigator.pop();
       _isDialogOpen = false;
       progress.value = 0.0;
       message.value = '';
@@ -500,7 +500,7 @@ class OrionUpdateProvider extends ChangeNotifier {
 
     // macOS dev simulation
     if (Platform.isMacOS) {
-      _openUpdateDialog(nav.context, 'Starting update...');
+      _openUpdateDialog(nav, 'Starting update...');
       final simSteps = [
         'Downloading update file...',
         'Extracting update file...',
@@ -520,12 +520,12 @@ class OrionUpdateProvider extends ChangeNotifier {
 
       progress.value = 1.0;
       await Future.delayed(const Duration(seconds: 1));
-      _dismissUpdateDialog(nav.context);
+      _dismissUpdateDialog(nav);
       return;
     }
 
     // Normal flow: open dialog and perform streamed download, extract and run
-    _openUpdateDialog(nav.context, 'Starting update...');
+    _openUpdateDialog(nav, 'Starting update...');
 
     try {
       final upgradeDir = Directory(upgradeFolder);
@@ -597,7 +597,7 @@ class OrionUpdateProvider extends ChangeNotifier {
       if (extractResult.exitCode != 0) {
         _logger
             .warning('Failed to extract update file: ${extractResult.stderr}');
-        _dismissUpdateDialog(nav.context);
+        _dismissUpdateDialog(nav);
         return;
       }
 
@@ -626,7 +626,7 @@ class OrionUpdateProvider extends ChangeNotifier {
       if (dangerous.contains(installDir) || installDir.trim().isEmpty) {
         _logger.severe(
             'Refusing to run update: computed installDir looks unsafe: $installDir');
-        _dismissUpdateDialog(nav.context);
+        _dismissUpdateDialog(nav);
         return;
       }
 
@@ -640,12 +640,12 @@ class OrionUpdateProvider extends ChangeNotifier {
         if (!hasCfg && !hasDir) {
           _logger.severe(
               'Refusing to run update: installDir does not look like an Orion install: $installDir');
-          _dismissUpdateDialog(nav.context);
+          _dismissUpdateDialog(nav);
           return;
         }
       } catch (e) {
         _logger.severe('Error while verifying installDir: $e');
-        _dismissUpdateDialog(nav.context);
+        _dismissUpdateDialog(nav);
         return;
       }
 
@@ -728,7 +728,7 @@ fi
     } catch (e) {
       _logger.warning('Update failed: $e');
     } finally {
-      _dismissUpdateDialog(nav.context);
+      _dismissUpdateDialog(nav);
     }
   }
 }
