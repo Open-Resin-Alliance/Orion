@@ -1,7 +1,8 @@
-# Orion: The Resin UI &nbsp;&nbsp;&nbsp; [![Discord Link](https://discordapp.com/api/guilds/1281738817417777204/widget.png?style=shield)](https://discord.gg/beFeTaPH6v)
+# Orion: The Resin UI
 
 [![GitHub license](https://img.shields.io/github/license/Open-Resin-Alliance/Orion.svg?style=for-the-badge)](https://github.com/Open-Resin-Alliance/Orion/blob/main/LICENSE)
 [![GitHub release](https://img.shields.io/github/release/Open-Resin-Alliance/Orion.svg?style=for-the-badge)](https://github.com/Open-Resin-Alliance/Orion/releases)
+[![Discord Link](https://img.shields.io/discord/1281738817417777204?style=for-the-badge&logo=discord&logoColor=white&color=%235865F2)](https://discord.gg/beFeTaPH6v)
 
 Orion is a user interface designed to control [Odyssey](https://github.com/TheContrappostoShop/Odyssey). It's tailored to run with a wide variety of devices, primarily Linux SBCs.
 
