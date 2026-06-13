@@ -73,6 +73,9 @@ class NanoDlpModule implements BackendModule {
 
       // Streaming
       BackendCapabilities.supportsSseStatusStream: false,
+
+      // RGB / LED lighting
+      BackendCapabilities.supportsRgbLighting: true,
     };
   }
 

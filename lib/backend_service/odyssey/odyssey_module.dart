@@ -75,6 +75,9 @@ class OdysseyModule implements BackendModule {
 
       // Streaming
       BackendCapabilities.supportsSseStatusStream: true,
+
+      // RGB / LED lighting
+      BackendCapabilities.supportsRgbLighting: false,
     };
   }
 
