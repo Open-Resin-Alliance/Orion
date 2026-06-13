@@ -17,10 +17,10 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/util/orion_config.dart';
 
@@ -58,7 +58,7 @@ class LightingProvider extends ChangeNotifier {
   bool _standbyLedDimmingEnabled = false;
   bool _standbyLedUseEffects = false;
   bool _standbyEffectStarted = false;
-  bool _isNanoDlpMode = false;
+  bool _supportsRgbLighting = false;
   String _ledBrightnessCommandTemplate = '';
   String _ledStandbyCommandTemplate = '';
   String _ledWakeCommandTemplate = '';
@@ -82,8 +82,9 @@ class LightingProvider extends ChangeNotifier {
     if (_ledBrightnessCommandTemplate.isNotEmpty) {
       return _ledBrightnessCommandTemplate;
     }
-    // For NanoDLP we support direct Klipper/led_effects style command templates.
-    if (_isNanoDlpMode && _ledStandbyCommandTemplate.isNotEmpty) {
+    // Backends that support RGB lighting can use direct Klipper/led_effects
+    // style command templates for standby effects.
+    if (_supportsRgbLighting && _ledStandbyCommandTemplate.isNotEmpty) {
       return _ledStandbyCommandTemplate;
     }
     return _ledStandbyCommandTemplate;
@@ -129,7 +130,11 @@ class LightingProvider extends ChangeNotifier {
   }
 
   void _loadSettings() {
-    _isNanoDlpMode = _config.isNanoDlpMode();
+    final backendId = _config.getString('backend', category: 'advanced');
+    final registry = BackendRegistry();
+    _supportsRgbLighting = registry.supportsCapability(
+            backendId, BackendCapabilities.supportsRgbLighting) ??
+        false;
 
     _standbyLedDimmingEnabled =
         _config.getFlag('standbyLedDimmingEnabled', category: 'ui');
