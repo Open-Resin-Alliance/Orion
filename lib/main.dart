@@ -114,7 +114,7 @@ void main() async {
 
   if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
     setWindowTitle('Orion - Open Resin Alliance');
-    setWindowMinSize(const Size(480, 480 + 60)); // account for title bar
+    setWindowMinSize(const Size(480, 480 + 28)); // account for title bar
     if (kDebugMode) {
       setWindowMaxSize(const Size(800, 800));
     }
