@@ -155,6 +155,7 @@ class HeaterScreenState extends State<HeaterScreen>
         }
         // provider will notify listeners and rebuild
       } catch (_) {
+        if (!context.mounted) return;
         showErrorDialog(context, 'HEATER-VAT-FAILED');
       }
     }
@@ -169,6 +170,7 @@ class HeaterScreenState extends State<HeaterScreen>
           await manual.setChamberTemperature(0.0);
         }
       } catch (_) {
+        if (!context.mounted) return;
         showErrorDialog(context, 'HEATER-CHAMBER-FAILED');
       }
     }
@@ -177,9 +179,11 @@ class HeaterScreenState extends State<HeaterScreen>
       try {
         final t = value.round().toDouble();
         if (manual.vatEnabled == true) await manual.setVatTemperature(t);
-        if (manual.chamberEnabled == true)
+        if (manual.chamberEnabled == true) {
           await manual.setChamberTemperature(t);
+        }
       } catch (_) {
+        if (!context.mounted) return;
         showErrorDialog(context, 'HEATER-SET-TEMP-FAILED');
       }
     }
@@ -225,6 +229,7 @@ class HeaterScreenState extends State<HeaterScreen>
         _logger
             .info('Mix and Preheat activated - Target: $_targetTemperature°C');
       } catch (_) {
+        if (!context.mounted) return;
         showErrorDialog(context, 'HEATER-MIX-FAILED');
       }
     }
@@ -588,7 +593,7 @@ class HeaterScreenState extends State<HeaterScreen>
                         // refresh doesn't immediately override it.
                         _lastBackendTemperature = ended;
                         _logger.info(
-                          'Target temperature set to: ${ended}°C',
+                          'Target temperature set to: $ended°C',
                         );
                         onChangeEnd(value);
                       },

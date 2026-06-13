@@ -192,13 +192,15 @@ class OnboardingUtils {
       // Use Etc/GMT naming (note inverse sign convention)
       // POSIX TZ 'Etc/GMT+X' corresponds to UTC-X, so we invert the sign
       final etcSign = (sign == '-') ? '+' : '-';
-      return 'Etc/GMT${etcSign}${hours}';
+      return 'Etc/GMT$etcSign$hours';
     }
 
     // As a last resort, if offset equals 'UTC' or similar, return UTC
     if (offset == 'UTC' ||
         offset == 'UTC+0' ||
-        offset == 'UTC+0 - COORDINATED UNIVERSAL TIME') return 'UTC';
+        offset == 'UTC+0 - COORDINATED UNIVERSAL TIME') {
+      return 'UTC';
+    }
 
     return null;
   }

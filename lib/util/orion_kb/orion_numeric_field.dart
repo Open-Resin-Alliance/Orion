@@ -269,8 +269,9 @@ class OrionNumericTextFieldState extends State<OrionNumericTextField>
             if (result != null) {
               try {
                 final parsed = double.parse(result);
-                widget.controller.text =
-                    parsed.toStringAsFixed(widget.decimalPlaces).replaceAll(RegExp(r'\.?0+$'), '');
+                widget.controller.text = parsed
+                    .toStringAsFixed(widget.decimalPlaces)
+                    .replaceAll(RegExp(r'\.?0+$'), '');
                 widget.onChanged(parsed);
               } catch (e) {
                 widget.onChanged(null);
@@ -339,7 +340,7 @@ class OrionNumericTextFieldState extends State<OrionNumericTextField>
                                     .textTheme
                                     .bodyLarge!
                                     .color!
-                                    .withOpacity(0.9)
+                                    .withValues(alpha: 0.9)
                                 : Theme.of(context).textTheme.bodyLarge!.color!,
                           ),
                           children: [
@@ -515,7 +516,8 @@ class _NumericKeyboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return SizedBox(
       height: MediaQuery.of(context).size.height,
@@ -567,7 +569,8 @@ class _NumericKeyboard extends StatelessWidget {
             children: [
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 10, top: 5, bottom: 2.5),
+                  padding:
+                      const EdgeInsets.only(right: 10, top: 5, bottom: 2.5),
                   child: _NumericKeyButton(
                     icon: PhosphorIcon(PhosphorIconsFill.backspace, size: 32),
                     onPressed: _handleBackspace,
@@ -576,9 +579,11 @@ class _NumericKeyboard extends StatelessWidget {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 10, top: 2.5, bottom: 5),
+                  padding:
+                      const EdgeInsets.only(right: 10, top: 2.5, bottom: 5),
                   child: _NumericKeyButton(
-                    icon: PhosphorIcon(PhosphorIconsFill.arrowElbowDownLeft, size: 32),
+                    icon: PhosphorIcon(PhosphorIconsFill.arrowElbowDownLeft,
+                        size: 32),
                     isPrimary: true,
                     onPressed: onReturn,
                   ),
@@ -601,9 +606,8 @@ class _NumericKeyboard extends StatelessWidget {
                     Expanded(
                       child: _NumericKeyButton(
                         text: char,
-                        onPressed: char.isEmpty
-                            ? null
-                            : () => _handleNumericKey(char),
+                        onPressed:
+                            char.isEmpty ? null : () => _handleNumericKey(char),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -676,7 +680,8 @@ class _NumericKeyboard extends StatelessWidget {
         return;
       }
       // Respect integer digit cap when adding decimal to existing prefix
-      if (maxIntegerDigits != null && integerDigitsCount(text) > maxIntegerDigits!) {
+      if (maxIntegerDigits != null &&
+          integerDigitsCount(text) > maxIntegerDigits!) {
         return;
       }
     }
@@ -685,13 +690,13 @@ class _NumericKeyboard extends StatelessWidget {
       if (text.startsWith('−')) {
         // Remove negative sign
         controller.text = text.substring(1);
-        controller.selection =
-            TextSelection.fromPosition(TextPosition(offset: selection.start - 1));
+        controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: selection.start - 1));
       } else {
         // Add negative sign
         controller.text = '−$text';
-        controller.selection =
-            TextSelection.fromPosition(TextPosition(offset: selection.start + 1));
+        controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: selection.start + 1));
       }
       _notifyChanged();
       return;
@@ -700,7 +705,8 @@ class _NumericKeyboard extends StatelessWidget {
     // Handle regular digit or "00", while enforcing max digits
     String prospective = text + char;
 
-    if (maxIntegerDigits != null && integerDigitsCount(prospective) > maxIntegerDigits!) {
+    if (maxIntegerDigits != null &&
+        integerDigitsCount(prospective) > maxIntegerDigits!) {
       return;
     }
 
@@ -711,8 +717,8 @@ class _NumericKeyboard extends StatelessWidget {
     }
 
     controller.text = prospective;
-    controller.selection =
-        TextSelection.fromPosition(TextPosition(offset: controller.text.length));
+    controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: controller.text.length));
     _notifyChanged();
   }
 
@@ -736,7 +742,8 @@ class _NumericKeyButton extends StatelessWidget {
     this.icon,
     this.onPressed,
     this.isPrimary = false,
-  }) : assert(text != null || icon != null, 'Either text or icon must be provided');
+  }) : assert(text != null || icon != null,
+            'Either text or icon must be provided');
 
   @override
   Widget build(BuildContext context) {
@@ -766,23 +773,23 @@ class _NumericKeyButton extends StatelessWidget {
           ),
           child: InkWell(
             onTap: isDisabled ? null : onPressed,
-            splashColor:
-                Colors.white.withValues(alpha: isDisabled ? 0 : 0.2),
+            splashColor: Colors.white.withValues(alpha: isDisabled ? 0 : 0.2),
             highlightColor:
                 Colors.white.withValues(alpha: isDisabled ? 0 : 0.1),
             child: Center(
-              child: icon ?? Text(
-                text!,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w500,
-                  color: isPrimary
-                      ? Colors.white
-                      : isDisabled
-                          ? Colors.grey.shade600
-                          : Colors.white,
-                ),
-              ),
+              child: icon ??
+                  Text(
+                    text!,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w500,
+                      color: isPrimary
+                          ? Colors.white
+                          : isDisabled
+                              ? Colors.grey.shade600
+                              : Colors.white,
+                    ),
+                  ),
             ),
           ),
         ),

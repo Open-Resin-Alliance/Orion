@@ -293,7 +293,7 @@ class GlassCard extends StatelessWidget {
     Color? blendedFillColor;
     if (hasAccent) {
       blendedFillColor =
-          Color.alphaBlend(tintColor!.withOpacity(0.75), Colors.white);
+          Color.alphaBlend(tintColor!.withValues(alpha: 0.75), Colors.white);
     }
 
     return Container(
@@ -336,7 +336,7 @@ class GlassCard extends StatelessWidget {
                   child: IgnorePointer(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: tintColor!.withOpacity(accentOpacity),
+                        color: tintColor!.withValues(alpha: accentOpacity),
                         borderRadius: borderRadius,
                       ),
                     ),

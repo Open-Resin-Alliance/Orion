@@ -653,6 +653,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       // Continue to show success dialog even if save fails
       // The user can manually adjust settings if needed
     }
+    if (!context.mounted) return;
 
     showDialog(
       context: context,
@@ -844,6 +845,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   } catch (e) {
                     _logger.warning('Failed to save fine-tuned exposure: $e');
                   }
+                  if (!context.mounted) return;
 
                   showDialog(
                     context: context,

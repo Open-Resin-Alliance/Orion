@@ -229,7 +229,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     // Match the format used by ThumbnailCache._cacheKey so we can
     // de-duplicate identical requests at this layer.
     final colorSuffix =
-        themeColor != null ? '|${themeColor.value.toRadixString(16)}' : '';
+        themeColor != null ? '|${themeColor.toARGB32().toRadixString(16)}' : '';
     final base = '$location|${file.path}|$lastModified|$size$colorSuffix';
     if (variant == null || variant.isEmpty) return base;
     return '$base|$variant';

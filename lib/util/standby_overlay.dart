@@ -26,7 +26,10 @@ import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:logging/logging.dart';
 import 'dart:ui' as ui;
+
+final Logger _log = Logger('StandbyOverlay');
 
 /// A fullscreen standby overlay that appears after a period of inactivity.
 /// Shows a bold clock in the accent color on a black background.
@@ -377,7 +380,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       final contents = await file.readAsString();
       return int.tryParse(contents.trim()) ?? 255;
     } catch (e) {
-      print('Error reading brightness: $e');
+      _log.severe('Error reading brightness: $e');
       return 255;
     }
   }
@@ -405,10 +408,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         // Don't treat non-zero exit code as error - some systems may have issues
         // but we still want to continue dimming
       } catch (e) {
-        print('Brightness write skipped: $e');
+        _log.warning('Brightness write skipped: $e');
       }
     } catch (e) {
-      print('Error writing brightness: $e');
+      _log.severe('Error writing brightness: $e');
     }
   }
 
@@ -425,7 +428,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       // Start the dimming animation
       await _dimmingController.forward(from: 0.0);
     } catch (e) {
-      print('Error starting dimming: $e');
+      _log.severe('Error starting dimming: $e');
     }
   }
 
@@ -439,7 +442,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _originalBrightness = 255;
       await _writeBrightness(_originalBrightness);
     } catch (e) {
-      print('Error stopping dimming: $e');
+      _log.severe('Error stopping dimming: $e');
     }
   }
 
@@ -453,7 +456,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _pauseDimmingForCelebration();
       await _writeBrightness(255);
     } catch (e) {
-      print('Error boosting brightness: $e');
+      _log.severe('Error boosting brightness: $e');
     }
   }
 

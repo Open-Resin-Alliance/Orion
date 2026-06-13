@@ -149,12 +149,12 @@ abstract class BackendClient {
   Future<Map<String, dynamic>> getMachine();
 
   /// Fetch the full JSON payload for a profile by id when supported by the
-  /// backend (e.g. NanoDLP's /profile/json/<id> endpoint). Returns an empty
+  /// backend (e.g. NanoDLP's /profile/json/`<id>` endpoint). Returns an empty
   /// map when unsupported or on failure.
   Future<Map<String, dynamic>> getProfileJson(int id);
 
   /// Edit a profile by posting form fields to the backend's profile edit
-  /// endpoint (e.g. POST /profile/edit/<id>). The `fields` map is encoded
+  /// endpoint (e.g. POST /profile/edit/`<id>`). The `fields` map is encoded
   /// as multipart/form-data. Implementations should return the parsed JSON
   /// response when available or an empty map on success/unsupported.
   Future<Map<String, dynamic>> editProfile(int id, Map<String, dynamic> fields);
@@ -165,7 +165,7 @@ abstract class BackendClient {
   Future<int?> getDefaultProfileId();
 
   /// Set the backend's default profile id. Backends that support a dedicated
-  /// default-profile endpoint (e.g. NanoDLP's /profile/default/<id>) should
+  /// default-profile endpoint (e.g. NanoDLP's /profile/default/`<id>`) should
   /// implement this to persist the change on the device. Implementations that
   /// cannot set a default profile should throw or return a failed future.
   Future<void> setDefaultProfileId(int id);

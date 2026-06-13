@@ -199,7 +199,7 @@ class ImportScreenState extends State<ImportScreen> {
             OrionApiFile? newFile;
             if (plateId != null) {
               newFile = items.whereType<OrionApiFile>().firstWhere(
-                    (item) => item.file == plateId.toString(),
+                    (item) => item.plateId?.toString() == plateId.toString(),
                     orElse: () => throw Exception('File not found'),
                   );
             } else {
@@ -302,6 +302,7 @@ class ImportScreenState extends State<ImportScreen> {
         progressNotifier.value = 0.0;
 
         await Future.delayed(const Duration(milliseconds: 1000));
+        if (!context.mounted) return;
 
         Navigator.of(context).pop(); // Close overlay
 

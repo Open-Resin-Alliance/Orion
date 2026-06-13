@@ -457,6 +457,10 @@ class OrionUpdateProvider extends ChangeNotifier {
   }
 
   Future<void> performUpdate(BuildContext context, String assetUrl) async {
+    // Capture the navigator eagerly so all async gaps below can safely
+    // show/dismiss the update progress dialog without a stale context.
+    final NavigatorState nav = Navigator.of(context);
+
     // Safety: if Force Update override is enabled, disable it as soon as
     // the Orion update sequence is initiated so we don't force-prompt again
     // on every boot after this run.
@@ -496,7 +500,7 @@ class OrionUpdateProvider extends ChangeNotifier {
 
     // macOS dev simulation
     if (Platform.isMacOS) {
-      _openUpdateDialog(context, 'Starting update...');
+      _openUpdateDialog(nav.context, 'Starting update...');
       final simSteps = [
         'Downloading update file...',
         'Extracting update file...',
@@ -516,12 +520,12 @@ class OrionUpdateProvider extends ChangeNotifier {
 
       progress.value = 1.0;
       await Future.delayed(const Duration(seconds: 1));
-      _dismissUpdateDialog(context);
+      _dismissUpdateDialog(nav.context);
       return;
     }
 
     // Normal flow: open dialog and perform streamed download, extract and run
-    _openUpdateDialog(context, 'Starting update...');
+    _openUpdateDialog(nav.context, 'Starting update...');
 
     try {
       final upgradeDir = Directory(upgradeFolder);
@@ -593,7 +597,7 @@ class OrionUpdateProvider extends ChangeNotifier {
       if (extractResult.exitCode != 0) {
         _logger
             .warning('Failed to extract update file: ${extractResult.stderr}');
-        _dismissUpdateDialog(context);
+        _dismissUpdateDialog(nav.context);
         return;
       }
 
@@ -622,7 +626,7 @@ class OrionUpdateProvider extends ChangeNotifier {
       if (dangerous.contains(installDir) || installDir.trim().isEmpty) {
         _logger.severe(
             'Refusing to run update: computed installDir looks unsafe: $installDir');
-        _dismissUpdateDialog(context);
+        _dismissUpdateDialog(nav.context);
         return;
       }
 
@@ -636,12 +640,12 @@ class OrionUpdateProvider extends ChangeNotifier {
         if (!hasCfg && !hasDir) {
           _logger.severe(
               'Refusing to run update: installDir does not look like an Orion install: $installDir');
-          _dismissUpdateDialog(context);
+          _dismissUpdateDialog(nav.context);
           return;
         }
       } catch (e) {
         _logger.severe('Error while verifying installDir: $e');
-        _dismissUpdateDialog(context);
+        _dismissUpdateDialog(nav.context);
         return;
       }
 
@@ -724,7 +728,7 @@ fi
     } catch (e) {
       _logger.warning('Update failed: $e');
     } finally {
-      _dismissUpdateDialog(context);
+      _dismissUpdateDialog(nav.context);
     }
   }
 }

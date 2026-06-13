@@ -139,7 +139,8 @@ class LegacyWiFiBackend extends WiFiBackend {
   Future<List<Map<String, String>>> scanNetworks() async {
     try {
       _log.info('Scanning WiFi networks with iwlist');
-      final result = await Process.run('sudo', ['iwlist', _wifiInterface, 'scan']);
+      final result =
+          await Process.run('sudo', ['iwlist', _wifiInterface, 'scan']);
 
       if (result.exitCode == 0) {
         return _parseIwlistOutput(result.stdout.toString());
@@ -162,9 +163,10 @@ class LegacyWiFiBackend extends WiFiBackend {
     for (int i = 1; i < cells.length; i++) {
       final cellContent = cells[i];
       final ssidMatch = RegExp(r'ESSID:"([^"]*)"').firstMatch(cellContent);
-      final signalMatch = RegExp(r'Signal level[=:](-?\d+)').firstMatch(cellContent);
-      final securityMatch = RegExp(r'(WPA|WEP|Open).*?(?:$|\n)')
-          .firstMatch(cellContent);
+      final signalMatch =
+          RegExp(r'Signal level[=:](-?\d+)').firstMatch(cellContent);
+      final securityMatch =
+          RegExp(r'(WPA|WEP|Open).*?(?:$|\n)').firstMatch(cellContent);
 
       if (ssidMatch != null && ssidMatch.group(1)!.isNotEmpty) {
         final ssid = ssidMatch.group(1)!;
@@ -179,7 +181,7 @@ class LegacyWiFiBackend extends WiFiBackend {
         final security = securityMatch?.group(0)?.trim() ?? '(Open)';
 
         // Keep highest signal strength for duplicate SSIDs
-        if (!networks.containsKey(ssid) || 
+        if (!networks.containsKey(ssid) ||
             int.parse(networks[ssid]!['SIGNAL'] ?? '0') < signal) {
           networks[ssid] = {
             'SSID': ssid,
@@ -221,8 +223,8 @@ class LegacyWiFiBackend extends WiFiBackend {
 
         // Read existing config and append new network block
         final existingConfig = await configFile.readAsString();
-        final updatedConfig = existingConfig.trimRight() + '\n\n' + wpaConfig;
-        
+        final updatedConfig = '${existingConfig.trimRight()}\n\n$wpaConfig';
+
         // Write updated config using echo and tee with sudo
         final process = await Process.start('sudo', ['tee', _wpaConfigPath]);
         process.stdin.write(updatedConfig);
@@ -264,8 +266,10 @@ class LegacyWiFiBackend extends WiFiBackend {
           // Keep only the header, remove network blocks
           final content = await configFile.readAsString();
           // Find where network blocks start
-          final networkIndex = content.indexOf(RegExp(r'network=\{', multiLine: true));
-          final header = networkIndex >= 0 ? content.substring(0, networkIndex) : '';
+          final networkIndex =
+              content.indexOf(RegExp(r'network=\{', multiLine: true));
+          final header =
+              networkIndex >= 0 ? content.substring(0, networkIndex) : '';
 
           final process = await Process.start('sudo', ['tee', _wpaConfigPath]);
           process.stdin.write(header);

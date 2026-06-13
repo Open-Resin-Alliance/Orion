@@ -164,7 +164,7 @@ class DetailScreenState extends State<DetailScreen> {
       // Kick off thumbnail extraction but render metadata directly from the
       // typed model in build(). This mirrors the approach used in StatusScreen
       // where presentation derives values directly from the provider model.
-      final Future<Uint8List?>? thumbFuture = _thumbnailFuture ??
+      final Future<Uint8List?> thumbFuture = _thumbnailFuture ??
           ThumbnailCache.instance.getThumbnail(
             location: widget.fileLocation,
             subdirectory: widget.fileSubdirectory,
@@ -223,13 +223,11 @@ class DetailScreenState extends State<DetailScreen> {
     isLandScape = MediaQuery.of(context).orientation == Orientation.landscape;
     maxNameLength = isLandScape ? 12 : 24;
     return GlassApp(
-      child: WillPopScope(
-        onWillPop: () async {
-          if (widget.returnToLocalOnPop) {
-            _popWithResult();
-            return false;
-          }
-          return true;
+      child: PopScope(
+        canPop: !(widget.returnToLocalOnPop),
+        onPopInvokedWithResult: (bool didPop, _) {
+          if (didPop) return;
+          _popWithResult();
         },
         child: Scaffold(
           appBar: OrionAppBar(
@@ -731,6 +729,7 @@ class DetailScreenState extends State<DetailScreen> {
                 final ok =
                     await provider.startPrint(widget.fileLocation, filePath);
                 if (ok) {
+                  if (!context.mounted) return;
                   Navigator.push(
                       context,
                       MaterialPageRoute(

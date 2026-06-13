@@ -550,7 +550,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                     Icon(PhosphorIcons.arrowsVertical(),
                         size: 24,
                         color: offsetMismatch
-                            ? mismatchColor.withOpacity(0.7)
+                            ? mismatchColor.withValues(alpha: 0.7)
                             : Colors.grey.shade400),
                     const SizedBox(width: 12),
                     Text(

@@ -393,7 +393,7 @@ class OnboardingPages {
                   const SizedBox(height: 8),
                 ],
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -739,10 +739,9 @@ class _GlassBubble extends StatefulWidget {
   final bool interactionsEnabled;
 
   const _GlassBubble({
-    Key? key,
     required this.bubble,
     this.interactionsEnabled = true,
-  }) : super(key: key);
+  });
 
   @override
   _GlassBubbleState createState() => _GlassBubbleState();
@@ -978,7 +977,7 @@ class _GlassBubbleState extends State<_GlassBubble>
                 offset: Offset(0, 6),
               ),
               BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 6,
                 offset: Offset(0, 2),
               ),
@@ -1000,7 +999,7 @@ class _GlassBubbleState extends State<_GlassBubble>
               color: Theme.of(context).colorScheme.onPrimaryContainer,
               shadows: [
                 Shadow(
-                  color: Colors.black.withOpacity(0.15),
+                  color: Colors.black.withValues(alpha: 0.15),
                   blurRadius: 4,
                   offset: Offset(0, 2),
                 ),

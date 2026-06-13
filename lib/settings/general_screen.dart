@@ -660,6 +660,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     await Process.run(
                                         'sudo', ['reboot', 'now']);
                                   } catch (e) {
+                                    if (!context.mounted) return;
                                     showDialog(
                                       context: context,
                                       builder: (ctx) => GlassAlertDialog(
@@ -737,6 +738,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           category: 'machine');
 
                                       // Show immediate shutdown dialog then power off
+                                      if (!context.mounted) return;
                                       showDialog(
                                         context: context,
                                         barrierDismissible: false,
@@ -750,6 +752,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       await Process.run(
                                           'sudo', ['shutdown', 'now']);
                                     } catch (e) {
+                                      if (!context.mounted) return;
                                       showDialog(
                                         context: context,
                                         builder: (ctx) => GlassAlertDialog(
@@ -993,6 +996,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       if (confirmed) {
                         try {
                           // Show clearing message
+                          if (!context.mounted) return;
                           showDialog(
                             context: context,
                             barrierDismissible: false,

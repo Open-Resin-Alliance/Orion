@@ -138,7 +138,7 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                   ),
                 ),
           Center(
-            child: Container(
+            child: SizedBox(
               width: 600,
               child: Padding(
                 padding: const EdgeInsets.symmetric(

@@ -98,7 +98,7 @@ class UpdateScreenState extends State<UpdateScreen>
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: Colors.red.withOpacity(0.1 + (pulseValue * 0.2)),
+                color: Colors.red.withValues(alpha: 0.1 + (pulseValue * 0.2)),
                 blurRadius: 20 + (pulseValue * 10),
                 spreadRadius: -15,
                 offset: const Offset(0, 0),
@@ -184,7 +184,7 @@ class UpdateScreenState extends State<UpdateScreen>
       final confirmed = await showDialog<bool>(
             context: ctx,
             barrierDismissible: false,
-            barrierColor: Colors.red.withOpacity(0.15),
+            barrierColor: Colors.red.withValues(alpha: 0.15),
             builder: (dctx) => _buildPulsingDialog(
               GlassAlertDialog(
                 title: Row(
@@ -245,7 +245,7 @@ class UpdateScreenState extends State<UpdateScreen>
       final confirmed = await showDialog<bool>(
             context: ctx,
             barrierDismissible: false,
-            barrierColor: Colors.red.withOpacity(0.15),
+            barrierColor: Colors.red.withValues(alpha: 0.15),
             builder: (dctx) => _buildPulsingDialog(
               GlassAlertDialog(
                 title: Row(
@@ -302,7 +302,7 @@ class UpdateScreenState extends State<UpdateScreen>
       final confirmed = await showDialog<bool>(
             context: ctx,
             barrierDismissible: false,
-            barrierColor: Colors.red.withOpacity(0.15),
+            barrierColor: Colors.red.withValues(alpha: 0.15),
             builder: (dctx) => _buildPulsingDialog(
               GlassAlertDialog(
                 title: Row(

@@ -544,7 +544,7 @@ class StatusProvider extends ChangeNotifier {
               if (lv != null) {
                 double? secs;
                 if (lv is num) secs = lv.toDouble();
-                if (secs == null) secs = double.tryParse(lv.toString());
+                secs ??= double.tryParse(lv.toString());
                 if (secs != null) {
                   final micros = (secs * 1e6).round();
                   _currentLayerDuration = Duration(microseconds: micros);
@@ -1071,7 +1071,7 @@ class StatusProvider extends ChangeNotifier {
           if (lv != null) {
             double? secs;
             if (lv is num) secs = lv.toDouble();
-            if (secs == null) secs = double.tryParse(lv.toString());
+            secs ??= double.tryParse(lv.toString());
             if (secs != null) {
               final micros = (secs * 1e6).round();
               _currentLayerDuration = Duration(microseconds: micros);

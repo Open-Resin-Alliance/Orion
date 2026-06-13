@@ -360,6 +360,7 @@ class StatusScreenState extends State<StatusScreen> {
     }
 
     // Not a calibration print, proceed with normal home navigation
+    if (!mounted) return;
     Navigator.of(context).popUntil((route) => route.isFirst);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
@@ -669,7 +670,7 @@ class StatusScreenState extends State<StatusScreen> {
                                             color: lowOpacityColor),
                                       ),
                                     TextSpan(
-                                      text: '${normalPart}%',
+                                      text: '$normalPart%',
                                       style: baseStyle?.copyWith(
                                           color: normalColor),
                                     ),
@@ -1302,6 +1303,7 @@ class StatusScreenState extends State<StatusScreen> {
             .then((bytes) async {
           try {
             if (bytes.isNotEmpty) {
+              if (!context.mounted) return;
               await precacheImage(MemoryImage(bytes), context);
             }
           } catch (_) {
@@ -1950,7 +1952,7 @@ class StatusScreenState extends State<StatusScreen> {
                     final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
                     final dynamic uvRaw =
                         analyticsProv.getLatestForKey('TemperatureOutside');
-                    final String uvText = uvRaw != null ? '${uvRaw}°C' : 'N/A';
+                    final String uvText = uvRaw != null ? '$uvRaw°C' : 'N/A';
                     final double uvVal = uvRaw is num
                         ? uvRaw.toDouble()
                         : (double.tryParse(uvRaw?.toString() ?? '') ?? 0.0);
@@ -2010,7 +2012,7 @@ class StatusScreenState extends State<StatusScreen> {
                 final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
                 final dynamic mcuRaw =
                     analyticsProv.getLatestForKey('TemperatureMCU');
-                final String mcuText = mcuRaw != null ? '${mcuRaw}°C' : 'N/A';
+                final String mcuText = mcuRaw != null ? '$mcuRaw°C' : 'N/A';
                 final double mcuVal = mcuRaw is num
                     ? mcuRaw.toDouble()
                     : (double.tryParse(mcuRaw?.toString() ?? '') ?? 0.0);
@@ -2341,7 +2343,9 @@ class StatusScreenState extends State<StatusScreen> {
       strengths.add(0.1 * i);
     }
     final swatch = <int, Color>{};
-    final int r = color.red, g = color.green, b = color.blue;
+    final int r = (color.r * 255.0).round().clamp(0, 255);
+    final int g = (color.g * 255.0).round().clamp(0, 255);
+    final int b = (color.b * 255.0).round().clamp(0, 255);
     for (var strength in strengths) {
       final double ds = 0.5 - strength;
       swatch[(strength * 1000).round()] = Color.fromRGBO(
@@ -2364,7 +2368,7 @@ class StatusScreenState extends State<StatusScreen> {
       800: swatch[800]!,
       900: swatch[900]!,
     };
-    return MaterialColor(color.value, mapped);
+    return MaterialColor(color.toARGB32(), mapped);
   }
 }
 

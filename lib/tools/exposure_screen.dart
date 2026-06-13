@@ -79,6 +79,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         return;
       }
 
+      if (!context.mounted) return;
       showExposureDialog(context, exposureTime, delayTime, type: type);
       _exposureCompleter = Completer<void>();
       _exposureOperation = CancelableOperation.fromFuture(
