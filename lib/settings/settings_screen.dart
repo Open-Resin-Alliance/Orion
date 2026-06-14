@@ -20,6 +20,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
@@ -123,22 +124,22 @@ class SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (BuildContext context) {
         return GlassAlertDialog(
-          title: const Text('Finalize Settings'),
-          content: const Text(
-              'The Touch Interface needs to restart to apply changes.\nDo you want to restart now or later?'),
+          title: Text(FlutterI18n.translate(context, 'settings.finalize')),
+          content:
+              Text(FlutterI18n.translate(context, 'settings.restartMessage')),
           actions: [
             GlassButton(
               onPressed: () {
                 Navigator.of(context).pop(false);
                 if (closeSettings) Navigator.of(context).pop();
               },
-              child: const Text('Later'),
+              child: Text(FlutterI18n.translate(context, 'settings.later')),
             ),
             GlassButton(
               onPressed: () {
                 Navigator.of(context).pop(true);
               },
-              child: const Text('Now'),
+              child: Text(FlutterI18n.translate(context, 'settings.now')),
             ),
           ],
         );
@@ -161,9 +162,10 @@ class SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (BuildContext context) {
         return GlassAlertDialog(
-          title: const Text('Disconnect from WiFi'),
-          content: const Text(
-              'Do you want to disconnect from the current WiFi network?\nThis may cause any ongoing print jobs to fail.'),
+          title:
+              Text(FlutterI18n.translate(context, 'settings.disconnectWifi')),
+          content: Text(
+              FlutterI18n.translate(context, 'settings.disconnectMessage')),
           actions: [
             GlassButton(
               onPressed: () {
@@ -172,7 +174,8 @@ class SettingsScreenState extends State<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text('Stay Connected'),
+              child: Text(
+                  FlutterI18n.translate(context, 'settings.stayConnected')),
             ),
             GlassButton(
               onPressed: () {
@@ -181,7 +184,8 @@ class SettingsScreenState extends State<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text('Disconnect'),
+              child:
+                  Text(FlutterI18n.translate(context, 'settings.disconnect')),
             ),
           ],
         );
@@ -256,7 +260,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       child: GlassApp(
         child: Scaffold(
           appBar: OrionAppBar(
-            title: const Text('Settings'),
+            title: Text(FlutterI18n.translate(context, 'settings.general')),
             toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
             actions: <Widget>[
               SystemStatusWidget(),
@@ -294,7 +298,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   PhosphorIconsFill.gear,
                   color: Theme.of(context).colorScheme.primary,
                 ),
-                label: 'General',
+                label: FlutterI18n.translate(context, 'settings.general'),
               ),
               BottomNavigationBarItem(
                 icon: PhosphorIcon(PhosphorIcons.network()),
@@ -302,7 +306,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   PhosphorIconsFill.network,
                   color: Theme.of(context).colorScheme.primary,
                 ),
-                label: 'Network',
+                label: FlutterI18n.translate(context, 'settings.network'),
               ),
               BottomNavigationBarItem(
                 icon: PhosphorIcon(PhosphorIcons.info()),
@@ -310,7 +314,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   PhosphorIconsFill.info,
                   color: Theme.of(context).colorScheme.primary,
                 ),
-                label: 'About',
+                label: FlutterI18n.translate(context, 'settings.about'),
               ),
               BottomNavigationBarItem(
                   icon: PhosphorIcon(PhosphorIcons.download()),
@@ -318,7 +322,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                     PhosphorIconsFill.download,
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                  label: 'Updates'),
+                  label: FlutterI18n.translate(context, 'settings.updates')),
               if (config.getFlag('developerMode', category: 'advanced'))
                 BottomNavigationBarItem(
                   icon: PhosphorIcon(PhosphorIcons.bug()),
@@ -326,7 +330,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                     PhosphorIconsFill.bug,
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                  label: 'Debug',
+                  label: FlutterI18n.translate(context, 'settings.debug'),
                 ),
             ],
             currentIndex: _selectedIndex,

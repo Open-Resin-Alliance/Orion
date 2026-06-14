@@ -17,6 +17,7 @@
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
@@ -207,7 +208,8 @@ class DetailScreenState extends State<DetailScreen> {
         _metaRetryCount = 0;
       }
     } catch (e, st) {
-      _logger.severe('Failed to load file metadata', e, st);
+      _logger.severe(
+          FlutterI18n.translate(context, 'files.failedMetadata'), e, st);
       if (mounted) {
         setState(() {
           loading = false;
@@ -232,7 +234,7 @@ class DetailScreenState extends State<DetailScreen> {
             actions: [SystemStatusWidget()],
             toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
             // Keep the left-hand back affordance simple and labeled "Back".
-            title: const Text('Back'),
+            title: Text(FlutterI18n.translate(context, 'common.back')),
             // Move the filename + date into the visual center of the AppBar.
             centerWidget: Builder(builder: (context) {
               // Use a single base font size for both title lines so they appear
@@ -249,7 +251,9 @@ class DetailScreenState extends State<DetailScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    widget.fileName.isNotEmpty ? widget.fileName : 'No file',
+                    widget.fileName.isNotEmpty
+                        ? widget.fileName
+                        : FlutterI18n.translate(context, 'files.noFile'),
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -306,7 +310,8 @@ class DetailScreenState extends State<DetailScreen> {
             child: loading
                 ? const CircularProgressIndicator()
                 : _meta == null
-                    ? const Text('Failed to load file metadata')
+                    ? Text(
+                        FlutterI18n.translate(context, 'files.failedMetadata'))
                     // If the thumbnail is still downloading, show a full-screen
                     // spinner instead of rendering the details layout to avoid
                     // partial UI flicker.
@@ -349,18 +354,20 @@ class DetailScreenState extends State<DetailScreen> {
                       children: [
                         Expanded(
                           child: buildInfoCard(
-                            'Layer Height',
+                            FlutterI18n.translate(context, 'files.layerHeight'),
                             _meta?.layerHeight != null
-                                ? '${_meta!.layerHeight!.toStringAsFixed(3)} mm'
-                                : '-',
+                                ? '${_meta!.layerHeight!.toStringAsFixed(3)} ${FlutterI18n.translate(context, 'files.unitMm')}'
+                                : FlutterI18n.translate(context, 'files.na'),
                           ),
                         ),
                         Expanded(
                           child: buildInfoCard(
-                              'Estimated Print Volume',
-                              _meta?.usedMaterial != null
-                                  ? '${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
-                                  : 'N/A'),
+                            FlutterI18n.translate(
+                                context, 'files.estimatedVolume'),
+                            _meta?.usedMaterial != null
+                                ? '${_meta!.usedMaterial!.toStringAsFixed(2)} ${FlutterI18n.translate(context, 'files.unitMl')}'
+                                : FlutterI18n.translate(context, 'files.na'),
+                          ),
                         ),
                       ],
                     ),
@@ -368,22 +375,22 @@ class DetailScreenState extends State<DetailScreen> {
                     Row(children: [
                       Expanded(
                         child: buildInfoCard(
-                          'Print Time',
+                          FlutterI18n.translate(context, 'files.printTime'),
                           _meta?.printTime != null
                               ? _meta!.formattedPrintTime
-                              : '-',
+                              : FlutterI18n.translate(context, 'files.na'),
                         ),
                       ),
                       Expanded(
                         child: buildInfoCard(
-                          'Date & Time',
+                          FlutterI18n.translate(context, 'files.dateTime'),
                           _meta != null
                               ? DateTime.fromMillisecondsSinceEpoch(
                                       _meta!.fileData.lastModified * 1000)
                                   .toString()
                                   .split('.')
                                   .first
-                              : '-',
+                              : FlutterI18n.translate(context, 'files.na'),
                         ),
                       ),
                     ]),
@@ -412,30 +419,30 @@ class DetailScreenState extends State<DetailScreen> {
                   children: [
                     Spacer(),
                     buildInfoCard(
-                        'Layer Height',
+                        FlutterI18n.translate(context, 'files.layerHeight'),
                         _meta?.layerHeight != null
-                            ? '${_meta!.layerHeight!.toStringAsFixed(3)} mm'
-                            : '-'),
+                            ? '${_meta!.layerHeight!.toStringAsFixed(3)} ${FlutterI18n.translate(context, 'files.unitMm')}'
+                            : FlutterI18n.translate(context, 'files.na')),
                     buildInfoCard(
-                        'Estimated Print Volume',
+                        FlutterI18n.translate(context, 'files.estimatedVolume'),
                         _meta?.usedMaterial != null
-                            ? '${_meta!.usedMaterial!.toStringAsFixed(2)} mL'
-                            : 'N/A'),
+                            ? '${_meta!.usedMaterial!.toStringAsFixed(2)} ${FlutterI18n.translate(context, 'files.unitMl')}'
+                            : FlutterI18n.translate(context, 'files.na')),
                     buildInfoCard(
-                      'Print Time',
+                      FlutterI18n.translate(context, 'files.printTime'),
                       _meta?.printTime != null
                           ? _meta!.formattedPrintTime
-                          : '-',
+                          : FlutterI18n.translate(context, 'files.na'),
                     ),
                     buildInfoCard(
-                        'Date & Time',
+                        FlutterI18n.translate(context, 'files.dateTime'),
                         _meta != null
                             ? DateTime.fromMillisecondsSinceEpoch(
                                     _meta!.fileData.lastModified * 1000)
                                 .toString()
                                 .split('.')
                                 .first
-                            : '-'),
+                            : FlutterI18n.translate(context, 'files.na')),
                     Spacer(),
                   ],
                 ),
@@ -590,7 +597,7 @@ class DetailScreenState extends State<DetailScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Delete File',
+                  FlutterI18n.translate(context, 'files.deleteFile'),
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.error,
                     fontWeight: FontWeight.bold,
@@ -603,23 +610,8 @@ class DetailScreenState extends State<DetailScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text.rich(
-                TextSpan(
-                  text: 'You are about to delete ',
-                  children: [
-                    TextSpan(
-                      text: fileName,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const TextSpan(text: '.\nDo you want to continue?'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'This action cannot be undone.',
+              Text(
+                FlutterI18n.translate(context, 'files.deleteConfirm'),
                 style: TextStyle(
                   decoration: TextDecoration.underline,
                 ),
@@ -633,7 +625,7 @@ class DetailScreenState extends State<DetailScreen> {
                 minimumSize: const Size(0, 60),
               ),
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(FlutterI18n.translate(context, 'common.cancel')),
             ),
             GlassButton(
               tint: GlassButtonTint.negative,
@@ -664,7 +656,7 @@ class DetailScreenState extends State<DetailScreen> {
                   if (navigator.context.mounted) navigator.pop(false);
                 }
               },
-              child: const Text('Delete'),
+              child: Text(FlutterI18n.translate(context, 'common.delete')),
             ),
           ],
         );
@@ -691,8 +683,8 @@ class DetailScreenState extends State<DetailScreen> {
             ),
             minimumSize: const Size(120, 65), // Same width as Edit button
           ),
-          child: const Text(
-            'Delete',
+          child: Text(
+            FlutterI18n.translate(context, 'common.delete'),
             style: TextStyle(fontSize: 20),
             textAlign: TextAlign.center,
           ),
@@ -749,8 +741,8 @@ class DetailScreenState extends State<DetailScreen> {
               ),
               minimumSize: const Size(0, 65), // Taller to work for both themes
             ),
-            child: const Text(
-              'Print',
+            child: Text(
+              FlutterI18n.translate(context, 'home.btnPrint'),
               style: TextStyle(fontSize: 22),
               textAlign: TextAlign.center,
             ),
@@ -765,8 +757,8 @@ class DetailScreenState extends State<DetailScreen> {
             ),
             minimumSize: const Size(120, 65), // Taller to work for both themes
           ),
-          child: const Text(
-            'Edit',
+          child: Text(
+            FlutterI18n.translate(context, 'common.edit'),
             style: TextStyle(fontSize: 20),
             textAlign: TextAlign.center,
           ),

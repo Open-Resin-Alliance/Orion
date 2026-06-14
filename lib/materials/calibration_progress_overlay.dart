@@ -335,3 +335,4 @@ class _CalibrationProgressOverlayState extends State<CalibrationProgressOverlay>
     );
   }
 }
+

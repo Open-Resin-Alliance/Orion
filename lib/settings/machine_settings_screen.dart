@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/util/orion_list_tile.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -50,7 +51,8 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
       child: GlassApp(
         child: Scaffold(
           appBar: OrionAppBar(
-            title: const Text('Settings'),
+            title:
+                Text(FlutterI18n.translate(context, 'machineSettings.section')),
             toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
             actions: <Widget>[
               SystemStatusWidget(),
@@ -113,9 +115,12 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
                                   final confirmed = await showDialog<bool>(
                                         context: context,
                                         builder: (ctx) => GlassAlertDialog(
-                                          title: const Text('Clear overrides'),
-                                          content: const Text(
-                                              'Remove all user-applied machine overrides?',
+                                          title: Text(FlutterI18n.translate(
+                                              context,
+                                              'machineSettings.clearOverrides')),
+                                          content: Text(
+                                              FlutterI18n.translate(context,
+                                                  'machineSettings.clearConfirm'),
                                               style: TextStyle(fontSize: 22.0)),
                                           actions: [
                                             GlassButton(
@@ -127,7 +132,10 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
                                                 onPressed: () =>
                                                     Navigator.of(ctx)
                                                         .pop(false),
-                                                child: const Text('Cancel')),
+                                                child: Text(
+                                                    FlutterI18n.translate(
+                                                        context,
+                                                        'common.cancel'))),
                                             GlassButton(
                                                 tint: GlassButtonTint.negative,
                                                 style: ElevatedButton.styleFrom(
@@ -136,7 +144,9 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
                                                 ),
                                                 onPressed: () =>
                                                     Navigator.of(ctx).pop(true),
-                                                child: const Text('Remove')),
+                                                child: Text(FlutterI18n.translate(
+                                                    context,
+                                                    'machineSettings.remove'))),
                                           ],
                                         ),
                                       ) ??
@@ -146,7 +156,8 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
                                     setState(() {});
                                   }
                                 },
-                                child: const Text('Clear all user overrides'),
+                                child: Text(FlutterI18n.translate(
+                                    context, 'machineSettings.clearOverrides')),
                               ),
                             ),
                           ],

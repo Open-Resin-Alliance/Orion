@@ -17,6 +17,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
@@ -122,28 +123,30 @@ class _ImportProgressOverlayState extends State<ImportProgressOverlay>
                                     ))
                               : ValueListenableBuilder<String>(
                                   valueListenable: widget.title!,
-                                  builder: (context, title, _) =>
-                                      title == 'SLICING JOB'
-                                          ? _AnimatedSlicingBlock(
-                                              controller: _sliceController,
-                                              primaryColor: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                            )
-                                          : Icon(
-                                              widget.icon,
-                                              size: 120,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                            ),
+                                  builder: (context, title, _) => title ==
+                                          FlutterI18n.translate(
+                                              context, 'import.slicingJob')
+                                      ? _AnimatedSlicingBlock(
+                                          controller: _sliceController,
+                                          primaryColor: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                        )
+                                      : Icon(
+                                          widget.icon,
+                                          size: 120,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                        ),
                                 ),
                         ),
                       ),
                       const SizedBox(height: 10),
                       widget.title == null
                           ? Text(
-                              'IMPORTING FILE',
+                              FlutterI18n.translate(
+                                  context, 'import.importingFile'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 30,
@@ -166,7 +169,8 @@ class _ImportProgressOverlayState extends State<ImportProgressOverlay>
                       const SizedBox(height: 5),
                       widget.title == null
                           ? Text(
-                              'Please wait while your file is being imported.',
+                              FlutterI18n.translate(
+                                  context, 'import.pleaseWait'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 24,
@@ -176,9 +180,13 @@ class _ImportProgressOverlayState extends State<ImportProgressOverlay>
                           : ValueListenableBuilder<String>(
                               valueListenable: widget.title!,
                               builder: (context, title, _) => Text(
-                                title == 'SLICING JOB'
-                                    ? 'Please wait while your job is being sliced.'
-                                    : 'Please wait while your file is being imported.',
+                                title ==
+                                        FlutterI18n.translate(
+                                            context, 'import.slicingJob')
+                                    ? FlutterI18n.translate(
+                                        context, 'import.pleaseWaitSlicing')
+                                    : FlutterI18n.translate(
+                                        context, 'import.pleaseWait'),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 24,

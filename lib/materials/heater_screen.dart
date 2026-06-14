@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'dart:async';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
@@ -40,7 +41,7 @@ class HeaterScreenState extends State<HeaterScreen>
   late final AnimationController _onPulseController;
   late final Animation<double> _onPulse;
 
-  int _targetTemperature = 30; // Default to 30°C
+  int _targetTemperature = 30; // Default to 30Ãƒâ€šÃ‚Â°C
   int? _lastBackendTemperature;
   bool _isUserInteracting = false;
   // Heater enabled/disabled state is now stored in [ManualProvider]. We refresh
@@ -72,7 +73,7 @@ class HeaterScreenState extends State<HeaterScreen>
           final chamber = manual.chamberTemp ?? 0.0;
 
           // If both reported temps are zero, treat that as "no backend
-          // target" rather than defaulting to 30°C. This avoids stomping a
+          // target" rather than defaulting to 30Ãƒâ€šÃ‚Â°C. This avoids stomping a
           // user-chosen value when heaters are off.
           final int? desiredFromBackend = (vat > 0.0)
               ? vat.round()
@@ -122,7 +123,7 @@ class HeaterScreenState extends State<HeaterScreen>
             maybeUpdateTargetFromManual();
           });
         } catch (_) {
-          // ignore — refreshHeaterEnabled already handles errors gracefully
+          // ignore ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â refreshHeaterEnabled already handles errors gracefully
         }
       });
     });
@@ -206,7 +207,7 @@ class HeaterScreenState extends State<HeaterScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 65),
               ),
-              child: const Text('Cancel'),
+              child: Text(FlutterI18n.translate(context, 'heater.cancel')),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -214,7 +215,7 @@ class HeaterScreenState extends State<HeaterScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 65),
               ),
-              child: const Text('Start'),
+              child: Text(FlutterI18n.translate(context, 'heater.start')),
             ),
           ],
         ),
@@ -226,8 +227,8 @@ class HeaterScreenState extends State<HeaterScreen>
         // Use the athena-iot preheat_and_mix endpoint if available
         final svc = BackendService();
         await svc.preheatAndMixStandalone();
-        _logger
-            .info('Mix and Preheat activated - Target: $_targetTemperature°C');
+        _logger.info(
+            'Mix and Preheat activated - Target: $_targetTemperatureÃƒâ€šÃ‚Â°C');
       } catch (_) {
         if (!context.mounted) return;
         showErrorDialog(context, 'HEATER-MIX-FAILED');
@@ -367,8 +368,8 @@ class HeaterScreenState extends State<HeaterScreen>
                 size: 40,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Vat Heater',
+              Text(
+                FlutterI18n.translate(context, 'heater.vatHeater'),
                 style: TextStyle(fontSize: 24),
               ),
               const SizedBox(height: 4),
@@ -376,7 +377,7 @@ class HeaterScreenState extends State<HeaterScreen>
                 !hasVatHardware
                     ? 'Not available'
                     : (!capabilitiesLoaded
-                        ? 'Checking…'
+                        ? 'CheckingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦'
                         : (vatEnabled ? 'Enabled' : 'Disabled')),
                 style: TextStyle(
                   fontSize: 16,
@@ -432,8 +433,8 @@ class HeaterScreenState extends State<HeaterScreen>
                 size: 40,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Chamber Heater',
+              Text(
+                FlutterI18n.translate(context, 'heater.chamberHeater'),
                 style: TextStyle(fontSize: 24),
               ),
               const SizedBox(height: 4),
@@ -441,7 +442,7 @@ class HeaterScreenState extends State<HeaterScreen>
                 !hasChamberHardware
                     ? 'Not available'
                     : (!capabilitiesLoaded
-                        ? 'Checking…'
+                        ? 'CheckingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦'
                         : (chamberEnabled ? 'Enabled' : 'Disabled')),
                 style: TextStyle(
                   fontSize: 16,
@@ -519,7 +520,7 @@ class HeaterScreenState extends State<HeaterScreen>
                       ),
                     ),
                     Text(
-                      '°C',
+                      'Ãƒâ€šÃ‚Â°C',
                       style: TextStyle(
                         fontSize: 20,
                         color: Colors.grey.shade300,
@@ -549,7 +550,7 @@ class HeaterScreenState extends State<HeaterScreen>
                           Colors.red.shade600,
                           Colors.red.shade800
                         ],
-                        // Adjust stops so that 30°C (midpoint of 20-40) maps to a
+                        // Adjust stops so that 30Ãƒâ€šÃ‚Â°C (midpoint of 20-40) maps to a
                         // relatively warm color (orange) at the center of the gradient.
                         stops: const [0.0, 0.20, 0.40, 0.60, 0.80, 1.0],
                       ),
@@ -593,7 +594,7 @@ class HeaterScreenState extends State<HeaterScreen>
                         // refresh doesn't immediately override it.
                         _lastBackendTemperature = ended;
                         _logger.info(
-                          'Target temperature set to: $ended°C',
+                          'Target temperature set to: $endedÃƒâ€šÃ‚Â°C',
                         );
                         onChangeEnd(value);
                       },

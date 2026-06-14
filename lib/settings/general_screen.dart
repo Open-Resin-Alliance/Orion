@@ -21,6 +21,7 @@ import 'dart:math';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:http/http.dart' as http;
 import 'package:orion/settings/machine_settings_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -174,7 +175,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                   direction: DismissDirection.horizontal,
                   onDismissed: (direction) {},
                   background: Container(color: Colors.transparent),
-                  child: const GlassCard(
+                  child: GlassCard(
                     outlined: true,
                     elevation: 1,
                     child: Padding(
@@ -182,7 +183,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           left: 16, right: 16, top: 10, bottom: 10),
                       child: ListTile(
                         title: Text(
-                          'Happy Pride Month!',
+                          FlutterI18n.translate(
+                              context, 'generalSettings.happyPride'),
                           style: TextStyle(fontSize: 24),
                         ),
                         leading: Icon(Icons.favorite, color: Colors.pink),
@@ -218,7 +220,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       padding: const EdgeInsets.all(16),
                       child: OrionListTile(
                         ignoreColor: true,
-                        title: 'Self-Destruct Mode',
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.selfDestruct'),
                         icon: PhosphorIcons.skull,
                         value: selfDestructMode,
                         onChanged: (bool value) {
@@ -241,8 +244,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'General',
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'generalSettings.section'),
                         style: TextStyle(
                           fontSize: 28.0,
                         ),
@@ -253,8 +257,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       _buildOffsetNavCard(
                         context: context,
                         icon: Icons.palette,
-                        title: 'User Interface',
-                        subtitle: 'Theme and appearance settings',
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.ui'),
+                        subtitle: FlutterI18n.translate(
+                            context, 'generalSettings.uiDesc'),
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -265,7 +271,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       ),
                       const SizedBox(height: 20.0),
                       OrionListTile(
-                        title: 'Use USB by Default',
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.useUsbDefault'),
                         icon: PhosphorIcons.usb,
                         value: useUsbByDefault,
                         onChanged: (bool value) {
@@ -287,8 +294,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Advanced',
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'generalSettings.advanced'),
                         style: TextStyle(
                           fontSize: 28.0,
                         ),
@@ -297,8 +305,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       _buildOffsetNavCard(
                         context: context,
                         icon: Icons.engineering,
-                        title: 'Machine Settings',
-                        subtitle: 'Configure machine features',
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.machineSettings'),
+                        subtitle: FlutterI18n.translate(
+                            context, 'generalSettings.machineDesc'),
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -311,7 +321,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       if (Platform.isLinux) const SizedBox(height: 20.0),
                       if (Platform.isLinux)
                         OrionListTile(
-                          title: 'Override Screen Rotation',
+                          title: FlutterI18n.translate(
+                              context, 'generalSettings.overrideRotation'),
                           icon: PhosphorIcons.deviceRotate(),
                           value: overrideScreenRotation,
                           onChanged: (bool value) {
@@ -370,7 +381,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         ),
                       const SizedBox(height: 20.0),
                       OrionListTile(
-                        title: 'Use Custom Backend URL',
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.useCustomUrl'),
                         icon: PhosphorIcons.network,
                         value: useCustomUrl,
                         onChanged: (bool value) {
@@ -399,9 +411,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       context: context,
                                       builder: (BuildContext context) {
                                         return GlassAlertDialog(
-                                          title: const Center(
-                                              child:
-                                                  Text('Custom Backend URL')),
+                                          title: Center(
+                                              child: Text(FlutterI18n.translate(
+                                                  context,
+                                                  'generalSettings.customUrl'))),
                                           content: SizedBox(
                                             width: MediaQuery.of(context)
                                                     .size
@@ -412,7 +425,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 children: [
                                                   SpawnOrionTextField(
                                                     key: urlTextFieldKey,
-                                                    keyboardHint: 'Enter URL',
+                                                    keyboardHint:
+                                                        FlutterI18n.translate(
+                                                            context,
+                                                            'generalSettings.enterUrl'),
                                                     locale:
                                                         Localizations.localeOf(
                                                                 context)
@@ -440,7 +456,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               style: ElevatedButton.styleFrom(
                                                   minimumSize:
                                                       const Size(0, 60)),
-                                              child: const Text('Close'),
+                                              child: Text(FlutterI18n.translate(
+                                                  context, 'common.close')),
                                             ),
                                             GlassButton(
                                               tint: GlassButtonTint.positive,
@@ -458,7 +475,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               style: ElevatedButton.styleFrom(
                                                   minimumSize:
                                                       const Size(0, 60)),
-                                              child: const Text('Confirm'),
+                                              child: Text(FlutterI18n.translate(
+                                                  context, 'common.confirm')),
                                             ),
                                           ],
                                         );
@@ -469,7 +487,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     // Wrap in Center widget
                                     child: AutoSizeText(
                                       customUrl == ''
-                                          ? 'Set URL'
+                                          ? FlutterI18n.translate(
+                                              context, 'generalSettings.setUrl')
                                           : customUrl.split('//').last,
                                       style: const TextStyle(fontSize: 22),
                                       minFontSize: 20,

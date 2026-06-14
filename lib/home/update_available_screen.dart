@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/update_manager.dart';
@@ -147,9 +148,9 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildAnimatedItem(
-                      const Text(
-                        'Update Available',
-                        style: TextStyle(
+                      Text(
+                        FlutterI18n.translate(context, 'updateAvailable.title'),
+                        style: const TextStyle(
                             fontSize: 28, fontWeight: FontWeight.bold),
                       ),
                       0.0,
@@ -159,7 +160,8 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                     if (orion.isUpdateAvailable)
                       _buildAnimatedItem(
                         VersionComparison(
-                          title: 'Orion',
+                          title: FlutterI18n.translate(
+                              context, 'updateAvailable.orion'),
                           branch: orion.release,
                           currentVersion: orion.currentVersion,
                           newVersion: orion.latestVersion,
@@ -172,7 +174,8 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                     if (athena.updateAvailable)
                       _buildAnimatedItem(
                         VersionComparison(
-                          title: 'AthenaOS',
+                          title: FlutterI18n.translate(
+                              context, 'updateAvailable.athenaOs'),
                           branch: athena.channel,
                           currentVersion: athena.currentVersion,
                           newVersion: athena.latestVersion,
@@ -182,8 +185,9 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                       ),
                     const SizedBox(height: 32),
                     _buildAnimatedItem(
-                      const Text(
-                        'Would you like to update now?',
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'updateAvailable.wouldYouLike'),
                         style: TextStyle(
                           fontSize: 18,
                           color: Colors.grey,
@@ -211,9 +215,10 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                               }
                               widget.onRemindLater();
                             },
-                            child: const Text(
-                              'Remind Later',
-                              style: TextStyle(fontSize: 22),
+                            child: Text(
+                              FlutterI18n.translate(
+                                  context, 'updateAvailable.remindLater'),
+                              style: const TextStyle(fontSize: 22),
                             ),
                           ),
                           const SizedBox(width: 24),
@@ -223,9 +228,10 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                               minimumSize: const Size(200, 64),
                             ),
                             onPressed: widget.onUpdateNow,
-                            child: const Text(
-                              'Update Now',
-                              style: TextStyle(fontSize: 22),
+                            child: Text(
+                              FlutterI18n.translate(
+                                  context, 'updateAvailable.updateNow'),
+                              style: const TextStyle(fontSize: 22),
                             ),
                           ),
                         ],
@@ -252,9 +258,10 @@ class _UpdateAvailableScreenState extends State<UpdateAvailableScreen>
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
-                              'Don\'t show update notifications',
-                              style: TextStyle(
+                            Text(
+                              FlutterI18n.translate(
+                                  context, 'updateAvailable.dontShow'),
+                              style: const TextStyle(
                                 fontSize: 20,
                                 color: Colors.white70,
                               ),

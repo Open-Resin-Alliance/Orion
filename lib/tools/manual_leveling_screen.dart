@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:logging/logging.dart';
@@ -127,7 +128,8 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 65),
             ),
-            child: const Text('Cancel'),
+            child:
+                Text(FlutterI18n.translate(context, 'manualLeveling.cancel')),
           ),
           GlassButton(
             tint: confirmTint,
@@ -146,10 +148,11 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
 
   Future<void> _confirmAndResetZOffset() async {
     final confirmed = await _showConfirmationDialog(
-      title: 'Reset Z Offset',
+      title: FlutterI18n.translate(context, 'manualLeveling.resetOffset'),
       message:
           'This will reset the Z offset to 0.00 mm.\n\nDo you want to continue?',
-      confirmLabel: 'Reset Offset',
+      confirmLabel:
+          FlutterI18n.translate(context, 'manualLeveling.resetOffset'),
       icon: PhosphorIcons.warning(),
       accentColor: Colors.redAccent,
       confirmTint: GlassButtonTint.negative,
@@ -180,10 +183,10 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
 
   Future<void> _confirmAndSetCurrentAsZZero(double currentZ) async {
     final confirmed = await _showConfirmationDialog(
-      title: 'Set Z = 0',
+      title: FlutterI18n.translate(context, 'manualLeveling.setZZero'),
       message:
           'This will set the current position (${currentZ.toStringAsFixed(2)} mm) as the Z offset.\n\nDo you want to continue?',
-      confirmLabel: 'Set Offset',
+      confirmLabel: FlutterI18n.translate(context, 'manualLeveling.setOffset'),
       icon: PhosphorIcons.warning(),
       accentColor: Colors.orangeAccent,
       confirmTint: GlassButtonTint.warn,
@@ -320,7 +323,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Manual Leveling',
+                FlutterI18n.translate(context, 'manualLeveling.title'),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
@@ -397,7 +400,8 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                       icon: Icon(PhosphorIcons.arrowLeft()),
                       iconAfterLabel: false,
                       scale: 1.3,
-                      label: 'Back',
+                      label:
+                          FlutterI18n.translate(context, 'manualLeveling.back'),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ),
@@ -425,7 +429,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
             child: Builder(builder: (context) {
               final value = values[index];
               final label = value < 1.0
-                  ? '${(value * 1000).round()} µm'
+                  ? '${(value * 1000).round()} Ãƒâ€šÃ‚Âµm'
                   : '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} mm';
 
               return GlassChoiceChip(
@@ -525,7 +529,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
 
         return GlassCard(
           child: Padding(
-            // Match FAB padding (16*1.3 ≈ 21, 12*1.3 ≈ 16)
+            // Match FAB padding (16*1.3 ÃƒÂ¢Ã¢â‚¬Â°Ã‹â€  21, 12*1.3 ÃƒÂ¢Ã¢â‚¬Â°Ã‹â€  16)
             padding:
                 const EdgeInsets.symmetric(horizontal: 21.0, vertical: 16.0),
             child: Row(

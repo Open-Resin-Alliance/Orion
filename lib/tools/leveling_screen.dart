@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_config.dart';
@@ -174,14 +175,15 @@ class LevelingScreen extends StatelessWidget {
             Expanded(
               child: _buildModeCard(
                 context,
-                title: 'Assisted Leveling',
+                title: FlutterI18n.translate(context, 'leveling.assisted'),
                 description:
                     'Guided leveling with automatic Z-axis homing and gap measurement.',
                 icon: PhosphorIcons.magicWand(),
                 accentColor: accent,
                 accentCard: false,
                 heroTag: 'start-assisted',
-                actionLabel: 'Coming Soon!',
+                actionLabel:
+                    FlutterI18n.translate(context, 'leveling.comingSoon'),
                 actionTint: GlassButtonTint.none,
                 actionEnabled: false,
                 actionIcon: PhosphorIcon(PhosphorIcons.clockClockwise()),
@@ -191,14 +193,15 @@ class LevelingScreen extends StatelessWidget {
             Expanded(
               child: _buildModeCard(
                 context,
-                title: 'Manual Leveling',
+                title: FlutterI18n.translate(context, 'leveling.manual'),
                 description:
                     'Manual Z-axis adjustment for experienced users who prefer direct control.',
                 icon: PhosphorIconsFill.wrench,
                 accentColor: accent,
                 accentCard: true,
                 heroTag: 'start-manual',
-                actionLabel: 'Manual Mode',
+                actionLabel:
+                    FlutterI18n.translate(context, 'leveling.manualMode'),
                 actionTint: GlassButtonTint.positive,
                 actionEnabled: true,
                 actionIcon: const Icon(PhosphorIconsFill.wrench),
@@ -347,7 +350,7 @@ class _LevelingOverlayState extends State<_LevelingOverlay> {
               ),
               const SizedBox(width: 12),
               Text(
-                'Leveling Preparation',
+                FlutterI18n.translate(context, 'leveling.preparation'),
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
@@ -442,7 +445,7 @@ class _LevelingHomingScreen extends StatefulWidget {
 
   /// When true, do not issue a homing command. This is used when the
   /// backend reports the device is already homed and we only need to
-  /// move to the safe top position — but we still show this screen while
+  /// move to the safe top position â€” but we still show this screen while
   /// motion completes and Z stabilizes.
   final bool skipHome;
 
@@ -696,7 +699,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
     if (z == null) {
       _log.fine('z is null');
       // If we're skipping homing and have initiated a move, don't clear
-      // _lastZ here — the status stream can be sparse during motion.
+      // _lastZ here â€” the status stream can be sparse during motion.
       if (!widget.skipHome) {
         _log.fine('clearing stability state (non-skipHome)');
         _stableSince = null;
@@ -724,7 +727,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
 
     if (changed) {
       _log.fine('z changed (last=$_lastZ -> now=$z); resetting stableSince');
-      // Z moved beyond threshold — reset stability tracking and cancel any
+      // Z moved beyond threshold â€” reset stability tracking and cancel any
       // pending timer.
       _stableSince = DateTime.now();
       if (widget.skipHome && _moveInitiated) {

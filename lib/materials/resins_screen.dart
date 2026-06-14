@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/materials/edit_resin_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:logging/logging.dart';
@@ -83,12 +84,15 @@ class ResinsScreenState extends State<ResinsScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Failed to load resins',
+                            Text(
+                                FlutterI18n.translate(
+                                    context, 'resins.failedLoad'),
                                 style: TextStyle(color: Colors.grey.shade300)),
                             const SizedBox(height: 12),
                             GlassButton(
                               onPressed: () => provider.refresh(),
-                              child: const Text('Retry'),
+                              child: Text(FlutterI18n.translate(
+                                  context, 'resins.retry')),
                             ),
                           ],
                         ),
@@ -120,7 +124,8 @@ class ResinsScreenState extends State<ResinsScreen> {
                             const SizedBox(height: 12),
                             GlassButton(
                               onPressed: () => _onAddResin(context),
-                              child: const Text('Create Profile'),
+                              child: Text(FlutterI18n.translate(
+                                  context, 'resins.createProfile')),
                             ),
                           ],
                         ),
@@ -172,7 +177,7 @@ class ResinsScreenState extends State<ResinsScreen> {
                           );
                         }
 
-                        // No selected profile found — fall back to a simple list.
+                        // No selected profile found ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â fall back to a simple list.
                         return ListView.separated(
                           controller: _scrollController,
                           itemCount: items.length,
@@ -299,7 +304,8 @@ class ResinsScreenState extends State<ResinsScreen> {
                                 ),
                               ),
                               child: Text(
-                                'Template',
+                                FlutterI18n.translate(
+                                    context, 'resins.template'),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -330,7 +336,7 @@ class ResinsScreenState extends State<ResinsScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 2.0),
                           child: Text(
-                            parts.join(' • '),
+                            parts.join(' ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ '),
                             style: TextStyle(
                               fontSize: 13,
                               color:
@@ -347,7 +353,9 @@ class ResinsScreenState extends State<ResinsScreen> {
                 Opacity(
                   opacity: isLocked ? 0.35 : 1.0,
                   child: Tooltip(
-                    message: isLocked ? 'Locked' : 'Edit',
+                    message: isLocked
+                        ? FlutterI18n.translate(context, 'resins.locked')
+                        : FlutterI18n.translate(context, 'resins.edit'),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: isLocked ? null : () => _onEditResin(resin),
@@ -362,7 +370,7 @@ class ResinsScreenState extends State<ResinsScreen> {
                                   size: 21, color: Colors.grey.shade200),
                               const SizedBox(width: 7),
                               Text(
-                                'Edit',
+                                FlutterI18n.translate(context, 'resins.edit'),
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -389,11 +397,12 @@ class ResinsScreenState extends State<ResinsScreen> {
     showDialog(
       context: context,
       builder: (_) => GlassAlertDialog(
-        title: const Text('Add Resin'),
+        title: Text(FlutterI18n.translate(context, 'resins.addResin')),
         content: const Text('Implement Add Resin flow'),
         actions: [
           GlassButton(
-              onPressed: () => Navigator.pop(context), child: Text('OK'))
+              onPressed: () => Navigator.pop(context),
+              child: Text(FlutterI18n.translate(context, 'resins.ok')))
         ],
       ),
     );
@@ -409,7 +418,7 @@ class ResinsScreenState extends State<ResinsScreen> {
 
     provider.selectResin(resin).then((_) {
       // Success: scroll the list back to top so the newly selected default
-      // (pinned) is visible at the top of the list. No snackbars — keep the
+      // (pinned) is visible at the top of the list. No snackbars ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â keep the
       // UX subtle and non-distracting.
       if (_scrollController.hasClients) {
         _scrollController.animateTo(0.0,

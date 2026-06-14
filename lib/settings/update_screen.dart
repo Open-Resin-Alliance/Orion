@@ -18,6 +18,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -127,7 +128,7 @@ class UpdateScreenState extends State<UpdateScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Reset Update Channel',
+                    FlutterI18n.translate(context, 'update.resetChannel'),
                     style: const TextStyle(
                       color: Colors.greenAccent,
                       fontWeight: FontWeight.bold,
@@ -136,9 +137,8 @@ class UpdateScreenState extends State<UpdateScreen>
                 ),
               ],
             ),
-            content: const Text(
-              'Would you like to switch back to the stable update channel?\n\n'
-              'This is recommended for production builds.',
+            content: Text(
+              FlutterI18n.translate(context, 'update.resetChannelMsg'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             actions: [
@@ -146,13 +146,14 @@ class UpdateScreenState extends State<UpdateScreen>
                 tint: GlassButtonTint.neutral,
                 onPressed: () => Navigator.of(dctx).pop(false),
                 style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                child: const Text('Keep Development Channel'),
+                child: Text(FlutterI18n.translate(context, 'update.keepDev')),
               ),
               GlassButton(
                 tint: GlassButtonTint.positive,
                 onPressed: () => Navigator.of(dctx).pop(true),
                 style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                child: const Text('Reset to Stable'),
+                child: Text(
+                    FlutterI18n.translate(context, 'update.resetToStable')),
               ),
             ],
           ),
@@ -197,7 +198,7 @@ class UpdateScreenState extends State<UpdateScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Development Firmware Ahead',
+                        FlutterI18n.translate(context, 'update.devFirmware'),
                         style: const TextStyle(
                           color: Colors.redAccent,
                           fontWeight: FontWeight.bold,
@@ -219,7 +220,8 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('I Accept'),
+                    child:
+                        Text(FlutterI18n.translate(context, 'update.iAccept')),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.positive,
@@ -335,7 +337,8 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Update Now'),
+                    child: Text(
+                        FlutterI18n.translate(context, 'update.updateNow')),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.positive,
@@ -985,7 +988,8 @@ class UpdateScreenState extends State<UpdateScreen>
                           ? 'Update Internal Build'
                           : (isBetaChannel && isSameVersion
                               ? 'Force Update'
-                              : 'Update AthenaOS'),
+                              : FlutterI18n.translate(
+                                  context, 'update.updateAthena')),
                       style: const TextStyle(fontSize: 20),
                     ),
                   ],

@@ -39,7 +39,7 @@ import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/home/home_screen.dart';
 import 'package:orion/home/startup_gate.dart';
-import 'package:orion/l10n/generated/app_localizations.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/status/status_screen.dart';
@@ -298,6 +298,11 @@ Future<File> _resolveLogFile() async {
 
   // As a final fallback, return a file in CWD
   return File(p.join(Directory.current.path, 'app.log'));
+}
+
+/// Handle missing translation keys by logging them.
+void missingTranslationHandler(String key, Locale? locale) {
+  debugPrint('flutter_i18n: Missing translation key "$key" for $locale');
 }
 
 class OrionRoot extends StatelessWidget {
@@ -653,13 +658,32 @@ class OrionMainAppState extends State<OrionMainApp> {
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,
           locale: localeProvider.locale,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
+          localizationsDelegates: [
+            FlutterI18nDelegate(
+              translationLoader: FileTranslationLoader(
+                useCountryCode: false,
+                fallbackFile: 'en',
+                basePath: 'assets/i18n',
+              ),
+              missingTranslationHandler: missingTranslationHandler,
+            ),
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: AppLocalizations.supportedLocales,
+          supportedLocales: const [
+            Locale('en', 'US'),
+            Locale('de', 'DE'),
+            Locale('es', 'ES'),
+            Locale('fr', 'FR'),
+            Locale('hr', 'HR'),
+            Locale('ja', 'JP'),
+            Locale('ko', 'KR'),
+            Locale('pl', 'PL'),
+            Locale('zh', 'CN'),
+            Locale('zh', 'TW'),
+            Locale('zh'),
+          ],
         );
       }),
     );

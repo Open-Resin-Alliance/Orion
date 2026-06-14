@@ -16,14 +16,11 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/util/error_handling/error_details.dart';
 
 void showErrorDialog(BuildContext context, String errorCode) {
-  ErrorDetails? errorDetails =
-      errorLookupTable[errorCode] ?? errorLookupTable['default'];
-
   WidgetsBinding.instance.addPostFrameCallback((_) {
     showDialog(
       context: context,
@@ -43,7 +40,7 @@ void showErrorDialog(BuildContext context, String errorCode) {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      errorDetails!.title,
+                      _getErrorTitle(context, errorCode),
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -51,7 +48,8 @@ void showErrorDialog(BuildContext context, String errorCode) {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Code: $errorCode',
+                      FlutterI18n.translate(context, 'error.code')
+                          .replaceAll('%s', errorCode),
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey.shade400,
@@ -64,7 +62,7 @@ void showErrorDialog(BuildContext context, String errorCode) {
             ],
           ),
           content: Text(
-            _cleanErrorMessage(errorDetails.message),
+            _getErrorMessage(context, errorCode),
             style: const TextStyle(
               fontSize: 18,
               height: 1.5,
@@ -76,7 +74,7 @@ void showErrorDialog(BuildContext context, String errorCode) {
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text('Close'),
+              child: Text(FlutterI18n.translate(context, 'common.close')),
             ),
           ],
         );
@@ -85,11 +83,14 @@ void showErrorDialog(BuildContext context, String errorCode) {
   });
 }
 
-/// Helper function to clean error messages by removing duplicate error codes
-String _cleanErrorMessage(String message) {
-  // Remove "Error Code: XXXX-XXXX" patterns and extra whitespace
-  return message
-      .replaceAll(RegExp(r'\n\n?Error Code: [A-Z]+-[A-Z]+'), '')
-      .replaceAll(RegExp(r'Error Code: [A-Z]+-[A-Z]+\n?'), '')
-      .trim();
+/// Look up the translated error title for the given error code.
+String _getErrorTitle(BuildContext context, String code) {
+  final key = code.toLowerCase().replaceAll('-', '');
+  return FlutterI18n.translate(context, 'error.${key}Title');
+}
+
+/// Look up the translated error message for the given error code.
+String _getErrorMessage(BuildContext context, String code) {
+  final key = code.toLowerCase().replaceAll('-', '');
+  return FlutterI18n.translate(context, 'error.${key}Msg');
 }

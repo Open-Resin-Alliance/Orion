@@ -18,6 +18,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
 import 'package:provider/provider.dart';
@@ -62,7 +63,7 @@ class _UIScreenState extends State<UIScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: OrionAppBar(
-          title: const Text('User Interface'),
+          title: Text(FlutterI18n.translate(context, 'uiSettings.title')),
           toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: <Widget>[
             SystemStatusWidget(),
@@ -82,8 +83,9 @@ class _UIScreenState extends State<UIScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Theme Mode',
+                        Text(
+                          FlutterI18n.translate(
+                              context, 'uiSettings.themeMode'),
                           style: TextStyle(
                             fontSize: 26.0,
                           ),
@@ -114,8 +116,9 @@ class _UIScreenState extends State<UIScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Theme Color',
+                          Text(
+                            FlutterI18n.translate(
+                                context, 'uiSettings.themeColor'),
                             style: TextStyle(
                               fontSize: 26.0,
                             ),
@@ -146,15 +149,17 @@ class _UIScreenState extends State<UIScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Standby Screen',
+                            Text(
+                              FlutterI18n.translate(
+                                  context, 'uiSettings.standbyScreen'),
                               style: TextStyle(
                                 fontSize: 26.0,
                               ),
                             ),
                             const SizedBox(height: 16.0),
                             OrionListTile(
-                              title: 'Enable Standby Screen',
+                              title: FlutterI18n.translate(
+                                  context, 'uiSettings.enableStandby'),
                               value: standbySettings.standbyEnabled,
                               onChanged: (bool value) {
                                 standbySettings.setStandbyEnabled(value);
@@ -174,8 +179,9 @@ class _UIScreenState extends State<UIScreen> {
                                         horizontal: 16.0, vertical: 12.0),
                                     child: Row(
                                       children: [
-                                        const Text(
-                                          'Standby Mode',
+                                        Text(
+                                          FlutterI18n.translate(context,
+                                              'uiSettings.standbyMode'),
                                           style: TextStyle(
                                             fontFamily: 'AtkinsonHyperlegible',
                                             fontSize: 24.0,
@@ -184,8 +190,10 @@ class _UIScreenState extends State<UIScreen> {
                                         const Spacer(),
                                         Text(
                                           standbySettings.standbyMode == 'logo'
-                                              ? 'Logo'
-                                              : 'Clock',
+                                              ? FlutterI18n.translate(
+                                                  context, 'uiSettings.logo')
+                                              : FlutterI18n.translate(
+                                                  context, 'uiSettings.clock'),
                                           style: TextStyle(
                                             fontSize: 20.0,
                                             color: Theme.of(context)
@@ -208,7 +216,8 @@ class _UIScreenState extends State<UIScreen> {
                               ),
                               const SizedBox(height: 16.0),
                               OrionListTile(
-                                title: 'Dim Screen in Standby',
+                                title: FlutterI18n.translate(
+                                    context, 'uiSettings.dimScreen'),
                                 value: standbySettings.dimmingEnabled,
                                 onChanged: (bool value) {
                                   standbySettings.setDimmingEnabled(value);
@@ -217,7 +226,8 @@ class _UIScreenState extends State<UIScreen> {
                               ),
                               const SizedBox(height: 16.0),
                               OrionListTile(
-                                title: 'Dim LED Lighting in Standby',
+                                title: FlutterI18n.translate(
+                                    context, 'uiSettings.dimLed'),
                                 value:
                                     lightingSettings.standbyLedDimmingEnabled,
                                 onChanged: (bool value) {
@@ -286,7 +296,14 @@ class _UIScreenState extends State<UIScreen> {
                                   const SizedBox(height: 8.0),
                                   Center(
                                     child: Text(
-                                      'Screen will enter standby after ${standbyMinutes}m ${standbySeconds}s of inactivity${standbyMinutes == 0 && standbySeconds < 30 ? '\nWarning: Minimum recommended duration is 30 seconds.' : ''}',
+                                      standbyMinutes == 0 && standbySeconds < 30
+                                          ? '${FlutterI18n.translate(context, 'uiSettings.standbyAfter').replaceAll('%d', standbyMinutes.toString()).replaceAll('%d', standbySeconds.toString())}\n${FlutterI18n.translate(context, 'uiSettings.standbyWarning')}'
+                                          : FlutterI18n.translate(context,
+                                                  'uiSettings.standbyAfter')
+                                              .replaceAll('%d',
+                                                  standbyMinutes.toString())
+                                              .replaceAll('%d',
+                                                  standbySeconds.toString()),
                                       textAlign: TextAlign.center,
                                       style: const TextStyle(
                                         fontSize: 16.0,
@@ -379,9 +396,10 @@ class _UIScreenState extends State<UIScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const GlassDialogHeader(
+              GlassDialogHeader(
                 icon: Icons.nightlight_round,
-                title: 'Select Standby Mode',
+                title: FlutterI18n.translate(
+                    context, 'uiSettings.selectStandbyMode'),
               ),
               Padding(
                 padding: const EdgeInsets.all(16.0),

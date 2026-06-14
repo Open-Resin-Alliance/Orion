@@ -19,6 +19,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/files/search_file_screen.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:path/path.dart' as path;
@@ -182,7 +183,7 @@ class FilesScreenState extends State<FilesScreen> {
       appBar: AppBar(
         title: Text(
           path.basename(_directory.path) == 'gcodes'
-              ? 'Print Files'
+              ? FlutterI18n.translate(context, 'files.printFiles')
               : path.basename(_directory.path) == 'Download' ||
                       path.basename(_directory.path) == "Downloads"
                   ? path.basename(_directory.path)
@@ -248,9 +249,10 @@ class FilesScreenState extends State<FilesScreen> {
                 if (index == 0) {
                   return ListTile(
                     leading: const Icon(Icons.subdirectory_arrow_left_rounded),
-                    title: const Row(
+                    title: Row(
                       children: [
-                        Text('Leave Directory', style: TextStyle(fontSize: 24)),
+                        I18nText('files.leaveDirectory',
+                            child: Text('', style: TextStyle(fontSize: 24))),
                       ],
                     ),
                     onTap: () {
@@ -285,8 +287,9 @@ class FilesScreenState extends State<FilesScreen> {
                       } catch (e) {
                         if (e is FileSystemException) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Operation not permitted'),
+                            SnackBar(
+                              content: Text(FlutterI18n.translate(
+                                  context, 'print.notPermitted')),
                             ),
                           );
                         }
@@ -368,8 +371,9 @@ class FilesScreenState extends State<FilesScreen> {
                         } catch (e) {
                           if (e is FileSystemException) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Operation not permitted'),
+                              SnackBar(
+                                content: Text(FlutterI18n.translate(
+                                    context, 'print.notPermitted')),
                               ),
                             );
                           }
@@ -399,7 +403,9 @@ class FilesScreenState extends State<FilesScreen> {
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                const Text('Delete File'),
+                                                Text(FlutterI18n.translate(
+                                                    context,
+                                                    'files.deleteFile')),
                                                 Text(
                                                   path.basename(file.path),
                                                   maxLines: 1,
@@ -415,8 +421,9 @@ class FilesScreenState extends State<FilesScreen> {
                                           ),
                                         ],
                                       ),
-                                      content: const Text(
-                                        'Are you sure you want to delete this file?\nThis action cannot be undone.',
+                                      content: Text(
+                                        FlutterI18n.translate(
+                                            context, 'files.deleteConfirm'),
                                         style: TextStyle(
                                           height: 1.5,
                                           fontSize: 18,
@@ -431,7 +438,8 @@ class FilesScreenState extends State<FilesScreen> {
                                           style: ElevatedButton.styleFrom(
                                             minimumSize: const Size(0, 60),
                                           ),
-                                          child: const Text('Cancel'),
+                                          child: Text(FlutterI18n.translate(
+                                              context, 'common.cancel')),
                                         ),
                                         GlassButton(
                                           tint: GlassButtonTint.negative,
@@ -443,16 +451,19 @@ class FilesScreenState extends State<FilesScreen> {
                                             Navigator.of(context).pop();
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
-                                              const SnackBar(
+                                              SnackBar(
                                                 content: Text(
-                                                    'File deleted successfully.'),
+                                                    FlutterI18n.translate(
+                                                        context,
+                                                        'files.fileDeleted')),
                                               ),
                                             );
                                           },
                                           style: ElevatedButton.styleFrom(
                                             minimumSize: const Size(0, 60),
                                           ),
-                                          child: const Text('Delete'),
+                                          child: Text(FlutterI18n.translate(
+                                              context, 'common.delete')),
                                         ),
                                       ],
                                     );

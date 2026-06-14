@@ -19,6 +19,7 @@ import 'dart:async';
 
 import 'package:async/async.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 
 import 'package:orion/backend_service/backend_registry.dart';
@@ -154,10 +155,10 @@ class ExposureScreenState extends State<ExposureScreen> {
           children: [
             Text(
               type == 'White'
-                  ? 'Cleaning'
+                  ? FlutterI18n.translate(context, 'exposure.cleaning')
                   : type != null
-                      ? 'Testing $type'
-                      : 'Exposing',
+                      ? '${FlutterI18n.translate(context, 'exposure.testing')} $type'
+                      : FlutterI18n.translate(context, 'exposure.exposing'),
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -334,7 +335,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Grid',
+                              FlutterI18n.translate(context, 'exposure.grid'),
                               style: TextStyle(
                                 fontSize: 24,
                                 color: _apiErrorState ? Colors.grey : null,
@@ -367,7 +368,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Logo',
+                              FlutterI18n.translate(context, 'exposure.logo'),
                               style: TextStyle(
                                 fontSize: 24,
                                 color: _apiErrorState ? Colors.grey : null,

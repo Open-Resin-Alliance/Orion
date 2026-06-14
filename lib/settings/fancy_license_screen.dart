@@ -19,6 +19,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter/foundation.dart'
     show LicenseEntry, LicenseRegistry, LicenseParagraph;
 
@@ -98,7 +99,7 @@ class _AboutHeader extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        'built with the help of these amazing packages',
+                        FlutterI18n.translate(context, 'licenses.subtitle'),
                         style: Theme.of(context).textTheme.bodyMedium,
                         softWrap: true,
                       ),
@@ -112,7 +113,7 @@ class _AboutHeader extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                'built with the help of these amazing packages',
+                FlutterI18n.translate(context, 'licenses.subtitle'),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
@@ -137,12 +138,12 @@ class _PackageLicenseScreen extends StatelessWidget {
     return GlassApp(
       child: Scaffold(
         appBar: OrionAppBar(
-            title: Text(packageName),
-            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
-            actions: <Widget>[
-              SystemStatusWidget(),
-            ],
-          ),
+          title: Text(packageName),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+          actions: <Widget>[
+            SystemStatusWidget(),
+          ],
+        ),
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
@@ -220,24 +221,24 @@ class _FancyLicensePageState extends State<FancyLicensePage> {
           if (!snapshot.hasData) {
             return Scaffold(
               appBar: OrionAppBar(
-            title: const Text('Loading Licenses...'),
-            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
-            actions: <Widget>[
-              SystemStatusWidget(),
-            ],
-          ),
+                title: Text(FlutterI18n.translate(context, 'licenses.loading')),
+                toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+                actions: <Widget>[
+                  SystemStatusWidget(),
+                ],
+              ),
               body: Center(child: CircularProgressIndicator()),
             );
           }
           final data = snapshot.data!;
           return Scaffold(
             appBar: OrionAppBar(
-            title: const Text('Open-Source Licenses'),
-            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
-            actions: <Widget>[
-              SystemStatusWidget(),
-            ],
-          ),
+              title: Text(FlutterI18n.translate(context, 'licenses.title')),
+              toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+              actions: <Widget>[
+                SystemStatusWidget(),
+              ],
+            ),
             body: ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: data.packages.length + 1,

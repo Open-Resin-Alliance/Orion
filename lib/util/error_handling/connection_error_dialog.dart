@@ -18,6 +18,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:provider/provider.dart';
 
 import 'package:logging/logging.dart';
@@ -110,7 +111,7 @@ class _ConnectionErrorDialogContentState
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 60),
             ),
-            child: const Text('Retry now'),
+            child: Text(FlutterI18n.translate(context, 'connection.retryNow')),
           ),
         ),
         const SizedBox(width: 12),
@@ -121,7 +122,7 @@ class _ConnectionErrorDialogContentState
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 60),
             ),
-            child: const Text('Close'),
+            child: Text(FlutterI18n.translate(context, 'common.close')),
           ),
         ),
       ],
@@ -146,13 +147,18 @@ class _ConnectionErrorDialogContentState
   String _formatCountdown(DateTime? at) {
     if (at == null) return '—';
     final now = DateTime.now();
-    if (at.isBefore(now)) return '0 sec';
+    if (at.isBefore(now))
+      return FlutterI18n.translate(context, 'connection.sec0');
     final diff = at.difference(now);
     final s = diff.inSeconds;
-    if (s < 60) return '$s sec';
+    if (s < 60)
+      return FlutterI18n.translate(context, 'connection.sec')
+          .replaceAll('%s', '$s');
     final m = diff.inMinutes;
     final sec = s % 60;
-    return '$m min $sec secs';
+    return FlutterI18n.translate(context, 'connection.minSec')
+        .replaceAll('%s', '$m')
+        .replaceAll('%s', '$sec');
   }
 
   @override

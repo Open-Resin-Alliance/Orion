@@ -19,6 +19,7 @@
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/materials/post_calibration_overlay.dart';
@@ -446,7 +447,7 @@ class StatusScreenState extends State<StatusScreen> {
         // the thumbnail so the UI doesn't immediately render a stale/placeholder
         // preview. However, if the backend reports the job has already finished
         // (idle with layer data) or is canceled we should not remain in a
-        // spinner indefinitely — render the final status instead.
+        // spinner indefinitely â€” render the final status instead.
         final bool finishedSnapshot =
             status?.isIdle == true && status?.layer != null;
         final bool canceledSnapshot = status?.isCanceled == true;
@@ -488,10 +489,10 @@ class StatusScreenState extends State<StatusScreen> {
                   children: [
                     const CircularProgressIndicator(),
                     if (awaiting && waitMillis > 5000)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 16.0),
                         child: Text(
-                          'Waiting for printer to start…',
+                          FlutterI18n.translate(context, 'status.waiting'),
                           style: TextStyle(fontSize: 16),
                         ),
                       ),
@@ -505,13 +506,14 @@ class StatusScreenState extends State<StatusScreen> {
         if (provider.error != null) {
           return GlassApp(
             child: Scaffold(
-              appBar: AppBar(title: const Text('Error')),
-              body: const Center(
+              appBar: AppBar(
+                  title: Text(FlutterI18n.translate(context, 'status.error'))),
+              body: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'An Error has occurred while fetching status!\n'
+                      '${FlutterI18n.translate(context, 'status.error')}\n\n'
                       'Please ensure that Odyssey is running and accessible.\n\n'
                       'If the issue persists, please contact support.\n'
                       'Error Code: PINK-CARROT',
@@ -528,7 +530,7 @@ class StatusScreenState extends State<StatusScreen> {
         if (!awaiting && status.printData == null) {
           return Scaffold(
             appBar: AppBar(
-              title: const Text('No Print Data Available'),
+              title: Text(FlutterI18n.translate(context, 'status.noPrintData')),
             ),
             body: Center(
               child: GlassButton(
@@ -540,10 +542,10 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                   );
                 },
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.all(20),
                   child: Text(
-                    'Go to Files',
+                    FlutterI18n.translate(context, 'status.goToFiles'),
                     style: TextStyle(fontSize: 26),
                   ),
                 ),
@@ -710,7 +712,9 @@ class StatusScreenState extends State<StatusScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      fileName.isNotEmpty ? fileName : 'No file',
+                      fileName.isNotEmpty
+                          ? fileName
+                          : FlutterI18n.translate(context, 'status.noFile'),
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -827,13 +831,13 @@ class StatusScreenState extends State<StatusScreen> {
                   Row(children: [
                     Expanded(
                       child: _buildInfoCard(
-                        'Current Z Position',
+                        FlutterI18n.translate(context, 'status.currentZ'),
                         '${statusModel?.physicalState.z.toStringAsFixed(3) ?? '-'} mm',
                       ),
                     ),
                     Expanded(
                       child: _buildInfoCard(
-                        'Print Layers',
+                        FlutterI18n.translate(context, 'status.printLayers'),
                         layerCurrent == null || layerTotal == null
                             ? '- / -'
                             : '$layerCurrent / $layerTotal',
@@ -841,10 +845,12 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                   ]),
                   const SizedBox(height: 5),
-                  _buildInfoCard('Estimated Print Time', elapsedStr),
+                  _buildInfoCard(
+                      FlutterI18n.translate(context, 'status.estimatedTime'),
+                      elapsedStr),
                   const SizedBox(height: 5),
                   _buildInfoCard(
-                    'Estimated Volume',
+                    FlutterI18n.translate(context, 'status.estimatedVolume'),
                     usedMaterial == null
                         ? '-'
                         : '${usedMaterial.toStringAsFixed(2)} mL',
@@ -874,18 +880,18 @@ class StatusScreenState extends State<StatusScreen> {
             child: Column(children: [
               Spacer(),
               _buildInfoCard(
-                'Current Z Position',
+                FlutterI18n.translate(context, 'status.currentZ'),
                 '${statusModel?.physicalState.z.toStringAsFixed(3) ?? '-'} mm',
               ),
               _buildInfoCard(
-                'Print Layers',
+                FlutterI18n.translate(context, 'status.printLayers'),
                 layerCurrent == null || layerTotal == null
                     ? '- / -'
                     : '$layerCurrent / $layerTotal',
               ),
               _buildInfoCard('Estimated Print Time', elapsedStr),
               _buildInfoCard(
-                'Estimated Volume',
+                FlutterI18n.translate(context, 'status.estimatedVolume'),
                 usedMaterial == null
                     ? '-'
                     : '${usedMaterial.toStringAsFixed(2)} mL',
@@ -929,7 +935,7 @@ class StatusScreenState extends State<StatusScreen> {
   Widget _buildThumbnailView(
       BuildContext context, StatusProvider provider, StatusModel? status) {
     // Prefer provider's thumbnail bytes. If none yet, consider the
-    // initialThumbnailBytes passed from the Details screen — but do not
+    // initialThumbnailBytes passed from the Details screen â€” but do not
     // show a generated placeholder as the initial preview while the
     // provider is still probing for a real preview. In that case show the
     // spinner until provider provides a non-placeholder or finishes.
@@ -1266,7 +1272,7 @@ class StatusScreenState extends State<StatusScreen> {
               BackendService(), plateId, layerIndex,
               filePath: filePath);
       if (bytes.isNotEmpty) {
-        // Start precaching but don't await it — decoding can be expensive
+        // Start precaching but don't await it â€” decoding can be expensive
         // and awaiting here can cause UI jank. Fire-and-forget instead.
         _precacheLayerPreview(bytes).catchError((_) {});
         setState(() {
@@ -1295,7 +1301,7 @@ class StatusScreenState extends State<StatusScreen> {
     try {
       final fileData = status.printData?.fileData;
       if (fileData != null) {
-        // Prefetch 3D thumbnail (Large size) — fetch bytes and precache so
+        // Prefetch 3D thumbnail (Large size) â€” fetch bytes and precache so
         // Flutter's image cache holds a decoded image for instant display.
         BackendService()
             .getFileThumbnail(
@@ -1751,7 +1757,8 @@ class StatusScreenState extends State<StatusScreen> {
   Widget _buildAnalyticsView(
       BuildContext context, StatusProvider provider, StatusModel? status) {
     if (status == null) {
-      return const Center(child: Text('No print data available'));
+      return Center(
+          child: Text(FlutterI18n.translate(context, 'status.noPrintData')));
     }
 
     final layerCurrent = status.layer;
@@ -1870,7 +1877,7 @@ class StatusScreenState extends State<StatusScreen> {
                       child: _buildInfoCard(
                         'CPU Temp',
                         provider.cpuTemperature != null
-                            ? '${provider.cpuTemperature!.toStringAsFixed(1)}°C'
+                            ? '${provider.cpuTemperature!.toStringAsFixed(1)}Â°C'
                             : 'N/A',
                         provider.cpuTemperature ?? 0.0,
                       ),
@@ -1882,7 +1889,7 @@ class StatusScreenState extends State<StatusScreen> {
                       child: _buildInfoCard(
                         'Vat Temperature',
                         provider.resinTemperature != null
-                            ? '${provider.resinTemperature}°C'
+                            ? '${provider.resinTemperature}Â°C'
                             : 'N/A',
                       ),
                     ),
@@ -1945,7 +1952,7 @@ class StatusScreenState extends State<StatusScreen> {
                   _buildInfoCard(
                       'Resin Temp.',
                       provider.resinTemperature != null
-                          ? '${provider.resinTemperature}°C'
+                          ? '${provider.resinTemperature}Â°C'
                           : 'N/A', // TODO: Connect to actual data
                       provider.resinTemperature!.toDouble()),
                   // UV LED Temp is provided via analytics (TemperatureOutside)
@@ -1953,7 +1960,7 @@ class StatusScreenState extends State<StatusScreen> {
                     final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
                     final dynamic uvRaw =
                         analyticsProv.getLatestForKey('TemperatureOutside');
-                    final String uvText = uvRaw != null ? '$uvRaw°C' : 'N/A';
+                    final String uvText = uvRaw != null ? '$uvRawÂ°C' : 'N/A';
                     final double uvVal = uvRaw is num
                         ? uvRaw.toDouble()
                         : (double.tryParse(uvRaw?.toString() ?? '') ?? 0.0);
@@ -2013,7 +2020,7 @@ class StatusScreenState extends State<StatusScreen> {
                 final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
                 final dynamic mcuRaw =
                     analyticsProv.getLatestForKey('TemperatureMCU');
-                final String mcuText = mcuRaw != null ? '$mcuRaw°C' : 'N/A';
+                final String mcuText = mcuRaw != null ? '$mcuRawÂ°C' : 'N/A';
                 final double mcuVal = mcuRaw is num
                     ? mcuRaw.toDouble()
                     : (double.tryParse(mcuRaw?.toString() ?? '') ?? 0.0);
@@ -2022,7 +2029,7 @@ class StatusScreenState extends State<StatusScreen> {
               _buildInfoCard(
                   'CPU Temp.',
                   provider.cpuTemperature != null
-                      ? '${provider.cpuTemperature!.toStringAsFixed(1)}°C'
+                      ? '${provider.cpuTemperature!.toStringAsFixed(1)}Â°C'
                       : 'N/A',
                   provider.cpuTemperature ?? 0.0),
               Spacer(),

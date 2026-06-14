@@ -19,6 +19,7 @@ import 'dart:io';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as path;
@@ -95,7 +96,9 @@ class ImportScreenState extends State<ImportScreen> {
       _logger.warning('Failed to delete local file', e, st);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to delete file')),
+          SnackBar(
+              content:
+                  Text(FlutterI18n.translate(context, 'files.failedToDelete'))),
         );
       }
     }
@@ -107,22 +110,28 @@ class ImportScreenState extends State<ImportScreen> {
 
     if (jobName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a job name')),
+        SnackBar(
+            content:
+                Text(FlutterI18n.translate(context, 'import.enterJobName'))),
       );
       return;
     }
 
     if (_selectedResinKey == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a material profile')),
+        SnackBar(
+            content:
+                Text(FlutterI18n.translate(context, 'import.selectMaterial'))),
       );
       return;
     }
 
     // Create notifiers for progress overlay
     final progressNotifier = ValueNotifier<double>(0.0);
-    final messageNotifier = ValueNotifier<String>('Preparing import...');
-    final titleNotifier = ValueNotifier<String>('IMPORTING FILE');
+    final messageNotifier = ValueNotifier<String>(
+        FlutterI18n.translate(context, 'import.preparing'));
+    final titleNotifier = ValueNotifier<String>(
+        FlutterI18n.translate(context, 'import.importingFile'));
 
     // Show import progress overlay
     late final navigator = Navigator.of(context);
@@ -141,7 +150,8 @@ class ImportScreenState extends State<ImportScreen> {
     }
 
     try {
-      messageNotifier.value = 'Uploading file...';
+      messageNotifier.value =
+          FlutterI18n.translate(context, 'import.uploading');
       progressNotifier.value = 0.05;
 
       final resinsProvider =
@@ -249,7 +259,8 @@ class ImportScreenState extends State<ImportScreen> {
                 );
               } else {
                 progressNotifier.value = 1.0;
-                messageNotifier.value = 'Import complete!';
+                messageNotifier.value =
+                    FlutterI18n.translate(context, 'import.importComplete');
               }
 
               // Wait a moment for the UI to show completion, then navigate
@@ -284,7 +295,8 @@ class ImportScreenState extends State<ImportScreen> {
           } catch (e) {
             if (pollAttempts >= maxAttempts && mounted) {
               // Timeout waiting for file/metadata
-              messageNotifier.value = 'Import complete (metadata pending)';
+              messageNotifier.value = FlutterI18n.translate(
+                  context, 'import.importCompletePending');
               progressNotifier.value = 1.0;
 
               await Future.delayed(const Duration(milliseconds: 800));
@@ -300,7 +312,8 @@ class ImportScreenState extends State<ImportScreen> {
     } catch (e, st) {
       _logger.severe('Failed to import file', e, st);
       if (mounted) {
-        messageNotifier.value = 'Import failed!';
+        messageNotifier.value =
+            FlutterI18n.translate(context, 'import.importFailed');
         progressNotifier.value = 0.0;
 
         await Future.delayed(const Duration(milliseconds: 1000));
@@ -309,7 +322,9 @@ class ImportScreenState extends State<ImportScreen> {
         navigator.pop(); // Close overlay
 
         messenger.showSnackBar(
-          SnackBar(content: Text('Failed to import file: $e')),
+          SnackBar(
+              content: Text(
+                  '${FlutterI18n.translate(context, 'import.failedToImport').replaceAll('%s', e.toString())}')),
         );
       }
     }
@@ -349,7 +364,8 @@ class ImportScreenState extends State<ImportScreen> {
       {double baseProgress = 0.0,
       double span = 1.0,
       ValueNotifier<String>? titleNotifier}) async {
-    messageNotifier.value = 'Ever tried DragonFruit? It\'s delicious!';
+    messageNotifier.value =
+        FlutterI18n.translate(context, 'import.dragonfruit');
 
     final startTime = DateTime.now();
     const timeout = Duration(minutes: 15);
@@ -361,7 +377,8 @@ class ImportScreenState extends State<ImportScreen> {
 
       if (progress == null) {
         if (!sawProgress) {
-          messageNotifier.value = 'Waiting for slicer to start...';
+          messageNotifier.value =
+              FlutterI18n.translate(context, 'import.waitingSlicer');
         }
         progressNotifier.value = baseProgress;
       } else {
@@ -372,29 +389,34 @@ class ImportScreenState extends State<ImportScreen> {
 
         // Ignore stale 100% from a previous slice until we observe a reset.
         if (!sawReset && clamped >= 0.99) {
-          messageNotifier.value = 'Waiting for slicer to start...';
+          messageNotifier.value =
+              FlutterI18n.translate(context, 'import.waitingSlicer');
           progressNotifier.value = baseProgress;
         } else {
           if (clamped < 0.95) {
             sawReset = true;
           }
           if (sawReset) {
-            titleNotifier?.value = 'SLICING JOB';
+            titleNotifier?.value =
+                FlutterI18n.translate(context, 'import.slicingJob');
           }
-          messageNotifier.value = 'Ever tried DragonFruit? It\'s delicious!';
+          messageNotifier.value =
+              FlutterI18n.translate(context, 'import.dragonfruit');
           final normalized = clamped.clamp(0.0, 0.99);
           progressNotifier.value = baseProgress + (normalized * span);
         }
 
         if (sawReset && clamped >= 0.99) {
-          messageNotifier.value = 'File sliced successfully!';
+          messageNotifier.value =
+              FlutterI18n.translate(context, 'import.slicedSuccess');
           progressNotifier.value = baseProgress + span;
           break;
         }
       }
 
       if (DateTime.now().difference(startTime) > timeout) {
-        messageNotifier.value = 'Slicing timed out';
+        messageNotifier.value =
+            FlutterI18n.translate(context, 'import.slicedTimeout');
         break;
       }
 
@@ -413,7 +435,7 @@ class ImportScreenState extends State<ImportScreen> {
         appBar: OrionAppBar(
           actions: const [SystemStatusWidget()],
           toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
-          title: const Text('Back'),
+          title: Text(FlutterI18n.translate(context, 'common.back')),
         ),
         body: Padding(
           padding: OrionSpacing.screenPadding,
@@ -451,7 +473,8 @@ class ImportScreenState extends State<ImportScreen> {
                 alignment: Alignment.centerLeft,
                 child: SpawnOrionTextField(
                   key: _jobNameKey,
-                  keyboardHint: 'Job Name',
+                  keyboardHint:
+                      FlutterI18n.translate(context, 'import.jobName'),
                   locale: Localizations.localeOf(context).toString(),
                   presetText: _defaultJobName(),
                 ),
@@ -485,11 +508,11 @@ class ImportScreenState extends State<ImportScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Failed to load material profiles'),
+            Text(FlutterI18n.translate(context, 'import.failedLoadMaterials')),
             const SizedBox(height: 16),
             GlassButton(
               onPressed: provider.refresh,
-              child: const Text('Retry'),
+              child: Text(FlutterI18n.translate(context, 'common.retry')),
             ),
           ],
         ),

@@ -20,6 +20,7 @@ import 'dart:io';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -54,6 +55,8 @@ Future<String> executeCommand(String command, List<String> arguments) async {
 Future<String> getDeviceModel() async {
   if (!Platform.isLinux) {
     switch (Platform.operatingSystem) {
+      // These are top-level function return values without context.
+      // They will be translated at the call site.
       case 'macos':
         return 'macOS Device';
       case 'android':
@@ -127,7 +130,7 @@ class AboutScreenState extends State<AboutScreen> {
       children: [
         buildNameCard(config.getString('machineName', category: 'machine')),
         buildInfoCard(
-          'Serial Number',
+          FlutterI18n.translate(context, 'about.serialNumber'),
           kDebugMode
               ? 'DBG-0001-001'
               : config.getString('machineSerial', category: 'machine'),
@@ -151,7 +154,7 @@ class AboutScreenState extends State<AboutScreen> {
         final leftCards = [
           buildNameCard(config.getString('machineName', category: 'machine')),
           buildInfoCard(
-            'Serial Number',
+            FlutterI18n.translate(context, 'about.serialNumber'),
             kDebugMode
                 ? 'DBG-0001-001'
                 : config.getString('machineSerial', category: 'machine'),
@@ -225,7 +228,8 @@ class AboutScreenState extends State<AboutScreen> {
                 child: GlassCard(
                   child: ListTile(
                     leading: const Icon(Icons.list, size: 30),
-                    title: const Text('Changelog'),
+                    title:
+                        Text(FlutterI18n.translate(context, 'about.changelog')),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -242,7 +246,8 @@ class AboutScreenState extends State<AboutScreen> {
                 padding: const EdgeInsets.all(10),
                 child: GlassCard(
                   child: ListTile(
-                    title: const Text('Open-Source Licenses'),
+                    title:
+                        Text(FlutterI18n.translate(context, 'about.licenses')),
                     leading: const Icon(Icons.favorite, size: 30),
                     onTap: () {
                       showFancyLicensePage(
@@ -262,9 +267,10 @@ class AboutScreenState extends State<AboutScreen> {
             TextSpan(
               style: Theme.of(context).textTheme.titleMedium,
               children: [
-                const TextSpan(text: 'UI & API Version '),
                 TextSpan(
-                  text: '(Tap for more info)',
+                    text: FlutterI18n.translate(context, 'about.uiVersion')),
+                TextSpan(
+                  text: FlutterI18n.translate(context, 'about.tapForInfo'),
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w600,
@@ -277,7 +283,7 @@ class AboutScreenState extends State<AboutScreen> {
             future: getVersionNumber(),
             builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
               return AutoSizeText(
-                snapshot.data ?? 'N/A',
+                snapshot.data ?? FlutterI18n.translate(context, 'about.na'),
                 maxLines: 1,
                 minFontSize: 12,
               );
@@ -293,13 +299,14 @@ class AboutScreenState extends State<AboutScreen> {
       elevation: 1.0,
       outlined: true,
       child: ListTile(
-        title: const Text('Hardware (Local)'),
+        title: Text(FlutterI18n.translate(context, 'about.hardwareLocal')),
         subtitle: FutureBuilder<String>(
           future: getDeviceModel(),
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
             // Sanitize the model string to remove non-printable characters before logging and displaying
             final sanitizedModel =
-                snapshot.data?.replaceAll(RegExp(r'[^\x20-\x7E]'), '') ?? 'N/A';
+                snapshot.data?.replaceAll(RegExp(r'[^\x20-\x7E]'), '') ??
+                    FlutterI18n.translate(context, 'about.na');
             _logger.info('Device Model: $sanitizedModel');
             return Text(sanitizedModel);
           },
@@ -345,8 +352,9 @@ class AboutScreenState extends State<AboutScreen> {
                       context: context,
                       builder: (BuildContext context) {
                         return GlassAlertDialog(
-                          title:
-                              const Center(child: Text('Custom Machine Name')),
+                          title: Center(
+                              child: Text(FlutterI18n.translate(
+                                  context, 'about.customName'))),
                           content: SizedBox(
                             width: MediaQuery.of(context).size.width * 0.5,
                             child: SingleChildScrollView(
@@ -354,7 +362,8 @@ class AboutScreenState extends State<AboutScreen> {
                                 children: [
                                   SpawnOrionTextField(
                                     key: cNameTextFieldKey,
-                                    keyboardHint: 'Enter a custom name',
+                                    keyboardHint: FlutterI18n.translate(
+                                        context, 'about.enterName'),
                                     locale: Localizations.localeOf(context)
                                         .toString(),
                                     scrollController: _scrollController,
@@ -374,7 +383,9 @@ class AboutScreenState extends State<AboutScreen> {
                               },
                               style: ElevatedButton.styleFrom(
                                   minimumSize: const Size(0, 60)),
-                              child: const Text('Close',
+                              child: Text(
+                                  FlutterI18n.translate(
+                                      context, 'common.close'),
                                   style: TextStyle(fontSize: 20)),
                             ),
                             GlassButton(
@@ -389,7 +400,9 @@ class AboutScreenState extends State<AboutScreen> {
                               },
                               style: ElevatedButton.styleFrom(
                                   minimumSize: const Size(0, 60)),
-                              child: const Text('Confirm',
+                              child: Text(
+                                  FlutterI18n.translate(
+                                      context, 'common.confirm'),
                                   style: TextStyle(fontSize: 20)),
                             ),
                           ],
@@ -399,8 +412,8 @@ class AboutScreenState extends State<AboutScreen> {
                   },
                   child: Row(
                     children: [
-                      const Text(
-                        'Edit',
+                      Text(
+                        FlutterI18n.translate(context, 'common.edit'),
                         style: TextStyle(
                           fontSize: 20,
                         ),
