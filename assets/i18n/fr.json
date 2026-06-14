@@ -549,7 +549,8 @@
     "fineTuneExposure": "Ajustement fin",
     "selectValueBetween": "Valeur entre %s et %s",
     "selectPieceGuide": "Choisir la pièce correspondante.",
-    "guide": "Guide"
+    "guide": "Guide",
+    "previous": "Précédent"
   },
   "resins": {
     "failedLoad": "Résines indisponibles",

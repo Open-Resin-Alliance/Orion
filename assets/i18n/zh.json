@@ -549,7 +549,8 @@
     "layerExposureUpdated": "曝光时间已更新",
     "fineTuneExposure": "微调",
     "selectValueBetween": "选择%s到%s之间的值",
-    "selectPieceGuide": "选择对应的测试件。"
+    "selectPieceGuide": "选择对应的测试件。",
+    "previous": "上次"
   },
   "resins": {
     "failedLoad": "树脂加载失败",

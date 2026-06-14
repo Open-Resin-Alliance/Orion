@@ -549,7 +549,8 @@
     "layerExposureUpdated": "Belichtingstijd bijgewerkt",
     "fineTuneExposure": "Belichting fijnregelen",
     "selectValueBetween": "Kies waarde tussen %s en %s",
-    "selectPieceGuide": "Kies het stuk dat overeenkomt met de gids."
+    "selectPieceGuide": "Kies het stuk dat overeenkomt met de gids.",
+    "previous": "Vorige"
   },
   "resins": {
     "failedLoad": "Kon harsen niet laden",

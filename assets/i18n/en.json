@@ -544,7 +544,8 @@
     "layerExposureUpdated": "Layer exposure time updated",
     "fineTuneExposure": "Fine-Tune Exposure",
     "selectValueBetween": "Select a value between %s and %s",
-    "selectPieceGuide": "Select the piece matching the guide."
+    "selectPieceGuide": "Select the piece matching the guide.",
+    "previous": "Previous"
   },
   "resins": {
     "failedLoad": "Failed to load resins",

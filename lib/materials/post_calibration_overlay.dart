@@ -423,7 +423,6 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Left: description ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
             Expanded(
               child: GlassCard(
                 elevation: 1.0,
@@ -473,7 +472,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
             const SizedBox(width: 16),
 
-            // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Right: QR code ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+            // Right: QR code
             Expanded(
               child: GlassCard(
                 elevation: 1.0,
@@ -586,54 +585,47 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     return Padding(
       key: const ValueKey('evaluation'),
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: GlassCard(
-        elevation: 1.0,
-        outlined: true,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Row 1: pieces 1ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“3
-              Expanded(
-                child: Row(
-                  children: [
-                    pieceButton(0),
-                    const SizedBox(width: 10),
-                    pieceButton(1),
-                    const SizedBox(width: 10),
-                    pieceButton(2),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              // Row 2: pieces 4ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“6
-              Expanded(
-                child: Row(
-                  children: [
-                    pieceButton(3),
-                    const SizedBox(width: 10),
-                    pieceButton(4),
-                    const SizedBox(width: 10),
-                    pieceButton(5),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                FlutterI18n.translate(context, 'postCal.selectPieceGuide'),
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.55),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Row 1: pieces 1–3
+          Expanded(
+            child: Row(
+              children: [
+                pieceButton(0),
+                const SizedBox(width: 10),
+                pieceButton(1),
+                const SizedBox(width: 10),
+                pieceButton(2),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 10),
+          // Row 2: pieces 4–6
+          Expanded(
+            child: Row(
+              children: [
+                pieceButton(3),
+                const SizedBox(width: 10),
+                pieceButton(4),
+                const SizedBox(width: 10),
+                pieceButton(5),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            FlutterI18n.translate(context, 'postCal.selectPieceGuide'),
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.55),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -694,7 +686,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 Column(
                   children: [
                     Text(
-                      'Previous',
+                      FlutterI18n.translate(context, 'postCal.previous'),
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.grey.shade500,
@@ -723,7 +715,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 Column(
                   children: [
                     Text(
-                      'Optimal',
+                      FlutterI18n.translate(context, 'postCal.optimal'),
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.grey.shade400,
@@ -744,7 +736,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Layer exposure time updated',
+              FlutterI18n.translate(context, 'postCal.layerExposureUpdated'),
               style: TextStyle(
                 fontSize: 20,
                 color: Colors.grey.shade500,
@@ -891,7 +883,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                               Column(
                                 children: [
                                   Text(
-                                    'Previous',
+                                    FlutterI18n.translate(
+                                        context, 'postCal.previous'),
                                     style: TextStyle(
                                       fontSize: 18,
                                       color: Colors.grey.shade500,

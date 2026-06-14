@@ -549,7 +549,8 @@
     "layerExposureUpdated": "Exposición actualizada",
     "fineTuneExposure": "Ajuste fino",
     "selectValueBetween": "Valor entre %s y %s",
-    "selectPieceGuide": "Elija la pieza correspondiente."
+    "selectPieceGuide": "Elija la pieza correspondiente.",
+    "previous": "Anterior"
   },
   "resins": {
     "failedLoad": "Resinas no disponibles",

@@ -549,7 +549,8 @@
     "layerExposureUpdated": "Belichtungszeit aktualisiert",
     "fineTuneExposure": "Belichtung feinjustieren",
     "selectValueBetween": "Wert zwischen %s und %s wählen",
-    "selectPieceGuide": "Passendes Stück aus der Anleitung wählen."
+    "selectPieceGuide": "Passendes Stück aus der Anleitung wählen.",
+    "previous": "Vorherige"
   },
   "resins": {
     "failedLoad": "Fehler beim Laden der Harze",

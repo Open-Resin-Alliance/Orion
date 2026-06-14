@@ -549,7 +549,8 @@
     "layerExposureUpdated": "露光時間を更新しました",
     "fineTuneExposure": "微調整",
     "selectValueBetween": "%s〜%sの値を選択",
-    "selectPieceGuide": "ガイドに合うテスト片を選択。"
+    "selectPieceGuide": "ガイドに合うテスト片を選択。",
+    "previous": "前回"
   },
   "resins": {
     "failedLoad": "レジン読込失敗",
