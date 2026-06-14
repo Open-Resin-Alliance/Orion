@@ -288,7 +288,7 @@
         "upToDate": "UP TO DATE",
         "runningBleedingEdge": "Running latest bleeding edge build",
         "runningStable": "Running latest stable release",
-        "downloadAndInstall": "Download & Install",
+        "downloadAndInstall": "Download",
         "channel": "Channel: %s",
         "checking": "Checking for updates...",
         "internalBuild": "INTERNAL BUILD",

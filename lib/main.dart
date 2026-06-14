@@ -674,15 +674,12 @@ class OrionMainAppState extends State<OrionMainApp> {
           supportedLocales: const [
             Locale('en', 'US'),
             Locale('de', 'DE'),
-            Locale('es', 'ES'),
+            Locale('nl', 'NL'),
             Locale('fr', 'FR'),
-            Locale('hr', 'HR'),
+            Locale('es', 'ES'),
+            Locale('it', 'IT'),
             Locale('ja', 'JP'),
-            Locale('ko', 'KR'),
-            Locale('pl', 'PL'),
             Locale('zh', 'CN'),
-            Locale('zh', 'TW'),
-            Locale('zh'),
           ],
         );
       }),
