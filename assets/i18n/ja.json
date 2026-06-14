@@ -223,7 +223,9 @@
     "enterUrl": "URLを入力",
     "setUrl": "URLを設定",
     "happyPride": "ハッピープライド月間！",
-    "selfDestruct": "自己破壊モード"
+    "selfDestruct": "自己破壊モード",
+    "language": "Language",
+    "languageDesc": "App language and region settings"
   },
   "machineSettings": {
     "section": "マシン設定",

@@ -223,7 +223,9 @@
     "enterUrl": "Entrer l'URL",
     "setUrl": "Définir l'URL",
     "happyPride": "Joyeux mois des fiertés !",
-    "selfDestruct": "Mode autodestruction"
+    "selfDestruct": "Mode autodestruction",
+    "language": "Language",
+    "languageDesc": "App language and region settings"
   },
   "machineSettings": {
     "section": "Paramètres machine",

@@ -223,7 +223,9 @@
     "enterUrl": "输入URL",
     "setUrl": "设置URL",
     "happyPride": "骄傲月快乐！",
-    "selfDestruct": "自毁模式"
+    "selfDestruct": "自毁模式",
+    "language": "Language",
+    "languageDesc": "App language and region settings"
   },
   "machineSettings": {
     "section": "机器设置",

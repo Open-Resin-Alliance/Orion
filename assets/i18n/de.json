@@ -223,7 +223,9 @@
     "enterUrl": "URL eingeben",
     "setUrl": "URL festlegen",
     "happyPride": "Happy Pride Month!",
-    "selfDestruct": "Selbstzerstörungsmodus"
+    "selfDestruct": "Selbstzerstörungsmodus",
+    "language": "Language",
+    "languageDesc": "App language and region settings"
   },
   "machineSettings": {
     "section": "Maschineneinstellungen",

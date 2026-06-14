@@ -30,6 +30,7 @@ import 'package:provider/provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/settings/ui_screen.dart';
+import 'package:orion/settings/language_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
@@ -253,21 +254,46 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       ),
                       const SizedBox(height: 20.0),
 
-                      // UI Settings Navigation
-                      _buildOffsetNavCard(
-                        context: context,
-                        icon: Icons.palette,
-                        title: FlutterI18n.translate(
-                            context, 'generalSettings.ui'),
-                        subtitle: FlutterI18n.translate(
-                            context, 'generalSettings.uiDesc'),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const UIScreen(),
+                      // UI Settings & Language Navigation
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildOffsetNavCard(
+                              context: context,
+                              icon: Icons.palette,
+                              title: FlutterI18n.translate(
+                                  context, 'generalSettings.ui'),
+                              subtitle: FlutterI18n.translate(
+                                  context, 'generalSettings.uiDesc'),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const UIScreen(),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildOffsetNavCard(
+                              context: context,
+                              icon: Icons.language,
+                              title: FlutterI18n.translate(
+                                  context, 'generalSettings.language'),
+                              subtitle: FlutterI18n.translate(
+                                  context, 'generalSettings.languageDesc'),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const LanguageScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20.0),
                       OrionListTile(

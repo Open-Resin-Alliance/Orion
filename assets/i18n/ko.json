@@ -223,7 +223,9 @@
     "enterUrl": "URL 입력",
     "setUrl": "URL 설정",
     "happyPride": "해피 프라이드의 달!",
-    "selfDestruct": "자폭 모드"
+    "selfDestruct": "자폭 모드",
+    "language": "Language",
+    "languageDesc": "App language and region settings"
   },
   "machineSettings": {
     "section": "기계 설정",

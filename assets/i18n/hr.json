@@ -223,7 +223,9 @@
     "enterUrl": "Enter URL",
     "setUrl": "Set URL",
     "happyPride": "Happy Pride Month!",
-    "selfDestruct": "Self-Destruct Mode"
+    "selfDestruct": "Self-Destruct Mode",
+    "language": "Language",
+    "languageDesc": "App language and region settings"
   },
   "machineSettings": {
     "section": "Machine Settings",
