@@ -149,8 +149,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
   Future<void> _confirmAndResetZOffset() async {
     final confirmed = await _showConfirmationDialog(
       title: FlutterI18n.translate(context, 'manualLeveling.resetOffset'),
-      message:
-          FlutterI18n.translate(context, 'manualLeveling.resetConfirm'),
+      message: FlutterI18n.translate(context, 'manualLeveling.resetConfirm'),
       confirmLabel:
           FlutterI18n.translate(context, 'manualLeveling.resetOffset'),
       icon: PhosphorIcons.warning(),
@@ -429,7 +428,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
             child: Builder(builder: (context) {
               final value = values[index];
               final label = value < 1.0
-                  ? '${(value * 1000).round()} Ãƒâ€šÃ‚Âµm'
+                  ? '${(value * 1000).round()} µm'
                   : '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} mm';
 
               return GlassChoiceChip(

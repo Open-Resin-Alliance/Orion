@@ -936,7 +936,7 @@ class _CalibrationModelPickerScreen extends StatelessWidget {
     final resinsProvider = Provider.of<ResinsProvider>(context, listen: false);
 
     return DetailedSelectionScreen(
-      title: 'Select Calibration Model',
+      title: FlutterI18n.translate(context, 'calibration.selectModel'),
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
       child: LayoutBuilder(
         builder: (context, constraints) {

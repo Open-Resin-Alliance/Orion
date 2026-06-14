@@ -220,7 +220,7 @@ class AboutScreenState extends State<AboutScreen> {
             applicationVersion:
                 'Version ${Pubspec.version} - ${Pubspec.versionFull.toString().split('+')[1] == 'SELFCOMPILED' ? 'Local Build' : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}'}',
             applicationLegalese:
-                'Apache License 2.0 - Copyright Â© ${DateTime.now().year} Open Resin Alliance',
+                'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
             applicationIcon: Image.asset(
               'assets/images/ora/open_resin_alliance_logo_darkmode.png',
               width: 100,
@@ -276,6 +276,7 @@ class AboutScreenState extends State<AboutScreen> {
               children: [
                 TextSpan(
                     text: FlutterI18n.translate(context, 'about.uiVersion')),
+                const TextSpan(text: '  '),
                 TextSpan(
                   text: FlutterI18n.translate(context, 'about.tapForInfo'),
                   style: TextStyle(

@@ -147,6 +147,19 @@ class ExposureScreenState extends State<ExposureScreen> {
     );
   }
 
+  String _translateExposureType(BuildContext context, String type) {
+    switch (type) {
+      case 'Grid':
+        return FlutterI18n.translate(context, 'exposure.grid');
+      case 'Logo':
+        return FlutterI18n.translate(context, 'exposure.logo');
+      case 'Measure':
+        return FlutterI18n.translate(context, 'exposure.measure');
+      default:
+        return type;
+    }
+  }
+
   GlassDialog _buildExposureDialog(BuildContext context,
       AsyncSnapshot<int> snapshot, int countdownTime, String? type) {
     return GlassDialog(
@@ -161,7 +174,7 @@ class ExposureScreenState extends State<ExposureScreen> {
               type == 'White'
                   ? FlutterI18n.translate(context, 'exposure.cleaning')
                   : type != null
-                      ? '${FlutterI18n.translate(context, 'exposure.testing')} $type'
+                      ? '${FlutterI18n.translate(context, 'exposure.testing')} ${_translateExposureType(context, type)}'
                       : FlutterI18n.translate(context, 'exposure.exposing'),
               style: const TextStyle(
                 fontSize: 24,
@@ -218,8 +231,8 @@ class ExposureScreenState extends State<ExposureScreen> {
                 Navigator.of(context, rootNavigator: true).pop(true);
               },
               child: Text(
-                'Stop Exposure',
-                style: TextStyle(fontSize: 24),
+                FlutterI18n.translate(context, 'exposure.stop'),
+                style: const TextStyle(fontSize: 24),
               ),
             ),
           ],

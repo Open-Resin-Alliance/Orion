@@ -824,21 +824,21 @@ class UpdateScreenState extends State<UpdateScreen>
           // Version info
           Text(
             provider.betaUpdatesOverride
-                ? 'Latest: ${provider.latestVersion}'
+                ? '${FlutterI18n.translate(context, 'update.latestVersion')}: ${provider.latestVersion}'
                 : (provider.latestVersion.contains('+')
-                    ? 'Version ${provider.latestVersion.split('+')[0]}'
-                    : 'Version ${provider.latestVersion}'),
+                    ? '${FlutterI18n.translate(context, 'update.version')} ${provider.latestVersion.split('+')[0]}'
+                    : '${FlutterI18n.translate(context, 'update.version')} ${provider.latestVersion}'),
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 6),
           Text(
             provider.betaUpdatesOverride
                 ? (provider.commitDate.contains('T')
-                    ? 'Committed ${provider.commitDate.split('T')[0]}'
-                    : 'Committed ${provider.commitDate}')
+                    ? '${FlutterI18n.translate(context, 'update.committed')} ${provider.commitDate.split('T')[0]}'
+                    : '${FlutterI18n.translate(context, 'update.committed')} ${provider.commitDate}')
                 : (provider.releaseDate.contains('T')
-                    ? 'Released ${provider.releaseDate.split('T')[0]}'
-                    : 'Released ${provider.releaseDate}'),
+                    ? '${FlutterI18n.translate(context, 'update.released')} ${provider.releaseDate.split('T')[0]}'
+                    : '${FlutterI18n.translate(context, 'update.released')} ${provider.releaseDate}'),
             style: const TextStyle(fontSize: 18, color: Colors.grey),
           ),
 
@@ -900,7 +900,7 @@ class UpdateScreenState extends State<UpdateScreen>
         Text(
           provider.betaUpdatesOverride
               ? '${provider.currentVersion} (${provider.release})'
-              : 'Version ${provider.currentVersion.split('+')[0]}',
+              : '${FlutterI18n.translate(context, 'update.version')} ${provider.currentVersion.split('+')[0]}',
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 6),
@@ -960,13 +960,13 @@ class UpdateScreenState extends State<UpdateScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'Version ${ap.latestVersion}',
+              '${FlutterI18n.translate(context, 'update.version')} ${ap.latestVersion}',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 6),
             if (ap.channel.isNotEmpty)
               Text(
-                'Channel: ${ap.channel}',
+                '${FlutterI18n.translate(context, 'update.channel')}: ${ap.channel}',
                 style: const TextStyle(fontSize: 18, color: Colors.grey),
               ),
             const Spacer(),
@@ -1019,13 +1019,13 @@ class UpdateScreenState extends State<UpdateScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'Version ${ap.currentVersion}',
+              '${FlutterI18n.translate(context, 'update.backendVersion')} ${ap.currentVersion}',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 6),
             if (ap.channel.isNotEmpty)
               Text(
-                'Channel: ${ap.channel}',
+                '${FlutterI18n.translate(context, 'update.channel')}: ${ap.channel}',
                 style: const TextStyle(fontSize: 18, color: Colors.grey),
               ),
           ],

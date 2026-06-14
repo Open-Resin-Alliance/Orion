@@ -560,13 +560,13 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                             () {}, // Empty callback for disabled state
                                         child: Opacity(
                                           opacity: 0.5, // Make it look disabled
-                                          child: const Center(
-                                            // Wrap in Center widget
+                                          child: Center(
                                             child: Text(
-                                              'Clear URL',
-                                              style: TextStyle(fontSize: 20),
-                                              textAlign: TextAlign
-                                                  .center, // Center text alignment
+                                              FlutterI18n.translate(
+                                                  context, 'common.clear'),
+                                              style:
+                                                  const TextStyle(fontSize: 20),
+                                              textAlign: TextAlign.center,
                                             ),
                                           ),
                                         ),
@@ -585,13 +585,13 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 category: 'advanced');
                                           });
                                         },
-                                        child: const Center(
-                                          // Wrap in Center widget
+                                        child: Center(
                                           child: Text(
-                                            'Clear URL',
-                                            style: TextStyle(fontSize: 20),
-                                            textAlign: TextAlign
-                                                .center, // Center text alignment
+                                            FlutterI18n.translate(
+                                                context, 'common.clear'),
+                                            style:
+                                                const TextStyle(fontSize: 20),
+                                            textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
@@ -755,9 +755,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   }
                                 }
                               },
-                              child: const Text(
-                                'Reset User Config',
-                                style: TextStyle(fontSize: 22),
+                              child: Text(
+                                FlutterI18n.translate(
+                                    context, 'generalSettings.resetUserConfig'),
+                                style: const TextStyle(fontSize: 22),
                               ),
                             ),
                           ),
@@ -780,9 +781,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           title: Text(FlutterI18n.translate(
                                               context,
                                               'generalSettings.prepareForDelivery')),
-                                          content: const Text(
-                                              'Prepare this device for shipping? The device will shut down now. On next start you will run the initial setup wizard. Use only when shipping the device. Continue?',
-                                              style: TextStyle(fontSize: 18.0)),
+                                          content: Text(
+                                              FlutterI18n.translate(context,
+                                                  'generalSettings.deliveryMsg'),
+                                              style: const TextStyle(
+                                                  fontSize: 18.0)),
                                           actions: [
                                             GlassButton(
                                                 style: ElevatedButton.styleFrom(
@@ -828,8 +831,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           title: Text(FlutterI18n.translate(
                                               context,
                                               'generalSettings.shuttingDown')),
-                                          content: const Text(
-                                              'Shutting down now. On next start you will be guided through setup.'),
+                                          content: Text(FlutterI18n.translate(
+                                              context,
+                                              'generalSettings.shuttingDownMsg')),
                                         ),
                                       );
 
@@ -842,8 +846,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         builder: (ctx) => GlassAlertDialog(
                                           title: Text(FlutterI18n.translate(
                                               context, 'common.error')),
-                                          content: const Text(
-                                              'Unable to prepare the device. Please try again.'),
+                                          content: Text(FlutterI18n.translate(
+                                              context,
+                                              'generalSettings.unableToPrepare')),
                                           actions: [
                                             GlassButton(
                                               onPressed: () =>
@@ -857,9 +862,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     }
                                   }
                                 },
-                                child: const Text(
-                                  'Prepare for Delivery',
-                                  style: TextStyle(fontSize: 22),
+                                child: Text(
+                                  FlutterI18n.translate(context,
+                                      'generalSettings.prepareForDelivery'),
+                                  style: const TextStyle(fontSize: 22),
                                 ),
                               ),
                             ),
@@ -885,9 +891,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Developer',
-              style: TextStyle(
+            Text(
+              FlutterI18n.translate(context, 'generalSettings.developer'),
+              style: const TextStyle(
                 fontSize: 28.0,
               ),
             ),

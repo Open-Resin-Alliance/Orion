@@ -35,14 +35,14 @@ class MachineSettingsScreen extends StatefulWidget {
 class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
   final OrionConfig _cfg = OrionConfig();
 
-  static const hardwareFlags = <String, String>{
-    'hasHeatedChamber': 'Heated Chamber',
-    'hasHeatedVat': 'Heated Vat',
-    'hasCamera': 'Camera',
-    'hasAirFilter': 'Air Filter',
-    'hasForceSensor': 'Force Sensor',
-    'hasCameraFlash': 'Camera Flash',
-    'hasSmartpower': 'Smart Power',
+  static const hardwareFlagKeys = <String, String>{
+    'hasHeatedChamber': 'heatedChamber',
+    'hasHeatedVat': 'heatedVat',
+    'hasCamera': 'camera',
+    'hasAirFilter': 'airFilter',
+    'hasForceSensor': 'forceSensor',
+    'hasCameraFlash': 'cameraFlash',
+    'hasSmartpower': 'smartPower',
   };
 
   @override
@@ -82,14 +82,16 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ...hardwareFlags.entries.map(
+                              ...hardwareFlagKeys.entries.map(
                                 (e) => Padding(
                                   padding: const EdgeInsets.only(bottom: 20.0),
                                   child: OrionListTile(
                                     // Allow vendor or user-provided names to override
-                                    // the default name (e.value).
+                                    // the translated default name.
                                     title: _cfg.getFeatureDisplayName(e.key,
-                                        defaultName: e.value),
+                                        defaultName: FlutterI18n.translate(
+                                            context,
+                                            'machineSettings.${e.value}')),
                                     icon: _iconForKey(e.key),
                                     value: _cfg.getHardwareFeature(e.key),
                                     onChanged: (v) {
