@@ -170,7 +170,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                               title: FlutterI18n.translate(
                                   context, 'calibration.startingExposure'),
                               description:
-                                  'The exposure time for the first test piece. This should be lower than your expected optimal exposure.',
+                                  FlutterI18n.translate(context, 'calibration.exposureDesc'),
                               currentValue: _startingExposure,
                               min: 0.5,
                               max: 10,
@@ -193,7 +193,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                               title: FlutterI18n.translate(
                                   context, 'calibration.exposureIncrement'),
                               description:
-                                  'How much exposure time increases for each successive test piece. Larger increments cover a wider range faster.',
+                                  FlutterI18n.translate(context, 'calibration.incrementDesc'),
                               currentValue: _exposureIncrement,
                               min: 0.1,
                               max: 2,
@@ -1098,7 +1098,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                'WHAT WILL HAPPEN',
+                                FlutterI18n.translate(context, 'calibration.whatWillHappen').toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -1168,7 +1168,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                'PRE-FLIGHT CHECK',
+                                FlutterI18n.translate(context, 'calibration.preFlightCheck').toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,

@@ -25,7 +25,10 @@
     "import_": "Import",
     "optimal": "Optimal",
     "upToDate": "Up to Date",
-    "checking": "Checking…"
+    "checking": "Checking…",
+    "error": "Error",
+    "success": "Success",
+    "clear": "Clear"
   },
   "setup": {
     "section": "Setup",
@@ -79,7 +82,9 @@
     "connectionFailed": "Connection failed. Try again.",
     "connectedEthernet": "Connected to Ethernet",
     "connectedWifi": "Connected to WiFi",
-    "disconnectMsgLong": "Do you want to disconnect from the current WiFi network? This may cause any ongoing print jobs to fail."
+    "disconnectMsgLong": "Do you want to disconnect from the current WiFi network? This may cause any ongoing print jobs to fail.",
+    "ipAddress": "IP Address",
+    "signalStrength": "Signal Strength"
   },
   "complete": {
     "section": "Complete",
@@ -138,7 +143,9 @@
     "bulkDeleteNotSupported": "Bulk delete not supported for local USB files.",
     "deleteFailed": "Failed to delete %s file(s).",
     "operationNotPermitted": "Operation not permitted",
-    "deleteConfirmPlural": "You are about to delete %s files.\nDo you want to continue?\nThis action cannot be undone."
+    "deleteConfirmPlural": "You are about to delete %s files.\nDo you want to continue?\nThis action cannot be undone.",
+    "deleting": "Deleting…",
+    "deletingProgress": "Deleting %s/%s"
   },
   "import": {
     "importingFile": "IMPORTING FILE",
@@ -243,7 +250,11 @@
     "cacheClearMsg": "Clear all cached thumbnails from memory and disk? This will free up disk space and memory. Continue?",
     "cacheClearing": "Clearing thumbnail cache...",
     "cacheCleared": "Thumbnail cache cleared successfully.",
-    "developer": "Developer"
+    "developer": "Developer",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDesc": "Critical actions that may remove user data or change the device state. Use with caution.",
+    "clearingCache": "Clearing Cache",
+    "unableToResetMsg": "Unable to reset settings. Please try again."
   },
   "machineSettings": {
     "section": "Machine Settings",
@@ -347,7 +358,8 @@
     "measure": "Measure",
     "clean": "Clean",
     "seconds": "%s Seconds",
-    "persistent": "Persistent"
+    "persistent": "Persistent",
+    "unitSec": "sec"
   },
   "force": {
     "resume": "Resume",

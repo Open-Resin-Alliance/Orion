@@ -17,6 +17,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -237,7 +238,8 @@ class NotificationWatcher {
                         onPressed: () => Navigator.of(ctx).pop(),
                         style: ElevatedButton.styleFrom(
                             minimumSize: const Size(0, 60)),
-                        child: const Text('Close'),
+                        child: Text(
+                            FlutterI18n.translate(context, 'common.close')),
                       ),
                     ];
               final devMode =

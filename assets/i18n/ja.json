@@ -25,7 +25,10 @@
     "optimal": "最適",
     "upToDate": "最新",
     "checking": "確認中…",
-    "ok": "OK"
+    "ok": "OK",
+    "error": "エラー",
+    "success": "成功",
+    "clear": "クリア"
   },
   "setup": {
     "section": "セットアップ",
@@ -79,7 +82,9 @@
     "connectedEthernet": "有線LAN接続",
     "connectedWifi": "WiFi接続",
     "disconnectMsgLong": "WiFiを切断しますか？印刷中のジョブが失敗する可能性があります。",
-    "section": "WiFi"
+    "section": "WiFi",
+    "ipAddress": "IPアドレス",
+    "signalStrength": "信号強度"
   },
   "complete": {
     "section": "完了",
@@ -138,7 +143,14 @@
     "operationNotPermitted": "操作は許可されていません",
     "deleteConfirmPlural": "%sファイルを削除しようとしています。\n続行しますか？\nこの操作は元に戻せません。",
     "na": "N/A",
-    "unitMm": "mm"
+    "unitMm": "mm",
+    "deleting": "削除中…",
+    "deletingProgress": "削除中 %s/%s",
+    "deleteConfirmPrefix": "",
+    "deleteConfirmSuffix": "を削除しようとしています。\n続行しますか？",
+    "deleteCannotUndo": "この操作は元に戻せません。",
+    "thisFile": "このファイル",
+    "files": "%sファイル"
   },
   "import": {
     "importingFile": "インポート中",
@@ -243,7 +255,11 @@
     "cacheClearMsg": "メモリとディスクからサムネイルキャッシュを消去しますか？容量を解放します。続行しますか？",
     "cacheClearing": "キャッシュ消去中…",
     "cacheCleared": "サムネイルキャッシュを消去しました。",
-    "developer": "開発者"
+    "developer": "開発者",
+    "dangerZone": "危険区域",
+    "dangerZoneDesc": "ユーザーデータを削除したりデバイスの状態を変更する可能性がある重要な操作。注意して使用してください。",
+    "clearingCache": "Clearing Cache",
+    "unableToResetMsg": "Unable to reset settings. Please try again."
   },
   "machineSettings": {
     "section": "マシン設定",
@@ -347,7 +363,8 @@
     "measure": "測定",
     "clean": "掃除",
     "seconds": "%s秒",
-    "persistent": "持続"
+    "persistent": "持続",
+    "unitSec": "秒"
   },
   "force": {
     "resume": "再開",

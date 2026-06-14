@@ -626,7 +626,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
             minimumSize: const Size(120, 60),
           ),
           onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancel'),
+          child: Text(FlutterI18n.translate(context, 'common.cancel')),
         ),
         GlassButton(
           tint: GlassButtonTint.positive,
@@ -634,7 +634,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
             minimumSize: const Size(120, 60),
           ),
           onPressed: () => Navigator.of(context).pop(_currentValue),
-          child: const Text('Save'),
+          child: Text(FlutterI18n.translate(context, 'common.save')),
         ),
       ],
     );

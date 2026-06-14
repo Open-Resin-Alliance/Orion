@@ -412,7 +412,9 @@ class _LevelingOverlayState extends State<_LevelingOverlay> {
                       )
                     : PhosphorIcon(PhosphorIcons.arrowRight()),
                 iconAfterLabel: !_isLoading,
-                label: _isLoading ? 'Loading...' : 'Next',
+                label: _isLoading
+                    ? FlutterI18n.translate(context, 'leveling.loading')
+                    : FlutterI18n.translate(context, 'leveling.next'),
                 onPressed: _isLoading
                     ? null
                     : () async {
@@ -485,7 +487,7 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
               activeColor: Colors.greenAccent,
               value: _haveRemovedResin,
               onChanged: (v) => setState(() => _haveRemovedResin = v ?? false),
-              title: Text('Remove the resin vat and safely set it aside',
+              title: Text(FlutterI18n.translate(context, 'leveling.removeVat'),
                   style: textStyle),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
@@ -501,7 +503,8 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
               activeColor: Colors.greenAccent,
               value: _haveHexKeys,
               onChanged: (v) => setState(() => _haveHexKeys = v ?? false),
-              title: Text('Locate the hex keys provided with your printer',
+              title: Text(
+                  FlutterI18n.translate(context, 'leveling.checkHexKeys'),
                   style: textStyle),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
@@ -518,7 +521,7 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
               value: _havePlate,
               onChanged: (v) => setState(() => _havePlate = v ?? false),
               title: Text(
-                  'Install the build plate and ensure it is fully secured',
+                  FlutterI18n.translate(context, 'leveling.checkInstallPlate'),
                   style: textStyle),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
@@ -534,7 +537,8 @@ class _PreFlightChecklistState extends State<_PreFlightChecklist> {
               activeColor: Colors.greenAccent,
               value: _haveClean,
               onChanged: (v) => setState(() => _haveClean = v ?? false),
-              title: Text('Confirm that LCD and build plate are clean and dry',
+              title: Text(
+                  FlutterI18n.translate(context, 'leveling.checkLcdClean'),
                   style: textStyle),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
@@ -639,14 +643,19 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
           if (!started) {
             _log.warning('moveToTop() returned false');
             messenger.showSnackBar(
-              const SnackBar(content: Text('Failed to start move-to-top')),
+              SnackBar(
+                  content: Text(FlutterI18n.translate(
+                      context, 'leveling.failedMoveToTop'))),
             );
           }
         } catch (e) {
           _log.severe('moveToTop() threw', e);
           if (!mounted) return;
           messenger.showSnackBar(
-            SnackBar(content: Text('Move failed: ${e.toString()}')),
+            SnackBar(
+                content: Text(FlutterI18n.translate(
+                    context, 'leveling.moveFailed',
+                    translationParams: {'0': e.toString()}))),
           );
         }
       } else {
@@ -661,14 +670,19 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
           if (!started) {
             _log.warning('manualHome() returned false');
             messenger.showSnackBar(
-              const SnackBar(content: Text('Failed to start homing')),
+              SnackBar(
+                  content: Text(
+                      FlutterI18n.translate(context, 'leveling.failedHoming'))),
             );
           }
         } catch (e) {
           _log.severe('manualHome() threw', e);
           if (!mounted) return;
           messenger.showSnackBar(
-            SnackBar(content: Text('Homing failed: ${e.toString()}')),
+            SnackBar(
+                content: Text(FlutterI18n.translate(
+                    context, 'leveling.homingFailed',
+                    translationParams: {'0': e.toString()}))),
           );
         }
       }

@@ -25,7 +25,10 @@
     "optimal": "Óptimo",
     "upToDate": "Actualizado",
     "checking": "Comprobando…",
-    "ok": "OK"
+    "ok": "OK",
+    "error": "Error",
+    "success": "Éxito",
+    "clear": "Limpiar"
   },
   "setup": {
     "section": "Configuración",
@@ -79,7 +82,9 @@
     "connectedEthernet": "Conectado por Ethernet",
     "connectedWifi": "Conectado por WiFi",
     "disconnectMsgLong": "¿Desconectar WiFi? Las impresiones en curso pueden fallar.",
-    "section": "WiFi"
+    "section": "WiFi",
+    "ipAddress": "Dirección IP",
+    "signalStrength": "Potencia de señal"
   },
   "complete": {
     "section": "Listo",
@@ -138,7 +143,14 @@
     "deleteFailed": "Error al borrar %s archivo(s).",
     "operationNotPermitted": "Operación no permitida",
     "deleteConfirmPlural": "Está a punto de borrar %s archivos.\n¿Continuar?\nAcción irreversible.",
-    "unitMm": "mm"
+    "unitMm": "mm",
+    "deleting": "Eliminando…",
+    "deletingProgress": "Eliminando %s/%s",
+    "deleteConfirmPrefix": "Está a punto de eliminar ",
+    "deleteConfirmSuffix": ".\n¿Continuar?",
+    "deleteCannotUndo": "Acción irreversible.",
+    "thisFile": "este archivo",
+    "files": "%s archivos"
   },
   "import": {
     "importingFile": "IMPORTANDO",
@@ -243,7 +255,11 @@
     "cacheClearing": "Limpiando caché…",
     "cacheCleared": "Caché limpiada.",
     "developer": "Desarrollador",
-    "section": "General"
+    "section": "General",
+    "dangerZone": "Zona peligrosa",
+    "dangerZoneDesc": "Acciones críticas que pueden eliminar datos o cambiar el estado del dispositivo. Actúe con cuidado.",
+    "clearingCache": "Clearing Cache",
+    "unableToResetMsg": "Unable to reset settings. Please try again."
   },
   "machineSettings": {
     "section": "Config. máquina",
@@ -347,7 +363,8 @@
     "measure": "Medir",
     "clean": "Limpiar",
     "seconds": "%s s",
-    "persistent": "Continuo"
+    "persistent": "Continuo",
+    "unitSec": "s"
   },
   "force": {
     "resume": "Reanudar",

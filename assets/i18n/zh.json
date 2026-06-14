@@ -25,7 +25,10 @@
     "import_": "导入",
     "optimal": "最佳",
     "upToDate": "最新",
-    "checking": "检查中…"
+    "checking": "检查中…",
+    "error": "错误",
+    "success": "成功",
+    "clear": "清除"
   },
   "setup": {
     "section": "设置",
@@ -79,7 +82,9 @@
     "connectedEthernet": "以太网已连接",
     "connectedWifi": "WiFi已连接",
     "disconnectMsgLong": "断开当前WiFi？正在进行的打印可能失败。",
-    "section": "WiFi"
+    "section": "WiFi",
+    "ipAddress": "IP地址",
+    "signalStrength": "信号强度"
   },
   "complete": {
     "section": "完成",
@@ -138,7 +143,14 @@
     "deleteFailed": "删除%s个文件失败。",
     "operationNotPermitted": "操作不允许",
     "deleteConfirmPlural": "您即将删除%s个文件。\n是否继续？\n此操作不可撤销。",
-    "unitMm": "mm"
+    "unitMm": "mm",
+    "deleting": "删除中…",
+    "deletingProgress": "删除中 %s/%s",
+    "deleteConfirmPrefix": "您即将删除 ",
+    "deleteConfirmSuffix": "。\n是否继续？",
+    "deleteCannotUndo": "此操作不可撤销。",
+    "thisFile": "此文件",
+    "files": "%s个文件"
   },
   "import": {
     "importingFile": "正在导入",
@@ -243,7 +255,11 @@
     "cacheClearMsg": "清空所有缓存的缩略图？将释放存储空间。是否继续？",
     "cacheClearing": "正在清空缓存…",
     "cacheCleared": "缩略图缓存已清空。",
-    "developer": "开发者"
+    "developer": "开发者",
+    "dangerZone": "危险区域",
+    "dangerZoneDesc": "可能删除用户数据或更改设备状态的关键操作。请谨慎使用。",
+    "clearingCache": "Clearing Cache",
+    "unableToResetMsg": "Unable to reset settings. Please try again."
   },
   "machineSettings": {
     "section": "机器设置",
@@ -347,7 +363,8 @@
     "measure": "测量",
     "clean": "清洁",
     "seconds": "%s秒",
-    "persistent": "持续"
+    "persistent": "持续",
+    "unitSec": "秒"
   },
   "force": {
     "resume": "继续",

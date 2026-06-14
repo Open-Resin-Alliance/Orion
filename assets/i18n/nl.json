@@ -25,7 +25,10 @@
     "upToDate": "Actueel",
     "checking": "Controleren…",
     "ok": "OK",
-    "start": "Start"
+    "start": "Start",
+    "error": "Fout",
+    "success": "Succes",
+    "clear": "Wissen"
   },
   "setup": {
     "section": "Installatie",
@@ -79,7 +82,9 @@
     "connectedEthernet": "Verbonden via Ethernet",
     "connectedWifi": "Verbonden via WiFi",
     "disconnectMsgLong": "Verbinding met huidige WiFi verbreken? Lopende afdrukken kunnen mislukken.",
-    "section": "WiFi"
+    "section": "WiFi",
+    "ipAddress": "IP-adres",
+    "signalStrength": "Signaalsterkte"
   },
   "complete": {
     "section": "Voltooid",
@@ -138,7 +143,14 @@
     "deleteFailed": "Kon %s bestand(en) niet verwijderen.",
     "operationNotPermitted": "Bewerking niet toegestaan",
     "deleteConfirmPlural": "U staat op het punt %s bestanden te verwijderen.\nDoorgaan?\nDeze actie kan niet ongedaan worden gemaakt.",
-    "unitMm": "mm"
+    "unitMm": "mm",
+    "deleting": "Verwijderen…",
+    "deletingProgress": "Bezig met verwijderen %s/%s",
+    "deleteConfirmPrefix": "U staat op het punt ",
+    "deleteConfirmSuffix": " te verwijderen.\nDoorgaan?",
+    "deleteCannotUndo": "Deze actie kan niet ongedaan worden gemaakt.",
+    "thisFile": "dit bestand",
+    "files": "%s bestanden"
   },
   "import": {
     "importingFile": "BEZIG MET IMPORTEREN",
@@ -243,7 +255,11 @@
     "cacheClearMsg": "Alle gecachte thumbnails uit geheugen en schijf wissen? Dit maakt ruimte vrij. Doorgaan?",
     "cacheClearing": "Cache wissen…",
     "cacheCleared": "Thumbnail-cache gewist.",
-    "developer": "Ontwikkelaar"
+    "developer": "Ontwikkelaar",
+    "dangerZone": "Gevaarlijke zone",
+    "dangerZoneDesc": "Kritieke acties die gebruikersgegevens kunnen verwijderen of de apparaatstatus kunnen wijzigen. Wees voorzichtig.",
+    "clearingCache": "Clearing Cache",
+    "unableToResetMsg": "Unable to reset settings. Please try again."
   },
   "machineSettings": {
     "section": "Machine-instellingen",
@@ -347,7 +363,8 @@
     "measure": "Meten",
     "clean": "Reinigen",
     "seconds": "%s s",
-    "persistent": "Permanent"
+    "persistent": "Permanent",
+    "unitSec": "s"
   },
   "force": {
     "resume": "Hervatten",
@@ -507,7 +524,7 @@
     "addResin": "Hars toevoegen",
     "viscosity": "Viscositeit: %s",
     "exposureLabel": "Belichting: %s",
-    "implementAddResin": "Hars toevoegen binnenkort beschikbaar",
+    "implementAddResin": "Hars toevoegen binnenkort",
     "ok": "OK"
   },
   "status": {
@@ -594,7 +611,7 @@
     "minSec": "%s min %s sec",
     "backend": "Backend",
     "target": "Doel",
-    "attemptingReconnect": "Poging tot verbinding over",
+    "attemptingReconnect": "Poging tot opnieuw verbinden over",
     "pollAttempts": "Poll-pogingen",
     "sseAttempts": "SSE-pogingen",
     "connectionLost": "Verbinding verbroken",

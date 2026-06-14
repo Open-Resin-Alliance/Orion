@@ -25,7 +25,10 @@
     "optimal": "Ottimale",
     "upToDate": "Aggiornato",
     "checking": "Controllo…",
-    "ok": "OK"
+    "ok": "OK",
+    "error": "Errore",
+    "success": "Successo",
+    "clear": "Cancella"
   },
   "setup": {
     "section": "Configurazione",
@@ -79,7 +82,9 @@
     "connectedEthernet": "Connesso via Ethernet",
     "connectedWifi": "Connesso via WiFi",
     "disconnectMsgLong": "Disconnettersi dal WiFi? Le stampe in corso potrebbero fallire.",
-    "section": "WiFi"
+    "section": "WiFi",
+    "ipAddress": "Indirizzo IP",
+    "signalStrength": "Potenza segnale"
   },
   "complete": {
     "section": "Completato",
@@ -138,7 +143,14 @@
     "deleteFailed": "Errore eliminando %s file.",
     "operationNotPermitted": "Operazione non consentita",
     "deleteConfirmPlural": "Stai per eliminare %s file.\nContinuare?\nAzione irreversibile.",
-    "unitMm": "mm"
+    "unitMm": "mm",
+    "deleting": "Eliminazione…",
+    "deletingProgress": "Eliminazione %s/%s",
+    "deleteConfirmPrefix": "Stai per eliminare ",
+    "deleteConfirmSuffix": ".\nContinuare?",
+    "deleteCannotUndo": "Azione irreversibile.",
+    "thisFile": "questo file",
+    "files": "%s file"
   },
   "import": {
     "importingFile": "IMPORTAZIONE IN CORSO",
@@ -243,7 +255,11 @@
     "cacheClearing": "Svuotamento cache…",
     "cacheCleared": "Cache svuotata.",
     "developer": "Sviluppatore",
-    "happyPride": "Buon Pride Month!"
+    "happyPride": "Buon Pride Month!",
+    "dangerZone": "Zona pericolosa",
+    "dangerZoneDesc": "Azioni critiche che possono eliminare dati o modificare lo stato del dispositivo. Usare con cautela.",
+    "clearingCache": "Clearing Cache",
+    "unableToResetMsg": "Unable to reset settings. Please try again."
   },
   "machineSettings": {
     "section": "Impostazioni macchina",
@@ -347,7 +363,8 @@
     "measure": "Misura",
     "clean": "Pulisci",
     "seconds": "%s s",
-    "persistent": "Persistente"
+    "persistent": "Persistente",
+    "unitSec": "s"
   },
   "force": {
     "resume": "Riprendi",

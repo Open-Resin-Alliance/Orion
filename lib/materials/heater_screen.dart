@@ -375,10 +375,13 @@ class HeaterScreenState extends State<HeaterScreen>
               const SizedBox(height: 4),
               Text(
                 !hasVatHardware
-                    ? 'Not available'
+                    ? FlutterI18n.translate(context, 'heater.notAvailable')
                     : (!capabilitiesLoaded
-                        ? 'CheckingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦'
-                        : (vatEnabled ? 'Enabled' : 'Disabled')),
+                        ? FlutterI18n.translate(context, 'heater.checking')
+                        : (vatEnabled
+                            ? FlutterI18n.translate(context, 'heater.enabled')
+                            : FlutterI18n.translate(
+                                context, 'heater.disabled'))),
                 style: TextStyle(
                   fontSize: 16,
                   color: !hasVatHardware
@@ -440,10 +443,13 @@ class HeaterScreenState extends State<HeaterScreen>
               const SizedBox(height: 4),
               Text(
                 !hasChamberHardware
-                    ? 'Not available'
+                    ? FlutterI18n.translate(context, 'heater.notAvailable')
                     : (!capabilitiesLoaded
-                        ? 'CheckingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦'
-                        : (chamberEnabled ? 'Enabled' : 'Disabled')),
+                        ? FlutterI18n.translate(context, 'heater.checking')
+                        : (chamberEnabled
+                            ? FlutterI18n.translate(context, 'heater.enabled')
+                            : FlutterI18n.translate(
+                                context, 'heater.disabled'))),
                 style: TextStyle(
                   fontSize: 16,
                   color: !hasChamberHardware
@@ -501,7 +507,7 @@ class HeaterScreenState extends State<HeaterScreen>
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
-                  'Target Temperature',
+                  FlutterI18n.translate(context, 'heater.targetTemperature'),
                   style: TextStyle(
                     fontSize: 20,
                     color: Colors.grey.shade400,
@@ -520,7 +526,7 @@ class HeaterScreenState extends State<HeaterScreen>
                       ),
                     ),
                     Text(
-                      'Ãƒâ€šÃ‚Â°C',
+                      '°C',
                       style: TextStyle(
                         fontSize: 20,
                         color: Colors.grey.shade300,
@@ -594,7 +600,7 @@ class HeaterScreenState extends State<HeaterScreen>
                         // refresh doesn't immediately override it.
                         _lastBackendTemperature = ended;
                         _logger.info(
-                          'Target temperature set to: $endedÃƒâ€šÃ‚Â°C',
+                          'Target temperature set to: $ended°C',
                         );
                         onChangeEnd(value);
                       },
@@ -633,7 +639,7 @@ class HeaterScreenState extends State<HeaterScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Mix and Preheat',
+            FlutterI18n.translate(context, 'heater.mixPreheat'),
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,

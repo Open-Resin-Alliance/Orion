@@ -25,7 +25,10 @@
     "upToDate": "À jour",
     "checking": "Vérification…",
     "ok": "OK",
-    "optimal": "Optimal"
+    "optimal": "Optimal",
+    "error": "Erreur",
+    "success": "Succès",
+    "clear": "Effacer"
   },
   "setup": {
     "section": "Configuration",
@@ -79,7 +82,9 @@
     "connectedEthernet": "Connecté en Ethernet",
     "connectedWifi": "Connecté en WiFi",
     "disconnectMsgLong": "Couper le WiFi ? Les impressions en cours peuvent échouer.",
-    "section": "WiFi"
+    "section": "WiFi",
+    "ipAddress": "Adresse IP",
+    "signalStrength": "Puissance du signal"
   },
   "complete": {
     "section": "Terminé",
@@ -138,7 +143,14 @@
     "deleteFailed": "Échec de suppression de %s fichier(s).",
     "operationNotPermitted": "Opération interdite",
     "deleteConfirmPlural": "Vous allez supprimer %s fichiers.\nContinuer ?\nAction irréversible.",
-    "unitMm": "mm"
+    "unitMm": "mm",
+    "deleting": "Suppression…",
+    "deletingProgress": "Suppression %s/%s",
+    "deleteConfirmPrefix": "Vous allez supprimer ",
+    "deleteConfirmSuffix": ".\nContinuer ?",
+    "deleteCannotUndo": "Action irréversible.",
+    "thisFile": "ce fichier",
+    "files": "%s fichiers"
   },
   "import": {
     "importingFile": "IMPORTATION",
@@ -243,7 +255,11 @@
     "cacheClearMsg": "Vider toutes les miniatures du cache ? Cela libère de l'espace. Continuer ?",
     "cacheClearing": "Vidage du cache…",
     "cacheCleared": "Cache vidé avec succès.",
-    "developer": "Développeur"
+    "developer": "Développeur",
+    "dangerZone": "Zone dangereuse",
+    "dangerZoneDesc": "Actions critiques pouvant supprimer des données ou modifier l'état de l'appareil. Soyez prudent.",
+    "clearingCache": "Clearing Cache",
+    "unableToResetMsg": "Unable to reset settings. Please try again."
   },
   "machineSettings": {
     "section": "Réglages machine",
@@ -347,7 +363,8 @@
     "measure": "Mesurer",
     "clean": "Nettoyer",
     "seconds": "%s s",
-    "persistent": "Continu"
+    "persistent": "Continu",
+    "unitSec": "s"
   },
   "force": {
     "resume": "Reprendre",

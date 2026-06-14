@@ -150,7 +150,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
     final confirmed = await _showConfirmationDialog(
       title: FlutterI18n.translate(context, 'manualLeveling.resetOffset'),
       message:
-          'This will reset the Z offset to 0.00 mm.\n\nDo you want to continue?',
+          FlutterI18n.translate(context, 'manualLeveling.resetConfirm'),
       confirmLabel:
           FlutterI18n.translate(context, 'manualLeveling.resetOffset'),
       icon: PhosphorIcons.warning(),

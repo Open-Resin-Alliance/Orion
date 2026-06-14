@@ -615,13 +615,15 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Danger Zone',
+                        FlutterI18n.translate(
+                            context, 'generalSettings.dangerZone'),
                         style:
                             TextStyle(fontSize: 28.0, color: Colors.redAccent),
                       ),
                       const SizedBox(height: 12.0),
                       Text(
-                        'Critical actions that may remove user data or change the device state. Use with caution.',
+                        FlutterI18n.translate(
+                            context, 'generalSettings.dangerZoneDesc'),
                         style: TextStyle(
                             fontSize: 20, color: Colors.redAccent.shade100),
                       ),
@@ -638,19 +640,24 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                 final confirmed = await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => GlassAlertDialog(
-                                        title: const Text('Reset User Config'),
-                                        content: const Text(
-                                            'Restore settings to factory defaults? If a factory preset is available it will be used. Otherwise your custom settings will be cleared. The device will restart immediately. Continue?',
+                                        title: Text(FlutterI18n.translate(
+                                            context,
+                                            'generalSettings.resetUserConfig')),
+                                        content: Text(
+                                            FlutterI18n.translate(context,
+                                                'generalSettings.resetConfirmMsg'),
                                             style: TextStyle(fontSize: 18.0)),
                                         actions: [
                                           GlassButton(
-                                              style: ElevatedButton.styleFrom(
-                                                minimumSize: const Size(0, 60),
-                                              ),
-                                              tint: GlassButtonTint.warn,
-                                              onPressed: () =>
-                                                  Navigator.of(ctx).pop(false),
-                                              child: const Text('Cancel')),
+                                            style: ElevatedButton.styleFrom(
+                                              minimumSize: const Size(0, 60),
+                                            ),
+                                            tint: GlassButtonTint.warn,
+                                            onPressed: () =>
+                                                Navigator.of(ctx).pop(false),
+                                            child: Text(FlutterI18n.translate(
+                                                context, 'common.cancel')),
+                                          ),
                                           GlassButton(
                                               tint: GlassButtonTint.negative,
                                               style: ElevatedButton.styleFrom(
@@ -658,7 +665,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               ),
                                               onPressed: () =>
                                                   Navigator.of(ctx).pop(true),
-                                              child: const Text('Reset')),
+                                              child: Text(FlutterI18n.translate(
+                                                  context, 'common.reset'))),
                                         ],
                                       ),
                                     ) ??
@@ -697,7 +705,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       context: context,
                                       barrierDismissible: false,
                                       builder: (ctx) => GlassAlertDialog(
-                                        title: const Text('Rebooting'),
+                                        title: Text(FlutterI18n.translate(
+                                            context,
+                                            'generalSettings.rebooting')),
                                         content: Text(rebootMessage),
                                       ),
                                     );
@@ -710,14 +720,17 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     showDialog(
                                       context: context,
                                       builder: (ctx) => GlassAlertDialog(
-                                        title: const Text('Error'),
-                                        content: const Text(
-                                            'Unable to reset settings. Please try again.'),
+                                        title: Text(FlutterI18n.translate(
+                                            context, 'common.error')),
+                                        content: Text(FlutterI18n.translate(
+                                            context,
+                                            'generalSettings.unableToResetMsg')),
                                         actions: [
                                           GlassButton(
                                             onPressed: () =>
                                                 Navigator.of(ctx).pop(),
-                                            child: const Text('OK'),
+                                            child: Text(FlutterI18n.translate(
+                                                context, 'common.ok')),
                                           ),
                                         ],
                                       ),
@@ -747,8 +760,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   final confirmed = await showDialog<bool>(
                                         context: context,
                                         builder: (ctx) => GlassAlertDialog(
-                                          title: const Text(
-                                              'Prepare for Delivery'),
+                                          title: Text(FlutterI18n.translate(
+                                              context,
+                                              'generalSettings.prepareForDelivery')),
                                           content: const Text(
                                               'Prepare this device for shipping? The device will shut down now. On next start you will run the initial setup wizard. Use only when shipping the device. Continue?',
                                               style: TextStyle(fontSize: 18.0)),
@@ -762,7 +776,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 onPressed: () =>
                                                     Navigator.of(ctx)
                                                         .pop(false),
-                                                child: const Text('Cancel')),
+                                                child: Text(
+                                                    FlutterI18n.translate(
+                                                        context,
+                                                        'common.cancel'))),
                                             GlassButton(
                                                 tint: GlassButtonTint.negative,
                                                 style: ElevatedButton.styleFrom(
@@ -771,7 +788,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 ),
                                                 onPressed: () =>
                                                     Navigator.of(ctx).pop(true),
-                                                child: const Text('Prepare')),
+                                                child: Text(FlutterI18n.translate(
+                                                    context,
+                                                    'generalSettings.prepareForDelivery'))),
                                           ],
                                         ),
                                       ) ??
@@ -789,7 +808,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         context: context,
                                         barrierDismissible: false,
                                         builder: (ctx) => GlassAlertDialog(
-                                          title: const Text('Shutting down'),
+                                          title: Text(FlutterI18n.translate(
+                                              context,
+                                              'generalSettings.shuttingDown')),
                                           content: const Text(
                                               'Shutting down now. On next start you will be guided through setup.'),
                                         ),
@@ -802,14 +823,16 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       showDialog(
                                         context: context,
                                         builder: (ctx) => GlassAlertDialog(
-                                          title: const Text('Error'),
+                                          title: Text(FlutterI18n.translate(
+                                              context, 'common.error')),
                                           content: const Text(
                                               'Unable to prepare the device. Please try again.'),
                                           actions: [
                                             GlassButton(
                                               onPressed: () =>
                                                   Navigator.of(ctx).pop(),
-                                              child: const Text('OK'),
+                                              child: Text(FlutterI18n.translate(
+                                                  context, 'common.ok')),
                                             ),
                                           ],
                                         ),
@@ -1014,7 +1037,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => GlassAlertDialog(
-                              title: const Text('Clear Thumbnail Cache'),
+                              title: Text(FlutterI18n.translate(context,
+                                  'generalSettings.clearThumbnailCache')),
                               content: const Text(
                                   'Clear all cached thumbnails from memory and disk? This will free up disk space and memory. Continue?',
                                   style: TextStyle(fontSize: 18.0)),
@@ -1026,7 +1050,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     tint: GlassButtonTint.neutral,
                                     onPressed: () =>
                                         Navigator.of(ctx).pop(false),
-                                    child: const Text('Cancel')),
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'common.cancel'))),
                                 GlassButton(
                                     tint: GlassButtonTint.warn,
                                     style: ElevatedButton.styleFrom(
@@ -1034,7 +1059,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     ),
                                     onPressed: () =>
                                         Navigator.of(ctx).pop(true),
-                                    child: const Text('Clear')),
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'common.clear'))),
                               ],
                             ),
                           ) ??
@@ -1073,7 +1099,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                             showDialog(
                               context: context,
                               builder: (ctx) => GlassAlertDialog(
-                                title: const Text('Success'),
+                                title: Text(FlutterI18n.translate(
+                                    context, 'common.success')),
                                 content: const Text(
                                     'Thumbnail cache cleared successfully.',
                                     style: TextStyle(fontSize: 18)),
@@ -1083,7 +1110,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       minimumSize: const Size(0, 60),
                                     ),
                                     onPressed: () => Navigator.of(ctx).pop(),
-                                    child: const Text('OK'),
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'common.ok')),
                                   ),
                                 ],
                               ),
@@ -1098,7 +1126,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                             showDialog(
                               context: context,
                               builder: (ctx) => GlassAlertDialog(
-                                title: const Text('Error'),
+                                title: Text(FlutterI18n.translate(
+                                    context, 'common.error')),
                                 content: Text(
                                     'Failed to clear thumbnail cache: $e',
                                     style: const TextStyle(fontSize: 18)),
@@ -1108,7 +1137,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       minimumSize: const Size(0, 60),
                                     ),
                                     onPressed: () => Navigator.of(ctx).pop(),
-                                    child: const Text('OK'),
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'common.ok')),
                                   ),
                                 ],
                               ),
