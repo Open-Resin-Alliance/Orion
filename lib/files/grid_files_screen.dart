@@ -26,6 +26,7 @@ import 'dart:math' as math;
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:image/image.dart' as img;
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
@@ -733,7 +734,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 60),
             ),
-            child: const Text('Cancel'),
+            child: Text(FlutterI18n.translate(context, 'common.cancel')),
           ),
           GlassButton(
             tint: GlassButtonTint.negative,
@@ -742,7 +743,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 60),
             ),
-            child: const Text('Delete'),
+            child: Text(FlutterI18n.translate(context, 'common.delete')),
           ),
         ],
       ),

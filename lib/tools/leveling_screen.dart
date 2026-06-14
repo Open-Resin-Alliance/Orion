@@ -177,7 +177,7 @@ class LevelingScreen extends StatelessWidget {
                 context,
                 title: FlutterI18n.translate(context, 'leveling.assisted'),
                 description:
-                    'Guided leveling with automatic Z-axis homing and gap measurement.',
+                    FlutterI18n.translate(context, 'leveling.assistedDesc'),
                 icon: PhosphorIcons.magicWand(),
                 accentColor: accent,
                 accentCard: false,
@@ -195,7 +195,7 @@ class LevelingScreen extends StatelessWidget {
                 context,
                 title: FlutterI18n.translate(context, 'leveling.manual'),
                 description:
-                    'Manual Z-axis adjustment for experienced users who prefer direct control.',
+                    FlutterI18n.translate(context, 'leveling.manualDesc'),
                 icon: PhosphorIconsFill.wrench,
                 accentColor: accent,
                 accentCard: true,

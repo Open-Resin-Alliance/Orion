@@ -266,7 +266,7 @@ class _ConnectionErrorDialogContentState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Backend',
+                        Text(FlutterI18n.translate(context, 'connection.backend'),
                             style:
                                 TextStyle(fontSize: 14, color: Colors.white70)),
                         const SizedBox(height: 4),
@@ -283,7 +283,7 @@ class _ConnectionErrorDialogContentState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Target',
+                        Text(FlutterI18n.translate(context, 'connection.target'),
                             style:
                                 TextStyle(fontSize: 14, color: Colors.white70)),
                         const SizedBox(height: 4),
@@ -302,7 +302,7 @@ class _ConnectionErrorDialogContentState
               ),
             ],
             const SizedBox(height: 12),
-            const Text('Attempting to reconnect in',
+            Text(FlutterI18n.translate(context, 'connection.attemptingReconnect'),
                 style: TextStyle(fontSize: 14, color: Colors.white70)),
             const SizedBox(height: 6),
             Text(
@@ -318,7 +318,7 @@ class _ConnectionErrorDialogContentState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Poll attempts',
+                      Text(FlutterI18n.translate(context, 'connection.pollAttempts'),
                           style: TextStyle(fontSize: 14)),
                       const SizedBox(height: 4),
                       Text('$pollAttempts',
@@ -331,7 +331,7 @@ class _ConnectionErrorDialogContentState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('SSE attempts',
+                      Text(FlutterI18n.translate(context, 'connection.sseAttempts'),
                           style: TextStyle(fontSize: 14)),
                       const SizedBox(height: 4),
                       Text('$sseAttempts',
@@ -397,7 +397,7 @@ class _ConnectionErrorDialogContentState
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: 20),
-          const Text('Attempting to reconnect in',
+          Text(FlutterI18n.translate(context, 'connection.attemptingReconnect'),
               style: TextStyle(fontSize: 18, color: Colors.white70)),
           const SizedBox(height: 6),
           Text(

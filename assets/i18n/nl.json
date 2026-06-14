@@ -8,7 +8,6 @@
     "cancel": "Annuleren",
     "confirm": "Bevestigen",
     "close": "Sluiten",
-    "ok": "OK",
     "done": "Klaar",
     "dismiss": "Sluiten",
     "continue_": "Doorgaan",
@@ -20,12 +19,13 @@
     "reset": "Resetten",
     "previous": "Vorige",
     "saving": "Bezig met opslaan…",
-    "start": "Start",
     "slice": "Snijden",
     "import_": "Importeren",
     "optimal": "Optimaal",
     "upToDate": "Actueel",
-    "checking": "Controleren…"
+    "checking": "Controleren…",
+    "ok": "OK",
+    "start": "Start"
   },
   "setup": {
     "section": "Installatie",
@@ -50,8 +50,8 @@
     "noneAvailable": "Geen tijdzones beschikbaar voor geselecteerde regio.\nStandaard wordt UTC gebruikt."
   },
   "printer": {
-    "section": "Printer",
-    "name": "Printernaam"
+    "name": "Printernaam",
+    "section": "Printer"
   },
   "theme": {
     "section": "Thema",
@@ -65,7 +65,6 @@
     "color": "Themakleur"
   },
   "wifi": {
-    "section": "WiFi",
     "skipTitle": "WiFi-installatie overslaan?",
     "skipMessage": "Later verbinden met WiFi in instellingen",
     "connectNow": "Nu verbinden",
@@ -78,7 +77,9 @@
     "enterPassword": "Voer wachtwoord in",
     "connectionFailed": "Verbinding mislukt. Probeer opnieuw.",
     "connectedEthernet": "Verbonden via Ethernet",
-    "connectedWifi": "Verbonden via WiFi"
+    "connectedWifi": "Verbonden via WiFi",
+    "disconnectMsgLong": "Verbinding met huidige WiFi verbreken? Lopende afdrukken kunnen mislukken.",
+    "section": "WiFi"
   },
   "complete": {
     "section": "Voltooid",
@@ -103,14 +104,14 @@
     "titleInternal": "Afdrukbestanden (Intern)",
     "titleUsb": "Afdrukbestanden (USB)",
     "titleApiError": "Odyssey API-fout",
-    "titleUsbError": "(USB)",
     "titleInternalError": "(Intern)",
     "fetchFail": "Kon bestanden niet ophalen",
     "notPermitted": "Bewerking niet toegestaan",
     "switchUsb": "Overschakelen naar USB",
     "usbUnavailable": "USB niet beschikbaar",
     "internalSwitch": "Overschakelen naar Intern",
-    "parentDir": "Bovenliggende map"
+    "parentDir": "Bovenliggende map",
+    "titleUsbError": "(USB)"
   },
   "files": {
     "deleteFile": "Bestand verwijderen",
@@ -125,14 +126,19 @@
     "printTime": "Afdruktijd",
     "dateTime": "Datum en tijd",
     "na": "N.v.t.",
-    "unitMm": "mm",
     "unitMl": "ml",
     "signalStrength": "Signaalsterkte: %s dBm",
     "lastModified": "Laatst gewijzigd: %s",
     "failedToDelete": "Kon bestand niet verwijderen",
     "searchFile": "Zoek bestandsnaam",
     "enterSearch": "Voer zoekterm in.",
-    "noResults": "Geen resultaten (╯°□°)╯︵ ┻━┻"
+    "noResults": "Geen resultaten (╯°□°)╯︵ ┻━┻",
+    "usbSwitchToInternal": "USB niet beschikbaar, overgeschakeld naar intern",
+    "bulkDeleteNotSupported": "Bulk verwijderen niet ondersteund voor lokale USB-bestanden.",
+    "deleteFailed": "Kon %s bestand(en) niet verwijderen.",
+    "operationNotPermitted": "Bewerking niet toegestaan",
+    "deleteConfirmPlural": "U staat op het punt %s bestanden te verwijderen.\nDoorgaan?\nDeze actie kan niet ongedaan worden gemaakt.",
+    "unitMm": "mm"
   },
   "import": {
     "importingFile": "BEZIG MET IMPORTEREN",
@@ -154,7 +160,7 @@
     "slicedSuccess": "Bestand succesvol gesneden!",
     "slicedTimeout": "Snijden duurde te lang",
     "materialProfile": "Materiaalprofiel",
-    "noProfilesFound": "Geen materiaalprofielen gevonden",
+    "noProfilesFound": "Geen profielen",
     "slice": "Snijden",
     "import_": "Importeren"
   },
@@ -165,12 +171,12 @@
   },
   "updateAvailable": {
     "title": "Update beschikbaar",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "wouldYouLike": "Wilt u nu updaten?",
     "remindLater": "Later herinneren",
     "updateNow": "Nu updaten",
-    "dontShow": "Toon geen updatemeldingen"
+    "dontShow": "Toon geen updatemeldingen",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS"
   },
   "about": {
     "serialNumber": "Serienummer",
@@ -197,7 +203,6 @@
   "settings": {
     "finalize": "Instellingen voltooien",
     "restartMessage": "Touch-interface moet opnieuw worden gestart om wijzigingen toe te passen.\nNu of later?",
-    "later": "Later",
     "now": "Nu",
     "disconnectWifi": "Verbinding met WiFi verbreken",
     "disconnectMessage": "Verbinding met huidige WiFi verbreken?\nLopende afdrukken kunnen mislukken.",
@@ -207,7 +212,8 @@
     "network": "Netwerk",
     "about": "Over",
     "updates": "Updates",
-    "debug": "Debug"
+    "debug": "Debug",
+    "later": "Later"
   },
   "generalSettings": {
     "section": "Algemeen",
@@ -222,10 +228,22 @@
     "customUrl": "Aangepaste backend-URL",
     "enterUrl": "Voer URL in",
     "setUrl": "URL instellen",
-    "happyPride": "Fijne Pride Month!",
+    "happyPride": "Fijne Pride-maand!",
     "selfDestruct": "Zelfvernietigingsmodus",
     "language": "Taal",
-    "languageDesc": "Taal- en regio-instellingen"
+    "languageDesc": "Taal- en regio-instellingen",
+    "resetUserConfig": "Gebruikersconfiguratie resetten",
+    "resetConfirmMsg": "Terugzetten naar fabrieksinstellingen? Als er een fabriekspreset is, wordt deze gebruikt. Anders worden uw instellingen gewist. Het apparaat wordt opnieuw opgestart. Doorgaan?",
+    "reverting": "Terugzetten",
+    "rebooting": "Opnieuw opstarten",
+    "prepareForDelivery": "Voorbereiden voor verzending",
+    "deliveryMsg": "Apparaat voorbereiden voor verzending? Het apparaat wordt nu uitgeschakeld. Bij de volgende start wordt de installatiewizard gestart. Alleen gebruiken bij verzending. Doorgaan?",
+    "shuttingDown": "Afsluiten",
+    "clearThumbnailCache": "Thumbnail-cache wissen",
+    "cacheClearMsg": "Alle gecachte thumbnails uit geheugen en schijf wissen? Dit maakt ruimte vrij. Doorgaan?",
+    "cacheClearing": "Cache wissen…",
+    "cacheCleared": "Thumbnail-cache gewist.",
+    "developer": "Ontwikkelaar"
   },
   "machineSettings": {
     "section": "Machine-instellingen",
@@ -234,11 +252,11 @@
     "remove": "Verwijderen",
     "heatedChamber": "Verwarmde kamer",
     "heatedVat": "Verwarmde bak",
-    "camera": "Camera",
     "airFilter": "Luchtfilter",
     "forceSensor": "Krachtsensor",
     "cameraFlash": "Camerablitz",
-    "smartPower": "Slimme voeding"
+    "smartPower": "Slimme voeding",
+    "camera": "Camera"
   },
   "uiSettings": {
     "title": "Gebruikersinterface",
@@ -247,7 +265,6 @@
     "standbyScreen": "Standby-scherm",
     "enableStandby": "Standby-scherm inschakelen",
     "standbyMode": "Standby-modus",
-    "logo": "Logo",
     "clock": "Klok",
     "dimScreen": "Scherm dimmen in standby",
     "dimLed": "LED-verlichting dimmen in standby",
@@ -255,7 +272,12 @@
     "showClock": "Grote klok weergeven",
     "bouncingLogo": "Bounce-logo screensaver",
     "standbyAfter": "Scherm gaat in standby na %dm %ds inactiviteit",
-    "standbyWarning": "Waarschuwing: minimale aanbevolen duur is 30 seconden."
+    "standbyWarning": "Waarschuwing: minimale aanbevolen duur is 30 seconden.",
+    "showClockDesc": "Grote klok weergeven",
+    "bouncingLogoDesc": "Bounce-logo screensaver",
+    "retryDetection": "Detectie opnieuw proberen",
+    "rescanDevices": "Apparaten opnieuw scannen",
+    "logo": "Logo"
   },
   "update": {
     "inProgress": "BEZIG MET UPDATEN",
@@ -279,12 +301,9 @@
     "updateAthena": "AthenaOS updaten",
     "updateAthenaMsg": "AthenaOS updaten?\nDit start een update op de aangesloten Athena-printer.",
     "triggeringAthena": "Bezig met starten AthenaOS-update…",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "devWarningDetailed": "Dit is een instabiele ontwikkelbuild.\nOnverwacht gedrag en hardwareschade zijn mogelijk.\n\nU aanvaardt alle gevolgen.",
     "confirmDevMsg": "Weet u zeker dat u door wilt gaan met deze firmware?\n\nHet systeem kan instabiel worden.",
     "finalWarningMsgDetailed": "Dit is uw laatste waarschuwing.\n\nPermanente hardwareschade is mogelijk.\n\nAnnuleer tenzij u dit risico volledig aanvaardt.",
-    "orionHmi": "Orion HMI",
     "upToDate": "ACTUEEL",
     "runningBleedingEdge": "Nieuwste ontwikkelbuild",
     "runningStable": "Nieuwste stabiele versie",
@@ -296,13 +315,16 @@
     "updateAvailableLabel": "UPDATE BESCHIKBAAR",
     "rateLimitExceeded": "Rate-limiet overschreden",
     "rateLimitMsg": "GitHub API-limiet bereikt. Probeer het later opnieuw.",
-    "bleedingEdge": "BLEEDING EDGE",
-    "rollback": "ROLLBACK",
     "forceUpdate": "Forceer update",
     "updateInternalBuild": "Interne build updaten",
     "noVersionInfo": "Geen versie-informatie beschikbaar",
     "comingSoon": "Binnenkort beschikbaar!",
-    "backendFutureRelease": "Backend-updater in een toekomstige release"
+    "backendFutureRelease": "Backend-updater in een toekomstige release",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "orionHmi": "Orion HMI",
+    "bleedingEdge": "BLEEDING EDGE",
+    "rollback": "ROLLBACK"
   },
   "tools": {
     "title": "Gereedschap",
@@ -313,8 +335,8 @@
     "tools": "Gereedschap"
   },
   "exposure": {
-    "failedStart": "Kan weergavetest niet starten",
-    "failedCure": "Kan uitharding niet inschakelen",
+    "failedStart": "Weergavetest mislukt",
+    "failedCure": "Uitharding mislukt",
     "cleaning": "Reinigen",
     "testing": "Testen",
     "exposing": "Belichten",
@@ -324,21 +346,21 @@
     "logo": "Logo",
     "measure": "Meten",
     "clean": "Reinigen",
-    "seconds": "%s seconden",
+    "seconds": "%s s",
     "persistent": "Permanent"
   },
   "force": {
     "resume": "Hervatten",
     "pause": "Pauze",
     "tare": "Tarreren",
-    "maximum": "Maximum",
     "current": "Huidig",
-    "minimum": "Minimum",
-    "noData": "Geen gegevens"
+    "noData": "Geen gegevens",
+    "maximum": "Max",
+    "minimum": "Min"
   },
   "leveling": {
     "assisted": "Begeleid waterpas stellen",
-    "assistedDesc": "Waterpas stellen met automatische Z-referentie en meting.",
+    "assistedDesc": "Begeleid waterpassen met Z-referentie en meting.",
     "comingSoon": "Binnenkort!",
     "manual": "Handmatig waterpas stellen",
     "manualDesc": "Handmatige Z-aanpassing voor ervaren gebruikers.",
@@ -347,7 +369,17 @@
     "cancel": "Annuleren",
     "next": "Volgende",
     "loading": "Laden…",
-    "removeVat": "Verwijder de harsbak en zet deze veilig weg"
+    "removeVat": "Harsbak verwijderen en veilig wegzetten",
+    "checkHexKeys": "De meegeleverde inbussleutels pakken",
+    "checkLcdClean": "Controleer of LCD en bouwplaat schoon en droog zijn",
+    "checkInstallPlate": "Bouwplaat installeren en vastzetten",
+    "failedMoveToTop": "Naar boven bewegen mislukt",
+    "moveFailed": "Beweging mislukt: %s",
+    "failedHoming": "Referentiepunt zoeken mislukt",
+    "homingFailed": "Referentiepunt zoeken mislukt: %s",
+    "emergencyStop": "Noodstop",
+    "allClear": "Alles veilig",
+    "downwardWarning": "Neerwaartse waarschuwing"
   },
   "manualLeveling": {
     "title": "Handmatig waterpas stellen",
@@ -367,7 +399,7 @@
     "returnHome": "Terug naar referentie",
     "home": "Referentie",
     "emergencyStop": "Noodstop",
-    "stop": "Stoppen",
+    "stop": "Stop",
     "moveToFloor": "Naar bodem",
     "moveToTop": "Naar boven",
     "floor": "Bodem",
@@ -394,14 +426,19 @@
     "slicing": "Kalibratiebestand snijden…",
     "loadingExposure": "Laden…",
     "slicingComplete": "Snijden voltooid",
-    "selectModel": "Selecteer kalibratiemodel",
+    "selectModel": "Kalibratiemodel kiezen",
     "stepBetween": "Stap tussen stukken",
     "finalExposure": "Eindbelichting",
     "preFlightCheck": "Controle voor vertrek",
-    "checkResin": "Hars is bijgevuld.",
-    "checkPlate": "De bouwplaat is schoon.",
-    "checkVat": "De harsbak is vrij van vuil.",
-    "startPrint": "Start afdruk"
+    "checkResin": "Hars is in de bak.",
+    "checkPlate": "Bouwplaat is schoon.",
+    "checkVat": "Bak is vrij van vuil.",
+    "startPrint": "Afdruk starten",
+    "whatWillHappen": "Wat gebeurt er?",
+    "testPiecesExplanation": "%s teststukken worden achter elkaar geprint met oplopende belichting.",
+    "submittingJob": "Kalibratietaak wordt verzonden…",
+    "startingExistingPlate": "Bestaande kalibratieplaat starten (debug)…",
+    "processingFile": "Bestandsmetadata verwerken…"
   },
   "editResin": {
     "profileSaved": "Profiel opgeslagen",
@@ -416,19 +453,18 @@
     "normalCureDesc": "UV-belichting voor lagen na de basis.",
     "savedSuccess": "Profielinstellingen succesvol opgeslagen",
     "editTitle": "Hars bewerken",
-    "waitAfterCure": "Wachten na uitharding",
+    "waitAfterCure": "Wacht na uitharding",
     "waitAfterCureDesc": "Pauze na UV-belichting voor het optillen.",
     "liftAfterPrint": "Hilift",
     "liftAfterPrintDesc": "Hoe ver de bouwplaat omhoog komt tussen lagen.",
-    "waitAfterLift": "Wachten na lift",
+    "waitAfterLift": "Wacht na lift",
     "waitAfterLiftDesc": "Pauze na optillen zodat hars kan terugvloeien.",
-    "saving": "Bezig met opslaan…"
+    "saving": "Opslaan…"
   },
   "heater": {
     "confirmMixing": "Bevestig hars mengen",
     "mixingWarning": "Hars mengen starten?\n\nZorg dat de bouwplaat is geïnstalleerd.",
     "cancel": "Annuleren",
-    "start": "Start",
     "vatHeater": "Bakverwarming",
     "chamberHeater": "Kamerverwarming",
     "notAvailable": "Niet beschikbaar",
@@ -437,7 +473,8 @@
     "disabled": "Uitgeschakeld",
     "mixPreheat": "Mengen en voorverwarmen",
     "targetTemperature": "Doeltemperatuur",
-    "startMixing": "Start mixing?"
+    "start": "Start",
+    "startMixing": "Mengen starten?"
   },
   "postCal": {
     "complete": "Kalibratie voltooid",
@@ -450,14 +487,14 @@
     "fineTune": "Fijn afstellen",
     "save": "Opslaan",
     "evaluationGuide": "BEOORDELINGSGIDS",
-    "guideDesc": "Gebruik de gids om de optimale belichting te vinden.",
-    "scanQr": "Scan de QR-code met uw telefoon om de gids te openen.",
-    "readGuide": "Lees het voordat u de optimale belichting selecteert.",
+    "guideDesc": "Optinale belichting vinden met de gids.",
+    "scanQr": "Scan de QR-code met je telefoon.",
+    "readGuide": "Lees de gids voordat je de belichting kiest.",
     "optimal": "Optimaal",
     "layerExposureUpdated": "Belichtingstijd bijgewerkt",
-    "fineTuneExposure": "Belichting fijn afstellen",
-    "selectValueBetween": "Selecteer een waarde tussen %s en %s",
-    "selectPieceGuide": "Selecteer het stuk dat overeenkomt met de gids."
+    "fineTuneExposure": "Belichting fijnregelen",
+    "selectValueBetween": "Kies waarde tussen %s en %s",
+    "selectPieceGuide": "Kies het stuk dat overeenkomt met de gids."
   },
   "resins": {
     "failedLoad": "Kon harsen niet laden",
@@ -468,9 +505,10 @@
     "locked": "Vergrendeld",
     "edit": "Bewerken",
     "addResin": "Hars toevoegen",
-    "ok": "OK",
     "viscosity": "Viscositeit: %s",
-    "exposureLabel": "Belichting: %s"
+    "exposureLabel": "Belichting: %s",
+    "implementAddResin": "Hars toevoegen binnenkort beschikbaar",
+    "ok": "OK"
   },
   "status": {
     "waiting": "Wachten op printer…",
@@ -482,16 +520,19 @@
     "printLayers": "Afdruklagen",
     "estimatedTime": "Geschatte afdruktijd",
     "estimatedVolume": "Geschat volume",
+    "raisePlate": "Plaat omhoog",
+    "options": "Opties",
+    "noData": "Geen gegevens",
     "na": "-"
   },
   "debug": {
     "logNotFound": "Logbestand niet gevonden.",
     "errorReading": "Fout bij lezen logbestand: %s",
     "all": "Alle (%d)",
+    "warning": "WAARSCHUWING (%d)",
     "info": "INFO (%d)",
     "config": "CONFIG (%d)",
     "fine": "FINE (%d)",
-    "warning": "WAARSCHUWING (%d)",
     "severe": "SEVERE (%d)"
   },
   "licenses": {
@@ -515,11 +556,10 @@
     "networkName": "Netwerknaam",
     "ipAddress": "IP-adres",
     "macAddress": "MAC-adres",
-    "linkSpeed": "Verbindingssnelheid",
+    "linkSpeed": "Snelheid",
     "connectTo": "Verbinden met %s"
   },
   "error": {
-    "code": "Code: %s",
     "unknownTitle": "Onbekende fout",
     "unknownMsg": "Er is een onbekende fout opgetreden.\nNeem contact op met ondersteuning.",
     "pinkCarrotTitle": "Odyssey API-fout",
@@ -545,14 +585,21 @@
     "grayGooseTitle": "Voedingsfout",
     "grayGooseMsg": "Er is een voedingsprobleem met de printer. Controleer de aansluiting.\nFoutcode: GRAY-GOOSE",
     "goldenApeTitle": "Bewegingsfout",
-    "goldenApeMsg": "Er is een bewegingsfout opgetreden. Controleer de printermechanismen.\nFoutcode: GOLDEN-APE"
+    "goldenApeMsg": "Er is een bewegingsfout opgetreden. Controleer de printermechanismen.\nFoutcode: GOLDEN-APE",
+    "code": "Code: %s"
   },
   "connection": {
     "retryNow": "Nu opnieuw proberen",
     "close": "Sluiten",
+    "minSec": "%s min %s sec",
+    "backend": "Backend",
+    "target": "Doel",
+    "attemptingReconnect": "Poging tot verbinding over",
+    "pollAttempts": "Poll-pogingen",
+    "sseAttempts": "SSE-pogingen",
+    "connectionLost": "Verbinding verbroken",
     "sec0": "0 sec",
-    "sec": "%s sec",
-    "minSec": "%s min %s sec"
+    "sec": "%s sec"
   },
   "markdown": {
     "title": "Document"
@@ -563,37 +610,38 @@
     "glass": "Glas"
   },
   "calibrationProgress": {
-    "preparing": "CALIBRATION PREPARATION",
-    "processing": "Processing calibration print job",
-    "complete": "PREPARATION COMPLETE",
-    "ready": "Calibration job ready"
+    "preparing": "VOORBEREIDING",
+    "processing": "Kalibratie verwerken",
+    "complete": "VOORBEREIDING VOLTOOID",
+    "ready": "Kalibratie gereed"
   },
   "updateNotification": {
-    "title": "Update Available",
+    "title": "Update beschikbaar",
     "orion": "Orion",
     "athenaOs": "AthenaOS",
-    "wouldYouLike": "Would you like to update now?",
-    "remindLater": "Remind Later",
-    "updateNow": "Update Now"
+    "wouldYouLike": "Nu updaten?",
+    "remindLater": "Later herinneren",
+    "updateNow": "Nu updaten"
   },
   "levelingGuide": {
-    "step1": "Remove the resin vat and set it aside safely",
-    "step2": "Locate the hex keys provided with your printer",
-    "step3": "Install the build plate and ensure it is fully secured",
-    "step4": "Confirm that LCD and build plate are clean and dry",
-    "homingZ": "Homing Z Axis",
-    "movingUp": "Moving Upward",
-    "movingDown": "Moving Downward",
-    "homingUp": "Homing Upward",
-    "homingDown": "Homing Downward",
-    "movingAway": "Moving safely away from the screen",
-    "ensureClear": "Ensure the motion path is clear",
-    "emergencyStop": "Emergency Stop",
-    "clearPath": "Clear the Motion Path",
-    "failedMoveTop": "Failed to start move-to-top",
-    "moveFailed": "Move failed: %s",
-    "failedHoming": "Failed to start homing",
-    "homingFailed": "Homing failed: %s"
+    "step1": "Harsbak verwijderen",
+    "step2": "Inbussleutels pakken",
+    "step3": "Bouwplaat installeren",
+    "step4": "LCD en plaat schoonmaken",
+    "homingZ": "Z-referentie",
+    "testZ": "Z-as testen",
+    "movingUp": "Omhoog bewegen",
+    "movingDown": "Omlaag bewegen",
+    "homingUp": "Referentie omhoog",
+    "homingDown": "Referentie omlaag",
+    "movingAway": "Veilig van het scherm verwijderen",
+    "ensureClear": "Zorg dat het pad vrij is",
+    "emergencyStop": "Noodstop",
+    "clearPath": "Bewegingspad vrijmaken",
+    "failedMoveTop": "Naar boven bewegen mislukt",
+    "moveFailed": "Beweging mislukt: %s",
+    "failedHoming": "Referentiepunt zoeken mislukt",
+    "homingFailed": "Referentiepunt zoeken mislukt: %s"
   },
   "heaters": {
     "vatHeater": "Bakverwarming",

@@ -8,24 +8,24 @@
     "cancel": "Abbrechen",
     "confirm": "Bestätigen",
     "close": "Schließen",
-    "ok": "OK",
     "done": "Fertig",
     "dismiss": "Verwerfen",
     "continue_": "Fortfahren",
     "retry": "Wiederholen",
-    "save": "Save",
     "delete": "Löschen",
-    "edit": "Edit",
     "remove": "Entfernen",
     "reset": "Zurücksetzen",
-    "previous": "Previous",
     "saving": "Speichern…",
-    "start": "Start",
     "slice": "Slicen",
-    "import_": "Import",
-    "optimal": "Optimal",
     "upToDate": "Aktuell",
-    "checking": "Prüfe…"
+    "checking": "Prüfe…",
+    "ok": "OK",
+    "save": "Speichern",
+    "edit": "Bearbeiten",
+    "previous": "Vorherige",
+    "start": "Start",
+    "import_": "Importieren",
+    "optimal": "Optimal"
   },
   "setup": {
     "section": "Einrichtung",
@@ -39,9 +39,9 @@
     "completeTitle": ""
   },
   "region": {
-    "section": "Region",
     "suggestedCountries": "Vorgeschlagene Länder",
-    "allCountries": "Alle Länder"
+    "allCountries": "Alle Länder",
+    "section": "Region"
   },
   "timezone": {
     "section": "Zeitzone",
@@ -61,8 +61,8 @@
     "blue": "Blau",
     "green": "Grün",
     "red": "Rot",
-    "orange": "Orange",
-    "color": "Designfarbe"
+    "color": "Designfarbe",
+    "orange": "Orange"
   },
   "wifi": {
     "section": "WLAN",
@@ -77,8 +77,9 @@
     "failedIp": "Keine IP-Adresse",
     "enterPassword": "Passwort eingeben",
     "connectionFailed": "Verbindung fehlgeschlagen.",
-    "connectedEthernet": "Connected to Ethernet",
-    "connectedWifi": "Connected to WiFi"
+    "disconnectMsgLong": "Vom aktuellen WiFi-Netzwerk trennen? Laufende Drucke könnten fehlschlagen.",
+    "connectedEthernet": "Per Ethernet verbunden",
+    "connectedWifi": "Per WLAN verbunden"
   },
   "complete": {
     "section": "Fertig",
@@ -86,7 +87,6 @@
   },
   "home": {
     "powerOptions": "Energieoptionen",
-    "powerRemote": "(Remote)",
     "powerLocal": "(Lokal)",
     "firmwareRestart": "Firmware Neustart",
     "rebootSystem": "System Neustart",
@@ -94,8 +94,9 @@
     "btnPrint": "Drucken",
     "btnTools": "Werkzeuge",
     "btnSettings": "Einstellungen",
-    "materials": "Materials",
-    "btnPower": "Power"
+    "powerRemote": "(Remote)",
+    "materials": "Materialien",
+    "btnPower": "Energie"
   },
   "print": {
     "usbAvailable": "USB verfügbar",
@@ -103,14 +104,14 @@
     "titleInternal": "Druckdateien (Intern)",
     "titleUsb": "Druckdateien (USB)",
     "titleApiError": "Odyssey API-Fehler",
-    "titleUsbError": "(USB)",
     "titleInternalError": "(Intern)",
     "fetchFail": "Dateien konnten nicht abgerufen werden",
     "notPermitted": "Vorgang nicht erlaubt",
     "switchUsb": "Zu USB wechseln",
     "usbUnavailable": "USB nicht verfügbar",
     "internalSwitch": "Zu Intern wechseln",
-    "parentDir": "Übergeordnetes Verzeichnis"
+    "parentDir": "Übergeordnetes Verzeichnis",
+    "titleUsbError": "(USB)"
   },
   "files": {
     "deleteFile": "Datei löschen",
@@ -124,15 +125,20 @@
     "estimatedVolume": "Geschätztes Druckvolumen",
     "printTime": "Druckzeit",
     "dateTime": "Datum & Uhrzeit",
-    "na": "N/A",
-    "unitMm": "mm",
-    "unitMl": "mL",
     "signalStrength": "Signalstärke: %s dBm",
     "lastModified": "Zuletzt geändert: %s",
     "failedToDelete": "Löschen der Datei fehlgeschlagen",
     "searchFile": "Dateinamen suchen",
     "enterSearch": "Suchbegriff eingeben.",
-    "noResults": "Keine Ergebnisse (╯°□°)╯︵ ┻━┻"
+    "noResults": "Keine Ergebnisse (╯°□°)╯︵ ┻━┻",
+    "usbSwitchToInternal": "USB nicht verfügbar, auf intern gewechselt",
+    "bulkDeleteNotSupported": "Massenlöschen für lokale USB-Dateien nicht unterstützt.",
+    "deleteFailed": "Konnte %s Datei(en) nicht löschen.",
+    "operationNotPermitted": "Vorgang nicht erlaubt",
+    "deleteConfirmPlural": "Sie sind dabei, %s Dateien zu löschen.\nFortfahren?\nDiese Aktion kann nicht rückgängig gemacht werden.",
+    "na": "k. A.",
+    "unitMm": "mm",
+    "unitMl": "ml"
   },
   "import": {
     "importingFile": "DATEI IMPORTIEREN",
@@ -153,10 +159,10 @@
     "waitingSlicer": "Warten auf Slicer...",
     "slicedSuccess": "Datei erfolgreich gesliced!",
     "slicedTimeout": "Zeitüberschreitung beim Slicevorgang",
-    "materialProfile": "Material Profile",
-    "noProfilesFound": "No material profiles found",
-    "slice": "Slice",
-    "import_": "Import"
+    "materialProfile": "Materialprofil",
+    "noProfilesFound": "Keine Materialprofile gefunden",
+    "slice": "Slicen",
+    "import_": "Importieren"
   },
   "startup": {
     "defaultPrinter": "3D-Drucker",
@@ -165,16 +171,15 @@
   },
   "updateAvailable": {
     "title": "Update verfügbar",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "wouldYouLike": "Möchten Sie jetzt aktualisieren?",
     "remindLater": "Später erinnern",
     "updateNow": "Jetzt aktualisieren",
-    "dontShow": "Update-Benachrichtigungen nicht mehr anzeigen"
+    "dontShow": "Update-Benachrichtigungen nicht mehr anzeigen",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS"
   },
   "about": {
     "serialNumber": "Seriennummer",
-    "uiVersion": "UI & API Version",
     "tapForInfo": "(Tippen für mehr Info)",
     "hardwareLocal": "Hardware (Lokal)",
     "customName": "Benutzerdefinierter Maschinenname",
@@ -190,7 +195,8 @@
     "alreadyDeveloper": "Sie sind bereits ein Entwickler",
     "developerActivated": "Entwicklermodus aktiviert: Sie sind jetzt ein Entwickler!",
     "tapsAway": "Noch %d Taps bis zum Entwicklermodus",
-    "na": "N/A",
+    "uiVersion": "UI & API Version",
+    "na": "k. A.",
     "versionInfo": "Version %s — %s",
     "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
@@ -201,18 +207,18 @@
     "now": "Jetzt",
     "disconnectWifi": "WLAN-Verbindung trennen",
     "disconnectMessage": "Möchten Sie die Verbindung zum aktuellen WLAN-Netzwerk trennen?\nDies kann laufende Druckaufträge beeinträchtigen.",
-    "stayConnected": "Stay Connected",
-    "disconnect": "Disconnect",
     "general": "Allgemein",
     "network": "Netzwerk",
     "about": "Info",
+    "stayConnected": "Verbunden bleiben",
+    "disconnect": "Trennen",
     "updates": "Updates",
     "debug": "Debug"
   },
   "generalSettings": {
     "section": "Allgemein",
     "ui": "Benutzeroberfläche",
-    "uiDesc": "Design- und Darstellungseinstellungen",
+    "uiDesc": "Darstellungseinstellungen",
     "useUsbDefault": "Standardmäßig USB verwenden",
     "advanced": "Erweitert",
     "machineSettings": "Maschineneinstellungen",
@@ -222,10 +228,22 @@
     "customUrl": "Benutzerdefinierte Backend-URL",
     "enterUrl": "URL eingeben",
     "setUrl": "URL festlegen",
-    "happyPride": "Happy Pride Month!",
     "selfDestruct": "Selbstzerstörungsmodus",
-    "language": "Language",
-    "languageDesc": "Sprach- und Regionseinstellungen"
+    "languageDesc": "Spracheinstellungen",
+    "resetUserConfig": "Benutzerkonfiguration zurücksetzen",
+    "resetConfirmMsg": "Auf Werkseinstellungen zurücksetzen? Falls ein Werkspreset vorhanden ist, wird es verwendet. Andernfalls werden Ihre Einstellungen gelöscht. Das Gerät startet neu. Fortfahren?",
+    "reverting": "Wird zurückgesetzt",
+    "rebooting": "Neustart",
+    "prepareForDelivery": "Für Versand vorbereiten",
+    "deliveryMsg": "Gerät für den Versand vorbereiten? Das Gerät wird jetzt heruntergefahren. Beim nächsten Start wird der Einrichtungsassistent ausgeführt. Nur für den Versand verwenden. Fortfahren?",
+    "shuttingDown": "Herunterfahren",
+    "clearThumbnailCache": "Thumbnail-Cache leeren",
+    "cacheClearMsg": "Alle gecachten Thumbnails aus Arbeitsspeicher und Cache löschen? Das gibt Speicherplatz frei. Fortfahren?",
+    "cacheClearing": "Leere Thumbnail-Cache…",
+    "cacheCleared": "Thumbnail-Cache erfolgreich geleert.",
+    "developer": "Entwickler",
+    "happyPride": "Frohen Pride-Monat!",
+    "language": "Sprache"
   },
   "machineSettings": {
     "section": "Maschineneinstellungen",
@@ -247,7 +265,6 @@
     "standbyScreen": "Bereitschaftsbildschirm",
     "enableStandby": "Bereitschaftsbildschirm aktivieren",
     "standbyMode": "Bereitschaftsmodus",
-    "logo": "Logo",
     "clock": "Uhr",
     "dimScreen": "Bildschirm dimmen im Bereitschaftsmodus",
     "dimLed": "LED-Beleuchtung dimmen im Bereitschaftsmodus",
@@ -255,7 +272,12 @@
     "showClock": "Große Zeitanzeige zeigen",
     "bouncingLogo": "Hüpfender Bildschirmschoner",
     "standbyAfter": "Bildschirm wechselt nach %dm %ds Inaktivität in den Bereitschaftsmodus",
-    "standbyWarning": "Mindestens 30 Sekunden empfohlen."
+    "standbyWarning": "Mindestens 30 Sekunden empfohlen.",
+    "showClockDesc": "Große Uhrzeit anzeigen",
+    "bouncingLogoDesc": "Bouncing-Logo-Bildschirmschoner",
+    "retryDetection": "Erkennung wiederholen",
+    "rescanDevices": "Geräte neu scannen",
+    "logo": "Logo"
   },
   "update": {
     "inProgress": "UPDATE LÄUFT",
@@ -267,7 +289,6 @@
     "devFirmware": "Entwicklungs-Firmware voraus",
     "devWarning": "Dies ist ein instabiler Entwicklungs-Build.\nSie akzeptieren alle Konsequenzen.",
     "iAccept": "Ich akzeptiere",
-    "cancel": "Cancel",
     "confirmUpdate": "Update bestätigen",
     "areYouCertain": "Sind Sie sicher, dass Sie mit diesem Update fortfahren möchten?",
     "continue_": "Fortfahren",
@@ -279,30 +300,31 @@
     "updateAthena": "AthenaOS aktualisieren",
     "updateAthenaMsg": "Möchten Sie AthenaOS aktualisieren?\nDies löst ein Update auf dem verbundenen Athena-Drucker aus.",
     "triggeringAthena": "AthenaOS-Update wird ausgelöst...",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "devWarningDetailed": "Instabiler Entwicklungs-Build.\nFehlverhalten und Hardwareschäden möglich.\n\nDu übernimmst alle Konsequenzen.",
     "confirmDevMsg": "Wirklich mit dieser Entwicklungs-Firmware fortfahren?\n\nSystem könnte instabil werden.",
     "finalWarningMsgDetailed": "Letzte Warnung.\n\nPermanente Hardwareschäden möglich.\n\nAbbrechen, wenn du das Risiko nicht akzeptierst.",
-    "orionHmi": "Orion HMI",
     "upToDate": "AKTUELL",
     "runningBleedingEdge": "Neuester Entwicklungs-Build",
     "runningStable": "Neueste stabile Version",
     "downloadAndInstall": "Download & Installation",
-    "channel": "Channel: %s",
     "checking": "Suche nach Updates…",
     "internalBuild": "INTERNER BUILD",
     "betaVersion": "BETA",
     "updateAvailableLabel": "UPDATE VERFÜGBAR",
     "rateLimitExceeded": "Rate-Limit überschritten",
     "rateLimitMsg": "GitHub API-Limit erreicht. Später versuchen.",
-    "bleedingEdge": "BLEEDING EDGE",
-    "rollback": "ROLLBACK",
     "forceUpdate": "Update erzwingen",
     "updateInternalBuild": "Internen Build updaten",
     "noVersionInfo": "Keine Versionsinfo",
     "comingSoon": "Demnächst!",
-    "backendFutureRelease": "Backend-Updater in zukünftiger Version"
+    "backendFutureRelease": "Backend-Updater in zukünftiger Version",
+    "cancel": "Abbrechen",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "orionHmi": "Orion HMI",
+    "channel": "Kanal: %s",
+    "bleedingEdge": "BLEEDING EDGE",
+    "rollback": "ROLLBACK"
   },
   "tools": {
     "title": "Werkzeuge",
@@ -310,11 +332,11 @@
     "leveling": "Nivellierung",
     "exposure": "Belichtung",
     "forceSensor": "Kraftsensor",
-    "tools": "Tools"
+    "tools": "Werkzeuge"
   },
   "exposure": {
-    "failedStart": "Fehler beim Starten des Displaytests",
-    "failedCure": "Fehler beim Aktivieren der Aushärtung",
+    "failedStart": "Displaytest fehlgeschlagen",
+    "failedCure": "Aushärtung fehlgeschlagen",
     "cleaning": "Reinigen",
     "testing": "Test",
     "exposing": "Belichten",
@@ -329,12 +351,12 @@
   },
   "force": {
     "resume": "Fortsetzen",
-    "pause": "Pause",
     "tare": "Tara",
-    "maximum": "Maximum",
     "current": "Aktuell",
-    "minimum": "Minimum",
-    "noData": "Keine Daten"
+    "noData": "Keine Daten",
+    "pause": "Pause",
+    "maximum": "Maximum",
+    "minimum": "Minimum"
   },
   "leveling": {
     "assisted": "Assistierte Nivellierung",
@@ -347,7 +369,17 @@
     "cancel": "Abbrechen",
     "next": "Weiter",
     "loading": "Laden...",
-    "removeVat": "Entfernen Sie den Harzbehälter und legen Sie ihn sicher beiseite"
+    "removeVat": "Harzwanne entnehmen und sicher beiseitestellen",
+    "checkHexKeys": "Die mitgelieferten Inbusschlüssel bereitlegen",
+    "checkLcdClean": "Sicherstellen, dass LCD und Bauplatte sauber und trocken sind",
+    "checkInstallPlate": "Bauplatte installieren und festziehen",
+    "failedMoveToTop": "Bewegung nach oben fehlgeschlagen",
+    "moveFailed": "Bewegung fehlgeschlagen: %s",
+    "failedHoming": "Referenzfahrt fehlgeschlagen",
+    "homingFailed": "Referenzfahrt fehlgeschlagen: %s",
+    "emergencyStop": "Not-Stopp",
+    "allClear": "Alles klar",
+    "downwardWarning": "Abwärtswarnung"
   },
   "manualLeveling": {
     "title": "Manuelle Nivellierung",
@@ -365,7 +397,7 @@
   "moveZ": {
     "failedMoveZ": "Z-Bewegung fehlgeschlagen",
     "returnHome": "Startposition",
-    "home": "Start",
+    "home": "Referenz",
     "emergencyStop": "Notstopp",
     "stop": "Stopp",
     "moveToFloor": "Zum Boden bewegen",
@@ -392,16 +424,21 @@
     "loadingModels": "Modelle werden geladen...",
     "noModel": "Kein Modell ausgewählt",
     "slicing": "Kalibrierungsdatei wird gesliced...",
-    "loadingExposure": "Loading...",
-    "slicingComplete": "Slicing complete",
-    "selectModel": "Select Calibration Model",
-    "stepBetween": "Step between pieces",
-    "finalExposure": "Final exposure",
+    "loadingExposure": "Lade…",
+    "slicingComplete": "Slicing abgeschlossen",
+    "selectModel": "Kalibrierungsmodell wählen",
+    "stepBetween": "Abstand zwischen Stücken",
+    "finalExposure": "Endbelichtung",
     "preFlightCheck": "Vorbereitungscheck",
-    "checkResin": "Correct resin is filled into the vat.",
-    "checkPlate": "The build plate is clean.",
-    "checkVat": "The vat is clear of any debris.",
-    "startPrint": "Start Print"
+    "checkResin": "Harz ist in der Wanne.",
+    "checkPlate": "Bauplatte ist sauber.",
+    "checkVat": "Wanne ist frei von Rückständen.",
+    "startPrint": "Druck starten",
+    "whatWillHappen": "Was passiert?",
+    "testPiecesExplanation": "%s Teststücke werden nacheinander mit steigender Belichtung gedruckt.",
+    "submittingJob": "Kalibrierungsauftrag wird übermittelt…",
+    "startingExistingPlate": "Vorhandene Kalibrierungsplatte wird gestartet (Debug)…",
+    "processingFile": "Datei-Metadaten werden verarbeitet…"
   },
   "editResin": {
     "profileSaved": "Profil gespeichert",
@@ -415,29 +452,29 @@
     "normalCure": "Normale Schicht-Belichtungszeit",
     "normalCureDesc": "UV-Belichtung nach den Basisschichten.",
     "savedSuccess": "Profileinstellungen erfolgreich gespeichert",
-    "editTitle": "Edit Resin",
-    "waitAfterCure": "Wait After Cure",
     "waitAfterCureDesc": "Pause nach Belichtung vor dem Anheben.",
-    "liftAfterPrint": "Lift Distance",
     "liftAfterPrintDesc": "Hubhöhe der Bauplatte zwischen Schichten.",
-    "waitAfterLift": "Wait After Lift",
     "waitAfterLiftDesc": "Pause nach Hub für Harzrückfluss.",
-    "saving": "Saving…"
+    "editTitle": "Harz bearbeiten",
+    "waitAfterCure": "Warten nach Belichtung",
+    "liftAfterPrint": "Hubhöhe",
+    "waitAfterLift": "Warten nach Hub",
+    "saving": "Speichern…"
   },
   "heater": {
     "confirmMixing": "Harzmischung bestätigen",
     "mixingWarning": "Sind Sie sicher, dass Sie die Harzmischung starten möchten?\n\nBitte stellen Sie sicher, dass die Bauplatte installiert ist.",
     "cancel": "Abbrechen",
-    "start": "Starten",
-    "vatHeater": "Behälterheizung",
+    "start": "Start",
+    "vatHeater": "Wannenheizung",
     "chamberHeater": "Kammerheizung",
     "notAvailable": "Nicht verfügbar",
     "checking": "Prüfe…",
-    "enabled": "Aktiviert",
-    "disabled": "Deaktiviert",
+    "enabled": "Aktiv",
+    "disabled": "Inaktiv",
     "mixPreheat": "Mischen & Vorheizen",
-    "targetTemperature": "Target Temperature",
-    "startMixing": "Start mixing?"
+    "targetTemperature": "Zieltemperatur",
+    "startMixing": "Mischen starten?"
   },
   "postCal": {
     "complete": "Kalibrierung abgeschlossen",
@@ -451,13 +488,13 @@
     "save": "Speichern",
     "evaluationGuide": "AUSWERTUNGSANLEITUNG",
     "guideDesc": "Optimale Belichtung mit der Anleitung finden.",
-    "scanQr": "Scannen Sie den QR-Code mit Ihrem Telefon, um die Anleitung zu öffnen.",
-    "readGuide": "Vor der Auswahl lesen.",
+    "scanQr": "QR-Code mit dem Telefon scannen.",
+    "readGuide": "Vor der Auswahl der optimalen Belichtung lesen.",
     "optimal": "Optimal",
-    "layerExposureUpdated": "Layer exposure time updated",
-    "fineTuneExposure": "Fine-Tune Exposure",
+    "layerExposureUpdated": "Belichtungszeit aktualisiert",
+    "fineTuneExposure": "Belichtung feinjustieren",
     "selectValueBetween": "Wert zwischen %s und %s wählen",
-    "selectPieceGuide": "Select the piece matching the guide."
+    "selectPieceGuide": "Passendes Stück aus der Anleitung wählen."
   },
   "resins": {
     "failedLoad": "Fehler beim Laden der Harze",
@@ -468,9 +505,10 @@
     "locked": "Gesperrt",
     "edit": "Bearbeiten",
     "addResin": "Harz hinzufügen",
-    "ok": "OK",
     "viscosity": "Viskosität: %s",
-    "exposureLabel": "Belichtung: %s"
+    "exposureLabel": "Belichtung: %s",
+    "implementAddResin": "Harz hinzufügen in Kürze verfügbar",
+    "ok": "OK"
   },
   "status": {
     "waiting": "Warte auf Drucker...",
@@ -482,6 +520,9 @@
     "printLayers": "Druckschichten",
     "estimatedTime": "Geschätzte Druckzeit",
     "estimatedVolume": "Geschätztes Volumen",
+    "raisePlate": "Platte anheben",
+    "options": "Optionen",
+    "noData": "Keine Daten",
     "na": "-"
   },
   "debug": {
@@ -512,87 +553,94 @@
     "regularArmDesc": "Athena 2 Standard-Bauarm.",
     "proArm": "Pro-Bauarm",
     "proArmDesc": "Verbesserte Nivellierung & Verriegelungsmechanismus.",
-    "networkName": "Network Name",
-    "ipAddress": "IP Address",
-    "macAddress": "MAC Address",
-    "linkSpeed": "Link Speed",
-    "connectTo": "Connect to %s"
+    "networkName": "Netzwerkname",
+    "ipAddress": "IP-Adresse",
+    "macAddress": "MAC-Adresse",
+    "linkSpeed": "Verbindungsgeschw.",
+    "connectTo": "Mit %s verbinden"
   },
   "error": {
-    "code": "Code: %s",
-    "unknownTitle": "Unknown Error",
     "unknownMsg": "Unbekannter Fehler.\nSupport kontaktieren.",
-    "pinkCarrotTitle": "Odyssey API Error",
     "pinkCarrotMsg": "Fehler beim Abrufen der Dateien! Prüfe, ob Odyssey läuft.\nFehlercode: PINK-CARROT",
-    "blueBananaTitle": "Network Error",
     "blueBananaMsg": "Netzwerkfehler. Internetverbindung prüfen.\nFehlercode: BLUE-BANANA",
-    "redAppleTitle": "Resin Level Low",
     "redAppleMsg": "Harzstand zu niedrig. Harz auffüllen.\nFehlercode: RED-APPLE",
-    "greenGrapeTitle": "Print Failure",
     "greenGrapeMsg": "Druck fehlgeschlagen. Modell prüfen.\nFehlercode: GREEN-GRAPE",
-    "yellowLemonTitle": "Temperature Error",
     "yellowLemonMsg": "Temperatur außerhalb des Bereichs.\nFehlercode: YELLOW-LEMON",
-    "orangeOrangeTitle": "UV Light Error",
     "orangeOrangeMsg": "UV-Licht defekt. Lichtquelle prüfen.\nFehlercode: ORANGE-ORANGE",
-    "purplePlumTitle": "Build Plate Error",
     "purplePlumMsg": "Bauplatte falsch kalibriert. Neu kalibrieren.\nFehlercode: PURPLE-PLUM",
-    "brownBearTitle": "Firmware Update Error",
     "brownBearMsg": "Fehler beim Firmware-Update. Erneut versuchen.\nFehlercode: BROWN-BEAR",
-    "blackBerryTitle": "File Error",
     "blackBerryMsg": "Datei kann nicht gelesen werden.\nFehlercode: BLACK-BERRY",
-    "whiteWolfTitle": "Sensor Error",
     "whiteWolfMsg": "Sensor defekt. Sensoren prüfen.\nFehlercode: WHITE-WOLF",
-    "grayGooseTitle": "Power Error",
     "grayGooseMsg": "Stromproblem. Verbindung prüfen.\nFehlercode: GRAY-GOOSE",
-    "goldenApeTitle": "Movement Error",
-    "goldenApeMsg": "Bewegungsfehler. Mechanik prüfen.\nFehlercode: GOLDEN-APE"
+    "goldenApeMsg": "Bewegungsfehler. Mechanik prüfen.\nFehlercode: GOLDEN-APE",
+    "code": "Code: %s",
+    "unknownTitle": "Unbekannter Fehler",
+    "pinkCarrotTitle": "Odyssey API-Fehler",
+    "blueBananaTitle": "Netzwerkfehler",
+    "redAppleTitle": "Harzstand niedrig",
+    "greenGrapeTitle": "Druckfehler",
+    "yellowLemonTitle": "Temperaturfehler",
+    "orangeOrangeTitle": "UV-Licht Fehler",
+    "purplePlumTitle": "Bauplattenfehler",
+    "brownBearTitle": "Firmware-Update Fehler",
+    "blackBerryTitle": "Dateifehler",
+    "whiteWolfTitle": "Sensorfehler",
+    "grayGooseTitle": "Stromfehler",
+    "goldenApeTitle": "Bewegungsfehler"
   },
   "connection": {
     "retryNow": "Jetzt wiederholen",
     "close": "Schließen",
     "sec0": "0 Sek",
     "sec": "%s Sek",
-    "minSec": "%s Min %s Sek"
+    "minSec": "%s Min %s Sek",
+    "backend": "Backend",
+    "target": "Ziel",
+    "attemptingReconnect": "Wiederverbindungsversuch in",
+    "pollAttempts": "Polling-Versuche",
+    "sseAttempts": "SSE-Versuche",
+    "connectionLost": "Verbindung verloren"
   },
   "markdown": {
-    "title": "Document"
+    "title": "Dokument"
   },
   "themeSelector": {
-    "light": "Light",
-    "dark": "Dark",
-    "glass": "Glass"
+    "light": "Hell",
+    "dark": "Dunkel",
+    "glass": "Glas"
   },
   "calibrationProgress": {
-    "preparing": "CALIBRATION PREPARATION",
-    "processing": "Processing calibration print job",
-    "complete": "PREPARATION COMPLETE",
-    "ready": "Calibration job ready"
+    "preparing": "VORBEREITUNG",
+    "processing": "Kalibrierungsauftrag wird verarbeitet",
+    "complete": "VORBEREITUNG ABGESCHLOSSEN",
+    "ready": "Kalibrierung bereit"
   },
   "updateNotification": {
-    "title": "Update Available",
+    "title": "Update verfügbar",
     "orion": "Orion",
     "athenaOs": "AthenaOS",
-    "wouldYouLike": "Would you like to update now?",
-    "remindLater": "Remind Later",
-    "updateNow": "Update Now"
+    "wouldYouLike": "Jetzt aktualisieren?",
+    "remindLater": "Später erinnern",
+    "updateNow": "Jetzt updaten"
   },
   "levelingGuide": {
-    "step1": "Remove the resin vat and set it aside safely",
-    "step2": "Locate the hex keys provided with your printer",
-    "step3": "Install the build plate and ensure it is fully secured",
-    "step4": "Confirm that LCD and build plate are clean and dry",
-    "homingZ": "Homing Z Axis",
-    "movingUp": "Moving Upward",
-    "movingDown": "Moving Downward",
-    "homingUp": "Homing Upward",
-    "homingDown": "Homing Downward",
-    "movingAway": "Moving safely away from the screen",
-    "ensureClear": "Ensure the motion path is clear",
-    "emergencyStop": "Emergency Stop",
-    "clearPath": "Clear the Motion Path",
-    "failedMoveTop": "Failed to start move-to-top",
-    "moveFailed": "Move failed: %s",
-    "failedHoming": "Failed to start homing",
-    "homingFailed": "Homing failed: %s"
+    "step1": "Harzwanne entnehmen",
+    "step2": "Inbusschlüssel bereitlegen",
+    "step3": "Bauplatte installieren",
+    "step4": "LCD und Bauplatte reinigen",
+    "homingZ": "Z-Referenzfahrt",
+    "testZ": "Z-Achse testen",
+    "movingUp": "Bewege nach oben",
+    "movingDown": "Bewege nach unten",
+    "homingUp": "Referenzfahrt aufwärts",
+    "homingDown": "Referenzfahrt abwärts",
+    "movingAway": "Sicher vom Bildschirm wegbewegen",
+    "ensureClear": "Bewegungsbahn freimachen",
+    "emergencyStop": "Not-Stopp",
+    "clearPath": "Bewegungsbahn freimachen",
+    "failedMoveTop": "Bewegung nach oben fehlgeschlagen",
+    "moveFailed": "Bewegung fehlgeschlagen: %s",
+    "failedHoming": "Referenzfahrt fehlgeschlagen",
+    "homingFailed": "Referenzfahrt fehlgeschlagen: %s"
   }
 }

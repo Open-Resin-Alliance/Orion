@@ -324,7 +324,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     ValueNotifier<double> progressNotifier,
     ValueNotifier<String> messageNotifier,
   ) async {
-    messageNotifier.value = 'Slicing calibration file...';
+    messageNotifier.value = FlutterI18n.translate(context, 'calibration.slicing');
 
     final startTime = DateTime.now();
     const timeout = Duration(minutes: 10); // 10 minute timeout for slicing
@@ -350,7 +350,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
 
       // Break at 93% or when processed flag is set (print starts at 99%)
       if (isProcessed == true || (progress != null && progress >= 0.93)) {
-        messageNotifier.value = 'Slicing complete';
+        messageNotifier.value = FlutterI18n.translate(context, 'calibration.slicingComplete');
         progressNotifier.value = 1.0;
         _log.info('Calibration preparation complete');
         break;
@@ -661,7 +661,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         }
 
         // Show progress
-        messageNotifier.value = 'Submitting calibration job...';
+        messageNotifier.value = FlutterI18n.translate(context, 'calibration.submittingJob');
         progressNotifier.value = 0.1;
 
         final reuseCalibrationPlate = OrionConfig()

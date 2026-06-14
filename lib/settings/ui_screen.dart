@@ -407,14 +407,14 @@ class _UIScreenState extends State<UIScreen> {
                   children: [
                     buildOption(
                       value: 'clock',
-                      title: 'Clock',
-                      subtitle: 'Show the large time display',
+                      title: FlutterI18n.translate(context, 'uiSettings.clock'),
+                      subtitle: FlutterI18n.translate(context, 'uiSettings.showClockDesc'),
                     ),
                     const SizedBox(height: 12),
                     buildOption(
                       value: 'logo',
-                      title: 'Logo',
-                      subtitle: 'Bouncing logo screensaver',
+                      title: FlutterI18n.translate(context, 'uiSettings.logo'),
+                      subtitle: FlutterI18n.translate(context, 'uiSettings.bouncingLogoDesc'),
                     ),
                   ],
                 ),
@@ -550,7 +550,7 @@ class _BacklightDeviceSelectorState extends State<_BacklightDeviceSelector> {
                             });
                           },
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Retry Detection'),
+                          label: Text(FlutterI18n.translate(context, 'uiSettings.retryDetection')),
                         ),
                       ),
                     ],
@@ -585,7 +585,7 @@ class _BacklightDeviceSelectorState extends State<_BacklightDeviceSelector> {
                             });
                           },
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Rescan Devices'),
+                          label: Text(FlutterI18n.translate(context, 'uiSettings.rescanDevices')),
                         ),
                       ),
                     ],

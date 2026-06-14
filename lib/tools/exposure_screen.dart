@@ -68,7 +68,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         setState(() {
           _apiErrorState = true;
         });
-        if (mounted) showErrorDialog(context, 'Failed to start display test');
+        if (mounted) showErrorDialog(context, FlutterI18n.translate(context, 'exposure.failedStart'));
         return;
       }
 
@@ -77,7 +77,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         setState(() {
           _apiErrorState = true;
         });
-        if (mounted) showErrorDialog(context, 'Failed to enable cure');
+        if (mounted) showErrorDialog(context, FlutterI18n.translate(context, 'exposure.failedCure'));
         return;
       }
 

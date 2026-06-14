@@ -190,7 +190,7 @@ class ImportScreenState extends State<ImportScreen> {
       final plateId = await backendService.importFile(importRequest);
 
       if (mounted) {
-        messageNotifier.value = 'Processing file metadata...';
+        messageNotifier.value = FlutterI18n.translate(context, 'calibration.processingFile');
 
         // Poll for the newly imported file to appear with valid metadata
         bool fileReady = false;

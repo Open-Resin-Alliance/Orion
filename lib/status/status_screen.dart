@@ -1502,7 +1502,7 @@ class StatusScreenState extends State<StatusScreen> {
                 borderRadius: BorderRadius.circular(15),
               ),
             ),
-            child: const Text('Raise Plate', style: TextStyle(fontSize: 24)),
+            child: Text(FlutterI18n.translate(context, 'status.raisePlate'), style: TextStyle(fontSize: 24)),
           ),
         ),
         const SizedBox(width: 20),
@@ -1655,7 +1655,7 @@ class StatusScreenState extends State<StatusScreen> {
               borderRadius: BorderRadius.circular(15),
             ),
           ),
-          child: const Text('Options', style: TextStyle(fontSize: 24)),
+          child: Text(FlutterI18n.translate(context, 'status.options'), style: TextStyle(fontSize: 24)),
         ),
       ),
       const SizedBox(width: 20),
@@ -2502,7 +2502,7 @@ class _ForceSensorDialogChartState extends State<_ForceSensorDialogChart> {
   @override
   Widget build(BuildContext context) {
     final spots = _toSpots(widget.series);
-    if (spots.isEmpty) return const Center(child: Text('No data'));
+    if (spots.isEmpty) return Center(child: Text(FlutterI18n.translate(context, 'status.noData')));
 
     _updateDisplayRange(spots);
     final displayMin = _displayMin ?? spots.map((s) => s.y).reduce(min) - 1.0;
@@ -2646,7 +2646,7 @@ class _ForceSensorMiniChartState extends State<_ForceSensorMiniChart> {
   @override
   Widget build(BuildContext context) {
     final spots = _toSpots(widget.series);
-    if (spots.isEmpty) return const Center(child: Text('No data'));
+    if (spots.isEmpty) return Center(child: Text(FlutterI18n.translate(context, 'status.noData')));
 
     _updateDisplayRange(spots);
     final displayMin = _displayMin ?? -100.0;

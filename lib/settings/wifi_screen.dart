@@ -638,7 +638,7 @@ class WifiScreenState extends State<WifiScreen> {
           context: context,
           barrierDismissible: false,
           builder: (ctx) => GlassAlertDialog(
-            title: const Text('Disconnect from WiFi'),
+            title: Text(FlutterI18n.translate(context, 'wifi.disconnectTitle')),
             content: const Text(
                 'Do you want to disconnect from the current WiFi network? This may cause any ongoing print jobs to fail.'),
             actions: [
@@ -659,7 +659,7 @@ class WifiScreenState extends State<WifiScreen> {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(90, 60),
                 ),
-                child: const Text('Stay Connected'),
+                child: Text(FlutterI18n.translate(context, 'wifi.stayConnected')),
               ),
             ],
           ),

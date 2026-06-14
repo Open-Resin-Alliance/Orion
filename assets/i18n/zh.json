@@ -65,7 +65,6 @@
     "color": "主题色"
   },
   "wifi": {
-    "section": "WiFi",
     "skipTitle": "跳过WiFi设置？",
     "skipMessage": "稍后可在设置中连接",
     "connectNow": "立即连接",
@@ -78,7 +77,9 @@
     "enterPassword": "输入密码",
     "connectionFailed": "连接失败。",
     "connectedEthernet": "以太网已连接",
-    "connectedWifi": "WiFi已连接"
+    "connectedWifi": "WiFi已连接",
+    "disconnectMsgLong": "断开当前WiFi？正在进行的打印可能失败。",
+    "section": "WiFi"
   },
   "complete": {
     "section": "完成",
@@ -103,14 +104,14 @@
     "titleInternal": "打印文件（内置）",
     "titleUsb": "打印文件（USB）",
     "titleApiError": "Odyssey API错误",
-    "titleUsbError": "(USB)",
     "titleInternalError": "(内置)",
     "fetchFail": "获取文件失败",
     "notPermitted": "操作不允许",
     "switchUsb": "切换到USB",
     "usbUnavailable": "USB不可用",
     "internalSwitch": "切换到内置",
-    "parentDir": "上级目录"
+    "parentDir": "上级目录",
+    "titleUsbError": "(USB)"
   },
   "files": {
     "deleteFile": "删除文件",
@@ -125,14 +126,19 @@
     "printTime": "打印时间",
     "dateTime": "日期时间",
     "na": "无",
-    "unitMm": "mm",
     "unitMl": "ml",
     "signalStrength": "信号强度: %s dBm",
     "lastModified": "最后修改: %s",
     "failedToDelete": "删除失败",
     "searchFile": "搜索文件名",
     "enterSearch": "输入搜索词。",
-    "noResults": "无结果 (╯°□°)╯︵ ┻━┻"
+    "noResults": "无结果 (╯°□°)╯︵ ┻━┻",
+    "usbSwitchToInternal": "USB不可用，已切换到内置存储",
+    "bulkDeleteNotSupported": "USB文件不支持批量删除。",
+    "deleteFailed": "删除%s个文件失败。",
+    "operationNotPermitted": "操作不允许",
+    "deleteConfirmPlural": "您即将删除%s个文件。\n是否继续？\n此操作不可撤销。",
+    "unitMm": "mm"
   },
   "import": {
     "importingFile": "正在导入",
@@ -154,7 +160,7 @@
     "slicedSuccess": "切片成功！",
     "slicedTimeout": "切片超时",
     "materialProfile": "材料配置",
-    "noProfilesFound": "未找到材料配置",
+    "noProfilesFound": "未找到配置",
     "slice": "切片",
     "import_": "导入"
   },
@@ -165,12 +171,12 @@
   },
   "updateAvailable": {
     "title": "可用更新",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "wouldYouLike": "立即更新？",
     "remindLater": "稍后提醒",
     "updateNow": "立即更新",
-    "dontShow": "不再显示"
+    "dontShow": "不再显示",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS"
   },
   "about": {
     "serialNumber": "序列号",
@@ -225,7 +231,19 @@
     "happyPride": "骄傲月快乐！",
     "selfDestruct": "自毁模式",
     "language": "语言",
-    "languageDesc": "语言和区域设置"
+    "languageDesc": "语言和区域设置",
+    "resetUserConfig": "重置用户配置",
+    "resetConfirmMsg": "恢复出厂设置？如有出厂预设将使用，否则将清除您的自定义设置。设备将立即重启。是否继续？",
+    "reverting": "正在恢复",
+    "rebooting": "正在重启",
+    "prepareForDelivery": "准备发货",
+    "deliveryMsg": "准备发货？设备将关闭。下次启动时将运行设置向导。仅用于发货。是否继续？",
+    "shuttingDown": "正在关机",
+    "clearThumbnailCache": "清空缩略图缓存",
+    "cacheClearMsg": "清空所有缓存的缩略图？将释放存储空间。是否继续？",
+    "cacheClearing": "正在清空缓存…",
+    "cacheCleared": "缩略图缓存已清空。",
+    "developer": "开发者"
   },
   "machineSettings": {
     "section": "机器设置",
@@ -255,7 +273,11 @@
     "showClock": "大时钟显示",
     "bouncingLogo": "弹跳徽标屏保",
     "standbyAfter": "无操作%dm%ds后进入待机",
-    "standbyWarning": "警告：建议最低30秒。"
+    "standbyWarning": "警告：建议最低30秒。",
+    "showClockDesc": "大时钟显示",
+    "bouncingLogoDesc": "弹跳徽标屏保",
+    "retryDetection": "重试检测",
+    "rescanDevices": "重新扫描"
   },
   "update": {
     "inProgress": "更新中",
@@ -279,12 +301,9 @@
     "updateAthena": "更新AthenaOS",
     "updateAthenaMsg": "更新AthenaOS？\n将在连接的打印机上触发更新。",
     "triggeringAthena": "正在触发AthenaOS更新…",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "devWarningDetailed": "这是不稳定的开发版本。\n可能出现意外行为或硬件损坏。\n\n您承担所有后果。",
     "confirmDevMsg": "确定要继续使用此开发固件？\n\n系统可能变得不稳定。",
     "finalWarningMsgDetailed": "这是最终警告。\n\n可能导致永久性硬件损坏。\n\n如果您不完全接受此风险，请取消。",
-    "orionHmi": "Orion HMI",
     "upToDate": "最新版",
     "runningBleedingEdge": "正在运行最新开发版",
     "runningStable": "正在运行最新稳定版",
@@ -302,7 +321,10 @@
     "updateInternalBuild": "更新内部版本",
     "noVersionInfo": "无版本信息",
     "comingSoon": "即将推出！",
-    "backendFutureRelease": "后端更新将在未来版本中提供"
+    "backendFutureRelease": "后端更新将在未来版本中提供",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "orionHmi": "Orion HMI"
   },
   "tools": {
     "title": "工具",
@@ -314,7 +336,7 @@
   },
   "exposure": {
     "failedStart": "显示测试失败",
-    "failedCure": "固化启动失败",
+    "failedCure": "固化失败",
     "cleaning": "清洁中",
     "testing": "测试中",
     "exposing": "曝光中",
@@ -338,7 +360,7 @@
   },
   "leveling": {
     "assisted": "辅助调平",
-    "assistedDesc": "带自动Z归零和间隙测量的引导式调平。",
+    "assistedDesc": "自动Z归零和间隙测量的引导式调平。",
     "comingSoon": "即将推出！",
     "manual": "手动调平",
     "manualDesc": "适合有经验用户的手动Z调整。",
@@ -347,7 +369,17 @@
     "cancel": "取消",
     "next": "下一步",
     "loading": "加载中…",
-    "removeVat": "取出树脂料槽并安全放置"
+    "removeVat": "取出树脂料槽",
+    "checkHexKeys": "准备随附的内六角扳手",
+    "checkLcdClean": "确认LCD和构建板清洁干燥",
+    "checkInstallPlate": "安装构建板并固定",
+    "failedMoveToTop": "上升失败",
+    "moveFailed": "移动失败：%s",
+    "failedHoming": "归零失败",
+    "homingFailed": "归零失败：%s",
+    "emergencyStop": "紧急停止",
+    "allClear": "一切正常",
+    "downwardWarning": "下降警告"
   },
   "manualLeveling": {
     "title": "手动调平",
@@ -398,10 +430,15 @@
     "stepBetween": "测试件间隔",
     "finalExposure": "最终曝光",
     "preFlightCheck": "飞行前检查",
-    "checkResin": "料槽中已添加树脂。",
-    "checkPlate": "构建板干净。",
+    "checkResin": "树脂已添加到料槽。",
+    "checkPlate": "构建板清洁。",
     "checkVat": "料槽无杂物。",
-    "startPrint": "开始打印"
+    "startPrint": "开始打印",
+    "whatWillHappen": "流程说明",
+    "testPiecesExplanation": "%s个测试件将依次打印，曝光时间递增。",
+    "submittingJob": "提交校准任务…",
+    "startingExistingPlate": "使用现有校准板（调试）…",
+    "processingFile": "处理文件元数据…"
   },
   "editResin": {
     "profileSaved": "配置已保存",
@@ -437,7 +474,7 @@
     "disabled": "已禁用",
     "mixPreheat": "混合与预热",
     "targetTemperature": "目标温度",
-    "startMixing": "Start mixing?"
+    "startMixing": "开始混合？"
   },
   "postCal": {
     "complete": "校准完成",
@@ -451,13 +488,13 @@
     "save": "保存",
     "evaluationGuide": "评估指南",
     "guideDesc": "使用指南找到最佳曝光。",
-    "scanQr": "扫描二维码用手机打开指南。",
-    "readGuide": "选择最佳曝光前请阅读指南。",
+    "scanQr": "扫描二维码。",
+    "readGuide": "选择前请阅读指南。",
     "optimal": "最佳",
     "layerExposureUpdated": "曝光时间已更新",
-    "fineTuneExposure": "微调曝光",
+    "fineTuneExposure": "微调",
     "selectValueBetween": "选择%s到%s之间的值",
-    "selectPieceGuide": "选择与指南匹配的测试件。"
+    "selectPieceGuide": "选择对应的测试件。"
   },
   "resins": {
     "failedLoad": "树脂加载失败",
@@ -470,7 +507,8 @@
     "addResin": "添加树脂",
     "ok": "确定",
     "viscosity": "粘度: %s",
-    "exposureLabel": "曝光: %s"
+    "exposureLabel": "曝光: %s",
+    "implementAddResin": "添加树脂功能即将推出"
   },
   "status": {
     "waiting": "等待打印机启动…",
@@ -482,17 +520,20 @@
     "printLayers": "打印层数",
     "estimatedTime": "预计打印时间",
     "estimatedVolume": "预计体积",
+    "raisePlate": "抬升平台",
+    "options": "选项",
+    "noData": "无数据",
     "na": "-"
   },
   "debug": {
     "logNotFound": "未找到日志文件。",
     "errorReading": "读取日志出错: %s",
     "all": "全部(%d)",
-    "info": "INFO(%d)",
-    "config": "CONFIG(%d)",
-    "fine": "FINE(%d)",
-    "warning": "WARNING(%d)",
-    "severe": "SEVERE(%d)"
+    "info": "INFO (%d)",
+    "config": "CONFIG (%d)",
+    "fine": "FINE (%d)",
+    "warning": "WARNING (%d)",
+    "severe": "SEVERE (%d)"
   },
   "licenses": {
     "subtitle": "借助这些出色的包构建",
@@ -552,7 +593,13 @@
     "close": "关闭",
     "sec0": "0秒",
     "sec": "%s秒",
-    "minSec": "%s分%s秒"
+    "minSec": "%s分%s秒",
+    "backend": "后端",
+    "target": "目标",
+    "attemptingReconnect": "重新连接倒计时",
+    "pollAttempts": "轮询次数",
+    "sseAttempts": "SSE次数",
+    "connectionLost": "连接断开"
   },
   "markdown": {
     "title": "文档"
@@ -563,37 +610,38 @@
     "glass": "玻璃"
   },
   "calibrationProgress": {
-    "preparing": "CALIBRATION PREPARATION",
-    "processing": "Processing calibration print job",
-    "complete": "PREPARATION COMPLETE",
-    "ready": "Calibration job ready"
+    "preparing": "准备中",
+    "processing": "处理校准打印任务",
+    "complete": "准备完成",
+    "ready": "校准任务就绪"
   },
   "updateNotification": {
-    "title": "Update Available",
+    "title": "可用更新",
     "orion": "Orion",
     "athenaOs": "AthenaOS",
-    "wouldYouLike": "Would you like to update now?",
-    "remindLater": "Remind Later",
-    "updateNow": "Update Now"
+    "wouldYouLike": "立即更新？",
+    "remindLater": "稍后提醒",
+    "updateNow": "立即更新"
   },
   "levelingGuide": {
-    "step1": "Remove the resin vat and set it aside safely",
-    "step2": "Locate the hex keys provided with your printer",
-    "step3": "Install the build plate and ensure it is fully secured",
-    "step4": "Confirm that LCD and build plate are clean and dry",
-    "homingZ": "Homing Z Axis",
-    "movingUp": "Moving Upward",
-    "movingDown": "Moving Downward",
-    "homingUp": "Homing Upward",
-    "homingDown": "Homing Downward",
-    "movingAway": "Moving safely away from the screen",
-    "ensureClear": "Ensure the motion path is clear",
-    "emergencyStop": "Emergency Stop",
-    "clearPath": "Clear the Motion Path",
-    "failedMoveTop": "Failed to start move-to-top",
-    "moveFailed": "Move failed: %s",
-    "failedHoming": "Failed to start homing",
-    "homingFailed": "Homing failed: %s"
+    "step1": "取出树脂料槽",
+    "step2": "准备内六角扳手",
+    "step3": "安装构建板",
+    "step4": "清洁LCD和构建板",
+    "homingZ": "Z轴归零",
+    "testZ": "测试Z轴",
+    "movingUp": "正在上升",
+    "movingDown": "正在下降",
+    "homingUp": "向上归零",
+    "homingDown": "向下归零",
+    "movingAway": "安全远离屏幕",
+    "ensureClear": "确保移动路径畅通",
+    "emergencyStop": "紧急停止",
+    "clearPath": "清理移动路径",
+    "failedMoveTop": "上升失败",
+    "moveFailed": "移动失败：%s",
+    "failedHoming": "归零失败",
+    "homingFailed": "归零失败：%s"
   },
   "heaters": {
     "vatHeater": "料槽加热器",

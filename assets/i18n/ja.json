@@ -8,7 +8,6 @@
     "cancel": "キャンセル",
     "confirm": "確認",
     "close": "閉じる",
-    "ok": "OK",
     "done": "完了",
     "dismiss": "閉じる",
     "continue_": "続行",
@@ -25,7 +24,8 @@
     "import_": "インポート",
     "optimal": "最適",
     "upToDate": "最新",
-    "checking": "確認中…"
+    "checking": "確認中…",
+    "ok": "OK"
   },
   "setup": {
     "section": "セットアップ",
@@ -65,7 +65,6 @@
     "color": "テーマカラー"
   },
   "wifi": {
-    "section": "WiFi",
     "skipTitle": "WiFi設定をスキップ？",
     "skipMessage": "後で設定から接続できます",
     "connectNow": "接続",
@@ -78,7 +77,9 @@
     "enterPassword": "パスワード",
     "connectionFailed": "接続失敗",
     "connectedEthernet": "有線LAN接続",
-    "connectedWifi": "WiFi接続"
+    "connectedWifi": "WiFi接続",
+    "disconnectMsgLong": "WiFiを切断しますか？印刷中のジョブが失敗する可能性があります。",
+    "section": "WiFi"
   },
   "complete": {
     "section": "完了",
@@ -103,14 +104,14 @@
     "titleInternal": "印刷ファイル（内部）",
     "titleUsb": "印刷ファイル（USB）",
     "titleApiError": "Odyssey APIエラー",
-    "titleUsbError": "(USB)",
     "titleInternalError": "(内部)",
     "fetchFail": "ファイル取得失敗",
     "notPermitted": "許可されていません",
     "switchUsb": "USBに切替",
     "usbUnavailable": "USB不可",
     "internalSwitch": "内部に切替",
-    "parentDir": "親ディレクトリ"
+    "parentDir": "親ディレクトリ",
+    "titleUsbError": "(USB)"
   },
   "files": {
     "deleteFile": "ファイル削除",
@@ -124,15 +125,20 @@
     "estimatedVolume": "推定体積",
     "printTime": "印刷時間",
     "dateTime": "日時",
-    "na": "N/A",
-    "unitMm": "mm",
     "unitMl": "ml",
     "signalStrength": "信号強度: %s dBm",
     "lastModified": "更新: %s",
     "failedToDelete": "削除失敗",
     "searchFile": "ファイル検索",
     "enterSearch": "検索語を入力",
-    "noResults": "見つかりません (╯°□°)╯︵ ┻━┻"
+    "noResults": "見つかりません (╯°□°)╯︵ ┻━┻",
+    "usbSwitchToInternal": "USB不可、内部に切替",
+    "bulkDeleteNotSupported": "USBファイルの一括削除はサポートされていません。",
+    "deleteFailed": "%sファイルの削除に失敗しました。",
+    "operationNotPermitted": "操作は許可されていません",
+    "deleteConfirmPlural": "%sファイルを削除しようとしています。\n続行しますか？\nこの操作は元に戻せません。",
+    "na": "N/A",
+    "unitMm": "mm"
   },
   "import": {
     "importingFile": "インポート中",
@@ -165,12 +171,12 @@
   },
   "updateAvailable": {
     "title": "アップデートあり",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "wouldYouLike": "今すぐ更新？",
     "remindLater": "後で",
     "updateNow": "更新",
-    "dontShow": "非表示"
+    "dontShow": "非表示",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS"
   },
   "about": {
     "serialNumber": "シリアル番号",
@@ -190,9 +196,9 @@
     "alreadyDeveloper": "既に開発者です",
     "developerActivated": "開発者モードを有効化！",
     "tapsAway": "あと%dタップで開発者モード",
-    "na": "N/A",
     "versionInfo": "バージョン %s — %s",
-    "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
+    "copyright": "Apache License 2.0 — © %d Open Resin Alliance",
+    "na": "N/A"
   },
   "settings": {
     "finalize": "設定完了",
@@ -222,10 +228,22 @@
     "customUrl": "バックエンドURL",
     "enterUrl": "URL入力",
     "setUrl": "URL設定",
-    "happyPride": "Happy Pride Month！",
+    "happyPride": "プライド月間おめでとう！",
     "selfDestruct": "自爆モード",
     "language": "言語",
-    "languageDesc": "言語と地域設定"
+    "languageDesc": "言語と地域設定",
+    "resetUserConfig": "設定をリセット",
+    "resetConfirmMsg": "工場出荷時の設定に戻しますか？プリセットがある場合はそれが使用されます。ない場合はカスタム設定が消去されます。デバイスは再起動します。続行しますか？",
+    "reverting": "戻しています",
+    "rebooting": "再起動中",
+    "prepareForDelivery": "発送準備",
+    "deliveryMsg": "発送準備をしますか？デバイスはシャットダウンします。次回起動時にセットアップウィザードが実行されます。発送時のみ使用してください。続行しますか？",
+    "shuttingDown": "シャットダウン中",
+    "clearThumbnailCache": "サムネイルキャッシュ消去",
+    "cacheClearMsg": "メモリとディスクからサムネイルキャッシュを消去しますか？容量を解放します。続行しますか？",
+    "cacheClearing": "キャッシュ消去中…",
+    "cacheCleared": "サムネイルキャッシュを消去しました。",
+    "developer": "開発者"
   },
   "machineSettings": {
     "section": "マシン設定",
@@ -255,7 +273,11 @@
     "showClock": "大型時計表示",
     "bouncingLogo": "バウンスロゴ",
     "standbyAfter": "操作なし%dm%ds後に待機",
-    "standbyWarning": "最低30秒を推奨。"
+    "standbyWarning": "最低30秒を推奨。",
+    "showClockDesc": "大きな時計表示",
+    "bouncingLogoDesc": "バウンスロゴのスクリーンセーバー",
+    "retryDetection": "再試行",
+    "rescanDevices": "再スキャン"
   },
   "update": {
     "inProgress": "更新中",
@@ -279,12 +301,9 @@
     "updateAthena": "AthenaOS更新",
     "updateAthenaMsg": "AthenaOSを更新しますか？\n接続中のプリンターで更新を実行。",
     "triggeringAthena": "AthenaOS更新を起動中…",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "devWarningDetailed": "不安定な開発ビルドです。\n予期せぬ動作やハードウェア損傷の可能性。\n\nすべてのリスクを承諾します。",
     "confirmDevMsg": "この開発ファームウェアで続行しますか？\n\nシステムが不安定になる可能性があります。",
     "finalWarningMsgDetailed": "最終警告です。\n\n永久的なハードウェア損傷の可能性。\n\nリスクを承諾しない場合はキャンセル。",
-    "orionHmi": "Orion HMI",
     "upToDate": "最新",
     "runningBleedingEdge": "最新開発ビルド使用中",
     "runningStable": "最新安定版使用中",
@@ -302,7 +321,10 @@
     "updateInternalBuild": "内部ビルド更新",
     "noVersionInfo": "バージョン情報なし",
     "comingSoon": "近日公開！",
-    "backendFutureRelease": "バックエンド更新は今後のリリースで"
+    "backendFutureRelease": "バックエンド更新は今後のリリースで",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "orionHmi": "Orion HMI"
   },
   "tools": {
     "title": "ツール",
@@ -314,7 +336,7 @@
   },
   "exposure": {
     "failedStart": "表示テスト失敗",
-    "failedCure": "硬化開始失敗",
+    "failedCure": "硬化失敗",
     "cleaning": "クリーニング",
     "testing": "テスト中",
     "exposing": "露光中",
@@ -338,7 +360,7 @@
   },
   "leveling": {
     "assisted": "アシストレベリング",
-    "assistedDesc": "自動Z基準とギャップ測定によるガイド付きレベリング。",
+    "assistedDesc": "自動Z基準とギャップ測定でガイド。",
     "comingSoon": "近日公開！",
     "manual": "マニュアルレベリング",
     "manualDesc": "経験者向け手動Z調整。",
@@ -347,7 +369,17 @@
     "cancel": "キャンセル",
     "next": "次へ",
     "loading": "読み込み中…",
-    "removeVat": "レジンバットを取り外して安全な場所に置いてください"
+    "removeVat": "レジンバットを取り外す",
+    "checkHexKeys": "付属の六角レンチを準備する",
+    "checkLcdClean": "LCDとビルドプレートが清潔で乾いていることを確認",
+    "checkInstallPlate": "ビルドプレートを取り付けて固定",
+    "failedMoveToTop": "上昇失敗",
+    "moveFailed": "移動失敗: %s",
+    "failedHoming": "原点復帰失敗",
+    "homingFailed": "原点復帰失敗: %s",
+    "emergencyStop": "緊急停止",
+    "allClear": "異常なし",
+    "downwardWarning": "下降注意"
   },
   "manualLeveling": {
     "title": "マニュアルレベリング",
@@ -398,10 +430,15 @@
     "stepBetween": "テスト片間隔",
     "finalExposure": "最終露光",
     "preFlightCheck": "事前確認",
-    "checkResin": "レジンがバットに入っています。",
+    "checkResin": "バットにレジンが入っています。",
     "checkPlate": "ビルドプレートは清潔です。",
     "checkVat": "バットに異物はありません。",
-    "startPrint": "印刷開始"
+    "startPrint": "印刷開始",
+    "whatWillHappen": "動作説明",
+    "testPiecesExplanation": "%s個のテスト片を露光時間を増やしながら連続印刷します。",
+    "submittingJob": "キャリブレーションジョブ送信中…",
+    "startingExistingPlate": "既存のキャリブレーションプレートを使用（デバッグ）…",
+    "processingFile": "ファイルメタデータ処理中…"
   },
   "editResin": {
     "profileSaved": "プロファイル保存完了",
@@ -437,7 +474,7 @@
     "disabled": "無効",
     "mixPreheat": "混合＆予熱",
     "targetTemperature": "目標温度",
-    "startMixing": "Start mixing?"
+    "startMixing": "混合開始？"
   },
   "postCal": {
     "complete": "キャリブレーション完了",
@@ -450,14 +487,14 @@
     "fineTune": "微調整",
     "save": "保存",
     "evaluationGuide": "評価ガイド",
-    "guideDesc": "ガイドを使って最適な露光を見つけてください。",
-    "scanQr": "QRコードをスキャンしてガイドを開く。",
-    "readGuide": "最適露光を選ぶ前に読んでください。",
+    "guideDesc": "ガイドで最適な露光を見つけてください。",
+    "scanQr": "QRコードをスキャン。",
+    "readGuide": "露光選択前にガイドを読んでください。",
     "optimal": "最適",
     "layerExposureUpdated": "露光時間を更新しました",
-    "fineTuneExposure": "露光微調整",
+    "fineTuneExposure": "微調整",
     "selectValueBetween": "%s〜%sの値を選択",
-    "selectPieceGuide": "ガイドに一致するテスト片を選択。"
+    "selectPieceGuide": "ガイドに合うテスト片を選択。"
   },
   "resins": {
     "failedLoad": "レジン読込失敗",
@@ -468,9 +505,10 @@
     "locked": "ロック済",
     "edit": "編集",
     "addResin": "レジン追加",
-    "ok": "OK",
     "viscosity": "粘度: %s",
-    "exposureLabel": "露光: %s"
+    "exposureLabel": "露光: %s",
+    "implementAddResin": "レジン追加は近日対応予定",
+    "ok": "OK"
   },
   "status": {
     "waiting": "プリンター待機中…",
@@ -482,17 +520,20 @@
     "printLayers": "印刷層",
     "estimatedTime": "推定印刷時間",
     "estimatedVolume": "推定体積",
+    "raisePlate": "プレート上昇",
+    "options": "オプション",
+    "noData": "データなし",
     "na": "-"
   },
   "debug": {
     "logNotFound": "ログファイルが見つかりません。",
     "errorReading": "ログ読込エラー: %s",
     "all": "すべて(%d)",
-    "info": "INFO(%d)",
-    "config": "CONFIG(%d)",
-    "fine": "FINE(%d)",
-    "warning": "WARNING(%d)",
-    "severe": "SEVERE(%d)"
+    "info": "INFO (%d)",
+    "config": "CONFIG (%d)",
+    "fine": "FINE (%d)",
+    "warning": "WARNING (%d)",
+    "severe": "SEVERE (%d)"
   },
   "licenses": {
     "subtitle": "これらの素晴らしいパッケージに支えられています",
@@ -515,7 +556,7 @@
     "networkName": "ネットワーク名",
     "ipAddress": "IPアドレス",
     "macAddress": "MACアドレス",
-    "linkSpeed": "リンク速度",
+    "linkSpeed": "速度",
     "connectTo": "%sに接続"
   },
   "error": {
@@ -552,7 +593,13 @@
     "close": "閉じる",
     "sec0": "0秒",
     "sec": "%s秒",
-    "minSec": "%s分%s秒"
+    "minSec": "%s分%s秒",
+    "backend": "バックエンド",
+    "target": "ターゲット",
+    "attemptingReconnect": "再接続まで",
+    "pollAttempts": "ポーリング試行",
+    "sseAttempts": "SSE試行",
+    "connectionLost": "接続が切れました"
   },
   "markdown": {
     "title": "ドキュメント"
@@ -563,37 +610,38 @@
     "glass": "グラス"
   },
   "calibrationProgress": {
-    "preparing": "CALIBRATION PREPARATION",
-    "processing": "Processing calibration print job",
-    "complete": "PREPARATION COMPLETE",
-    "ready": "Calibration job ready"
+    "preparing": "準備中",
+    "processing": "キャリブレーション処理中",
+    "complete": "準備完了",
+    "ready": "キャリブレーション準備完了"
   },
   "updateNotification": {
-    "title": "Update Available",
+    "title": "アップデートあり",
     "orion": "Orion",
     "athenaOs": "AthenaOS",
-    "wouldYouLike": "Would you like to update now?",
-    "remindLater": "Remind Later",
-    "updateNow": "Update Now"
+    "wouldYouLike": "今すぐ更新？",
+    "remindLater": "後で",
+    "updateNow": "更新"
   },
   "levelingGuide": {
-    "step1": "Remove the resin vat and set it aside safely",
-    "step2": "Locate the hex keys provided with your printer",
-    "step3": "Install the build plate and ensure it is fully secured",
-    "step4": "Confirm that LCD and build plate are clean and dry",
-    "homingZ": "Homing Z Axis",
-    "movingUp": "Moving Upward",
-    "movingDown": "Moving Downward",
-    "homingUp": "Homing Upward",
-    "homingDown": "Homing Downward",
-    "movingAway": "Moving safely away from the screen",
-    "ensureClear": "Ensure the motion path is clear",
-    "emergencyStop": "Emergency Stop",
-    "clearPath": "Clear the Motion Path",
-    "failedMoveTop": "Failed to start move-to-top",
-    "moveFailed": "Move failed: %s",
-    "failedHoming": "Failed to start homing",
-    "homingFailed": "Homing failed: %s"
+    "step1": "レジンバットを取り外す",
+    "step2": "六角レンチを準備",
+    "step3": "ビルドプレートを取り付け",
+    "step4": "LCDとプレートを清掃",
+    "homingZ": "Z軸原点復帰",
+    "testZ": "Z軸テスト",
+    "movingUp": "上昇中",
+    "movingDown": "下降中",
+    "homingUp": "上方向原点復帰",
+    "homingDown": "下方向原点復帰",
+    "movingAway": "画面から安全に退避中",
+    "ensureClear": "移動経路が安全であることを確認",
+    "emergencyStop": "緊急停止",
+    "clearPath": "移動経路を確保",
+    "failedMoveTop": "上昇失敗",
+    "moveFailed": "移動失敗: %s",
+    "failedHoming": "原点復帰失敗",
+    "homingFailed": "原点復帰失敗: %s"
   },
   "heaters": {
     "vatHeater": "バットヒーター",

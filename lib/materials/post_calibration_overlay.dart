@@ -447,7 +447,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Use the evaluation guide to correctly identify the optimal exposure from your calibration print.',
+                          FlutterI18n.translate(context, 'postCal.guideDesc'),
                           style: TextStyle(
                             fontSize: 18,
                             color: onSurface.withValues(alpha: 0.75),
@@ -457,12 +457,12 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         const SizedBox(height: 20),
                         _buildGuideItem(
                           context,
-                          'Scan the QR code with your phone to open the ${widget.calibrationModelName} evaluation guide.',
+                          FlutterI18n.translate(context, 'postCal.scanQr'),
                         ),
                         const SizedBox(height: 10),
                         _buildGuideItem(
                           context,
-                          'Read it thoroughly before selecting the optimal exposure on the next screen.',
+                          FlutterI18n.translate(context, 'postCal.readGuide'),
                         ),
                       ],
                     ),
@@ -616,7 +616,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Select the piece matching the guide. If unsure, pick the two that look best.',
+            FlutterI18n.translate(context, 'postCal.selectPieceGuide'),
             style: TextStyle(
               fontSize: 16,
               color: Theme.of(context)
@@ -790,7 +790,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Select a value between ${minExp.toStringAsFixed(2)}s and ${maxExp.toStringAsFixed(2)}s',
+                  FlutterI18n.translate(context, 'postCal.selectValueBetween', translationParams: {'0': minExp.toStringAsFixed(2), '1': maxExp.toStringAsFixed(2)}),
                   style: const TextStyle(fontSize: 20),
                 ),
                 const SizedBox(height: 16),

@@ -8,7 +8,6 @@
     "cancel": "Annulla",
     "confirm": "Conferma",
     "close": "Chiudi",
-    "ok": "OK",
     "done": "Fatto",
     "dismiss": "Ignora",
     "continue_": "Continua",
@@ -25,7 +24,8 @@
     "import_": "Importa",
     "optimal": "Ottimale",
     "upToDate": "Aggiornato",
-    "checking": "Controllo…"
+    "checking": "Controllo…",
+    "ok": "OK"
   },
   "setup": {
     "section": "Configurazione",
@@ -65,7 +65,6 @@
     "color": "Colore tema"
   },
   "wifi": {
-    "section": "WiFi",
     "skipTitle": "Saltare configurazione WiFi?",
     "skipMessage": "Connettersi al WiFi più tardi nelle impostazioni",
     "connectNow": "Connetti ora",
@@ -78,7 +77,9 @@
     "enterPassword": "Inserisci password",
     "connectionFailed": "Connessione fallita. Riprova.",
     "connectedEthernet": "Connesso via Ethernet",
-    "connectedWifi": "Connesso via WiFi"
+    "connectedWifi": "Connesso via WiFi",
+    "disconnectMsgLong": "Disconnettersi dal WiFi? Le stampe in corso potrebbero fallire.",
+    "section": "WiFi"
   },
   "complete": {
     "section": "Completato",
@@ -103,14 +104,14 @@
     "titleInternal": "File di stampa (Interno)",
     "titleUsb": "File di stampa (USB)",
     "titleApiError": "Errore API Odyssey",
-    "titleUsbError": "(USB)",
     "titleInternalError": "(Interno)",
     "fetchFail": "Impossibile recuperare i file",
     "notPermitted": "Operazione non consentita",
     "switchUsb": "Passa a USB",
     "usbUnavailable": "USB non disponibile",
     "internalSwitch": "Passa a Interno",
-    "parentDir": "Directory superiore"
+    "parentDir": "Directory superiore",
+    "titleUsbError": "(USB)"
   },
   "files": {
     "deleteFile": "Elimina file",
@@ -125,14 +126,19 @@
     "printTime": "Tempo di stampa",
     "dateTime": "Data e ora",
     "na": "N/D",
-    "unitMm": "mm",
     "unitMl": "ml",
     "signalStrength": "Potenza segnale: %s dBm",
     "lastModified": "Ultima modifica: %s",
     "failedToDelete": "Impossibile eliminare il file",
     "searchFile": "Cerca nome file",
     "enterSearch": "Inserisci termine di ricerca.",
-    "noResults": "Nessun risultato (╯°□°)╯︵ ┻━┻"
+    "noResults": "Nessun risultato (╯°□°)╯︵ ┻━┻",
+    "usbSwitchToInternal": "USB non disponibile, passato a interno",
+    "bulkDeleteNotSupported": "Eliminazione multipla non supportata per USB.",
+    "deleteFailed": "Errore eliminando %s file.",
+    "operationNotPermitted": "Operazione non consentita",
+    "deleteConfirmPlural": "Stai per eliminare %s file.\nContinuare?\nAzione irreversibile.",
+    "unitMm": "mm"
   },
   "import": {
     "importingFile": "IMPORTAZIONE IN CORSO",
@@ -154,7 +160,7 @@
     "slicedSuccess": "File tagliato con successo!",
     "slicedTimeout": "Taglio scaduto",
     "materialProfile": "Profilo materiale",
-    "noProfilesFound": "Nessun profilo materiale trovato",
+    "noProfilesFound": "Nessun profilo materiale",
     "slice": "Taglia",
     "import_": "Importa"
   },
@@ -165,12 +171,12 @@
   },
   "updateAvailable": {
     "title": "Aggiornamento disponibile",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "wouldYouLike": "Vuoi aggiornare ora?",
     "remindLater": "Ricorda dopo",
     "updateNow": "Aggiorna ora",
-    "dontShow": "Non mostrare notifiche di aggiornamento"
+    "dontShow": "Non mostrare notifiche di aggiornamento",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS"
   },
   "about": {
     "serialNumber": "Numero di serie",
@@ -222,10 +228,22 @@
     "customUrl": "URL backend personalizzato",
     "enterUrl": "Inserisci URL",
     "setUrl": "Imposta URL",
-    "happyPride": "Happy Pride Month!",
     "selfDestruct": "Modalità autodistruzione",
     "language": "Lingua",
-    "languageDesc": "Impostazioni lingua e regione"
+    "languageDesc": "Impostazioni lingua e regione",
+    "resetUserConfig": "Reset configurazione",
+    "resetConfirmMsg": "Ripristinare le impostazioni di fabbrica? Se esiste un preset, verrà usato. Altrimenti le impostazioni verranno cancellate. Il dispositivo si riavvierà. Continuare?",
+    "reverting": "Ripristino",
+    "rebooting": "Riavvio",
+    "prepareForDelivery": "Prepara per spedizione",
+    "deliveryMsg": "Preparare per la spedizione? Il dispositivo si spegnerà. All'accensione partirà la configurazione iniziale. Solo per spedizione. Continuare?",
+    "shuttingDown": "Spegnimento",
+    "clearThumbnailCache": "Svuota cache",
+    "cacheClearMsg": "Cancellare tutte le miniature dalla cache? Libererà spazio. Continuare?",
+    "cacheClearing": "Svuotamento cache…",
+    "cacheCleared": "Cache svuotata.",
+    "developer": "Sviluppatore",
+    "happyPride": "Buon Pride Month!"
   },
   "machineSettings": {
     "section": "Impostazioni macchina",
@@ -247,7 +265,6 @@
     "standbyScreen": "Schermo standby",
     "enableStandby": "Attiva schermo standby",
     "standbyMode": "Modalità standby",
-    "logo": "Logo",
     "clock": "Orologio",
     "dimScreen": "Schermo attenuato in standby",
     "dimLed": "LED attenuati in standby",
@@ -255,7 +272,12 @@
     "showClock": "Mostra grande orologio",
     "bouncingLogo": "Screensaver logo rimbalzante",
     "standbyAfter": "Lo schermo entrerà in standby dopo %dm %ds di inattività",
-    "standbyWarning": "Avvertenza: la durata minima consigliata è di 30 secondi."
+    "standbyWarning": "Avvertenza: la durata minima consigliata è di 30 secondi.",
+    "showClockDesc": "Orologio grande",
+    "bouncingLogoDesc": "Logo rimbalzante",
+    "retryDetection": "Riprova",
+    "rescanDevices": "Riscansiona",
+    "logo": "Logo"
   },
   "update": {
     "inProgress": "AGGIORNAMENTO IN CORSO",
@@ -279,12 +301,9 @@
     "updateAthena": "Aggiorna AthenaOS",
     "updateAthenaMsg": "Aggiornare AthenaOS?\nAvvierà un aggiornamento sulla stampante Athena collegata.",
     "triggeringAthena": "Avvio aggiornamento AthenaOS…",
-    "orion": "Orion",
-    "athenaOs": "AthenaOS",
     "devWarningDetailed": "Questa è una build di sviluppo instabile.\nComportamenti imprevisti e danni hardware sono possibili.\n\nAccetti tutte le conseguenze.",
     "confirmDevMsg": "Sei sicuro di voler procedere con questo firmware di sviluppo?\n\nIl sistema potrebbe diventare instabile.",
     "finalWarningMsgDetailed": "Questo è il tuo ultimo avviso.\n\nSono possibili danni hardware permanenti.\n\nAnnulla a meno che non accetti pienamente questo rischio.",
-    "orionHmi": "Orion HMI",
     "upToDate": "AGGIORNATO",
     "runningBleedingEdge": "Ultima build di sviluppo",
     "runningStable": "Ultima versione stabile",
@@ -296,13 +315,16 @@
     "updateAvailableLabel": "AGGIORNAMENTO DISPONIBILE",
     "rateLimitExceeded": "Limite di richieste superato",
     "rateLimitMsg": "Limite API GitHub raggiunto. Riprova più tardi.",
-    "bleedingEdge": "BLEEDING EDGE",
-    "rollback": "ROLLBACK",
     "forceUpdate": "Forza aggiornamento",
     "updateInternalBuild": "Aggiorna build interna",
     "noVersionInfo": "Nessuna informazione sulla versione disponibile",
     "comingSoon": "Prossimamente!",
-    "backendFutureRelease": "Aggiornamento backend disponibile in una release futura"
+    "backendFutureRelease": "Aggiornamento backend disponibile in una release futura",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "orionHmi": "Orion HMI",
+    "bleedingEdge": "BLEEDING EDGE",
+    "rollback": "ROLLBACK"
   },
   "tools": {
     "title": "Strumenti",
@@ -313,8 +335,8 @@
     "tools": "Strumenti"
   },
   "exposure": {
-    "failedStart": "Impossibile avviare il test del display",
-    "failedCure": "Impossibile attivare l'indurimento",
+    "failedStart": "Test display fallito",
+    "failedCure": "Indurimento fallito",
     "cleaning": "Pulizia",
     "testing": "Test",
     "exposing": "Esposizione",
@@ -324,7 +346,7 @@
     "logo": "Logo",
     "measure": "Misura",
     "clean": "Pulisci",
-    "seconds": "%s secondi",
+    "seconds": "%s s",
     "persistent": "Persistente"
   },
   "force": {
@@ -338,16 +360,26 @@
   },
   "leveling": {
     "assisted": "Livellamento assistito",
-    "assistedDesc": "Livellamento guidato con riferimento Z automatico e misurazione del gap.",
+    "assistedDesc": "Livellamento assistito con riferimento Z.",
     "comingSoon": "Prossimamente!",
     "manual": "Livellamento manuale",
-    "manualDesc": "Regolazione Z manuale per utenti esperti.",
+    "manualDesc": "Regolazione Z manuale per esperti.",
     "manualMode": "Modalità manuale",
     "preparation": "Preparazione",
     "cancel": "Annulla",
     "next": "Avanti",
     "loading": "Caricamento…",
-    "removeVat": "Rimuovi la vasca di resina e mettila in sicurezza"
+    "removeVat": "Rimuovere la vasca di resina",
+    "checkHexKeys": "Recuperare le chiavi a brugola incluse",
+    "checkLcdClean": "Verificare che LCD e piastra siano puliti e asciutti",
+    "checkInstallPlate": "Installare la piattaforma di costruzione",
+    "failedMoveToTop": "Salita fallita",
+    "moveFailed": "Movimento fallito: %s",
+    "failedHoming": "Riferimento fallito",
+    "homingFailed": "Riferimento fallito: %s",
+    "emergencyStop": "Arresto emergenza",
+    "allClear": "Tutto ok",
+    "downwardWarning": "Avviso discesa"
   },
   "manualLeveling": {
     "title": "Livellamento manuale",
@@ -365,13 +397,13 @@
   "moveZ": {
     "failedMoveZ": "Movimento Z fallito",
     "returnHome": "Torna a casa",
-    "home": "Home",
     "emergencyStop": "Arresto di emergenza",
     "stop": "Ferma",
     "moveToFloor": "Vai al fondo",
     "moveToTop": "Vai in cima",
     "floor": "Fondo",
-    "top": "Cima"
+    "top": "Cima",
+    "home": "Home"
   },
   "materials": {
     "title": "Materiali",
@@ -394,14 +426,19 @@
     "slicing": "Taglio file di calibrazione…",
     "loadingExposure": "Caricamento…",
     "slicingComplete": "Taglio completato",
-    "selectModel": "Seleziona modello di calibrazione",
-    "stepBetween": "Passo tra i pezzi",
+    "selectModel": "Scegli modello",
+    "stepBetween": "Passo tra pezzi",
     "finalExposure": "Esposizione finale",
     "preFlightCheck": "Controllo preliminare",
-    "checkResin": "La resina è stata riempita.",
-    "checkPlate": "La piattaforma è pulita.",
-    "checkVat": "La vasca è libera da detriti.",
-    "startPrint": "Avvia stampa"
+    "checkResin": "Resina nella vasca.",
+    "checkPlate": "Piattaforma pulita.",
+    "checkVat": "Vasca senza detriti.",
+    "startPrint": "Avvia stampa",
+    "whatWillHappen": "Cosa succede",
+    "testPiecesExplanation": "%s pezzi stampati con esposizione crescente.",
+    "submittingJob": "Invio calibrazione…",
+    "startingExistingPlate": "Uso piastra esistente (debug)…",
+    "processingFile": "Elaborazione metadati…"
   },
   "editResin": {
     "profileSaved": "Profilo salvato",
@@ -416,11 +453,11 @@
     "normalCureDesc": "Esposizione UV per gli strati dopo l'indurimento iniziale.",
     "savedSuccess": "Impostazioni profilo salvate con successo",
     "editTitle": "Modifica resina",
-    "waitAfterCure": "Attesa dopo indurimento",
+    "waitAfterCure": "Pausa dopo polimerizzazione",
     "waitAfterCureDesc": "Pausa dopo esposizione UV prima del sollevamento.",
-    "liftAfterPrint": "Distanza di sollevamento",
+    "liftAfterPrint": "Distanza sollevamento",
     "liftAfterPrintDesc": "Quanto si solleva la piattaforma tra gli strati.",
-    "waitAfterLift": "Attesa dopo sollevamento",
+    "waitAfterLift": "Pausa dopo sollevamento",
     "waitAfterLiftDesc": "Pausa dopo il sollevamento per far defluire la resina.",
     "saving": "Salvataggio…"
   },
@@ -437,7 +474,7 @@
     "disabled": "Disattivato",
     "mixPreheat": "Miscela e preriscalda",
     "targetTemperature": "Temperatura target",
-    "startMixing": "Start mixing?"
+    "startMixing": "Avviare miscelazione?"
   },
   "postCal": {
     "complete": "Calibrazione completata",
@@ -450,14 +487,14 @@
     "fineTune": "Regolazione fine",
     "save": "Salva",
     "evaluationGuide": "GUIDA DI VALUTAZIONE",
-    "guideDesc": "Usa la guida per trovare l'esposizione ottimale.",
-    "scanQr": "Scansiona il codice QR con il telefono per aprire la guida.",
-    "readGuide": "Leggi prima di selezionare l'esposizione ottimale.",
+    "guideDesc": "Trova esposizione ottimale con la guida.",
+    "scanQr": "Scansiona il QR code.",
+    "readGuide": "Leggi prima di scegliere l'esposizione.",
     "optimal": "Ottimale",
-    "layerExposureUpdated": "Tempo di esposizione aggiornato",
-    "fineTuneExposure": "Regolazione fine esposizione",
-    "selectValueBetween": "Seleziona un valore tra %s e %s",
-    "selectPieceGuide": "Seleziona il pezzo corrispondente dalla guida."
+    "layerExposureUpdated": "Esposizione aggiornata",
+    "fineTuneExposure": "Regolazione fine",
+    "selectValueBetween": "Valore tra %s e %s",
+    "selectPieceGuide": "Scegli il pezzo corrispondente."
   },
   "resins": {
     "failedLoad": "Impossibile caricare le resine",
@@ -468,9 +505,10 @@
     "locked": "Bloccato",
     "edit": "Modifica",
     "addResin": "Aggiungi resina",
-    "ok": "OK",
     "viscosity": "Viscosità: %s",
-    "exposureLabel": "Esposizione: %s"
+    "exposureLabel": "Esposizione: %s",
+    "implementAddResin": "Aggiunta resina in arrivo",
+    "ok": "OK"
   },
   "status": {
     "waiting": "In attesa della stampante…",
@@ -482,17 +520,20 @@
     "printLayers": "Strati di stampa",
     "estimatedTime": "Tempo di stampa stimato",
     "estimatedVolume": "Volume stimato",
+    "raisePlate": "Alza piattaforma",
+    "options": "Opzioni",
+    "noData": "Nessun dato",
     "na": "-"
   },
   "debug": {
     "logNotFound": "File di log non trovato.",
     "errorReading": "Errore durante la lettura del log: %s",
     "all": "Tutti (%d)",
+    "warning": "AVVISO (%d)",
+    "severe": "GRAVE (%d)",
     "info": "INFO (%d)",
     "config": "CONFIG (%d)",
-    "fine": "FINE (%d)",
-    "warning": "AVVISO (%d)",
-    "severe": "GRAVE (%d)"
+    "fine": "FINE (%d)"
   },
   "licenses": {
     "subtitle": "realizzato con questi fantastici pacchetti",
@@ -515,7 +556,7 @@
     "networkName": "Nome rete",
     "ipAddress": "Indirizzo IP",
     "macAddress": "Indirizzo MAC",
-    "linkSpeed": "Velocità di collegamento",
+    "linkSpeed": "Velocità",
     "connectTo": "Connetti a %s"
   },
   "error": {
@@ -550,9 +591,15 @@
   "connection": {
     "retryNow": "Riprova ora",
     "close": "Chiudi",
+    "minSec": "%s min %s sec",
+    "backend": "Backend",
+    "target": "Destinazione",
+    "attemptingReconnect": "Riconnessione tra",
+    "pollAttempts": "Tentativi poll",
+    "sseAttempts": "Tentativi SSE",
+    "connectionLost": "Connessione persa",
     "sec0": "0 sec",
-    "sec": "%s sec",
-    "minSec": "%s min %s sec"
+    "sec": "%s sec"
   },
   "markdown": {
     "title": "Documento"
@@ -563,37 +610,38 @@
     "glass": "Vetro"
   },
   "calibrationProgress": {
-    "preparing": "CALIBRATION PREPARATION",
-    "processing": "Processing calibration print job",
-    "complete": "PREPARATION COMPLETE",
-    "ready": "Calibration job ready"
+    "preparing": "PREPARAZIONE",
+    "processing": "Elaborazione calibrazione",
+    "complete": "PREPARAZIONE COMPLETA",
+    "ready": "Calibrazione pronta"
   },
   "updateNotification": {
-    "title": "Update Available",
+    "title": "Aggiornamento disponibile",
     "orion": "Orion",
     "athenaOs": "AthenaOS",
-    "wouldYouLike": "Would you like to update now?",
-    "remindLater": "Remind Later",
-    "updateNow": "Update Now"
+    "wouldYouLike": "Aggiornare ora?",
+    "remindLater": "Ricorda dopo",
+    "updateNow": "Aggiorna ora"
   },
   "levelingGuide": {
-    "step1": "Remove the resin vat and set it aside safely",
-    "step2": "Locate the hex keys provided with your printer",
-    "step3": "Install the build plate and ensure it is fully secured",
-    "step4": "Confirm that LCD and build plate are clean and dry",
-    "homingZ": "Homing Z Axis",
-    "movingUp": "Moving Upward",
-    "movingDown": "Moving Downward",
-    "homingUp": "Homing Upward",
-    "homingDown": "Homing Downward",
-    "movingAway": "Moving safely away from the screen",
-    "ensureClear": "Ensure the motion path is clear",
-    "emergencyStop": "Emergency Stop",
-    "clearPath": "Clear the Motion Path",
-    "failedMoveTop": "Failed to start move-to-top",
-    "moveFailed": "Move failed: %s",
-    "failedHoming": "Failed to start homing",
-    "homingFailed": "Homing failed: %s"
+    "step1": "Rimuovere la vasca di resina",
+    "step2": "Prendere le chiavi a brugola",
+    "step3": "Installare la piattaforma",
+    "step4": "Pulire LCD e piattaforma",
+    "homingZ": "Riferimento Z",
+    "testZ": "Test asse Z",
+    "movingUp": "Salendo",
+    "movingDown": "Scendendo",
+    "homingUp": "Riferimento verso l'alto",
+    "homingDown": "Riferimento verso il basso",
+    "movingAway": "Allontanamento dallo schermo",
+    "ensureClear": "Assicurarsi che il percorso sia libero",
+    "emergencyStop": "Arresto emergenza",
+    "clearPath": "Liberare il percorso",
+    "failedMoveTop": "Salita fallita",
+    "moveFailed": "Movimento fallito: %s",
+    "failedHoming": "Riferimento fallito",
+    "homingFailed": "Riferimento fallito: %s"
   },
   "heaters": {
     "vatHeater": "Riscaldatore vasca",

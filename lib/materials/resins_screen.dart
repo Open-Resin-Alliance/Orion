@@ -398,7 +398,7 @@ class ResinsScreenState extends State<ResinsScreen> {
       context: context,
       builder: (_) => GlassAlertDialog(
         title: Text(FlutterI18n.translate(context, 'resins.addResin')),
-        content: const Text('Implement Add Resin flow'),
+        content: Text(FlutterI18n.translate(context, 'resins.implementAddResin')),
         actions: [
           GlassButton(
               onPressed: () => Navigator.pop(context),

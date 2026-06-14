@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter/services.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_kb/orion_numeric_field.dart';
