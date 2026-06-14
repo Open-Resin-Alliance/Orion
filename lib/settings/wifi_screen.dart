@@ -315,7 +315,13 @@ class WifiScreenState extends State<WifiScreen> {
                   return Center(
                     child: SingleChildScrollView(
                       child: Padding(
-                        padding: OrionSpacing.settingsScreenPadding,
+                        padding: EdgeInsets.only(
+                          left: OrionSpacing.settingsScreenPaddingTightTop.left,
+                          right:
+                              OrionSpacing.settingsScreenPaddingTightTop.right,
+                          top: OrionSpacing.settingsScreenPaddingTightTop.top,
+                          bottom: OrionSpacing.screenBottomNavClearance,
+                        ),
                         child: isLandscape
                             ? buildLandscapeLayout(context, currentSSID, net,
                                 networks, connectionType)
@@ -345,7 +351,12 @@ class WifiScreenState extends State<WifiScreen> {
                   await wifiProvider.scanNetworks();
                 },
                 child: ListView.builder(
-                  padding: OrionSpacing.settingsScreenPadding,
+                  padding: EdgeInsets.only(
+                    left: OrionSpacing.settingsScreenPaddingTightTop.left,
+                    right: OrionSpacing.settingsScreenPaddingTightTop.right,
+                    top: OrionSpacing.settingsScreenPaddingTightTop.top,
+                    bottom: OrionSpacing.screenBottomNavClearance,
+                  ),
                   itemCount: networks.length,
                   itemBuilder: (context, index) {
                     final network = networks[index];
@@ -605,7 +616,11 @@ class WifiScreenState extends State<WifiScreen> {
       elevation: 1.0,
       outlined: true,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        padding: EdgeInsets.only(
+            left: OrionSpacing.settingsScreenHorizontal,
+            right: OrionSpacing.settingsScreenHorizontal,
+            top: 8.0,
+            bottom: 8.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -659,7 +674,8 @@ class WifiScreenState extends State<WifiScreen> {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(90, 60),
                 ),
-                child: Text(FlutterI18n.translate(context, 'wifi.stayConnected')),
+                child:
+                    Text(FlutterI18n.translate(context, 'wifi.stayConnected')),
               ),
             ],
           ),

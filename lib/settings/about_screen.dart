@@ -114,7 +114,12 @@ class AboutScreenState extends State<AboutScreen> {
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: OrionSpacing.settingsScreenPadding,
+            padding: EdgeInsets.only(
+              left: OrionSpacing.settingsScreenPaddingTightTop.left,
+              right: OrionSpacing.settingsScreenPaddingTightTop.right,
+              top: OrionSpacing.settingsScreenPaddingTightTop.top,
+              bottom: OrionSpacing.screenBottomNavClearance,
+            ),
             child: isLandscape
                 ? buildLandscapeLayout(context)
                 : buildPortraitLayout(context),
@@ -224,7 +229,9 @@ class AboutScreenState extends State<AboutScreen> {
             ),
             children: <Widget>[
               Padding(
-                padding: const EdgeInsets.only(left: 10, right: 10),
+                padding: EdgeInsets.only(
+                    left: OrionSpacing.settingsScreenHorizontal,
+                    right: OrionSpacing.settingsScreenHorizontal),
                 child: GlassCard(
                   child: ListTile(
                     leading: const Icon(Icons.list, size: 30),
@@ -322,7 +329,11 @@ class AboutScreenState extends State<AboutScreen> {
       child: Align(
         alignment: Alignment.centerLeft,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: EdgeInsets.only(
+              left: OrionSpacing.settingsScreenHorizontal,
+              right: OrionSpacing.settingsScreenHorizontal,
+              top: 8.0,
+              bottom: 8.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
