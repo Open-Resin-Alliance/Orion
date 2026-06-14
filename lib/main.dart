@@ -40,6 +40,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/home/home_screen.dart';
 import 'package:orion/home/startup_gate.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:flutter_i18n/loaders/decoders/json_decode_strategy.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/status/status_screen.dart';
@@ -427,6 +428,7 @@ class OrionMainAppState extends State<OrionMainApp> {
         useCountryCode: false,
         fallbackFile: 'en',
         basePath: 'assets/i18n',
+        decodeStrategies: [JsonDecodeStrategy()],
       ),
       missingTranslationHandler: missingTranslationHandler,
     );
