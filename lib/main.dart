@@ -407,6 +407,7 @@ class OrionMainApp extends StatefulWidget {
 
 class OrionMainAppState extends State<OrionMainApp> {
   late final GoRouter _router;
+  late final FlutterI18nDelegate _i18nDelegate;
   ConnectionErrorWatcher? _connWatcher;
   NotificationWatcher? _notifWatcher;
   UpdateNotificationWatcher? _updateWatcher;
@@ -421,6 +422,14 @@ class OrionMainAppState extends State<OrionMainApp> {
   void initState() {
     super.initState();
     _initRouter();
+    _i18nDelegate = FlutterI18nDelegate(
+      translationLoader: FileTranslationLoader(
+        useCountryCode: false,
+        fallbackFile: 'en',
+        basePath: 'assets/i18n',
+      ),
+      missingTranslationHandler: missingTranslationHandler,
+    );
     _activeBackendId = _resolveActiveBackendId();
     _initializeActiveBackendSubmodules();
   }
@@ -659,14 +668,7 @@ class OrionMainAppState extends State<OrionMainApp> {
           themeMode: themeProvider.themeMode,
           locale: localeProvider.locale,
           localizationsDelegates: [
-            FlutterI18nDelegate(
-              translationLoader: FileTranslationLoader(
-                useCountryCode: false,
-                fallbackFile: 'en',
-                basePath: 'assets/i18n',
-              ),
-              missingTranslationHandler: missingTranslationHandler,
-            ),
+            _i18nDelegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,

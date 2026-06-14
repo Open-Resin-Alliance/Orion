@@ -18,10 +18,12 @@
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/locales/available_languages.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
 
@@ -33,101 +35,114 @@ class LanguageScreen extends StatelessWidget {
     return GlassApp(
       child: Scaffold(
         appBar: OrionAppBar(
-          title: Text(
-            FlutterI18n.translate(context, 'setup.languageTitle'),
-          ),
+          title: Text(FlutterI18n.translate(context, 'setup.languageTitle')),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+          actions: <Widget>[
+            SystemStatusWidget(),
+          ],
         ),
         body: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.only(
+            left: OrionSpacing.settingsScreenHorizontal,
+            right: OrionSpacing.settingsScreenHorizontal,
+            top: OrionSpacing.screenTop,
+            bottom: OrionSpacing.screenBottomNavClearance,
+          ),
           child: Consumer<LocaleProvider>(
             builder: (context, localeProvider, _) {
               final currentLocale = localeProvider.locale;
               final currentCode =
                   '${currentLocale.languageCode}_${currentLocale.countryCode}';
 
-              // Calculate card size so 2×4 grid fills available space
-              final viewWidth = MediaQuery.of(context).size.width;
-              final viewHeight = MediaQuery.of(context).size.height;
-              final safeTop = MediaQuery.of(context).padding.top;
-              final safeBottom = MediaQuery.of(context).padding.bottom;
-              final gridWidth = viewWidth - 32;
-              final cardWidth = (gridWidth - 6) / 2;
-              final overhead = 16 +
-                  safeTop +
-                  56 +
-                  16 +
-                  safeBottom; // body pad + safe + appbar + pad + safe
-              final gridHeight = viewHeight - overhead;
-              final cardHeight = (gridHeight - 3 * 6) / 4;
+              return Column(
+                children: [
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final gridWidth = constraints.maxWidth;
+                        final gridHeight = constraints.maxHeight;
+                        final cardWidth = (gridWidth - 6) / 2;
+                        final cardHeight = (gridHeight - 3 * 6) / 4;
+                        final aspectRatio = cardWidth / cardHeight;
 
-              return SizedBox(
-                width: gridWidth,
-                height: gridHeight,
-                child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    childAspectRatio: cardWidth / cardHeight,
-                    mainAxisSpacing: 6,
-                    crossAxisSpacing: 6,
-                    crossAxisCount: 2,
-                  ),
-                  itemCount: availableLanguages.length,
-                  itemBuilder: (context, index) {
-                    final language = availableLanguages[index];
-                    final isSelected = language['code'] == currentCode;
+                        return GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            childAspectRatio: aspectRatio,
+                            mainAxisSpacing: 6,
+                            crossAxisSpacing: 6,
+                            crossAxisCount: 2,
+                          ),
+                          itemCount: availableLanguages.length,
+                          itemBuilder: (context, index) {
+                            final language = availableLanguages[index];
+                            final isSelected = language['code'] == currentCode;
+                            final primary =
+                                Theme.of(context).colorScheme.primary;
+                            final isDark =
+                                Theme.of(context).brightness == Brightness.dark;
 
-                    return GlassCard(
-                        elevation: isSelected ? 4 : 1,
-                        outlined: isSelected,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(10),
-                          onTap: () {
-                            final parts = language['code']!.split('_');
-                            if (parts.length == 2) {
-                              localeProvider
-                                  .setLocale(Locale(parts[0], parts[1]));
-                            }
-                          },
-                          child: Center(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              child: Row(
-                                children: [
-                                  CountryFlag.fromCountryCode(
-                                    language['flag']!,
-                                    height: 40,
-                                    width: 60,
-                                    shape: RoundedRectangle(6),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      language['nativeName']!,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                            return GlassCard(
+                              elevation: isSelected ? 4 : 1,
+                              outlined: isSelected,
+                              accentColor: isSelected ? primary : null,
+                              accentOpacity:
+                                  isSelected ? (isDark ? 0.22 : 0.06) : 0.06,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(10),
+                                onTap: () {
+                                  final parts = language['code']!.split('_');
+                                  if (parts.length == 2) {
+                                    localeProvider
+                                        .setLocale(Locale(parts[0], parts[1]));
+                                  }
+                                },
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12),
+                                    child: Row(
+                                      children: [
+                                        CountryFlag.fromCountryCode(
+                                          language['flag']!,
+                                          height: 40,
+                                          width: 60,
+                                          shape: RoundedRectangle(6),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            language['nativeName']!,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (isSelected)
+                                          Icon(
+                                            Icons.check_circle,
+                                            color: primary,
+                                            size: 28,
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                  if (isSelected)
-                                    Icon(Icons.check_circle,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        size: 20),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                        ));
-                  },
-                ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           ),

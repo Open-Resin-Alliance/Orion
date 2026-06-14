@@ -27,10 +27,12 @@ import 'package:orion/settings/machine_settings_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
+import 'package:country_flags/country_flags.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/settings/ui_screen.dart';
 import 'package:orion/settings/language_screen.dart';
+import 'package:orion/util/locales/available_languages.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
@@ -134,7 +136,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
   Widget _buildOffsetNavCard({
     required BuildContext context,
-    required IconData icon,
+    required Widget leading,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
@@ -149,7 +151,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
       outlined: true,
       elevation: navCardElevation,
       child: ListTile(
-        leading: Icon(icon),
+        leading: leading,
         title: Text(title, style: const TextStyle(fontSize: 20)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 16)),
         trailing: Icon(
@@ -163,6 +165,16 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentLocale = Localizations.localeOf(context);
+    final currentLangCode =
+        '${currentLocale.languageCode}_${currentLocale.countryCode}';
+    final langMatch =
+        availableLanguages.cast<Map<String, String>?>().firstWhere(
+              (e) => e!['code'] == currentLangCode,
+              orElse: () => null,
+            );
+    final flagCode = langMatch?['flag'] ?? '';
+
     return PopScope(
       child: Scaffold(
         body: Padding(
@@ -260,7 +272,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           Expanded(
                             child: _buildOffsetNavCard(
                               context: context,
-                              icon: Icons.palette,
+                              leading: Icon(Icons.palette),
                               title: FlutterI18n.translate(
                                   context, 'generalSettings.ui'),
                               subtitle: FlutterI18n.translate(
@@ -278,7 +290,12 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           Expanded(
                             child: _buildOffsetNavCard(
                               context: context,
-                              icon: Icons.language,
+                              leading: CountryFlag.fromCountryCode(
+                                flagCode,
+                                height: 32,
+                                width: 48,
+                                shape: RoundedRectangle(6),
+                              ),
                               title: FlutterI18n.translate(
                                   context, 'generalSettings.language'),
                               subtitle: FlutterI18n.translate(
@@ -330,7 +347,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       const SizedBox(height: 20.0),
                       _buildOffsetNavCard(
                         context: context,
-                        icon: Icons.engineering,
+                        leading: Icon(Icons.engineering),
                         title: FlutterI18n.translate(
                             context, 'generalSettings.machineSettings'),
                         subtitle: FlutterI18n.translate(
