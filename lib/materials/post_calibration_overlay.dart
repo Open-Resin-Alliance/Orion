@@ -586,47 +586,54 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     return Padding(
       key: const ValueKey('evaluation'),
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Row 1: pieces 1ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“3
-          Expanded(
-            child: Row(
-              children: [
-                pieceButton(0),
-                const SizedBox(width: 10),
-                pieceButton(1),
-                const SizedBox(width: 10),
-                pieceButton(2),
-              ],
-            ),
+      child: GlassCard(
+        elevation: 1.0,
+        outlined: true,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Row 1: pieces 1ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“3
+              Expanded(
+                child: Row(
+                  children: [
+                    pieceButton(0),
+                    const SizedBox(width: 10),
+                    pieceButton(1),
+                    const SizedBox(width: 10),
+                    pieceButton(2),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Row 2: pieces 4ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“6
+              Expanded(
+                child: Row(
+                  children: [
+                    pieceButton(3),
+                    const SizedBox(width: 10),
+                    pieceButton(4),
+                    const SizedBox(width: 10),
+                    pieceButton(5),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                FlutterI18n.translate(context, 'postCal.selectPieceGuide'),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.55),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          // Row 2: pieces 4ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“6
-          Expanded(
-            child: Row(
-              children: [
-                pieceButton(3),
-                const SizedBox(width: 10),
-                pieceButton(4),
-                const SizedBox(width: 10),
-                pieceButton(5),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            FlutterI18n.translate(context, 'postCal.selectPieceGuide'),
-            style: TextStyle(
-              fontSize: 16,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.55),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -790,7 +797,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  FlutterI18n.translate(context, 'postCal.selectValueBetween', translationParams: {'0': minExp.toStringAsFixed(2), '1': maxExp.toStringAsFixed(2)}),
+                  '${FlutterI18n.translate(context, 'postCal.selectValueBetween')} ${minExp.toStringAsFixed(2)} - ${maxExp.toStringAsFixed(2)}',
                   style: const TextStyle(fontSize: 20),
                 ),
                 const SizedBox(height: 16),

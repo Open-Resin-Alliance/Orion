@@ -174,7 +174,8 @@
   "startup": {
     "defaultPrinter": "3D Printer",
     "poweredBy": "Powered by ",
-    "openResinAlliance": "Open Resin Alliance"
+    "openResinAlliance": "Open Resin Alliance",
+    "startingUp": "Starting up"
   },
   "updateAvailable": {
     "title": "Update Available",
@@ -484,7 +485,7 @@
     "checkVat": "The vat is clear of any debris.",
     "startPrint": "Start Print",
     "whatWillHappen": "What Will Happen",
-    "testPiecesExplanation": "%s test pieces will be printed back-to-back with increasing exposure times.",
+    "testPiecesExplanation": "test pieces will be printed back-to-back with increasing exposure times.",
     "submittingJob": "Submitting calibration job...",
     "startingExistingPlate": "Starting existing calibration plate (debug)...",
     "processingFile": "Processing file metadata..."

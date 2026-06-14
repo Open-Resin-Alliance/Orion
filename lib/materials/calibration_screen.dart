@@ -169,8 +169,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                             onTap: () => _editValue(
                               title: FlutterI18n.translate(
                                   context, 'calibration.startingExposure'),
-                              description:
-                                  FlutterI18n.translate(context, 'calibration.exposureDesc'),
+                              description: FlutterI18n.translate(
+                                  context, 'calibration.exposureDesc'),
                               currentValue: _startingExposure,
                               min: 0.5,
                               max: 10,
@@ -192,8 +192,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                             onTap: () => _editValue(
                               title: FlutterI18n.translate(
                                   context, 'calibration.exposureIncrement'),
-                              description:
-                                  FlutterI18n.translate(context, 'calibration.incrementDesc'),
+                              description: FlutterI18n.translate(
+                                  context, 'calibration.incrementDesc'),
                               currentValue: _exposureIncrement,
                               min: 0.1,
                               max: 2,
@@ -324,7 +324,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     ValueNotifier<double> progressNotifier,
     ValueNotifier<String> messageNotifier,
   ) async {
-    messageNotifier.value = FlutterI18n.translate(context, 'calibration.slicing');
+    messageNotifier.value =
+        FlutterI18n.translate(context, 'calibration.slicing');
 
     final startTime = DateTime.now();
     const timeout = Duration(minutes: 10); // 10 minute timeout for slicing
@@ -350,7 +351,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
 
       // Break at 93% or when processed flag is set (print starts at 99%)
       if (isProcessed == true || (progress != null && progress >= 0.93)) {
-        messageNotifier.value = FlutterI18n.translate(context, 'calibration.slicingComplete');
+        messageNotifier.value =
+            FlutterI18n.translate(context, 'calibration.slicingComplete');
         progressNotifier.value = 1.0;
         _log.info('Calibration preparation complete');
         break;
@@ -661,7 +663,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         }
 
         // Show progress
-        messageNotifier.value = FlutterI18n.translate(context, 'calibration.submittingJob');
+        messageNotifier.value =
+            FlutterI18n.translate(context, 'calibration.submittingJob');
         progressNotifier.value = 0.1;
 
         final reuseCalibrationPlate = OrionConfig()
@@ -1098,7 +1101,9 @@ class _PreCalibrationOverlay extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                FlutterI18n.translate(context, 'calibration.whatWillHappen').toUpperCase(),
+                                FlutterI18n.translate(
+                                        context, 'calibration.whatWillHappen')
+                                    .toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -1111,7 +1116,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                '$testPiecesCount test pieces will be printed back-to-back, each with a slightly longer exposure than the last.',
+                                '$testPiecesCount ${FlutterI18n.translate(context, 'calibration.testPiecesExplanation')}',
                                 style: TextStyle(
                                   fontSize: 18,
                                   color: Theme.of(context)
@@ -1135,7 +1140,8 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               _buildStatRow(
                                 context,
                                 icon: Icon(PhosphorIcons.arrowRight()),
-                                label: 'Step between pieces',
+                                label: FlutterI18n.translate(
+                                    context, 'calibration.stepBetween'),
                                 value:
                                     '+${exposureIncrement.toStringAsFixed(1)} s',
                                 primary: primary,
@@ -1144,7 +1150,8 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               _buildStatRow(
                                 context,
                                 icon: Icon(PhosphorIcons.arrowLineRight()),
-                                label: 'Final exposure',
+                                label: FlutterI18n.translate(
+                                    context, 'calibration.finalExposure'),
                                 value:
                                     '${(startingExposure + exposureIncrement * (testPiecesCount - 1)).toStringAsFixed(1)} s',
                                 primary: primary,
@@ -1168,7 +1175,9 @@ class _PreCalibrationOverlay extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                FlutterI18n.translate(context, 'calibration.preFlightCheck').toUpperCase(),
+                                FlutterI18n.translate(
+                                        context, 'calibration.preFlightCheck')
+                                    .toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -1186,12 +1195,18 @@ class _PreCalibrationOverlay extends StatelessWidget {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    _buildChecklistItem(context,
-                                        'Correct resin is filled into the vat.'),
                                     _buildChecklistItem(
-                                        context, 'The build plate is clean.'),
-                                    _buildChecklistItem(context,
-                                        'The vat is clear of any debris.'),
+                                        context,
+                                        FlutterI18n.translate(
+                                            context, 'calibration.checkResin')),
+                                    _buildChecklistItem(
+                                        context,
+                                        FlutterI18n.translate(
+                                            context, 'calibration.checkPlate')),
+                                    _buildChecklistItem(
+                                        context,
+                                        FlutterI18n.translate(
+                                            context, 'calibration.checkVat')),
                                   ],
                                 ),
                               ),

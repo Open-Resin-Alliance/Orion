@@ -179,7 +179,8 @@
   "startup": {
     "defaultPrinter": "3Dプリンター",
     "poweredBy": "提供元: ",
-    "openResinAlliance": "Open Resin Alliance"
+    "openResinAlliance": "Open Resin Alliance",
+    "startingUp": "起動中"
   },
   "updateAvailable": {
     "title": "アップデートあり",

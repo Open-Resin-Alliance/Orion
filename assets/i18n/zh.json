@@ -179,7 +179,8 @@
   "startup": {
     "defaultPrinter": "3D打印机",
     "poweredBy": "技术支持: ",
-    "openResinAlliance": "Open Resin Alliance"
+    "openResinAlliance": "Open Resin Alliance",
+    "startingUp": "正在启动"
   },
   "updateAvailable": {
     "title": "可用更新",

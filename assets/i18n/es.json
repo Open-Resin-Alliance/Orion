@@ -179,7 +179,8 @@
   "startup": {
     "defaultPrinter": "Impresora 3D",
     "poweredBy": "Desarrollado por ",
-    "openResinAlliance": "Open Resin Alliance"
+    "openResinAlliance": "Open Resin Alliance",
+    "startingUp": "Iniciando"
   },
   "updateAvailable": {
     "title": "Actualización disponible",
@@ -489,7 +490,7 @@
     "checkVat": "Cubeta sin residuos.",
     "startPrint": "Iniciar impresión",
     "whatWillHappen": "Qué pasará",
-    "testPiecesExplanation": "%s piezas se imprimirán con exposición creciente.",
+    "testPiecesExplanation": "piezas se imprimirán con exposición creciente.",
     "submittingJob": "Enviando calibración…",
     "startingExistingPlate": "Usando placa existente (debug)…",
     "processingFile": "Procesando metadatos…"

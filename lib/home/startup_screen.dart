@@ -712,7 +712,7 @@ class _StartupScreenState extends State<StartupScreen>
               child: FadeTransition(
                 opacity: _loaderOpacity,
                 child: Text(
-                  'Starting up ${_printerName.isNotEmpty ? _printerName : FlutterI18n.translate(context, 'startup.defaultPrinter')}',
+                  '${FlutterI18n.translate(context, 'startup.startingUp')} ${_printerName.isNotEmpty ? _printerName : FlutterI18n.translate(context, 'startup.defaultPrinter')}',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'AtkinsonHyperlegible',

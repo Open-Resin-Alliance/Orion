@@ -179,7 +179,8 @@
   "startup": {
     "defaultPrinter": "Stampante 3D",
     "poweredBy": "Realizzato da ",
-    "openResinAlliance": "Open Resin Alliance"
+    "openResinAlliance": "Open Resin Alliance",
+    "startingUp": "Avvio"
   },
   "updateAvailable": {
     "title": "Aggiornamento disponibile",
@@ -489,7 +490,7 @@
     "checkVat": "Vasca senza detriti.",
     "startPrint": "Avvia stampa",
     "whatWillHappen": "Cosa succede",
-    "testPiecesExplanation": "%s pezzi stampati con esposizione crescente.",
+    "testPiecesExplanation": "pezzi stampati con esposizione crescente.",
     "submittingJob": "Invio calibrazione…",
     "startingExistingPlate": "Uso piastra esistente (debug)…",
     "processingFile": "Elaborazione metadati…"
