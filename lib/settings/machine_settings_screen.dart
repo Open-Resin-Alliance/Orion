@@ -70,8 +70,9 @@ class _MachineSettingsScreenState extends State<MachineSettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Machine Settings',
+                        Text(
+                          FlutterI18n.translate(
+                              context, 'machineSettings.section'),
                           style: TextStyle(
                             fontSize: 28.0,
                           ),

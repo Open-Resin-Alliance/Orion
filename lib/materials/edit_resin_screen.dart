@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
@@ -221,7 +222,8 @@ class EditResinScreenState extends State<EditResinScreen> {
         await showDialog(
           context: context,
           builder: (context) => GlassAlertDialog(
-            title: const Text('Profile Saved',
+            title: Text(
+                FlutterI18n.translate(context, 'editResin.profileSaved'),
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -242,7 +244,8 @@ class EditResinScreenState extends State<EditResinScreen> {
                       Column(
                         children: [
                           Text(
-                            'Previous',
+                            FlutterI18n.translate(
+                                context, 'editResin.previous'),
                             style: TextStyle(
                               fontSize: 18,
                               color: Colors.grey.shade500,
@@ -271,7 +274,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                       Column(
                         children: [
                           Text(
-                            'Updated',
+                            FlutterI18n.translate(context, 'editResin.updated'),
                             style: TextStyle(
                               fontSize: 18,
                               color: Colors.grey.shade400,
@@ -294,8 +297,10 @@ class EditResinScreenState extends State<EditResinScreen> {
                 ],
                 Text(
                   hasChanged
-                      ? 'Layer exposure time updated'
-                      : 'Profile settings saved successfully',
+                      ? FlutterI18n.translate(
+                          context, 'postCal.layerExposureUpdated')
+                      : FlutterI18n.translate(
+                          context, 'editResin.savedSuccess'),
                   style: TextStyle(
                     fontSize: 20,
                     color: Colors.grey.shade500,
@@ -312,7 +317,7 @@ class EditResinScreenState extends State<EditResinScreen> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Done'),
+                child: Text(FlutterI18n.translate(context, 'editResin.done')),
               ),
             ],
           ),
@@ -435,12 +440,14 @@ class EditResinScreenState extends State<EditResinScreen> {
                         children: [
                           Expanded(
                             child: _buildCard(
-                              title: 'Burn-In Layer Cure Time',
+                              title: FlutterI18n.translate(
+                                  context, 'editResin.burnInCure'),
                               value: '${_burnInTime.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
-                                title: 'Burn-In Layer Cure Time',
-                                description:
-                                    'UV exposure time for the initial layers that adhere the print to the build plate. Longer times improve adhesion.',
+                                title: FlutterI18n.translate(
+                                    context, 'editResin.burnInCure'),
+                                description: FlutterI18n.translate(
+                                    context, 'editResin.burnInDesc'),
                                 currentValue: _burnInTime.toDouble(),
                                 min: 0,
                                 max: 30,
@@ -454,12 +461,14 @@ class EditResinScreenState extends State<EditResinScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildCard(
-                              title: 'Burn-In Layer Count',
+                              title: FlutterI18n.translate(
+                                  context, 'editResin.burnInCount'),
                               value: '$_burnInCount',
                               onTap: () => _editValue(
-                                title: 'Burn-In Layer Count',
-                                description:
-                                    'How many initial layers use the longer burn-in cure time. More layers provide stronger build plate adhesion.',
+                                title: FlutterI18n.translate(
+                                    context, 'editResin.burnInCount'),
+                                description: FlutterI18n.translate(
+                                    context, 'editResin.burnInCountDesc'),
                                 currentValue: _burnInCount.toDouble(),
                                 min: 0,
                                 max: 20,
@@ -479,13 +488,15 @@ class EditResinScreenState extends State<EditResinScreen> {
                         children: [
                           Expanded(
                             child: _buildCard(
-                              title: 'Normal Layer Cure Time',
+                              title: FlutterI18n.translate(
+                                  context, 'editResin.normalCure'),
                               // Display two decimals but restrict edits to 0.1s
                               value: '${_normalTime.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
-                                title: 'Normal Layer Cure Time',
-                                description:
-                                    'UV exposure time for all layers after burn-in. This is the main parameter that affects print quality and detail.',
+                                title: FlutterI18n.translate(
+                                    context, 'editResin.normalCure'),
+                                description: FlutterI18n.translate(
+                                    context, 'editResin.normalCureDesc'),
                                 currentValue: _normalTime.toDouble(),
                                 min: 0,
                                 max: 15,
@@ -499,12 +510,14 @@ class EditResinScreenState extends State<EditResinScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildCard(
-                              title: 'Wait After Cure',
+                              title: FlutterI18n.translate(
+                                  context, 'editResin.waitAfterCure'),
                               value: '${_waitAfterCure.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
-                                title: 'Wait After Cure',
-                                description:
-                                    'Pause after UV exposure before lifting. Allows the layer to stabilize and helps prevent layer separation.',
+                                title: FlutterI18n.translate(
+                                    context, 'editResin.waitAfterCure'),
+                                description: FlutterI18n.translate(
+                                    context, 'editResin.waitAfterCureDesc'),
                                 currentValue: _waitAfterCure.toDouble(),
                                 min: 0,
                                 max: 20,
@@ -525,12 +538,14 @@ class EditResinScreenState extends State<EditResinScreen> {
                         children: [
                           Expanded(
                             child: _buildCard(
-                              title: 'Lift After Print',
+                              title: FlutterI18n.translate(
+                                  context, 'editResin.liftAfterPrint'),
                               value: '${_liftAfter.toStringAsFixed(1)} mm',
                               onTap: () => _editValue(
-                                title: 'Lift After Print',
-                                description:
-                                    'How far the build plate lifts between layers. Higher values ensure complete separation but slow down prints.',
+                                title: FlutterI18n.translate(
+                                    context, 'editResin.liftAfterPrint'),
+                                description: FlutterI18n.translate(
+                                    context, 'editResin.liftAfterPrintDesc'),
                                 currentValue: _liftAfter,
                                 min: 0,
                                 max: 20,
@@ -544,12 +559,14 @@ class EditResinScreenState extends State<EditResinScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildCard(
-                              title: 'Wait After Lift',
+                              title: FlutterI18n.translate(
+                                  context, 'editResin.waitAfterLift'),
                               value: '${_waitAfterLife.toStringAsFixed(2)} s',
                               onTap: () => _editValue(
-                                title: 'Wait After Lift',
-                                description:
-                                    'Pause after lifting to let resin flow back and settle before the next layer exposure begins.',
+                                title: FlutterI18n.translate(
+                                    context, 'editResin.waitAfterLift'),
+                                description: FlutterI18n.translate(
+                                    context, 'editResin.waitAfterLiftDesc'),
                                 currentValue: _waitAfterLife.toDouble(),
                                 min: 0,
                                 max: 20,
@@ -577,8 +594,9 @@ class EditResinScreenState extends State<EditResinScreen> {
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 65),
                       ),
-                      child:
-                          const Text('Reset', style: TextStyle(fontSize: 22)),
+                      child: Text(
+                          FlutterI18n.translate(context, 'common.reset'),
+                          style: TextStyle(fontSize: 22)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -590,9 +608,12 @@ class EditResinScreenState extends State<EditResinScreen> {
                         minimumSize: const Size(0, 65),
                       ),
                       child: _saving
-                          ? const Text('SavingÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦',
+                          ? Text(
+                              FlutterI18n.translate(
+                                  context, 'editResin.saving'),
                               style: TextStyle(fontSize: 22))
-                          : const Text('Save', style: TextStyle(fontSize: 22)),
+                          : Text(FlutterI18n.translate(context, 'common.save'),
+                              style: TextStyle(fontSize: 22)),
                     ),
                   ),
                 ],
@@ -604,4 +625,3 @@ class EditResinScreenState extends State<EditResinScreen> {
     );
   }
 }
-

@@ -584,7 +584,9 @@ class _PressureLineChartState extends State<_PressureLineChart> {
   @override
   Widget build(BuildContext context) {
     final spots = _toSpots(widget.series);
-    if (spots.isEmpty) return const Center(child: Text('No data'));
+    if (spots.isEmpty)
+      return Center(
+          child: Text(FlutterI18n.translate(context, 'force.noData')));
 
     // Only update display range when not paused
     if (!widget.isPaused) {

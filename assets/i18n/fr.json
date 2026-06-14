@@ -16,7 +16,16 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "remove": "Remove"
+    "remove": "Remove",
+    "reset": "Reset",
+    "previous": "Previous",
+    "saving": "Saving…",
+    "start": "Start",
+    "slice": "Slice",
+    "import_": "Import",
+    "optimal": "Optimal",
+    "upToDate": "Up to Date",
+    "checking": "Checking…"
   },
   "setup": {
     "section": "Configuration",
@@ -84,7 +93,9 @@
     "shutdownSystem": "Éteindre le système",
     "btnPrint": "Imprimer",
     "btnTools": "Outils",
-    "btnSettings": "Paramètres"
+    "btnSettings": "Paramètres",
+    "materials": "Materials",
+    "btnPower": "Power"
   },
   "print": {
     "usbAvailable": "USB disponible",
@@ -141,7 +152,11 @@
     "dragonfruit": "Vous avez déjà essayé DragonFruit ? C'est délicieux !",
     "waitingSlicer": "Attente du démarrage du slicer...",
     "slicedSuccess": "Fichier tranché avec succès !",
-    "slicedTimeout": "Tranchage expiré"
+    "slicedTimeout": "Tranchage expiré",
+    "materialProfile": "Material Profile",
+    "noProfilesFound": "No material profiles found",
+    "slice": "Slice",
+    "import_": "Import"
   },
   "startup": {
     "defaultPrinter": "Imprimante 3D",
@@ -175,7 +190,9 @@
     "alreadyDeveloper": "Vous êtes déjà développeur",
     "developerActivated": "Mode développeur activé !",
     "tapsAway": "Plus que %d tap(s) pour devenir développeur",
-    "na": "N/D"
+    "na": "N/D",
+    "versionInfo": "Version %s — %s",
+    "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
   "settings": {
     "finalize": "Finaliser les paramètres",
@@ -184,6 +201,8 @@
     "now": "Maintenant",
     "disconnectWifi": "Se déconnecter du WiFi",
     "disconnectMessage": "Voulez-vous vous déconnecter du réseau WiFi actuel ?\nCela peut interrompre les travaux d'impression en cours.",
+    "stayConnected": "Stay Connected",
+    "disconnect": "Disconnect",
     "general": "Général",
     "network": "Réseau",
     "about": "À propos",
@@ -246,6 +265,7 @@
     "devFirmware": "Firmware de développement à venir",
     "devWarning": "Ceci est une version de développement instable.\nVous acceptez toutes les conséquences.",
     "iAccept": "J'accepte",
+    "cancel": "Cancel",
     "confirmUpdate": "Confirmer la mise à jour",
     "areYouCertain": "Êtes-vous certain de vouloir procéder à cette mise à jour ?",
     "continue_": "Continuer",
@@ -256,14 +276,39 @@
     "updateOrionMsg": "Voulez-vous mettre à jour l'IHM Orion ?\nCeci téléchargera la dernière version depuis GitHub.",
     "updateAthena": "Mettre à jour AthenaOS",
     "updateAthenaMsg": "Voulez-vous mettre à jour AthenaOS ?\nCeci déclenchera une mise à jour sur l'imprimante Athena connectée.",
-    "triggeringAthena": "Lancement de la mise à jour AthenaOS..."
+    "triggeringAthena": "Lancement de la mise à jour AthenaOS...",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "devWarningDetailed": "This is an unstable development build.\nUnexpected behavior may occur.\nHardware damage is possible.\n\nYou accept all consequences.",
+    "confirmDevMsg": "Are you certain you want to proceed\nwith this development firmware?\n\nThe system may become unstable or inoperable.",
+    "finalWarningMsgDetailed": "This is your final warning.\n\nProceeding may result in permanent hardware damage\nand system failure.\n\nCancel unless you fully accept this risk.",
+    "orionHmi": "Orion HMI",
+    "upToDate": "UP TO DATE",
+    "runningBleedingEdge": "Running latest bleeding edge build",
+    "runningStable": "Running latest stable release",
+    "downloadAndInstall": "Download & Install",
+    "channel": "Channel: %s",
+    "checking": "Checking for updates...",
+    "internalBuild": "INTERNAL BUILD",
+    "betaVersion": "BETA VERSION",
+    "updateAvailableLabel": "UPDATE AVAILABLE",
+    "rateLimitExceeded": "Rate Limit Exceeded",
+    "rateLimitMsg": "GitHub API rate limit reached. Try again later.",
+    "bleedingEdge": "BLEEDING EDGE",
+    "rollback": "ROLLBACK",
+    "forceUpdate": "Force Update",
+    "updateInternalBuild": "Update Internal Build",
+    "noVersionInfo": "No version information available",
+    "comingSoon": "Coming Soon!",
+    "backendFutureRelease": "Backend updater will be available in a future release"
   },
   "tools": {
     "title": "Outils",
     "moveZ": "Déplacer Z",
     "leveling": "Nivellement",
     "exposure": "Exposition",
-    "forceSensor": "Capteur de force"
+    "forceSensor": "Capteur de force",
+    "tools": "Tools"
   },
   "exposure": {
     "failedStart": "Échec du démarrage du test d'affichage",
@@ -286,7 +331,8 @@
     "tare": "Tare",
     "maximum": "Maximum",
     "current": "Actuel",
-    "minimum": "Minimum"
+    "minimum": "Minimum",
+    "noData": "No data"
   },
   "leveling": {
     "assisted": "Nivellement assisté",
@@ -343,7 +389,17 @@
     "start": "Commencer l'étalonnage",
     "loadingModels": "Chargement des modèles...",
     "noModel": "Aucun modèle sélectionné",
-    "slicing": "Tranchage du fichier d'étalonnage..."
+    "slicing": "Tranchage du fichier d'étalonnage...",
+    "loadingExposure": "Loading...",
+    "slicingComplete": "Slicing complete",
+    "selectModel": "Select Calibration Model",
+    "stepBetween": "Step between pieces",
+    "finalExposure": "Final exposure",
+    "preFlightCheck": "Pre-Flight Check",
+    "checkResin": "Correct resin is filled into the vat.",
+    "checkPlate": "The build plate is clean.",
+    "checkVat": "The vat is clear of any debris.",
+    "startPrint": "Start Print"
   },
   "editResin": {
     "profileSaved": "Profil enregistré",
@@ -356,7 +412,15 @@
     "burnInCountDesc": "Combien de couches initiales utilisent le temps prolongé.",
     "normalCure": "Temps de durcissement normal",
     "normalCureDesc": "Temps d'exposition UV pour les couches suivantes.",
-    "savedSuccess": "Paramètres du profil enregistrés avec succès"
+    "savedSuccess": "Paramètres du profil enregistrés avec succès",
+    "editTitle": "Edit Resin",
+    "waitAfterCure": "Wait After Cure",
+    "waitAfterCureDesc": "Pause after UV exposure before lifting.",
+    "liftAfterPrint": "Lift Distance",
+    "liftAfterPrintDesc": "How far the build plate lifts between layers.",
+    "waitAfterLift": "Wait After Lift",
+    "waitAfterLiftDesc": "Pause after lifting to let resin flow back.",
+    "saving": "Saving…"
   },
   "heater": {
     "confirmMixing": "Confirmer le mélange de résine",
@@ -369,7 +433,9 @@
     "checking": "Vérification...",
     "enabled": "Activé",
     "disabled": "Désactivé",
-    "mixPreheat": "Mélanger & préchauffer"
+    "mixPreheat": "Mélanger & préchauffer",
+    "targetTemperature": "Target Temperature",
+    "startMixing": "Start mixing?"
   },
   "postCal": {
     "complete": "Étalonnage terminé",
@@ -384,7 +450,12 @@
     "evaluationGuide": "GUIDE D'ÉVALUATION",
     "guideDesc": "Utilisez le guide d'évaluation pour identifier l'exposition optimale.",
     "scanQr": "Scannez le QR code avec votre téléphone pour ouvrir le guide.",
-    "readGuide": "Lisez-le attentivement avant de sélectionner l'exposition optimale."
+    "readGuide": "Lisez-le attentivement avant de sélectionner l'exposition optimale.",
+    "optimal": "Optimal",
+    "layerExposureUpdated": "Layer exposure time updated",
+    "fineTuneExposure": "Fine-Tune Exposure",
+    "selectValueBetween": "Select a value between %s and %s",
+    "selectPieceGuide": "Select the piece matching the guide."
   },
   "resins": {
     "failedLoad": "Échec du chargement des résines",
@@ -395,7 +466,9 @@
     "locked": "Verrouillé",
     "edit": "Modifier",
     "addResin": "Ajouter une résine",
-    "ok": "OK"
+    "ok": "OK",
+    "viscosity": "Viscosity: %s",
+    "exposureLabel": "Exposure: %s"
   },
   "status": {
     "waiting": "Attente du démarrage de l'imprimante…",
@@ -406,7 +479,8 @@
     "currentZ": "Position Z actuelle",
     "printLayers": "Couches d'impression",
     "estimatedTime": "Temps d'impression estimé",
-    "estimatedVolume": "Volume estimé"
+    "estimatedVolume": "Volume estimé",
+    "na": "-"
   },
   "debug": {
     "logNotFound": "Fichier journal non trouvé.",
@@ -435,7 +509,12 @@
     "regularArm": "Bras de construction standard",
     "regularArmDesc": "Bras de construction standard Athena 2.",
     "proArm": "Bras de construction Pro",
-    "proArmDesc": "Mécanisme de nivellement et de verrouillage amélioré."
+    "proArmDesc": "Mécanisme de nivellement et de verrouillage amélioré.",
+    "networkName": "Network Name",
+    "ipAddress": "IP Address",
+    "macAddress": "MAC Address",
+    "linkSpeed": "Link Speed",
+    "connectTo": "Connect to %s"
   },
   "error": {
     "code": "Code: %s",
@@ -472,5 +551,46 @@
     "sec0": "0 s",
     "sec": "%s s",
     "minSec": "%s min %s s"
+  },
+  "markdown": {
+    "title": "Document"
+  },
+  "themeSelector": {
+    "light": "Light",
+    "dark": "Dark",
+    "glass": "Glass"
+  },
+  "calibrationProgress": {
+    "preparing": "CALIBRATION PREPARATION",
+    "processing": "Processing calibration print job",
+    "complete": "PREPARATION COMPLETE",
+    "ready": "Calibration job ready"
+  },
+  "updateNotification": {
+    "title": "Update Available",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "wouldYouLike": "Would you like to update now?",
+    "remindLater": "Remind Later",
+    "updateNow": "Update Now"
+  },
+  "levelingGuide": {
+    "step1": "Remove the resin vat and set it aside safely",
+    "step2": "Locate the hex keys provided with your printer",
+    "step3": "Install the build plate and ensure it is fully secured",
+    "step4": "Confirm that LCD and build plate are clean and dry",
+    "homingZ": "Homing Z Axis",
+    "movingUp": "Moving Upward",
+    "movingDown": "Moving Downward",
+    "homingUp": "Homing Upward",
+    "homingDown": "Homing Downward",
+    "movingAway": "Moving safely away from the screen",
+    "ensureClear": "Ensure the motion path is clear",
+    "emergencyStop": "Emergency Stop",
+    "clearPath": "Clear the Motion Path",
+    "failedMoveTop": "Failed to start move-to-top",
+    "moveFailed": "Move failed: %s",
+    "failedHoming": "Failed to start homing",
+    "homingFailed": "Homing failed: %s"
   }
 }

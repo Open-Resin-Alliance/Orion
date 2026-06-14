@@ -207,11 +207,8 @@ class UpdateScreenState extends State<UpdateScreen>
                     ),
                   ],
                 ),
-                content: const Text(
-                  'This is an unstable development build.\n'
-                  'Unexpected behavior may occur.\n'
-                  'Hardware damage is possible.\n\n'
-                  'You accept all consequences.',
+                content: Text(
+                  FlutterI18n.translate(context, 'update.devWarningDetailed'),
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
                 ),
                 actions: [
@@ -228,7 +225,8 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel'),
+                    child:
+                        Text(FlutterI18n.translate(context, 'common.cancel')),
                   ),
                 ],
               ),
@@ -259,7 +257,7 @@ class UpdateScreenState extends State<UpdateScreen>
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Confirm Update',
+                      FlutterI18n.translate(context, 'update.confirmUpdate'),
                       style: const TextStyle(
                         color: Colors.redAccent,
                         fontWeight: FontWeight.bold,
@@ -267,9 +265,8 @@ class UpdateScreenState extends State<UpdateScreen>
                     ),
                   ],
                 ),
-                content: const Text(
-                  'Are you certain you want to proceed\nwith this development firmware?\n\n'
-                  'The system may become unstable or inoperable.',
+                content: Text(
+                  FlutterI18n.translate(context, 'update.confirmDevMsg'),
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
                 ),
                 actions: [
@@ -278,14 +275,16 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel'),
+                    child:
+                        Text(FlutterI18n.translate(context, 'common.cancel')),
                   ),
                   GlassButton(
                     tint: GlassButtonTint.negative,
                     onPressed: () => Navigator.of(dctx).pop(true),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Continue'),
+                    child: Text(
+                        FlutterI18n.translate(context, 'common.continue_')),
                   ),
                 ],
               ),
@@ -316,7 +315,7 @@ class UpdateScreenState extends State<UpdateScreen>
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Final Warning',
+                      FlutterI18n.translate(context, 'update.finalWarning'),
                       style: const TextStyle(
                         color: Colors.redAccent,
                         fontWeight: FontWeight.bold,
@@ -324,11 +323,9 @@ class UpdateScreenState extends State<UpdateScreen>
                     ),
                   ],
                 ),
-                content: const Text(
-                  'This is your final warning.\n\n'
-                  'Proceeding may result in permanent hardware damage\n'
-                  'and system failure. You will not be able to recover.\n\n'
-                  'Click Cancel unless you fully accept this risk.',
+                content: Text(
+                  FlutterI18n.translate(
+                      context, 'update.finalWarningMsgDetailed'),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                 ),
                 actions: [
@@ -345,7 +342,8 @@ class UpdateScreenState extends State<UpdateScreen>
                     onPressed: () => Navigator.of(dctx).pop(false),
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(0, 60)),
-                    child: const Text('Cancel'),
+                    child:
+                        Text(FlutterI18n.translate(context, 'common.cancel')),
                   ),
                 ],
               ),
@@ -374,15 +372,15 @@ class UpdateScreenState extends State<UpdateScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                'Update Orion',
+                FlutterI18n.translate(context, 'update.updateOrion'),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ],
           ),
-          content: const Text(
-              'Do you want to update the Orion HMI?\nThis will download the latest version from GitHub.'),
+          content:
+              Text(FlutterI18n.translate(context, 'update.updateOrionMsg')),
           actions: [
             GlassButton(
               tint: GlassButtonTint.negative,
@@ -392,7 +390,7 @@ class UpdateScreenState extends State<UpdateScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text('Dismiss'),
+              child: Text(FlutterI18n.translate(context, 'common.dismiss')),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -402,7 +400,7 @@ class UpdateScreenState extends State<UpdateScreen>
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(0, 60),
               ),
-              child: const Text('Update Now'),
+              child: Text(FlutterI18n.translate(context, 'update.updateNow')),
             )
           ],
         );
@@ -454,29 +452,30 @@ class UpdateScreenState extends State<UpdateScreen>
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Update AthenaOS',
+                    FlutterI18n.translate(context, 'update.updateAthena'),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
               ),
-              content: const Text(
-                  'Do you want to update AthenaOS?\nThis will trigger an update on the connected Athena printer.'),
+              content: Text(
+                  FlutterI18n.translate(context, 'update.updateAthenaMsg')),
               actions: [
                 GlassButton(
                   tint: GlassButtonTint.negative,
                   onPressed: () => Navigator.of(dctx).pop(false),
                   style:
                       ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child: const Text('Dismiss'),
+                  child: Text(FlutterI18n.translate(context, 'common.dismiss')),
                 ),
                 GlassButton(
                   tint: GlassButtonTint.positive,
                   onPressed: () => Navigator.of(dctx).pop(true),
                   style:
                       ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-                  child: const Text('Update Now'),
+                  child:
+                      Text(FlutterI18n.translate(context, 'update.updateNow')),
                 ),
               ],
             ),
@@ -592,7 +591,8 @@ class UpdateScreenState extends State<UpdateScreen>
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Orion HMI',
+                                  FlutterI18n.translate(
+                                      context, 'update.orionHmi'),
                                   style: TextStyle(
                                     fontSize: 26,
                                     fontWeight: FontWeight.bold,
@@ -783,7 +783,7 @@ class UpdateScreenState extends State<UpdateScreen>
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Rate Limit Exceeded',
+                  FlutterI18n.translate(context, 'update.rateLimitExceeded'),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -793,8 +793,8 @@ class UpdateScreenState extends State<UpdateScreen>
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            'GitHub API rate limit reached. Please try again later.',
+          Text(
+            FlutterI18n.translate(context, 'update.rateLimitMsg'),
             style: TextStyle(fontSize: 16),
           ),
         ],
@@ -814,8 +814,10 @@ class UpdateScreenState extends State<UpdateScreen>
             context: context,
             accent: Colors.orangeAccent,
             label: provider.betaUpdatesOverride
-                ? (provider.preRelease ? 'BLEEDING EDGE' : 'ROLLBACK')
-                : 'UPDATE AVAILABLE',
+                ? (provider.preRelease
+                    ? FlutterI18n.translate(context, 'update.bleedingEdge')
+                    : FlutterI18n.translate(context, 'update.rollback'))
+                : FlutterI18n.translate(context, 'update.updateAvailableLabel'),
           ),
           const SizedBox(height: 12),
 
@@ -866,12 +868,14 @@ class UpdateScreenState extends State<UpdateScreen>
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(65),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.download, size: 24),
                       SizedBox(width: 20),
-                      Text('Download & Install',
+                      Text(
+                          FlutterI18n.translate(
+                              context, 'update.downloadAndInstall'),
                           style: TextStyle(fontSize: 20)),
                     ],
                   ),
@@ -902,8 +906,8 @@ class UpdateScreenState extends State<UpdateScreen>
         const SizedBox(height: 6),
         Text(
           provider.betaUpdatesOverride
-              ? 'Running latest bleeding edge build'
-              : 'Running latest stable release',
+              ? FlutterI18n.translate(context, 'update.runningBleedingEdge')
+              : FlutterI18n.translate(context, 'update.runningStable'),
           style: const TextStyle(fontSize: 18, color: Colors.grey),
         ),
       ],
@@ -920,12 +924,13 @@ class UpdateScreenState extends State<UpdateScreen>
 
     if (supportsAthenaUpdates && isAthena) {
       if (ap.isChecking) {
-        return const Column(
+        return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 12),
-            Text('Checking for updates...', style: TextStyle(fontSize: 13)),
+            Text(FlutterI18n.translate(context, 'update.checking'),
+                style: TextStyle(fontSize: 13)),
           ],
         );
       }
@@ -947,10 +952,11 @@ class UpdateScreenState extends State<UpdateScreen>
                   ? Colors.redAccent
                   : Colors.orangeAccent,
               label: isMasterBranch
-                  ? 'INTERNAL BUILD'
+                  ? FlutterI18n.translate(context, 'update.internalBuild')
                   : (isBetaChannel && isSameVersion
-                      ? 'BETA VERSION'
-                      : 'UPDATE AVAILABLE'),
+                      ? FlutterI18n.translate(context, 'update.betaVersion')
+                      : FlutterI18n.translate(
+                          context, 'update.updateAvailableLabel')),
             ),
             const SizedBox(height: 12),
             Text(
@@ -985,9 +991,11 @@ class UpdateScreenState extends State<UpdateScreen>
                     const SizedBox(width: 20),
                     Text(
                       isMasterBranch
-                          ? 'Update Internal Build'
+                          ? FlutterI18n.translate(
+                              context, 'update.updateInternalBuild')
                           : (isBetaChannel && isSameVersion
-                              ? 'Force Update'
+                              ? FlutterI18n.translate(
+                                  context, 'update.forceUpdate')
                               : FlutterI18n.translate(
                                   context, 'update.updateAthena')),
                       style: const TextStyle(fontSize: 20),
@@ -1024,13 +1032,13 @@ class UpdateScreenState extends State<UpdateScreen>
         );
       }
 
-      return const Column(
+      return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.info_outline, size: 40, color: Colors.grey),
           SizedBox(height: 12),
           Text(
-            'No version information available',
+            FlutterI18n.translate(context, 'update.noVersionInfo'),
             style: TextStyle(fontSize: 14, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
@@ -1039,18 +1047,18 @@ class UpdateScreenState extends State<UpdateScreen>
     }
 
     // Non-Athena backendxw
-    return const Column(
+    return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(Icons.construction, size: 40, color: Colors.grey),
         SizedBox(height: 12),
         Text(
-          'Coming Soon!',
+          FlutterI18n.translate(context, 'update.comingSoon'),
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
         SizedBox(height: 6),
         Text(
-          'Backend updater will be available in a future release',
+          FlutterI18n.translate(context, 'update.backendFutureRelease'),
           style: TextStyle(fontSize: 12, color: Colors.grey),
           textAlign: TextAlign.center,
         ),

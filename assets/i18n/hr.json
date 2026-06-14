@@ -16,7 +16,16 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "remove": "Remove"
+    "remove": "Remove",
+    "reset": "Reset",
+    "previous": "Previous",
+    "saving": "Saving…",
+    "start": "Start",
+    "slice": "Slice",
+    "import_": "Import",
+    "optimal": "Optimal",
+    "upToDate": "Up to Date",
+    "checking": "Checking…"
   },
   "setup": {
     "section": "Postavljanje",
@@ -84,7 +93,9 @@
     "shutdownSystem": "Isključivanje sustava",
     "btnPrint": "Ispis",
     "btnTools": "Alati",
-    "btnSettings": "Postavke"
+    "btnSettings": "Postavke",
+    "materials": "Materials",
+    "btnPower": "Power"
   },
   "print": {
     "usbAvailable": "USB dostupan",
@@ -141,7 +152,11 @@
     "dragonfruit": "Jeste li već probali DragonFruit? Ukusan je!",
     "waitingSlicer": "Čekanje pokretanja programa za obradu...",
     "slicedSuccess": "Datoteka uspješno obrađena!",
-    "slicedTimeout": "Obrada je prekoračila vrijeme"
+    "slicedTimeout": "Obrada je prekoračila vrijeme",
+    "materialProfile": "Material Profile",
+    "noProfilesFound": "No material profiles found",
+    "slice": "Slice",
+    "import_": "Import"
   },
   "startup": {
     "defaultPrinter": "3D Printer",
@@ -175,7 +190,9 @@
     "alreadyDeveloper": "You are already a developer",
     "developerActivated": "Developer Mode Activated: You are now a developer!",
     "tapsAway": "You are %d taps away from becoming a developer",
-    "na": "N/A"
+    "na": "N/A",
+    "versionInfo": "Version %s — %s",
+    "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
   "settings": {
     "finalize": "Završi postavke",
@@ -184,6 +201,8 @@
     "now": "Sada",
     "disconnectWifi": "Prekini WiFi vezu",
     "disconnectMessage": "Želite li prekinuti vezu s trenutnom WiFi mrežom?\nTo može uzrokovati neuspjeh aktivnih ispisa.",
+    "stayConnected": "Stay Connected",
+    "disconnect": "Disconnect",
     "general": "Općenito",
     "network": "Mreža",
     "about": "O aplikaciji",
@@ -259,14 +278,37 @@
     "updateAthenaMsg": "Do you want to update AthenaOS?\nThis will trigger an update on the connected Athena printer.",
     "triggeringAthena": "Triggering AthenaOS update...",
     "orion": "Orion",
-    "athenaOs": "AthenaOS"
+    "athenaOs": "AthenaOS",
+    "devWarningDetailed": "This is an unstable development build.\nUnexpected behavior may occur.\nHardware damage is possible.\n\nYou accept all consequences.",
+    "confirmDevMsg": "Are you certain you want to proceed\nwith this development firmware?\n\nThe system may become unstable or inoperable.",
+    "finalWarningMsgDetailed": "This is your final warning.\n\nProceeding may result in permanent hardware damage\nand system failure.\n\nCancel unless you fully accept this risk.",
+    "orionHmi": "Orion HMI",
+    "upToDate": "UP TO DATE",
+    "runningBleedingEdge": "Running latest bleeding edge build",
+    "runningStable": "Running latest stable release",
+    "downloadAndInstall": "Download & Install",
+    "channel": "Channel: %s",
+    "checking": "Checking for updates...",
+    "internalBuild": "INTERNAL BUILD",
+    "betaVersion": "BETA VERSION",
+    "updateAvailableLabel": "UPDATE AVAILABLE",
+    "rateLimitExceeded": "Rate Limit Exceeded",
+    "rateLimitMsg": "GitHub API rate limit reached. Try again later.",
+    "bleedingEdge": "BLEEDING EDGE",
+    "rollback": "ROLLBACK",
+    "forceUpdate": "Force Update",
+    "updateInternalBuild": "Update Internal Build",
+    "noVersionInfo": "No version information available",
+    "comingSoon": "Coming Soon!",
+    "backendFutureRelease": "Backend updater will be available in a future release"
   },
   "tools": {
     "title": "Alati",
     "moveZ": "Pomakni Z",
     "leveling": "Poravnavanje",
     "exposure": "Ekspozicija",
-    "forceSensor": "Senzor sile"
+    "forceSensor": "Senzor sile",
+    "tools": "Tools"
   },
   "exposure": {
     "failedStart": "Pokretanje testa zaslona nije uspjelo",
@@ -289,7 +331,8 @@
     "tare": "Tariranje",
     "maximum": "Maksimum",
     "current": "Trenutno",
-    "minimum": "Minimum"
+    "minimum": "Minimum",
+    "noData": "No data"
   },
   "leveling": {
     "assisted": "Assisted Leveling",
@@ -346,7 +389,17 @@
     "start": "Start Calibration",
     "loadingModels": "Loading models...",
     "noModel": "No Model Selected",
-    "slicing": "Slicing calibration file..."
+    "slicing": "Slicing calibration file...",
+    "loadingExposure": "Loading...",
+    "slicingComplete": "Slicing complete",
+    "selectModel": "Select Calibration Model",
+    "stepBetween": "Step between pieces",
+    "finalExposure": "Final exposure",
+    "preFlightCheck": "Pre-Flight Check",
+    "checkResin": "Correct resin is filled into the vat.",
+    "checkPlate": "The build plate is clean.",
+    "checkVat": "The vat is clear of any debris.",
+    "startPrint": "Start Print"
   },
   "editResin": {
     "profileSaved": "Profile Saved",
@@ -359,7 +412,15 @@
     "burnInCountDesc": "How many initial layers use the longer burn-in cure time.",
     "normalCure": "Normal Layer Cure Time",
     "normalCureDesc": "UV exposure time for all layers after burn-in.",
-    "savedSuccess": "Profile settings saved successfully"
+    "savedSuccess": "Profile settings saved successfully",
+    "editTitle": "Edit Resin",
+    "waitAfterCure": "Wait After Cure",
+    "waitAfterCureDesc": "Pause after UV exposure before lifting.",
+    "liftAfterPrint": "Lift Distance",
+    "liftAfterPrintDesc": "How far the build plate lifts between layers.",
+    "waitAfterLift": "Wait After Lift",
+    "waitAfterLiftDesc": "Pause after lifting to let resin flow back.",
+    "saving": "Saving…"
   },
   "heater": {
     "confirmMixing": "Confirm Resin Mixing",
@@ -372,7 +433,9 @@
     "checking": "Checking…",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "mixPreheat": "Mix & Preheat"
+    "mixPreheat": "Mix & Preheat",
+    "targetTemperature": "Target Temperature",
+    "startMixing": "Start mixing?"
   },
   "postCal": {
     "complete": "Calibration Complete",
@@ -387,7 +450,12 @@
     "evaluationGuide": "EVALUATION GUIDE",
     "guideDesc": "Use the evaluation guide to correctly identify the optimal exposure.",
     "scanQr": "Scan the QR code with your phone to open the evaluation guide.",
-    "readGuide": "Read it thoroughly before selecting the optimal exposure."
+    "readGuide": "Read it thoroughly before selecting the optimal exposure.",
+    "optimal": "Optimal",
+    "layerExposureUpdated": "Layer exposure time updated",
+    "fineTuneExposure": "Fine-Tune Exposure",
+    "selectValueBetween": "Select a value between %s and %s",
+    "selectPieceGuide": "Select the piece matching the guide."
   },
   "resins": {
     "failedLoad": "Failed to load resins",
@@ -398,7 +466,9 @@
     "locked": "Locked",
     "edit": "Edit",
     "addResin": "Add Resin",
-    "ok": "OK"
+    "ok": "OK",
+    "viscosity": "Viscosity: %s",
+    "exposureLabel": "Exposure: %s"
   },
   "status": {
     "waiting": "Čekanje pokretanja pisača…",
@@ -409,7 +479,8 @@
     "currentZ": "Trenutna Z pozicija",
     "printLayers": "Slojevi ispisa",
     "estimatedTime": "Procijenjeno vrijeme ispisa",
-    "estimatedVolume": "Procijenjeni volumen"
+    "estimatedVolume": "Procijenjeni volumen",
+    "na": "-"
   },
   "debug": {
     "logNotFound": "Log file not found.",
@@ -482,5 +553,46 @@
     "sec0": "0 sec",
     "sec": "%s sec",
     "minSec": "%s min %s secs"
+  },
+  "markdown": {
+    "title": "Document"
+  },
+  "themeSelector": {
+    "light": "Light",
+    "dark": "Dark",
+    "glass": "Glass"
+  },
+  "calibrationProgress": {
+    "preparing": "CALIBRATION PREPARATION",
+    "processing": "Processing calibration print job",
+    "complete": "PREPARATION COMPLETE",
+    "ready": "Calibration job ready"
+  },
+  "updateNotification": {
+    "title": "Update Available",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "wouldYouLike": "Would you like to update now?",
+    "remindLater": "Remind Later",
+    "updateNow": "Update Now"
+  },
+  "levelingGuide": {
+    "step1": "Remove the resin vat and set it aside safely",
+    "step2": "Locate the hex keys provided with your printer",
+    "step3": "Install the build plate and ensure it is fully secured",
+    "step4": "Confirm that LCD and build plate are clean and dry",
+    "homingZ": "Homing Z Axis",
+    "movingUp": "Moving Upward",
+    "movingDown": "Moving Downward",
+    "homingUp": "Homing Upward",
+    "homingDown": "Homing Downward",
+    "movingAway": "Moving safely away from the screen",
+    "ensureClear": "Ensure the motion path is clear",
+    "emergencyStop": "Emergency Stop",
+    "clearPath": "Clear the Motion Path",
+    "failedMoveTop": "Failed to start move-to-top",
+    "moveFailed": "Move failed: %s",
+    "failedHoming": "Failed to start homing",
+    "homingFailed": "Homing failed: %s"
   }
 }

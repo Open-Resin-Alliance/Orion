@@ -1221,7 +1221,8 @@ class _PreCalibrationOverlay extends StatelessWidget {
                         children: [
                           Icon(PhosphorIcons.x(), size: 20),
                           const SizedBox(width: 10),
-                          const Text('Cancel', style: TextStyle(fontSize: 20)),
+                          Text(FlutterI18n.translate(context, 'common.cancel'),
+                              style: TextStyle(fontSize: 20)),
                         ],
                       ),
                     ),
@@ -1237,7 +1238,9 @@ class _PreCalibrationOverlay extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('Start Print',
+                          Text(
+                              FlutterI18n.translate(
+                                  context, 'calibration.startPrint'),
                               style: TextStyle(fontSize: 20)),
                           const SizedBox(width: 10),
                           Icon(PhosphorIcons.play(), size: 20),

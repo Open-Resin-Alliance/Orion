@@ -16,7 +16,16 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "remove": "Remove"
+    "remove": "Remove",
+    "reset": "Reset",
+    "previous": "Previous",
+    "saving": "Saving…",
+    "start": "Start",
+    "slice": "Slice",
+    "import_": "Import",
+    "optimal": "Optimal",
+    "upToDate": "Up to Date",
+    "checking": "Checking…"
   },
   "setup": {
     "section": "설정",
@@ -84,7 +93,9 @@
     "shutdownSystem": "시스템 종료",
     "btnPrint": "프린트",
     "btnTools": "도구",
-    "btnSettings": "설정"
+    "btnSettings": "설정",
+    "materials": "Materials",
+    "btnPower": "Power"
   },
   "print": {
     "usbAvailable": "USB 사용 가능",
@@ -141,7 +152,11 @@
     "dragonfruit": "DragonFruit를 먹어보셨나요? 맛있어요!",
     "waitingSlicer": "슬라이서 시작을 기다리는 중...",
     "slicedSuccess": "파일 슬라이싱 성공!",
-    "slicedTimeout": "슬라이싱 시간 초과"
+    "slicedTimeout": "슬라이싱 시간 초과",
+    "materialProfile": "Material Profile",
+    "noProfilesFound": "No material profiles found",
+    "slice": "Slice",
+    "import_": "Import"
   },
   "startup": {
     "defaultPrinter": "3D 프린터",
@@ -164,7 +179,20 @@
     "hardwareLocal": "하드웨어 (로컬)",
     "customName": "사용자 정의 기계 이름",
     "enterName": "사용자 정의 이름 입력",
-    "na": "N/A"
+    "changelog": "Changelog",
+    "licenses": "Open-Source Licenses",
+    "deviceMacos": "macOS Device",
+    "deviceAndroid": "Android Device",
+    "deviceIos": "iOS Device",
+    "deviceWindows": "Windows Device",
+    "deviceUnsupported": "Unsupported Device",
+    "unknownModel": "Unknown Model",
+    "alreadyDeveloper": "You are already a developer",
+    "developerActivated": "Developer Mode Activated: You are now a developer!",
+    "tapsAway": "You are %d taps away from becoming a developer",
+    "na": "N/A",
+    "versionInfo": "Version %s — %s",
+    "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
   "settings": {
     "finalize": "설정 완료",
@@ -173,6 +201,8 @@
     "now": "지금",
     "disconnectWifi": "WiFi 연결 끊기",
     "disconnectMessage": "현재 WiFi 네트워크에서 연결을 끊으시겠습니까?\n진행 중인 인쇄 작업에 영향을 줄 수 있습니다.",
+    "stayConnected": "Stay Connected",
+    "disconnect": "Disconnect",
     "general": "일반",
     "network": "네트워크",
     "about": "정보",
@@ -221,29 +251,64 @@
     "dimLed": "대기 시 LED 어둡게",
     "selectStandbyMode": "대기 모드 선택",
     "showClock": "큰 시계 표시",
-    "bouncingLogo": "바운싱 로고 화면 보호기"
+    "bouncingLogo": "바운싱 로고 화면 보호기",
+    "standbyAfter": "Screen will enter standby after %dm %ds of inactivity",
+    "standbyWarning": "Warning: Minimum recommended duration is 30 seconds."
   },
   "update": {
     "inProgress": "업데이트 진행 중",
     "doNotTurnOff": "기계를 끄지 마십시오.",
     "resetChannel": "업데이트 채널 재설정",
+    "resetChannelMsg": "Would you like to switch back to the stable update channel?\n\nThis is recommended for production builds.",
     "keepDev": "개발 채널 유지",
     "resetToStable": "안정판으로 재설정",
+    "devFirmware": "Development Firmware Ahead",
+    "devWarning": "This is an unstable development build.\nYou accept all consequences.",
     "iAccept": "동의합니다",
+    "cancel": "Cancel",
     "confirmUpdate": "업데이트 확인",
+    "areYouCertain": "Are you certain you want to proceed with this update?",
     "continue_": "계속",
     "finalWarning": "최종 경고",
+    "finalWarningMsg": "This is your final warning before the update begins.",
     "updateNow": "지금 업데이트",
     "updateOrion": "Orion 업데이트",
+    "updateOrionMsg": "Do you want to update the Orion HMI?\nThis will download the latest version from GitHub.",
     "updateAthena": "AthenaOS 업데이트",
-    "triggeringAthena": "AthenaOS 업데이트 시작..."
+    "updateAthenaMsg": "Do you want to update AthenaOS?\nThis will trigger an update on the connected Athena printer.",
+    "triggeringAthena": "AthenaOS 업데이트 시작...",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "devWarningDetailed": "This is an unstable development build.\nUnexpected behavior may occur.\nHardware damage is possible.\n\nYou accept all consequences.",
+    "confirmDevMsg": "Are you certain you want to proceed\nwith this development firmware?\n\nThe system may become unstable or inoperable.",
+    "finalWarningMsgDetailed": "This is your final warning.\n\nProceeding may result in permanent hardware damage\nand system failure.\n\nCancel unless you fully accept this risk.",
+    "orionHmi": "Orion HMI",
+    "upToDate": "UP TO DATE",
+    "runningBleedingEdge": "Running latest bleeding edge build",
+    "runningStable": "Running latest stable release",
+    "downloadAndInstall": "Download & Install",
+    "channel": "Channel: %s",
+    "checking": "Checking for updates...",
+    "internalBuild": "INTERNAL BUILD",
+    "betaVersion": "BETA VERSION",
+    "updateAvailableLabel": "UPDATE AVAILABLE",
+    "rateLimitExceeded": "Rate Limit Exceeded",
+    "rateLimitMsg": "GitHub API rate limit reached. Try again later.",
+    "bleedingEdge": "BLEEDING EDGE",
+    "rollback": "ROLLBACK",
+    "forceUpdate": "Force Update",
+    "updateInternalBuild": "Update Internal Build",
+    "noVersionInfo": "No version information available",
+    "comingSoon": "Coming Soon!",
+    "backendFutureRelease": "Backend updater will be available in a future release"
   },
   "tools": {
     "title": "도구",
     "moveZ": "Z 이동",
     "leveling": "레벨링",
     "exposure": "노광",
-    "forceSensor": "힘 센서"
+    "forceSensor": "힘 센서",
+    "tools": "Tools"
   },
   "exposure": {
     "failedStart": "디스플레이 테스트 시작 실패",
@@ -266,12 +331,15 @@
     "tare": "영점 조절",
     "maximum": "최대",
     "current": "현재",
-    "minimum": "최소"
+    "minimum": "최소",
+    "noData": "No data"
   },
   "leveling": {
     "assisted": "지원 레벨링",
+    "assistedDesc": "Guided leveling with auto Z homing and gap measurement.",
     "comingSoon": "곧 출시!",
     "manual": "수동 레벨링",
+    "manualDesc": "Manual Z adjustment for experienced users.",
     "manualMode": "수동 모드",
     "preparation": "레벨링 준비",
     "cancel": "취소",
@@ -282,8 +350,11 @@
   "manualLeveling": {
     "title": "수동 레벨링",
     "resetOffset": "Z 오프셋 재설정",
+    "resetConfirm": "Reset Z offset to 0.00 mm?\n\nContinue?",
     "cancel": "취소",
     "setZZero": "Z = 0 설정",
+    "setZConfirm": "Set current position (%s mm) as Z offset?\n\nContinue?",
+    "setOffset": "Set Offset",
     "failedMoveZ": "Z 이동 실패",
     "back": "뒤로",
     "unitUm": "µm",
@@ -312,11 +383,23 @@
     "selectResin": "레진 선택",
     "startingExposure": "시작 노광",
     "exposureIncrement": "노광 증분",
+    "exposureDesc": "Exposure time for the first test piece.",
+    "incrementDesc": "How much exposure increases per test piece.",
     "reset": "재설정",
     "start": "교정 시작",
     "loadingModels": "모델 로딩 중...",
     "noModel": "선택된 모델 없음",
-    "slicing": "교정 파일 슬라이싱 중..."
+    "slicing": "교정 파일 슬라이싱 중...",
+    "loadingExposure": "Loading...",
+    "slicingComplete": "Slicing complete",
+    "selectModel": "Select Calibration Model",
+    "stepBetween": "Step between pieces",
+    "finalExposure": "Final exposure",
+    "preFlightCheck": "Pre-Flight Check",
+    "checkResin": "Correct resin is filled into the vat.",
+    "checkPlate": "The build plate is clean.",
+    "checkVat": "The vat is clear of any debris.",
+    "startPrint": "Start Print"
   },
   "editResin": {
     "profileSaved": "Profile Saved",
@@ -329,10 +412,19 @@
     "burnInCountDesc": "How many initial layers use the longer burn-in cure time.",
     "normalCure": "Normal Layer Cure Time",
     "normalCureDesc": "UV exposure time for all layers after burn-in.",
-    "savedSuccess": "Profile settings saved successfully"
+    "savedSuccess": "Profile settings saved successfully",
+    "editTitle": "Edit Resin",
+    "waitAfterCure": "Wait After Cure",
+    "waitAfterCureDesc": "Pause after UV exposure before lifting.",
+    "liftAfterPrint": "Lift Distance",
+    "liftAfterPrintDesc": "How far the build plate lifts between layers.",
+    "waitAfterLift": "Wait After Lift",
+    "waitAfterLiftDesc": "Pause after lifting to let resin flow back.",
+    "saving": "Saving…"
   },
   "heater": {
     "confirmMixing": "수지 혼합 확인",
+    "mixingWarning": "Start resin mixing?\n\nEnsure build plate is installed.",
     "cancel": "취소",
     "start": "시작",
     "vatHeater": "배트 히터",
@@ -341,7 +433,9 @@
     "checking": "확인 중...",
     "enabled": "활성화",
     "disabled": "비활성화",
-    "mixPreheat": "혼합 및 예열"
+    "mixPreheat": "혼합 및 예열",
+    "targetTemperature": "Target Temperature",
+    "startMixing": "Start mixing?"
   },
   "postCal": {
     "complete": "Calibration Complete",
@@ -356,7 +450,12 @@
     "evaluationGuide": "EVALUATION GUIDE",
     "guideDesc": "Use the evaluation guide to correctly identify the optimal exposure.",
     "scanQr": "Scan the QR code with your phone to open the evaluation guide.",
-    "readGuide": "Read it thoroughly before selecting the optimal exposure."
+    "readGuide": "Read it thoroughly before selecting the optimal exposure.",
+    "optimal": "Optimal",
+    "layerExposureUpdated": "Layer exposure time updated",
+    "fineTuneExposure": "Fine-Tune Exposure",
+    "selectValueBetween": "Select a value between %s and %s",
+    "selectPieceGuide": "Select the piece matching the guide."
   },
   "resins": {
     "failedLoad": "레진 로드 실패",
@@ -367,7 +466,9 @@
     "locked": "잠김",
     "edit": "편집",
     "addResin": "레진 추가",
-    "ok": "OK"
+    "ok": "OK",
+    "viscosity": "Viscosity: %s",
+    "exposureLabel": "Exposure: %s"
   },
   "status": {
     "waiting": "프린터 시작을 기다리는 중…",
@@ -378,7 +479,8 @@
     "currentZ": "현재 Z 위치",
     "printLayers": "인쇄 레이어",
     "estimatedTime": "예상 인쇄 시간",
-    "estimatedVolume": "예상 부피"
+    "estimatedVolume": "예상 부피",
+    "na": "-"
   },
   "debug": {
     "logNotFound": "Log file not found.",
@@ -451,5 +553,46 @@
     "sec0": "0초",
     "sec": "%s초",
     "minSec": "%s분 %s초"
+  },
+  "markdown": {
+    "title": "Document"
+  },
+  "themeSelector": {
+    "light": "Light",
+    "dark": "Dark",
+    "glass": "Glass"
+  },
+  "calibrationProgress": {
+    "preparing": "CALIBRATION PREPARATION",
+    "processing": "Processing calibration print job",
+    "complete": "PREPARATION COMPLETE",
+    "ready": "Calibration job ready"
+  },
+  "updateNotification": {
+    "title": "Update Available",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "wouldYouLike": "Would you like to update now?",
+    "remindLater": "Remind Later",
+    "updateNow": "Update Now"
+  },
+  "levelingGuide": {
+    "step1": "Remove the resin vat and set it aside safely",
+    "step2": "Locate the hex keys provided with your printer",
+    "step3": "Install the build plate and ensure it is fully secured",
+    "step4": "Confirm that LCD and build plate are clean and dry",
+    "homingZ": "Homing Z Axis",
+    "movingUp": "Moving Upward",
+    "movingDown": "Moving Downward",
+    "homingUp": "Homing Upward",
+    "homingDown": "Homing Downward",
+    "movingAway": "Moving safely away from the screen",
+    "ensureClear": "Ensure the motion path is clear",
+    "emergencyStop": "Emergency Stop",
+    "clearPath": "Clear the Motion Path",
+    "failedMoveTop": "Failed to start move-to-top",
+    "moveFailed": "Move failed: %s",
+    "failedHoming": "Failed to start homing",
+    "homingFailed": "Homing failed: %s"
   }
 }

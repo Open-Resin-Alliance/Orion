@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Orion - About Screen
 * Copyright (C) 2025 Open Resin Alliance
 *
@@ -215,7 +215,7 @@ class AboutScreenState extends State<AboutScreen> {
             applicationVersion:
                 'Version ${Pubspec.version} - ${Pubspec.versionFull.toString().split('+')[1] == 'SELFCOMPILED' ? 'Local Build' : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}'}',
             applicationLegalese:
-                'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
+                'Apache License 2.0 - Copyright Â© ${DateTime.now().year} Open Resin Alliance',
             applicationIcon: Image.asset(
               'assets/images/ora/open_resin_alliance_logo_darkmode.png',
               width: 100,
@@ -472,7 +472,7 @@ class AboutScreenState extends State<AboutScreen> {
           type: ToastificationType.success,
           style: ToastificationStyle.fillColored,
           autoCloseDuration: const Duration(seconds: 2),
-          title: const Text('You are already a developer',
+          title: Text(FlutterI18n.translate(context, 'about.alreadyDeveloper'),
               style: TextStyle(fontSize: 18)),
           alignment: Alignment.topCenter,
           primaryColor: Colors.green,
@@ -489,8 +489,8 @@ class AboutScreenState extends State<AboutScreen> {
             type: ToastificationType.success,
             style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 2),
-            title: const Text(
-                'Developer Mode Activated: You are now a developer!',
+            title: Text(
+                FlutterI18n.translate(context, 'about.developerActivated'),
                 style: TextStyle(fontSize: 18)),
             alignment: Alignment.topCenter,
             primaryColor: Colors.green,

@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Orion - Markdown Screen
 * Copyright (C) 2025 Open Resin Alliance
 *
@@ -36,12 +36,12 @@ class MarkdownScreen extends StatelessWidget {
     return GlassApp(
       child: Scaffold(
         appBar: OrionAppBar(
-            title: Text(filename ?? 'Markdown Document'),
-            toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
-            actions: <Widget>[
-              SystemStatusWidget(),
-            ],
-          ),
+          title: Text(filename ?? 'Markdown Document'),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+          actions: <Widget>[
+            SystemStatusWidget(),
+          ],
+        ),
         body: Padding(
           padding: OrionSpacing.screenPadding,
           child: changelog != null
@@ -86,4 +86,3 @@ class MarkdownScreen extends StatelessWidget {
           );
   }
 }
-

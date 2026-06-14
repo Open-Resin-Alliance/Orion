@@ -194,10 +194,10 @@ class HeaterScreenState extends State<HeaterScreen>
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => GlassAlertDialog(
-          title: const Text('Confirm Resin Mixing',
+          title: Text(FlutterI18n.translate(context, 'heater.confirmMixing'),
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
-          content: const Text(
-            'Are you sure you want to start resin mixing?\n\nPlease ensure the build plate is installed and there are no obstructions on the plate or vat.',
+          content: Text(
+            FlutterI18n.translate(context, 'heater.mixingWarning'),
             style: TextStyle(fontSize: 20),
           ),
           actions: [

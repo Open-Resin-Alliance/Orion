@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Orion - Tools Screen
 * Copyright (C) 2025 Open Resin Alliance
 *
@@ -76,7 +76,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                 PhosphorIconsFill.arrowsDownUp,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              label: 'Move Z',
+              label: FlutterI18n.translate(context, 'tools.moveZ'),
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.scales()),
@@ -84,7 +84,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                 PhosphorIconsFill.scales,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              label: 'Leveling',
+              label: FlutterI18n.translate(context, 'tools.leveling'),
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),
@@ -92,7 +92,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                 PhosphorIconsFill.lightbulbFilament,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              label: 'Exposure',
+              label: FlutterI18n.translate(context, 'tools.exposure'),
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.chartLineUp()),
@@ -100,7 +100,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                 PhosphorIconsFill.chartLineUp,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              label: 'Force Sensor',
+              label: FlutterI18n.translate(context, 'tools.forceSensor'),
             ),
             // TODO: Implement Self Test
             /*BottomNavigationBarItem(

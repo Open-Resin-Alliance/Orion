@@ -16,7 +16,16 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "remove": "Remove"
+    "remove": "Remove",
+    "reset": "Reset",
+    "previous": "Previous",
+    "saving": "Saving…",
+    "start": "Start",
+    "slice": "Slice",
+    "import_": "Import",
+    "optimal": "Optimal",
+    "upToDate": "Up to Date",
+    "checking": "Checking…"
   },
   "setup": {
     "section": "Konfiguracja",
@@ -84,7 +93,9 @@
     "shutdownSystem": "Wyłącz system",
     "btnPrint": "Drukuj",
     "btnTools": "Narzędzia",
-    "btnSettings": "Ustawienia"
+    "btnSettings": "Ustawienia",
+    "materials": "Materials",
+    "btnPower": "Power"
   },
   "print": {
     "usbAvailable": "USB dostępny",
@@ -141,7 +152,11 @@
     "dragonfruit": "Próbowałeś już DragonFruit? Jest pyszny!",
     "waitingSlicer": "Czekanie na uruchomienie krajalnicy...",
     "slicedSuccess": "Plik pokrojony pomyślnie!",
-    "slicedTimeout": "Przekroczono czas krojenia"
+    "slicedTimeout": "Przekroczono czas krojenia",
+    "materialProfile": "Material Profile",
+    "noProfilesFound": "No material profiles found",
+    "slice": "Slice",
+    "import_": "Import"
   },
   "startup": {
     "defaultPrinter": "Drukarka 3D",
@@ -164,7 +179,20 @@
     "hardwareLocal": "Sprzęt (lokalny)",
     "customName": "Niestandardowa nazwa maszyny",
     "enterName": "Wprowadź niestandardową nazwę",
-    "na": "N/D"
+    "changelog": "Changelog",
+    "licenses": "Open-Source Licenses",
+    "deviceMacos": "macOS Device",
+    "deviceAndroid": "Android Device",
+    "deviceIos": "iOS Device",
+    "deviceWindows": "Windows Device",
+    "deviceUnsupported": "Unsupported Device",
+    "unknownModel": "Unknown Model",
+    "alreadyDeveloper": "You are already a developer",
+    "developerActivated": "Developer Mode Activated: You are now a developer!",
+    "tapsAway": "You are %d taps away from becoming a developer",
+    "na": "N/D",
+    "versionInfo": "Version %s — %s",
+    "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
   "settings": {
     "finalize": "Zakończ konfigurację",
@@ -173,6 +201,8 @@
     "now": "Teraz",
     "disconnectWifi": "Rozłącz WiFi",
     "disconnectMessage": "Czy chcesz rozłączyć się z bieżącą siecią WiFi?\nMoże to spowodować niepowodzenie trwających wydruków.",
+    "stayConnected": "Stay Connected",
+    "disconnect": "Disconnect",
     "general": "Ogólne",
     "network": "Sieć",
     "about": "O programie",
@@ -221,29 +251,64 @@
     "dimLed": "Przyciemnij LED w gotowości",
     "selectStandbyMode": "Wybierz tryb gotowości",
     "showClock": "Pokaż duży zegar",
-    "bouncingLogo": "Wygaszacz z odbijającym się logo"
+    "bouncingLogo": "Wygaszacz z odbijającym się logo",
+    "standbyAfter": "Screen will enter standby after %dm %ds of inactivity",
+    "standbyWarning": "Warning: Minimum recommended duration is 30 seconds."
   },
   "update": {
     "inProgress": "AKTUALIZACJA W TOKU",
     "doNotTurnOff": "Nie wyłączaj urządzenia.",
     "resetChannel": "Zresetuj kanał aktualizacji",
+    "resetChannelMsg": "Would you like to switch back to the stable update channel?\n\nThis is recommended for production builds.",
     "keepDev": "Zachowaj kanał deweloperski",
     "resetToStable": "Przywróć stabilny",
+    "devFirmware": "Development Firmware Ahead",
+    "devWarning": "This is an unstable development build.\nYou accept all consequences.",
     "iAccept": "Akceptuję",
+    "cancel": "Cancel",
     "confirmUpdate": "Potwierdź aktualizację",
+    "areYouCertain": "Are you certain you want to proceed with this update?",
     "continue_": "Kontynuuj",
     "finalWarning": "Ostateczne ostrzeżenie",
+    "finalWarningMsg": "This is your final warning before the update begins.",
     "updateNow": "Aktualizuj teraz",
     "updateOrion": "Aktualizuj Orion",
+    "updateOrionMsg": "Do you want to update the Orion HMI?\nThis will download the latest version from GitHub.",
     "updateAthena": "Aktualizuj AthenaOS",
-    "triggeringAthena": "Inicjowanie aktualizacji AthenaOS..."
+    "updateAthenaMsg": "Do you want to update AthenaOS?\nThis will trigger an update on the connected Athena printer.",
+    "triggeringAthena": "Inicjowanie aktualizacji AthenaOS...",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "devWarningDetailed": "This is an unstable development build.\nUnexpected behavior may occur.\nHardware damage is possible.\n\nYou accept all consequences.",
+    "confirmDevMsg": "Are you certain you want to proceed\nwith this development firmware?\n\nThe system may become unstable or inoperable.",
+    "finalWarningMsgDetailed": "This is your final warning.\n\nProceeding may result in permanent hardware damage\nand system failure.\n\nCancel unless you fully accept this risk.",
+    "orionHmi": "Orion HMI",
+    "upToDate": "UP TO DATE",
+    "runningBleedingEdge": "Running latest bleeding edge build",
+    "runningStable": "Running latest stable release",
+    "downloadAndInstall": "Download & Install",
+    "channel": "Channel: %s",
+    "checking": "Checking for updates...",
+    "internalBuild": "INTERNAL BUILD",
+    "betaVersion": "BETA VERSION",
+    "updateAvailableLabel": "UPDATE AVAILABLE",
+    "rateLimitExceeded": "Rate Limit Exceeded",
+    "rateLimitMsg": "GitHub API rate limit reached. Try again later.",
+    "bleedingEdge": "BLEEDING EDGE",
+    "rollback": "ROLLBACK",
+    "forceUpdate": "Force Update",
+    "updateInternalBuild": "Update Internal Build",
+    "noVersionInfo": "No version information available",
+    "comingSoon": "Coming Soon!",
+    "backendFutureRelease": "Backend updater will be available in a future release"
   },
   "tools": {
     "title": "Narzędzia",
     "moveZ": "Przesuń Z",
     "leveling": "Poziomowanie",
     "exposure": "Ekspozycja",
-    "forceSensor": "Czujnik siły"
+    "forceSensor": "Czujnik siły",
+    "tools": "Tools"
   },
   "exposure": {
     "failedStart": "Nie udało się uruchomić testu wyświetlacza",
@@ -266,12 +331,15 @@
     "tare": "Taruj",
     "maximum": "Maksimum",
     "current": "Bieżący",
-    "minimum": "Minimum"
+    "minimum": "Minimum",
+    "noData": "No data"
   },
   "leveling": {
     "assisted": "Asystowane poziomowanie",
+    "assistedDesc": "Guided leveling with auto Z homing and gap measurement.",
     "comingSoon": "Wkrótce!",
     "manual": "Ręczne poziomowanie",
+    "manualDesc": "Manual Z adjustment for experienced users.",
     "manualMode": "Tryb ręczny",
     "preparation": "Przygotowanie do poziomowania",
     "cancel": "Anuluj",
@@ -282,8 +350,11 @@
   "manualLeveling": {
     "title": "Ręczne poziomowanie",
     "resetOffset": "Resetuj offset Z",
+    "resetConfirm": "Reset Z offset to 0.00 mm?\n\nContinue?",
     "cancel": "Anuluj",
     "setZZero": "Ustaw Z = 0",
+    "setZConfirm": "Set current position (%s mm) as Z offset?\n\nContinue?",
+    "setOffset": "Set Offset",
     "failedMoveZ": "Nie udało się przesunąć Z",
     "back": "Wstecz",
     "unitUm": "µm",
@@ -312,11 +383,23 @@
     "selectResin": "Wybierz żywicę",
     "startingExposure": "Początkowa ekspozycja",
     "exposureIncrement": "Krok ekspozycji",
+    "exposureDesc": "Exposure time for the first test piece.",
+    "incrementDesc": "How much exposure increases per test piece.",
     "reset": "Resetuj",
     "start": "Rozpocznij kalibrację",
     "loadingModels": "Ładowanie modeli...",
     "noModel": "Nie wybrano modelu",
-    "slicing": "Krojenie pliku kalibracyjnego..."
+    "slicing": "Krojenie pliku kalibracyjnego...",
+    "loadingExposure": "Loading...",
+    "slicingComplete": "Slicing complete",
+    "selectModel": "Select Calibration Model",
+    "stepBetween": "Step between pieces",
+    "finalExposure": "Final exposure",
+    "preFlightCheck": "Pre-Flight Check",
+    "checkResin": "Correct resin is filled into the vat.",
+    "checkPlate": "The build plate is clean.",
+    "checkVat": "The vat is clear of any debris.",
+    "startPrint": "Start Print"
   },
   "editResin": {
     "profileSaved": "Profile Saved",
@@ -329,10 +412,19 @@
     "burnInCountDesc": "How many initial layers use the longer burn-in cure time.",
     "normalCure": "Normal Layer Cure Time",
     "normalCureDesc": "UV exposure time for all layers after burn-in.",
-    "savedSuccess": "Profile settings saved successfully"
+    "savedSuccess": "Profile settings saved successfully",
+    "editTitle": "Edit Resin",
+    "waitAfterCure": "Wait After Cure",
+    "waitAfterCureDesc": "Pause after UV exposure before lifting.",
+    "liftAfterPrint": "Lift Distance",
+    "liftAfterPrintDesc": "How far the build plate lifts between layers.",
+    "waitAfterLift": "Wait After Lift",
+    "waitAfterLiftDesc": "Pause after lifting to let resin flow back.",
+    "saving": "Saving…"
   },
   "heater": {
     "confirmMixing": "Potwierdź mieszanie żywicy",
+    "mixingWarning": "Start resin mixing?\n\nEnsure build plate is installed.",
     "cancel": "Anuluj",
     "start": "Start",
     "vatHeater": "Grzejnik wanny",
@@ -341,7 +433,9 @@
     "checking": "Sprawdzanie...",
     "enabled": "Włączony",
     "disabled": "Wyłączony",
-    "mixPreheat": "Mieszaj i podgrzej"
+    "mixPreheat": "Mieszaj i podgrzej",
+    "targetTemperature": "Target Temperature",
+    "startMixing": "Start mixing?"
   },
   "postCal": {
     "complete": "Calibration Complete",
@@ -356,7 +450,12 @@
     "evaluationGuide": "EVALUATION GUIDE",
     "guideDesc": "Use the evaluation guide to correctly identify the optimal exposure.",
     "scanQr": "Scan the QR code with your phone to open the evaluation guide.",
-    "readGuide": "Read it thoroughly before selecting the optimal exposure."
+    "readGuide": "Read it thoroughly before selecting the optimal exposure.",
+    "optimal": "Optimal",
+    "layerExposureUpdated": "Layer exposure time updated",
+    "fineTuneExposure": "Fine-Tune Exposure",
+    "selectValueBetween": "Select a value between %s and %s",
+    "selectPieceGuide": "Select the piece matching the guide."
   },
   "resins": {
     "failedLoad": "Nie udało się załadować żywic",
@@ -367,7 +466,9 @@
     "locked": "Zablokowany",
     "edit": "Edytuj",
     "addResin": "Dodaj żywicę",
-    "ok": "OK"
+    "ok": "OK",
+    "viscosity": "Viscosity: %s",
+    "exposureLabel": "Exposure: %s"
   },
   "status": {
     "waiting": "Czekanie na uruchomienie drukarki…",
@@ -378,7 +479,8 @@
     "currentZ": "Bieżąca pozycja Z",
     "printLayers": "Warstwy wydruku",
     "estimatedTime": "Szacowany czas wydruku",
-    "estimatedVolume": "Szacowana objętość"
+    "estimatedVolume": "Szacowana objętość",
+    "na": "-"
   },
   "debug": {
     "logNotFound": "Log file not found.",
@@ -451,5 +553,46 @@
     "sec0": "0 s",
     "sec": "%s s",
     "minSec": "%s min %s s"
+  },
+  "markdown": {
+    "title": "Document"
+  },
+  "themeSelector": {
+    "light": "Light",
+    "dark": "Dark",
+    "glass": "Glass"
+  },
+  "calibrationProgress": {
+    "preparing": "CALIBRATION PREPARATION",
+    "processing": "Processing calibration print job",
+    "complete": "PREPARATION COMPLETE",
+    "ready": "Calibration job ready"
+  },
+  "updateNotification": {
+    "title": "Update Available",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "wouldYouLike": "Would you like to update now?",
+    "remindLater": "Remind Later",
+    "updateNow": "Update Now"
+  },
+  "levelingGuide": {
+    "step1": "Remove the resin vat and set it aside safely",
+    "step2": "Locate the hex keys provided with your printer",
+    "step3": "Install the build plate and ensure it is fully secured",
+    "step4": "Confirm that LCD and build plate are clean and dry",
+    "homingZ": "Homing Z Axis",
+    "movingUp": "Moving Upward",
+    "movingDown": "Moving Downward",
+    "homingUp": "Homing Upward",
+    "homingDown": "Homing Downward",
+    "movingAway": "Moving safely away from the screen",
+    "ensureClear": "Ensure the motion path is clear",
+    "emergencyStop": "Emergency Stop",
+    "clearPath": "Clear the Motion Path",
+    "failedMoveTop": "Failed to start move-to-top",
+    "moveFailed": "Move failed: %s",
+    "failedHoming": "Failed to start homing",
+    "homingFailed": "Homing failed: %s"
   }
 }

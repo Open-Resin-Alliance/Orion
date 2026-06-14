@@ -527,14 +527,15 @@ class ImportScreenState extends State<ImportScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Material Profile', style: TextStyle(fontSize: 16)),
+              Text(FlutterI18n.translate(context, 'import.materialProfile'),
+                  style: TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
-              const Text('No material profiles found',
+              Text(FlutterI18n.translate(context, 'import.noProfilesFound'),
                   style: TextStyle(fontSize: 14, color: Colors.grey)),
               const SizedBox(height: 16),
               GlassButton(
                 onPressed: provider.refresh,
-                child: const Text('Retry'),
+                child: Text(FlutterI18n.translate(context, 'common.retry')),
               ),
             ],
           ),

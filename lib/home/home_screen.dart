@@ -306,7 +306,8 @@ class HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   PhosphorIcon(PhosphorIcons.flask(), size: 52),
                                   Text(
-                                    'Materials',
+                                    FlutterI18n.translate(
+                                        context, 'home.materials'),
                                     style: const TextStyle(fontSize: 28),
                                   ),
                                 ],
@@ -372,7 +373,8 @@ class HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   PhosphorIcon(PhosphorIcons.power(), size: 52),
                                   Text(
-                                    'Power',
+                                    FlutterI18n.translate(
+                                        context, 'home.btnPower'),
                                     style: const TextStyle(fontSize: 28),
                                   ),
                                 ],

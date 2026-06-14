@@ -1,6 +1,7 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/util/update_manager.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
@@ -123,8 +124,8 @@ class UpdateNotificationWatcher {
       showDialog(
         context: context,
         builder: (ctx) => GlassAlertDialog(
-          title: const Text(
-            'Update Available',
+          title: Text(
+            FlutterI18n.translate(context, 'updateNotification.title'),
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
           ),
           content: ConstrainedBox(
@@ -134,7 +135,8 @@ class UpdateNotificationWatcher {
               children: [
                 if (orion.isUpdateAvailable)
                   VersionComparison(
-                    title: 'Orion',
+                    title: FlutterI18n.translate(
+                        context, 'updateNotification.orion'),
                     branch: orion.release,
                     currentVersion: orion.currentVersion,
                     newVersion: orion.latestVersion,
@@ -143,14 +145,16 @@ class UpdateNotificationWatcher {
                   const SizedBox(height: 12),
                 if (athena.updateAvailable)
                   VersionComparison(
-                    title: 'AthenaOS',
+                    title: FlutterI18n.translate(
+                        context, 'updateNotification.athenaOs'),
                     branch: athena.channel,
                     currentVersion: athena.currentVersion,
                     newVersion: athena.latestVersion,
                   ),
                 const SizedBox(height: 16),
                 Text(
-                  'Would you like to update now?',
+                  FlutterI18n.translate(
+                      context, 'updateNotification.wouldYouLike'),
                   style: TextStyle(
                     fontSize: 18,
                     color: Colors.grey.shade400,
@@ -171,7 +175,8 @@ class UpdateNotificationWatcher {
                 updateManager.remindLater();
                 Navigator.of(ctx).pop();
               },
-              child: const Text('Remind Later'),
+              child: Text(FlutterI18n.translate(
+                  context, 'updateNotification.remindLater')),
             ),
             GlassButton(
               tint: GlassButtonTint.positive,
@@ -183,7 +188,8 @@ class UpdateNotificationWatcher {
                 Navigator.of(ctx).pop();
                 context.go('/updates');
               },
-              child: const Text('Update Now'),
+              child: Text(FlutterI18n.translate(
+                  context, 'updateNotification.updateNow')),
             ),
           ],
         ),

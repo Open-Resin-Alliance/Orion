@@ -667,7 +667,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     showDialog(
       context: navCtx,
       builder: (context) => GlassAlertDialog(
-        title: const Text('Calibration Complete',
+        title: Text(FlutterI18n.translate(context, 'postCal.complete'),
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -755,7 +755,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               Navigator.of(context).pop(); // Close dialog
               widget.onComplete(); // Close overlay
             },
-            child: const Text('Done'),
+            child: Text(FlutterI18n.translate(context, 'common.done')),
           ),
         ],
       ),
@@ -783,7 +783,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               range <= 0.0001 ? 1 : ((range / 0.05).round()).clamp(1, 1000);
 
           return GlassAlertDialog(
-            title: const Text('Fine-Tune Exposure',
+            title: Text(
+                FlutterI18n.translate(context, 'postCal.fineTuneExposure'),
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -824,7 +825,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Cancel'),
+                child: Text(FlutterI18n.translate(context, 'common.cancel')),
               ),
               GlassButton(
                 tint: GlassButtonTint.positive,
@@ -953,7 +954,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                             Navigator.of(context).pop();
                             widget.onComplete();
                           },
-                          child: const Text('Done'),
+                          child: Text(
+                              FlutterI18n.translate(context, 'common.done')),
                         ),
                       ],
                     ),

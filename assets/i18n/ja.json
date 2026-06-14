@@ -16,7 +16,16 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "remove": "Remove"
+    "remove": "Remove",
+    "reset": "Reset",
+    "previous": "Previous",
+    "saving": "Saving…",
+    "start": "Start",
+    "slice": "Slice",
+    "import_": "Import",
+    "optimal": "Optimal",
+    "upToDate": "Up to Date",
+    "checking": "Checking…"
   },
   "setup": {
     "section": "セットアップ",
@@ -84,7 +93,9 @@
     "shutdownSystem": "システムシャットダウン",
     "btnPrint": "印刷",
     "btnTools": "ツール",
-    "btnSettings": "設定"
+    "btnSettings": "設定",
+    "materials": "Materials",
+    "btnPower": "Power"
   },
   "print": {
     "usbAvailable": "USB利用可能",
@@ -141,7 +152,11 @@
     "dragonfruit": "DragonFruitを試しましたか？美味しいですよ！",
     "waitingSlicer": "スライサーの起動を待機中...",
     "slicedSuccess": "ファイルのスライス成功！",
-    "slicedTimeout": "スライスがタイムアウト"
+    "slicedTimeout": "スライスがタイムアウト",
+    "materialProfile": "Material Profile",
+    "noProfilesFound": "No material profiles found",
+    "slice": "Slice",
+    "import_": "Import"
   },
   "startup": {
     "defaultPrinter": "3Dプリンター",
@@ -166,7 +181,18 @@
     "enterName": "カスタム名を入力",
     "changelog": "変更履歴",
     "licenses": "オープンソースライセンス",
-    "na": "N/A"
+    "deviceMacos": "macOS Device",
+    "deviceAndroid": "Android Device",
+    "deviceIos": "iOS Device",
+    "deviceWindows": "Windows Device",
+    "deviceUnsupported": "Unsupported Device",
+    "unknownModel": "Unknown Model",
+    "alreadyDeveloper": "You are already a developer",
+    "developerActivated": "Developer Mode Activated: You are now a developer!",
+    "tapsAway": "You are %d taps away from becoming a developer",
+    "na": "N/A",
+    "versionInfo": "Version %s — %s",
+    "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
   "settings": {
     "finalize": "設定を確定",
@@ -175,6 +201,8 @@
     "now": "今すぐ",
     "disconnectWifi": "WiFiを切断",
     "disconnectMessage": "現在のWiFiネットワークから切断しますか？\n実行中の印刷ジョブに影響する可能性があります。",
+    "stayConnected": "Stay Connected",
+    "disconnect": "Disconnect",
     "general": "一般",
     "network": "ネットワーク",
     "about": "情報",
@@ -237,20 +265,50 @@
     "devFirmware": "開発版ファームウェア",
     "devWarning": "これは不安定な開発ビルドです。\nすべての結果を受け入れるものとします。",
     "iAccept": "同意する",
+    "cancel": "Cancel",
     "confirmUpdate": "アップデートを確認",
+    "areYouCertain": "Are you certain you want to proceed with this update?",
     "continue_": "続行",
     "finalWarning": "最終警告",
+    "finalWarningMsg": "This is your final warning before the update begins.",
     "updateNow": "今すぐアップデート",
     "updateOrion": "Orionをアップデート",
+    "updateOrionMsg": "Do you want to update the Orion HMI?\nThis will download the latest version from GitHub.",
     "updateAthena": "AthenaOSをアップデート",
-    "triggeringAthena": "AthenaOSアップデートを開始..."
+    "updateAthenaMsg": "Do you want to update AthenaOS?\nThis will trigger an update on the connected Athena printer.",
+    "triggeringAthena": "AthenaOSアップデートを開始...",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "devWarningDetailed": "This is an unstable development build.\nUnexpected behavior may occur.\nHardware damage is possible.\n\nYou accept all consequences.",
+    "confirmDevMsg": "Are you certain you want to proceed\nwith this development firmware?\n\nThe system may become unstable or inoperable.",
+    "finalWarningMsgDetailed": "This is your final warning.\n\nProceeding may result in permanent hardware damage\nand system failure.\n\nCancel unless you fully accept this risk.",
+    "orionHmi": "Orion HMI",
+    "upToDate": "UP TO DATE",
+    "runningBleedingEdge": "Running latest bleeding edge build",
+    "runningStable": "Running latest stable release",
+    "downloadAndInstall": "Download & Install",
+    "channel": "Channel: %s",
+    "checking": "Checking for updates...",
+    "internalBuild": "INTERNAL BUILD",
+    "betaVersion": "BETA VERSION",
+    "updateAvailableLabel": "UPDATE AVAILABLE",
+    "rateLimitExceeded": "Rate Limit Exceeded",
+    "rateLimitMsg": "GitHub API rate limit reached. Try again later.",
+    "bleedingEdge": "BLEEDING EDGE",
+    "rollback": "ROLLBACK",
+    "forceUpdate": "Force Update",
+    "updateInternalBuild": "Update Internal Build",
+    "noVersionInfo": "No version information available",
+    "comingSoon": "Coming Soon!",
+    "backendFutureRelease": "Backend updater will be available in a future release"
   },
   "tools": {
     "title": "ツール",
     "moveZ": "Z軸移動",
     "leveling": "レベル調整",
     "exposure": "露光",
-    "forceSensor": "フォースセンサー"
+    "forceSensor": "フォースセンサー",
+    "tools": "Tools"
   },
   "exposure": {
     "failedStart": "表示テストの開始に失敗",
@@ -273,12 +331,15 @@
     "tare": "風袋引き",
     "maximum": "最大",
     "current": "現在",
-    "minimum": "最小"
+    "minimum": "最小",
+    "noData": "No data"
   },
   "leveling": {
     "assisted": "アシスト付きレベリング",
+    "assistedDesc": "Guided leveling with auto Z homing and gap measurement.",
     "comingSoon": "近日公開！",
     "manual": "手動レベリング",
+    "manualDesc": "Manual Z adjustment for experienced users.",
     "manualMode": "手動モード",
     "preparation": "レベリング準備",
     "cancel": "キャンセル",
@@ -289,8 +350,10 @@
   "manualLeveling": {
     "title": "手動レベリング",
     "resetOffset": "オフセットをリセット",
+    "resetConfirm": "Reset Z offset to 0.00 mm?\n\nContinue?",
     "cancel": "キャンセル",
     "setZZero": "Z = 0 に設定",
+    "setZConfirm": "Set current position (%s mm) as Z offset?\n\nContinue?",
     "setOffset": "オフセットを設定",
     "failedMoveZ": "Zの移動に失敗",
     "back": "戻る",
@@ -320,11 +383,23 @@
     "selectResin": "レジンを選択",
     "startingExposure": "開始露光時間",
     "exposureIncrement": "露光増分",
+    "exposureDesc": "Exposure time for the first test piece.",
+    "incrementDesc": "How much exposure increases per test piece.",
     "reset": "リセット",
     "start": "キャリブレーション開始",
     "loadingModels": "モデルを読み込み中...",
     "noModel": "モデルが選択されていません",
-    "slicing": "キャリブレーションファイルをスライス中..."
+    "slicing": "キャリブレーションファイルをスライス中...",
+    "loadingExposure": "Loading...",
+    "slicingComplete": "Slicing complete",
+    "selectModel": "Select Calibration Model",
+    "stepBetween": "Step between pieces",
+    "finalExposure": "Final exposure",
+    "preFlightCheck": "Pre-Flight Check",
+    "checkResin": "Correct resin is filled into the vat.",
+    "checkPlate": "The build plate is clean.",
+    "checkVat": "The vat is clear of any debris.",
+    "startPrint": "Start Print"
   },
   "editResin": {
     "profileSaved": "Profile Saved",
@@ -337,10 +412,19 @@
     "burnInCountDesc": "How many initial layers use the longer burn-in cure time.",
     "normalCure": "Normal Layer Cure Time",
     "normalCureDesc": "UV exposure time for all layers after burn-in.",
-    "savedSuccess": "Profile settings saved successfully"
+    "savedSuccess": "Profile settings saved successfully",
+    "editTitle": "Edit Resin",
+    "waitAfterCure": "Wait After Cure",
+    "waitAfterCureDesc": "Pause after UV exposure before lifting.",
+    "liftAfterPrint": "Lift Distance",
+    "liftAfterPrintDesc": "How far the build plate lifts between layers.",
+    "waitAfterLift": "Wait After Lift",
+    "waitAfterLiftDesc": "Pause after lifting to let resin flow back.",
+    "saving": "Saving…"
   },
   "heater": {
     "confirmMixing": "樹脂混合の確認",
+    "mixingWarning": "Start resin mixing?\n\nEnsure build plate is installed.",
     "cancel": "キャンセル",
     "start": "開始",
     "vatHeater": "バットヒーター",
@@ -349,7 +433,9 @@
     "checking": "確認中...",
     "enabled": "有効",
     "disabled": "無効",
-    "mixPreheat": "混合＆予熱"
+    "mixPreheat": "混合＆予熱",
+    "targetTemperature": "Target Temperature",
+    "startMixing": "Start mixing?"
   },
   "postCal": {
     "complete": "キャリブレーション完了",
@@ -361,7 +447,15 @@
     "reconfigure": "再設定",
     "fineTune": "微調整",
     "save": "保存",
-    "evaluationGuide": "評価ガイド"
+    "evaluationGuide": "評価ガイド",
+    "guideDesc": "Use the evaluation guide to find optimal exposure.",
+    "scanQr": "Scan the QR code with your phone to open the guide.",
+    "readGuide": "Read it before selecting optimal exposure.",
+    "optimal": "Optimal",
+    "layerExposureUpdated": "Layer exposure time updated",
+    "fineTuneExposure": "Fine-Tune Exposure",
+    "selectValueBetween": "Select a value between %s and %s",
+    "selectPieceGuide": "Select the piece matching the guide."
   },
   "resins": {
     "failedLoad": "レジンの読み込みに失敗",
@@ -372,7 +466,9 @@
     "locked": "ロック中",
     "edit": "編集",
     "addResin": "レジンを追加",
-    "ok": "OK"
+    "ok": "OK",
+    "viscosity": "Viscosity: %s",
+    "exposureLabel": "Exposure: %s"
   },
   "status": {
     "waiting": "プリンターの起動を待機中…",
@@ -383,10 +479,12 @@
     "currentZ": "現在のZ位置",
     "printLayers": "印刷レイヤー",
     "estimatedTime": "推定印刷時間",
-    "estimatedVolume": "推定容量"
+    "estimatedVolume": "推定容量",
+    "na": "-"
   },
   "debug": {
     "logNotFound": "ログファイルが見つかりません。",
+    "errorReading": "Error reading log file: %s",
     "all": "すべて (%d)",
     "info": "INFO (%d)",
     "config": "CONFIG (%d)",
@@ -455,5 +553,46 @@
     "sec0": "0秒",
     "sec": "%s秒",
     "minSec": "%s分%s秒"
+  },
+  "markdown": {
+    "title": "Document"
+  },
+  "themeSelector": {
+    "light": "Light",
+    "dark": "Dark",
+    "glass": "Glass"
+  },
+  "calibrationProgress": {
+    "preparing": "CALIBRATION PREPARATION",
+    "processing": "Processing calibration print job",
+    "complete": "PREPARATION COMPLETE",
+    "ready": "Calibration job ready"
+  },
+  "updateNotification": {
+    "title": "Update Available",
+    "orion": "Orion",
+    "athenaOs": "AthenaOS",
+    "wouldYouLike": "Would you like to update now?",
+    "remindLater": "Remind Later",
+    "updateNow": "Update Now"
+  },
+  "levelingGuide": {
+    "step1": "Remove the resin vat and set it aside safely",
+    "step2": "Locate the hex keys provided with your printer",
+    "step3": "Install the build plate and ensure it is fully secured",
+    "step4": "Confirm that LCD and build plate are clean and dry",
+    "homingZ": "Homing Z Axis",
+    "movingUp": "Moving Upward",
+    "movingDown": "Moving Downward",
+    "homingUp": "Homing Upward",
+    "homingDown": "Homing Downward",
+    "movingAway": "Moving safely away from the screen",
+    "ensureClear": "Ensure the motion path is clear",
+    "emergencyStop": "Emergency Stop",
+    "clearPath": "Clear the Motion Path",
+    "failedMoveTop": "Failed to start move-to-top",
+    "moveFailed": "Move failed: %s",
+    "failedHoming": "Failed to start homing",
+    "homingFailed": "Homing failed: %s"
   }
 }
