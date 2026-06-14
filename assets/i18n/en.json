@@ -262,7 +262,7 @@
     "shuttingDownMsg": "Shutting down now. On next start you will be guided through setup.",
     "unableToPrepare": "Unable to prepare the device. Please try again.",
     "clearingCacheProgress": "Clearing thumbnail cache…",
-    "failedToClearCache": "Failed to clear thumbnail cache: %s"
+    "failedToClearCache": "Failed to clear thumbnail cache: "
   },
   "machineSettings": {
     "section": "Machine Settings",

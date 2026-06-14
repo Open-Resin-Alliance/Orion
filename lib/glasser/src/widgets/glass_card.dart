@@ -329,7 +329,7 @@ class GlassCard extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: borderRadius),
           clipBehavior: Clip.antiAlias,
           child: Stack(
-            fit: StackFit.expand,
+            fit: StackFit.passthrough,
             children: [
               child,
               if (hasAccent)

@@ -290,12 +290,14 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           Expanded(
                             child: _buildOffsetNavCard(
                               context: context,
-                              leading: CountryFlag.fromCountryCode(
-                                flagCode,
-                                height: 32,
-                                width: 48,
-                                shape: RoundedRectangle(6),
-                              ),
+                              leading: flagCode.isNotEmpty
+                                  ? CountryFlag.fromCountryCode(
+                                      flagCode,
+                                      height: 32,
+                                      width: 48,
+                                      shape: RoundedRectangle(6),
+                                    )
+                                  : const Icon(Icons.language),
                               title: FlutterI18n.translate(
                                   context, 'generalSettings.language'),
                               subtitle: FlutterI18n.translate(
