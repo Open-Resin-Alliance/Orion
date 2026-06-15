@@ -207,97 +207,97 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
   @override
   Future<Map<String, dynamic>> editProfile(
       int id, Map<String, dynamic> fields) {
-    // TODO: implement editProfile
+    // CHORE: implement editProfile
     throw UnimplementedError();
   }
 
   @override
   Future<String?> getCalibrationImageUrl(int modelId) {
-    // TODO: implement getCalibrationImageUrl
+    // CHORE: implement getCalibrationImageUrl
     throw UnimplementedError();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getCalibrationModels() {
-    // TODO: implement getCalibrationModels
+    // CHORE: implement getCalibrationModels
     throw UnimplementedError();
   }
 
   @override
   Future getChamberTemperature() {
-    // TODO: implement getChamberTemperature
+    // CHORE: implement getChamberTemperature
     throw UnimplementedError();
   }
 
   @override
   Future<int?> getDefaultProfileId() {
-    // TODO: implement getDefaultProfileId
+    // CHORE: implement getDefaultProfileId
     throw UnimplementedError();
   }
 
   @override
   Future<Map<String, dynamic>> getMachine() {
-    // TODO: implement getMachine
+    // CHORE: implement getMachine
     throw UnimplementedError();
   }
 
   @override
   Future<Map<String, dynamic>> getProfileJson(int id) {
-    // TODO: implement getProfileJson
+    // CHORE: implement getProfileJson
     throw UnimplementedError();
   }
 
   @override
   Future<double?> getSlicerProgress() {
-    // TODO: implement getSlicerProgress
+    // CHORE: implement getSlicerProgress
     throw UnimplementedError();
   }
 
   @override
   Future getVatTemperature() {
-    // TODO: implement getVatTemperature
+    // CHORE: implement getVatTemperature
     throw UnimplementedError();
   }
 
   @override
   Future<bool?> isCalibrationPlateProcessed() {
-    // TODO: implement isCalibrationPlateProcessed
+    // CHORE: implement isCalibrationPlateProcessed
     throw UnimplementedError();
   }
 
   @override
   Future<bool> isChamberTemperatureControlEnabled() {
-    // TODO: implement isChamberTemperatureControlEnabled
+    // CHORE: implement isChamberTemperatureControlEnabled
     throw UnimplementedError();
   }
 
   @override
   Future<bool> isVatTemperatureControlEnabled() {
-    // TODO: implement isVatTemperatureControlEnabled
+    // CHORE: implement isVatTemperatureControlEnabled
     throw UnimplementedError();
   }
 
   @override
   Future<void> preheatAndMix(double temperature) {
-    // TODO: implement preheatAndMix
+    // CHORE: implement preheatAndMix
     throw UnimplementedError();
   }
 
   @override
   Future setChamberTemperature(double temperature) {
-    // TODO: implement setChamberTemperature
+    // CHORE: implement setChamberTemperature
     throw UnimplementedError();
   }
 
   @override
   Future<void> setDefaultProfileId(int id) {
-    // TODO: implement setDefaultProfileId
+    // CHORE: implement setDefaultProfileId
     throw UnimplementedError();
   }
 
   @override
   Future setVatTemperature(double temperature) {
-    // TODO: implement setVatTemperature
+    // CHORE: implement setVatTemperature
     throw UnimplementedError();
   }
 
@@ -306,7 +306,7 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
       {required int calibrationModelId,
       required List<double> exposureTimes,
       required int profileId}) {
-    // TODO: implement startCalibrationPrint
+    // CHORE: implement startCalibrationPrint
     throw UnimplementedError();
   }
 
@@ -317,31 +317,31 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
 
   @override
   Future<void> preheatAndMixStandalone() {
-    // TODO: implement preheatAndMixStandalone
+    // CHORE: implement preheatAndMixStandalone
     throw UnimplementedError();
   }
 
   @override
   Future updateBackend() {
-    // TODO: implement updateBackend
+    // CHORE: implement updateBackend
     throw UnimplementedError();
   }
 
   @override
   Future<Map<String, dynamic>?> getKinematicStatus() {
-    // TODO: implement getKinematicStatus
+    // CHORE: implement getKinematicStatus
     throw UnimplementedError();
   }
 
   @override
   Future<bool> resetZOffset() {
-    // TODO: implement resetZOffset
+    // CHORE: implement resetZOffset
     throw UnimplementedError();
   }
 
   @override
   Future<bool> setZOffset(double offset) {
-    // TODO: implement setZOffset
+    // CHORE: implement setZOffset
     throw UnimplementedError();
   }
 }
