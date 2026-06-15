@@ -84,10 +84,10 @@ jobs:
           GEN_ICU="$PATCH_DIR/icudtl.dat"
           if [ -f "$ARCH_SO" ]; then
             echo "Applying arch-specific libflutter_engine.so (armv7)..."
-            cp "$ARCH_SO" "$BUILD_DIR/lib/libflutter_engine.so"
+            cp "$ARCH_SO" "$BUILD_DIR/libflutter_engine.so"
           elif [ -f "$GEN_SO" ]; then
             echo "Applying custom libflutter_engine.so (armv7)..."
-            cp "$GEN_SO" "$BUILD_DIR/lib/"
+            cp "$GEN_SO" "$BUILD_DIR/"
           fi
           if [ -f "$ARCH_ICU" ]; then
             echo "Applying arch-specific icudtl.dat (armv7)..."
@@ -118,10 +118,10 @@ jobs:
           GEN_ICU="$PATCH_DIR/icudtl.dat"
           if [ -f "$ARCH_SO" ]; then
             echo "Applying arch-specific libflutter_engine.so (aarch64)..."
-            cp "$ARCH_SO" "$BUILD_DIR/lib/libflutter_engine.so"
+            cp "$ARCH_SO" "$BUILD_DIR/libflutter_engine.so"
           elif [ -f "$GEN_SO" ]; then
             echo "Applying custom libflutter_engine.so (aarch64)..."
-            cp "$GEN_SO" "$BUILD_DIR/lib/"
+            cp "$GEN_SO" "$BUILD_DIR/"
           fi
           if [ -f "$ARCH_ICU" ]; then
             echo "Applying arch-specific icudtl.dat (aarch64)..."
@@ -152,10 +152,10 @@ jobs:
           GEN_ICU="$PATCH_DIR/icudtl.dat"
           if [ -f "$ARCH_SO" ]; then
             echo "Applying arch-specific libflutter_engine.so (x64)..."
-            cp "$ARCH_SO" "$BUILD_DIR/lib/libflutter_engine.so"
+            cp "$ARCH_SO" "$BUILD_DIR/libflutter_engine.so"
           elif [ -f "$GEN_SO" ]; then
             echo "Applying custom libflutter_engine.so (x64)..."
-            cp "$GEN_SO" "$BUILD_DIR/lib/"
+            cp "$GEN_SO" "$BUILD_DIR/"
           fi
           if [ -f "$ARCH_ICU" ]; then
             echo "Applying arch-specific icudtl.dat (x64)..."
