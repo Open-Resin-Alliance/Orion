@@ -747,5 +747,18 @@
     "heaters": {
         "vatHeater": "料槽加热器",
         "chamberHeater": "仓体加热器"
+    },
+    "notification": {
+        "error": "错误",
+        "warning": "警告",
+        "klipperError": "Klipper错误",
+        "aegisError": "AEGIS错误",
+        "aegisInfo": "AEGIS信息",
+        "default": "通知",
+        "emergencyStop": "紧急停止已触发",
+        "homingRequired": "需要归零",
+        "emergencyStopMsg": "出于安全原因已停止打印。请检查打印机，归零轴后再继续。",
+        "homingRequiredMsg": "请先归零打印机轴后再执行此操作。",
+        "noDetails": "（无详细信息）"
     }
 }

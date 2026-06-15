@@ -2537,9 +2537,10 @@ class _ForceSensorDialogChartState extends State<_ForceSensorDialogChart> {
   @override
   Widget build(BuildContext context) {
     final spots = _toSpots(widget.series);
-    if (spots.isEmpty)
+    if (spots.isEmpty) {
       return Center(
           child: Text(FlutterI18n.translate(context, 'status.noData')));
+    }
 
     _updateDisplayRange(spots);
     final displayMin = _displayMin ?? spots.map((s) => s.y).reduce(min) - 1.0;
@@ -2683,9 +2684,10 @@ class _ForceSensorMiniChartState extends State<_ForceSensorMiniChart> {
   @override
   Widget build(BuildContext context) {
     final spots = _toSpots(widget.series);
-    if (spots.isEmpty)
+    if (spots.isEmpty) {
       return Center(
           child: Text(FlutterI18n.translate(context, 'status.noData')));
+    }
 
     _updateDisplayRange(spots);
     final displayMin = _displayMin ?? -100.0;

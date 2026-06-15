@@ -747,5 +747,18 @@
     "heaters": {
         "vatHeater": "Bakverwarming",
         "chamberHeater": "Kamerverwarming"
+    },
+    "notification": {
+        "error": "Fout",
+        "warning": "Waarschuwing",
+        "klipperError": "Klipper-fout",
+        "aegisError": "AEGIS-fout",
+        "aegisInfo": "AEGIS-info",
+        "default": "Melding",
+        "emergencyStop": "Noodstop geactiveerd",
+        "homingRequired": "Homen vereist",
+        "emergencyStopMsg": "Afdruk gestopt voor veiligheid. Controleer de printer en home de assen voordat u doorgaat.",
+        "homingRequiredMsg": "Home de printerassen voordat u deze actie uitvoert.",
+        "noDetails": "(geen details)"
     }
 }

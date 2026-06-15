@@ -147,13 +147,15 @@ class _ConnectionErrorDialogContentState
   String _formatCountdown(DateTime? at) {
     if (at == null) return '—';
     final now = DateTime.now();
-    if (at.isBefore(now))
+    if (at.isBefore(now)) {
       return FlutterI18n.translate(context, 'connection.sec0');
+    }
     final diff = at.difference(now);
     final s = diff.inSeconds;
-    if (s < 60)
+    if (s < 60) {
       return FlutterI18n.translate(context, 'connection.sec')
           .replaceAll('%s', '$s');
+    }
     final m = diff.inMinutes;
     final sec = s % 60;
     return FlutterI18n.translate(context, 'connection.minSec')

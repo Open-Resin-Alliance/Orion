@@ -224,9 +224,10 @@ class AboutScreenState extends State<AboutScreen> {
                   '1': Pubspec.versionFull.toString().split('+')[1] ==
                           'SELFCOMPILED'
                       ? FlutterI18n.translate(context, 'about.localBuild')
-                      : '${FlutterI18n.translate(context, 'about.commit', translationParams: {
+                      : FlutterI18n.translate(context, 'about.commit',
+                          translationParams: {
                               '0': Pubspec.versionFull.toString().split('+')[1]
-                            })}',
+                            }),
                 }),
             applicationLegalese: FlutterI18n.translate(
                 context, 'about.copyright',

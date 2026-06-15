@@ -167,8 +167,10 @@ class SearchFileScreenState extends State<SearchFileScreen> {
                                     style: TextStyle(
                                         color: isSl1 ? null : Colors.grey)),
                                 subtitle: isSl1
-                                    ? Text(
-                                        '${FlutterI18n.translate(context, 'files.lastModified').replaceAll('%s', '${fileStat.modified}')}')
+                                    ? Text(FlutterI18n.translate(
+                                            context, 'files.lastModified')
+                                        .replaceAll(
+                                            '%s', '${fileStat.modified}'))
                                     : null,
                                 onTap: () {
                                   if (file is File &&

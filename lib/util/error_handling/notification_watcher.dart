@@ -133,7 +133,19 @@ class NotificationWatcher {
               // right side of the dialog.
               final List<Widget> coreButtons = [];
               for (final act in actions) {
-                final label = act[0].toUpperCase() + act.substring(1);
+                // Map action names to translation keys
+                final actionLabels = <String, String>{
+                  'stop': 'force.stop',
+                  'pause': 'force.pause',
+                  'resume': 'force.resume',
+                  'continue': 'common.continue_',
+                  'confirm': 'common.confirm',
+                  'close': 'common.close',
+                  'ack': 'common.confirm',
+                  'acknowledge': 'common.confirm',
+                };
+                final labelKey = actionLabels[act] ?? 'common.ok';
+                final label = FlutterI18n.translate(ctx, labelKey);
 
                 Future<void> onPressed() async {
                   try {
@@ -247,10 +259,12 @@ class NotificationWatcher {
               final rawMessage = (item.text ?? '').trim();
               final displayTitle = devMode
                   ? getNanoTypeTitle(item.type)
-                  : getNanoNotificationDisplayTitle(item.type, item.text);
+                  : FlutterI18n.translate(ctx,
+                      getNanoNotificationDisplayTitle(item.type, item.text));
               final displayMessage = devMode
                   ? (rawMessage.isNotEmpty ? rawMessage : '(no text)')
-                  : getNanoNotificationDisplayMessage(item.type, item.text);
+                  : FlutterI18n.translate(ctx,
+                      getNanoNotificationDisplayMessage(item.type, item.text));
 
               return GlassAlertDialog(
                 title: Row(

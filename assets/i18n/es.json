@@ -465,7 +465,9 @@
     "failedMoveZ": "Error al mover Z",
     "back": "Atrás",
     "unitUm": "µm",
-    "unitMm": "mm"
+    "unitMm": "mm",
+    "homed": "Referenciado",
+    "notHomed": "No referenciado"
   },
   "moveZ": {
     "failedMoveZ": "Error al mover Z",

@@ -672,7 +672,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.resinProfileName ?? 'Resin Profile',
+              widget.resinProfileName ??
+                  FlutterI18n.translate(context, 'calibration.resinProfile'),
               style: TextStyle(
                 fontSize: 22,
                 color: Colors.grey.shade400,
@@ -869,7 +870,9 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            widget.resinProfileName ?? 'Resin Profile',
+                            widget.resinProfileName ??
+                                FlutterI18n.translate(
+                                    context, 'calibration.resinProfile'),
                             style: TextStyle(
                               fontSize: 22,
                               color: Colors.grey.shade400,

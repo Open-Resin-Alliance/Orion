@@ -183,8 +183,8 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
   Future<void> _confirmAndSetCurrentAsZZero(double currentZ) async {
     final confirmed = await _showConfirmationDialog(
       title: FlutterI18n.translate(context, 'manualLeveling.setZZero'),
-      message:
-          'This will set the current position (${currentZ.toStringAsFixed(2)} mm) as the Z offset.\n\nDo you want to continue?',
+      message: FlutterI18n.translate(context, 'manualLeveling.setZConfirm',
+          translationParams: {'0': currentZ.toStringAsFixed(2)}),
       confirmLabel: FlutterI18n.translate(context, 'manualLeveling.setOffset'),
       icon: PhosphorIcons.warning(),
       accentColor: Colors.orangeAccent,
@@ -598,7 +598,11 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      isHomed ? 'Homed' : 'Not Homed',
+                      isHomed
+                          ? FlutterI18n.translate(
+                              context, 'manualLeveling.homed')
+                          : FlutterI18n.translate(
+                              context, 'manualLeveling.notHomed'),
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

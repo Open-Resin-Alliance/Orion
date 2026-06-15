@@ -747,5 +747,18 @@
     "heaters": {
         "vatHeater": "バットヒーター",
         "chamberHeater": "チャンバーヒーター"
+    },
+    "notification": {
+        "error": "エラー",
+        "warning": "警告",
+        "klipperError": "Klipperエラー",
+        "aegisError": "AEGISエラー",
+        "aegisInfo": "AEGIS情報",
+        "default": "通知",
+        "emergencyStop": "緊急停止が作動しました",
+        "homingRequired": "ホーミングが必要です",
+        "emergencyStopMsg": "安全のため印刷を停止しました。プリンターを確認し、ホーミングしてから続行してください。",
+        "homingRequiredMsg": "この操作を実行する前に、プリンターの軸をホーミングしてください。",
+        "noDetails": "（詳細なし）"
     }
 }

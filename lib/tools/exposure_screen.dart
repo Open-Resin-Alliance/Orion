@@ -68,9 +68,10 @@ class ExposureScreenState extends State<ExposureScreen> {
         setState(() {
           _apiErrorState = true;
         });
-        if (mounted)
+        if (mounted) {
           showErrorDialog(
               context, FlutterI18n.translate(context, 'exposure.failedStart'));
+        }
         return;
       }
 
@@ -79,9 +80,10 @@ class ExposureScreenState extends State<ExposureScreen> {
         setState(() {
           _apiErrorState = true;
         });
-        if (mounted)
+        if (mounted) {
           showErrorDialog(
               context, FlutterI18n.translate(context, 'exposure.failedCure'));
+        }
         return;
       }
 
@@ -488,7 +490,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                   width: double.infinity,
                   child: Text(
                     value is int
-                        ? '${value} ${FlutterI18n.translate(context, 'exposure.unitSec')}'
+                        ? '$value ${FlutterI18n.translate(context, 'exposure.unitSec')}'
                         : (value == 'persistent'
                             ? FlutterI18n.translate(
                                 context, 'exposure.persistent')

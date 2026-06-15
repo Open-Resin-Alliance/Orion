@@ -464,6 +464,8 @@
         "setOffset": "Set Offset",
         "failedMoveZ": "Failed to move Z",
         "back": "Back",
+        "homed": "Homed",
+        "notHomed": "Not Homed",
         "unitUm": "µm",
         "unitMm": "mm"
     },
@@ -742,5 +744,18 @@
         "moveFailed": "Move failed: %s",
         "failedHoming": "Failed to start homing",
         "homingFailed": "Homing failed: %s"
+    },
+    "notification": {
+        "error": "Error",
+        "warning": "Warning",
+        "klipperError": "Klipper Error",
+        "aegisError": "AEGIS Error",
+        "aegisInfo": "AEGIS Info",
+        "default": "Notification",
+        "emergencyStop": "Emergency Stop Activated",
+        "homingRequired": "Homing Required",
+        "emergencyStopMsg": "Printing was stopped for safety. Check the printer, then home the axes before continuing.",
+        "homingRequiredMsg": "Please home the printer axes before performing this action.",
+        "noDetails": "(no details available)"
     }
 }

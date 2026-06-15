@@ -579,8 +579,6 @@ class DetailScreenState extends State<DetailScreen> {
   }
 
   Future<void> launchDeleteDialog() async {
-    final fileName = widget.fileName;
-
     final bool? deleteConfirmed = await showDialog<bool>(
       barrierDismissible: false,
       context: context,

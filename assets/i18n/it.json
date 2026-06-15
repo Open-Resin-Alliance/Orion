@@ -747,5 +747,18 @@
     "heaters": {
         "vatHeater": "Riscaldatore vasca",
         "chamberHeater": "Riscaldatore camera"
+    },
+    "notification": {
+        "error": "Errore",
+        "warning": "Avviso",
+        "klipperError": "Errore Klipper",
+        "aegisError": "Errore AEGIS",
+        "aegisInfo": "Informazioni AEGIS",
+        "default": "Notifica",
+        "emergencyStop": "Arresto emergenza attivato",
+        "homingRequired": "Homing richiesto",
+        "emergencyStopMsg": "Stampa interrotta per sicurezza. Controllare la stampante ed eseguire l'homing prima di continuare.",
+        "homingRequiredMsg": "Eseguire l'homing degli assi prima di eseguire questa azione.",
+        "noDetails": "(nessun dettaglio)"
     }
 }

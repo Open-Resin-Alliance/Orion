@@ -465,7 +465,9 @@
     "failedMoveZ": "Mouvement Z impossible",
     "back": "Retour",
     "unitUm": "µm",
-    "unitMm": "mm"
+    "unitMm": "mm",
+    "homed": "Référencé",
+    "notHomed": "Non référencé"
   },
   "moveZ": {
     "failedMoveZ": "Mouvement Z impossible",
@@ -747,5 +749,18 @@
   "heaters": {
     "vatHeater": "Chauffage cuve",
     "chamberHeater": "Chauffage enceinte"
+  },
+  "notification": {
+    "error": "Erreur",
+    "warning": "Avertissement",
+    "klipperError": "Erreur Klipper",
+    "aegisError": "Erreur AEGIS",
+    "aegisInfo": "Info AEGIS",
+    "default": "Notification",
+    "emergencyStop": "Arrêt d'urgence activé",
+    "homingRequired": "Référencement requis",
+    "emergencyStopMsg": "Impression arrêtée par sécurité. Vérifiez l'imprimante et référencez les axes avant de continuer.",
+    "homingRequiredMsg": "Veuillez référencer les axes avant d'effectuer cette action.",
+    "noDetails": "(aucun détail)"
   }
 }

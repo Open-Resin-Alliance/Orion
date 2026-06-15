@@ -87,12 +87,12 @@ const List<Map<String, dynamic>> _defaultNanoNotificationTypes = [
 ];
 
 const List<Map<String, dynamic>> _notificationTypeTitles = [
-  {'type': 'error', 'title': 'Error'},
-  {'type': 'warn', 'title': 'Warning'},
-  {'type': 'klipper-error', 'title': 'Klipper Error'},
-  {'type': 'aegis-error', 'title': 'AEGIS Error'},
-  {'type': 'aegis-info', 'title': 'AEGIS Info'},
-  {'type': 'default', 'title': 'Notification'},
+  {'type': 'error', 'title': 'notification.error'},
+  {'type': 'warn', 'title': 'notification.warning'},
+  {'type': 'klipper-error', 'title': 'notification.klipperError'},
+  {'type': 'aegis-error', 'title': 'notification.aegisError'},
+  {'type': 'aegis-info', 'title': 'notification.aegisInfo'},
+  {'type': 'default', 'title': 'notification.default'},
 ];
 
 Map<String, Map<String, dynamic>> _indexByType(
@@ -128,7 +128,7 @@ Map<String, dynamic> getNanoTypeConfig(String? type) {
 String getNanoTypeTitle(String? type) {
   final lookup = _indexByType(_notificationTypeTitles);
   final entry = lookup[type] ?? lookup['default'];
-  return (entry?['title'] as String?) ?? 'Notification';
+  return (entry?['title'] as String?) ?? 'notification.default';
 }
 
 String _normalizeNotificationText(String? text) {
@@ -143,12 +143,12 @@ String getNanoNotificationDisplayTitle(String? type, String? text) {
     if (normalized.contains('m112') ||
         normalized.contains('emergency stop') ||
         normalized.contains('shutdown due to m112')) {
-      return 'Emergency Stop Activated';
+      return 'notification.emergencyStop';
     }
     if (normalized.contains('must home axis first')) {
-      return 'Homing Required';
+      return 'notification.homingRequired';
     }
-    return 'Warning';
+    return 'notification.warning';
   }
 
   return getNanoTypeTitle(type);
@@ -163,12 +163,12 @@ String getNanoNotificationDisplayMessage(String? type, String? text) {
     if (normalized.contains('m112') ||
         normalized.contains('emergency stop') ||
         normalized.contains('shutdown due to m112')) {
-      return 'Printing was stopped for safety. Check the printer, then home the axes before continuing.';
+      return 'notification.emergencyStopMsg';
     }
     if (normalized.contains('must home axis first')) {
-      return 'Please home the printer axes before performing this action.';
+      return 'notification.homingRequiredMsg';
     }
   }
 
-  return raw.isNotEmpty ? raw : '(no details available)';
+  return raw.isNotEmpty ? raw : 'notification.noDetails';
 }

@@ -206,12 +206,14 @@ class ResinsScreenState extends State<ResinsScreen> {
   Widget _buildResinCard(ResinProfile resin, ResinsProvider provider) {
     final meta = resin.meta;
     final parts = <String>[];
-    if (meta['viscosity'] != null)
+    if (meta['viscosity'] != null) {
       parts.add(FlutterI18n.translate(context, 'resins.viscosity',
           translationParams: {'0': '${meta['viscosity']}'}));
-    if (meta['exposure'] != null)
+    }
+    if (meta['exposure'] != null) {
       parts.add(FlutterI18n.translate(context, 'resins.exposureLabel',
           translationParams: {'0': '${meta['exposure']}'}));
+    }
 
     final key = resin.path ?? resin.name;
     final isDefault =

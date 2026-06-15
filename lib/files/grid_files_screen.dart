@@ -882,25 +882,6 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     }
   }
 
-  // _getItems replaced by FilesProvider.loadItems/listItemsAsOrionApiItems
-
-  // TODO: Re-implement sorting
-  /*void _toggleSortOrder() {
-    setState(() {
-      _items.sort((a, b) {
-        if (a is OrionApiFile && b is OrionApiFile) {
-          if (a.lastModified == null || b.lastModified == null) {
-            return 0; // or any default value
-          }
-          return _sortAscending
-              ? a.lastModified!.compareTo(b.lastModified!)
-              : b.lastModified!.compareTo(a.lastModified!);
-        }
-        return 0;
-      });
-    });
-  }*/
-
   String _getDisplayNameForDirectory(BuildContext context, String directory) {
     if (directory == _defaultDirectory && !_apiErrorState) {
       if (_isNanoDlp) return FlutterI18n.translate(context, 'files.printFiles');
@@ -910,8 +891,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     }
 
     // If it's a subdirectory of the default directory, only show the relative path
-    if (_apiErrorState)
+    if (_apiErrorState) {
       return FlutterI18n.translate(context, 'print.titleApiError');
+    }
 
     try {
       final relativePath = path.relative(directory, from: _defaultDirectory);
