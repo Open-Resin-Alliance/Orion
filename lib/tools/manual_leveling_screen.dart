@@ -661,7 +661,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                             children: [
                               const SizedBox(width: 12),
                               PhosphorIcon(PhosphorIconsFill.house, size: 26),
-                              const Expanded(
+                              Expanded(
                                 child: AutoSizeText(
                                   FlutterI18n.translate(context, 'moveZ.home'),
                                   style: TextStyle(fontSize: 24),
@@ -725,8 +725,6 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           ),
                           child: Builder(builder: (ctx) {
                             final cfg = OrionConfig();
-                            final topLabel =
-                                cfg.isHomePositionUp() ? 'floor' : 'top';
                             final icon = cfg.isHomePositionUp()
                                 ? PhosphorIcon(PhosphorIcons.arrowDown(),
                                     size: 26)
@@ -785,7 +783,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           const SizedBox(width: 12),
                           PhosphorIcon(PhosphorIcons.arrowCounterClockwise(),
                               size: 26),
-                          const Expanded(
+                          Expanded(
                             child: AutoSizeText(
                               FlutterI18n.translate(
                                   context, 'manualLeveling.resetOffset'),
@@ -814,7 +812,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                         children: [
                           const SizedBox(width: 12),
                           PhosphorIcon(PhosphorIcons.crosshair(), size: 26),
-                          const Expanded(
+                          Expanded(
                             child: AutoSizeText(
                               FlutterI18n.translate(
                                   context, 'manualLeveling.setZZero'),

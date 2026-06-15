@@ -534,7 +534,7 @@ class _BacklightDeviceSelectorState extends State<_BacklightDeviceSelector> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         FlutterI18n.translate(
                             context, 'uiSettings.noBacklightDevices'),
                         style: TextStyle(
