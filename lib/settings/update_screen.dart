@@ -408,6 +408,7 @@ class UpdateScreenState extends State<UpdateScreen>
     );
 
     if (shouldUpdate) {
+      if (!context.mounted) return;
       // Clear pending Orion updates before starting, in case Orion exits during process
       final updateManager = Provider.of<UpdateManager>(context, listen: false);
       updateManager.clearPendingUpdates(components: {UpdateComponent.orion});
@@ -484,6 +485,7 @@ class UpdateScreenState extends State<UpdateScreen>
     }
 
     if (!confirmed) return;
+    if (!ctx.mounted) return;
 
     // Clear pending updates (both Orion and Athena, as AthenaOS may update both)
     final updateManager = Provider.of<UpdateManager>(ctx, listen: false);

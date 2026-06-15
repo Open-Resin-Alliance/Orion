@@ -693,8 +693,19 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     false;
 
                                 if (confirmed) {
+                                  // Capture translations before any async gaps
+                                  if (!context.mounted) return;
+                                  final cfgPath = config.getConfigPath();
+                                  final hasDefault =
+                                      File('$cfgPath/orion.default.cfg')
+                                          .existsSync();
+                                  final rebootingMsg = hasDefault
+                                      ? FlutterI18n.translate(context,
+                                          'generalSettings.rebootingMsg')
+                                      : FlutterI18n.translate(context,
+                                          'generalSettings.clearingMsg');
+
                                   try {
-                                    final cfgPath = config.getConfigPath();
                                     final defaultFile =
                                         File('$cfgPath/orion.default.cfg');
                                     final targetFile =
@@ -712,15 +723,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       }
                                     }
 
-                                    // Decide a message based on whether a default exists
-                                    final defaultFileExists =
-                                        defaultFile.existsSync();
-                                    final rebootMessage = defaultFileExists
-                                        ? FlutterI18n.translate(context,
-                                            'generalSettings.rebootingMsg')
-                                        : FlutterI18n.translate(context,
-                                            'generalSettings.clearingMsg');
-
                                     // Show rebooting message then reboot
                                     if (!context.mounted) return;
                                     showDialog(
@@ -730,7 +732,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         title: Text(FlutterI18n.translate(
                                             context,
                                             'generalSettings.rebooting')),
-                                        content: Text(rebootMessage),
+                                        content: Text(rebootingMsg),
                                       ),
                                     );
 
@@ -1231,6 +1233,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     headers: {'Accept': 'application/vnd.github.v3+json'},
                   ).timeout(const Duration(seconds: 10));
 
+                  if (!context.mounted) return;
+
                   if (response.statusCode == 200) {
                     final List<dynamic> releases = json.decode(response.body);
                     List<String> regularReleases = [];
@@ -1271,10 +1275,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       _isLoadingReleases = false;
                     });
                   } else {
+                    final errMsg =
+                        '${FlutterI18n.translate(context, 'update.failedToLoadReleases')}: HTTP ${response.statusCode}';
                     setRouteState(() {
                       _isLoadingReleases = false;
-                      _loadError =
-                          '${FlutterI18n.translate(context, 'update.failedToLoadReleases')}: HTTP ${response.statusCode}';
+                      _loadError = errMsg;
                     });
                   }
                 } catch (e) {

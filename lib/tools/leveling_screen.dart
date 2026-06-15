@@ -642,6 +642,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
           _moveInitiated = true;
           if (!started) {
             _log.warning('moveToTop() returned false');
+            if (!mounted) return;
             messenger.showSnackBar(
               SnackBar(
                   content: Text(FlutterI18n.translate(
@@ -669,6 +670,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
           _log.info('manualHome returned: $started');
           if (!started) {
             _log.warning('manualHome() returned false');
+            if (!mounted) return;
             messenger.showSnackBar(
               SnackBar(
                   content: Text(

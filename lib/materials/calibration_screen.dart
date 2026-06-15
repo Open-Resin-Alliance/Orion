@@ -334,6 +334,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     while (mounted) {
       // Get slicer progress for UI display
       final progress = await BackendService().getSlicerProgress();
+      if (!mounted) return;
 
       if (progress != null) {
         // Treat 93% as complete (show as 100% on progress bar)
@@ -348,6 +349,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       // Calibration prints don't report percentage correctly in /slicer endpoint
       // so we check plates.json directly for plate 0's Processed flag
       final isProcessed = await BackendService().isCalibrationPlateProcessed();
+      if (!mounted) return;
 
       // Break at 93% or when processed flag is set (print starts at 99%)
       if (isProcessed == true || (progress != null && progress >= 0.93)) {

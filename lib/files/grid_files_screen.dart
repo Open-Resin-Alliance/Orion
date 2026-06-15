@@ -621,6 +621,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _apiErrorState = true;
         showErrorDialog(context, 'PINK-CARROT');
@@ -758,6 +759,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     setState(() {
       _isBulkDeleting = true;

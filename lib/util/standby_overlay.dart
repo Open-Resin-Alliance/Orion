@@ -478,7 +478,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
       _originalBrightness = 255;
       await _writeBrightness(_originalBrightness);
 
-      if (context.mounted && !_blockRgbInStandby) {
+      if (!mounted) return;
+      if (!_blockRgbInStandby) {
         final lighting = Provider.of<LightingProvider>(context, listen: false);
         await lighting.setFullBrightness();
       }
@@ -496,7 +497,8 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     try {
       _pauseDimmingForCelebration();
       await _writeBrightness(255);
-      if (context.mounted && !_blockRgbInStandby) {
+      if (!mounted) return;
+      if (!_blockRgbInStandby) {
         final lighting = Provider.of<LightingProvider>(context, listen: false);
         await lighting.setFullBrightness();
       }

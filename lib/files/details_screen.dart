@@ -154,6 +154,7 @@ class DetailScreenState extends State<DetailScreen> {
       final FileMetadata? meta =
           await provider.fetchFileMetadata(widget.fileLocation, filePath);
       if (meta == null) {
+        if (!mounted) return;
         setState(() {
           _meta = null;
           _thumbnailFuture = null;
@@ -208,6 +209,7 @@ class DetailScreenState extends State<DetailScreen> {
         _metaRetryCount = 0;
       }
     } catch (e, st) {
+      if (!mounted) return;
       _logger.severe(
           FlutterI18n.translate(context, 'files.failedMetadata'), e, st);
       if (mounted) {
@@ -718,7 +720,7 @@ class DetailScreenState extends State<DetailScreen> {
 
                 final ok =
                     await provider.startPrint(widget.fileLocation, filePath);
-                if (ok) {
+                if (ok && mounted) {
                   navigator.push(MaterialPageRoute(
                     builder: (context) => StatusScreen(
                       newPrint: true,

@@ -260,6 +260,7 @@ class ImportScreenState extends State<ImportScreen> {
                 );
               } else {
                 progressNotifier.value = 1.0;
+                if (!mounted) return;
                 messageNotifier.value =
                     FlutterI18n.translate(context, 'import.importComplete');
               }
@@ -313,8 +314,9 @@ class ImportScreenState extends State<ImportScreen> {
     } catch (e, st) {
       _logger.severe('Failed to import file', e, st);
       if (mounted) {
-        messageNotifier.value =
-            FlutterI18n.translate(context, 'import.importFailed');
+        final failMsg = FlutterI18n.translate(context, 'import.failedToImport',
+            translationParams: {'0': e.toString()});
+        messageNotifier.value = failMsg;
         progressNotifier.value = 0.0;
 
         await Future.delayed(const Duration(milliseconds: 1000));
@@ -323,9 +325,7 @@ class ImportScreenState extends State<ImportScreen> {
         navigator.pop(); // Close overlay
 
         messenger.showSnackBar(
-          SnackBar(
-              content: Text(
-                  '${FlutterI18n.translate(context, 'import.failedToImport').replaceAll('%s', e.toString())}')),
+          SnackBar(content: Text(failMsg)),
         );
       }
     }
@@ -375,6 +375,7 @@ class ImportScreenState extends State<ImportScreen> {
 
     while (mounted) {
       final progress = await BackendService().getSlicerProgress();
+      if (!mounted) return;
 
       if (progress == null) {
         if (!sawProgress) {
