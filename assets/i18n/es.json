@@ -746,8 +746,17 @@
     "failedHoming": "Error de referencia",
     "homingFailed": "Error de referencia: %s"
   },
-  "heaters": {
-    "vatHeater": "Calentador cubeta",
-    "chamberHeater": "Calentador cámara"
+  "notification": {
+    "error": "Error",
+    "warning": "Advertencia",
+    "klipperError": "Error de Klipper",
+    "aegisError": "Error de AEGIS",
+    "aegisInfo": "Información AEGIS",
+    "default": "Notificación",
+    "emergencyStop": "Parada de emergencia activada",
+    "homingRequired": "Homing requerido",
+    "emergencyStopMsg": "Impresión detenida por seguridad. Revise la impresora y realice el homing antes de continuar.",
+    "homingRequiredMsg": "Haga homing de los ejes antes de realizar esta acción.",
+    "noDetails": "(sin detalles)"
   }
 }

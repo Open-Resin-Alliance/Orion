@@ -465,7 +465,9 @@
         "failedMoveZ": "Z-verplaatsing mislukt",
         "back": "Terug",
         "unitUm": "µm",
-        "unitMm": "mm"
+        "unitMm": "mm",
+        "homed": "Gerefereerd",
+        "notHomed": "Niet gerefereerd"
     },
     "moveZ": {
         "failedMoveZ": "Z-verplaatsing mislukt",
@@ -743,10 +745,6 @@
         "moveFailed": "Beweging mislukt: %s",
         "failedHoming": "Referentiepunt zoeken mislukt",
         "homingFailed": "Referentiepunt zoeken mislukt: %s"
-    },
-    "heaters": {
-        "vatHeater": "Bakverwarming",
-        "chamberHeater": "Kamerverwarming"
     },
     "notification": {
         "error": "Fout",

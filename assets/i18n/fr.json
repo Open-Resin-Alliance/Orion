@@ -746,10 +746,6 @@
     "failedHoming": "Référencement impossible",
     "homingFailed": "Référencement impossible : %s"
   },
-  "heaters": {
-    "vatHeater": "Chauffage cuve",
-    "chamberHeater": "Chauffage enceinte"
-  },
   "notification": {
     "error": "Erreur",
     "warning": "Avertissement",

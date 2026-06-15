@@ -465,7 +465,9 @@
         "failedMoveZ": "Z轴移动失败",
         "back": "返回",
         "unitUm": "微米",
-        "unitMm": "毫米"
+        "unitMm": "毫米",
+        "homed": "已归零",
+        "notHomed": "未归零"
     },
     "moveZ": {
         "failedMoveZ": "Z轴移动失败",
@@ -743,10 +745,6 @@
         "moveFailed": "移动失败：%s",
         "failedHoming": "归零失败",
         "homingFailed": "归零失败：%s"
-    },
-    "heaters": {
-        "vatHeater": "料槽加热器",
-        "chamberHeater": "仓体加热器"
     },
     "notification": {
         "error": "错误",

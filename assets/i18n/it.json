@@ -465,7 +465,9 @@
         "failedMoveZ": "Movimento Z fallito",
         "back": "Indietro",
         "unitUm": "µm",
-        "unitMm": "mm"
+        "unitMm": "mm",
+        "homed": "Referenziato",
+        "notHomed": "Non referenziato"
     },
     "moveZ": {
         "failedMoveZ": "Movimento Z fallito",
@@ -743,10 +745,6 @@
         "moveFailed": "Movimento fallito: %s",
         "failedHoming": "Riferimento fallito",
         "homingFailed": "Riferimento fallito: %s"
-    },
-    "heaters": {
-        "vatHeater": "Riscaldatore vasca",
-        "chamberHeater": "Riscaldatore camera"
     },
     "notification": {
         "error": "Errore",

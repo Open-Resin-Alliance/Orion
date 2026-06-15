@@ -743,7 +743,8 @@
         "failedMoveTop": "Failed to start move-to-top",
         "moveFailed": "Move failed: %s",
         "failedHoming": "Failed to start homing",
-        "homingFailed": "Homing failed: %s"
+        "homingFailed": "Homing failed: %s",
+        "testZ": "Test Z Axis"
     },
     "notification": {
         "error": "Error",

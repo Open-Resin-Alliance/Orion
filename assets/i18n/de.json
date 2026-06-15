@@ -745,5 +745,18 @@
         "moveFailed": "Bewegung fehlgeschlagen: %s",
         "failedHoming": "Referenzfahrt fehlgeschlagen",
         "homingFailed": "Referenzfahrt fehlgeschlagen: %s"
+    },
+    "notification": {
+        "error": "Fehler",
+        "warning": "Warnung",
+        "klipperError": "Klipper-Fehler",
+        "aegisError": "AEGIS-Fehler",
+        "aegisInfo": "AEGIS-Info",
+        "default": "Benachrichtigung",
+        "emergencyStop": "Not-Aus aktiviert",
+        "homingRequired": "Referenzfahrt erforderlich",
+        "emergencyStopMsg": "Druck aus Sicherheitsgründen gestoppt. Bitte Drucker prüfen und Achsen referenzieren.",
+        "homingRequiredMsg": "Bitte Druckerachsen referenzieren, bevor diese Aktion ausgeführt wird.",
+        "noDetails": "(keine Details verfügbar)"
     }
 }

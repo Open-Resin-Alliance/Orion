@@ -465,7 +465,9 @@
         "failedMoveZ": "Z移動失敗",
         "back": "戻る",
         "unitUm": "µm",
-        "unitMm": "mm"
+        "unitMm": "mm",
+        "homed": "ホーム済み",
+        "notHomed": "未ホーム"
     },
     "moveZ": {
         "failedMoveZ": "Z移動失敗",
@@ -743,10 +745,6 @@
         "moveFailed": "移動失敗: %s",
         "failedHoming": "原点復帰失敗",
         "homingFailed": "原点復帰失敗: %s"
-    },
-    "heaters": {
-        "vatHeater": "バットヒーター",
-        "chamberHeater": "チャンバーヒーター"
     },
     "notification": {
         "error": "エラー",
