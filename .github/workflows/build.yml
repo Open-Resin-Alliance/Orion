@@ -75,6 +75,27 @@ jobs:
         run: |
           BUILD_NAME=orion_armv7
           flutterpi_tool build --release
+          # Apply custom Flutter engine patch if present
+          PATCH_DIR=assets/flutter_engine_patch
+          BUILD_DIR=build/flutter-pi/armv7-generic
+          ARCH_SO="$PATCH_DIR/libflutter_engine.armv7.so"
+          ARCH_ICU="$PATCH_DIR/icudtl.armv7.dat"
+          GEN_SO="$PATCH_DIR/libflutter_engine.so"
+          GEN_ICU="$PATCH_DIR/icudtl.dat"
+          if [ -f "$ARCH_SO" ]; then
+            echo "Applying arch-specific libflutter_engine.so (armv7)..."
+            cp "$ARCH_SO" "$BUILD_DIR/lib/libflutter_engine.so"
+          elif [ -f "$GEN_SO" ]; then
+            echo "Applying custom libflutter_engine.so (armv7)..."
+            cp "$GEN_SO" "$BUILD_DIR/lib/"
+          fi
+          if [ -f "$ARCH_ICU" ]; then
+            echo "Applying arch-specific icudtl.dat (armv7)..."
+            cp "$ARCH_ICU" "$BUILD_DIR/icudtl.dat"
+          elif [ -f "$GEN_ICU" ]; then
+            echo "Applying custom icudtl.dat (armv7)..."
+            cp "$GEN_ICU" "$BUILD_DIR/"
+          fi
           mv build/flutter-pi/armv7-generic $BUILD_NAME
           ( cd $BUILD_NAME && tar -czvf $BUILD_NAME.tar.gz * )
           cp $BUILD_NAME/$BUILD_NAME.tar.gz $BUILD_NAME.tar.gz
@@ -88,6 +109,27 @@ jobs:
         run: |
           BUILD_NAME=orion_aarch64
           flutterpi_tool build --arch=arm64 --release
+          # Apply custom Flutter engine patch if present
+          PATCH_DIR=assets/flutter_engine_patch
+          BUILD_DIR=build/flutter-pi/aarch64-generic
+          ARCH_SO="$PATCH_DIR/libflutter_engine.aarch64.so"
+          ARCH_ICU="$PATCH_DIR/icudtl.aarch64.dat"
+          GEN_SO="$PATCH_DIR/libflutter_engine.so"
+          GEN_ICU="$PATCH_DIR/icudtl.dat"
+          if [ -f "$ARCH_SO" ]; then
+            echo "Applying arch-specific libflutter_engine.so (aarch64)..."
+            cp "$ARCH_SO" "$BUILD_DIR/lib/libflutter_engine.so"
+          elif [ -f "$GEN_SO" ]; then
+            echo "Applying custom libflutter_engine.so (aarch64)..."
+            cp "$GEN_SO" "$BUILD_DIR/lib/"
+          fi
+          if [ -f "$ARCH_ICU" ]; then
+            echo "Applying arch-specific icudtl.dat (aarch64)..."
+            cp "$ARCH_ICU" "$BUILD_DIR/icudtl.dat"
+          elif [ -f "$GEN_ICU" ]; then
+            echo "Applying custom icudtl.dat (aarch64)..."
+            cp "$GEN_ICU" "$BUILD_DIR/"
+          fi
           mv build/flutter-pi/aarch64-generic $BUILD_NAME
           ( cd $BUILD_NAME && tar -czvf $BUILD_NAME.tar.gz * )
           cp $BUILD_NAME/$BUILD_NAME.tar.gz $BUILD_NAME.tar.gz
@@ -101,6 +143,27 @@ jobs:
         run: |
           BUILD_NAME=orion_x64
           flutterpi_tool build --arch=x64 --release
+          # Apply custom Flutter engine patch if present
+          PATCH_DIR=assets/flutter_engine_patch
+          BUILD_DIR=build/flutter-pi/x64-generic
+          ARCH_SO="$PATCH_DIR/libflutter_engine.x64.so"
+          ARCH_ICU="$PATCH_DIR/icudtl.x64.dat"
+          GEN_SO="$PATCH_DIR/libflutter_engine.so"
+          GEN_ICU="$PATCH_DIR/icudtl.dat"
+          if [ -f "$ARCH_SO" ]; then
+            echo "Applying arch-specific libflutter_engine.so (x64)..."
+            cp "$ARCH_SO" "$BUILD_DIR/lib/libflutter_engine.so"
+          elif [ -f "$GEN_SO" ]; then
+            echo "Applying custom libflutter_engine.so (x64)..."
+            cp "$GEN_SO" "$BUILD_DIR/lib/"
+          fi
+          if [ -f "$ARCH_ICU" ]; then
+            echo "Applying arch-specific icudtl.dat (x64)..."
+            cp "$ARCH_ICU" "$BUILD_DIR/icudtl.dat"
+          elif [ -f "$GEN_ICU" ]; then
+            echo "Applying custom icudtl.dat (x64)..."
+            cp "$GEN_ICU" "$BUILD_DIR/"
+          fi
           mv build/flutter-pi/x64-generic $BUILD_NAME
           ( cd $BUILD_NAME && tar -czvf $BUILD_NAME.tar.gz * )
           cp $BUILD_NAME/$BUILD_NAME.tar.gz $BUILD_NAME.tar.gz
