@@ -496,8 +496,8 @@ class UpdateScreenState extends State<UpdateScreen>
 
     // Create notifiers for the progress overlay (indeterminate progress)
     final progressNotifier = ValueNotifier<double>(-1.0); // -1 = indeterminate
-    final messageNotifier =
-        ValueNotifier<String>('Triggering AthenaOS update...');
+    final messageNotifier = ValueNotifier<String>(
+        FlutterI18n.translate(ctx, 'update.triggeringAthena'));
 
     // Navigate to the update progress overlay
     Navigator.of(ctx).push(
@@ -515,10 +515,12 @@ class UpdateScreenState extends State<UpdateScreen>
     try {
       final backend = BackendService();
       await backend.updateBackend();
-      messageNotifier.value = 'AthenaOS Update intitiated!';
+      messageNotifier.value =
+          FlutterI18n.translate(ctx, 'update.athenaUpdateInitiated');
     } catch (e) {
       _logger.warning('AthenaOS update error: $e');
-      messageNotifier.value = 'AthenaOS Update initiated. System will reboot!';
+      messageNotifier.value =
+          FlutterI18n.translate(ctx, 'update.athenaUpdateReboot');
     }
   }
 
@@ -650,10 +652,13 @@ class UpdateScreenState extends State<UpdateScreen>
                             String headerText;
                             if (supportsAthenaUpdates && isAthena) {
                               headerText = isMasterBranch
-                                  ? 'AthenaOS Internal'
-                                  : 'AthenaOS';
+                                  ? FlutterI18n.translate(
+                                      context, 'update.athenaOsInternal')
+                                  : FlutterI18n.translate(
+                                      context, 'update.athenaOs');
                             } else {
-                              headerText = 'Backend';
+                              headerText = FlutterI18n.translate(
+                                  context, 'connection.backend');
                             }
 
                             return Row(
@@ -894,7 +899,7 @@ class UpdateScreenState extends State<UpdateScreen>
         _buildStatusChip(
           context: context,
           accent: Colors.greenAccent,
-          label: 'UP TO DATE',
+          label: FlutterI18n.translate(context, 'update.upToDate'),
         ),
         const SizedBox(height: 12),
         Text(
@@ -1015,7 +1020,7 @@ class UpdateScreenState extends State<UpdateScreen>
             _buildStatusChip(
               context: context,
               accent: Colors.greenAccent,
-              label: 'UP TO DATE',
+              label: FlutterI18n.translate(context, 'update.upToDate'),
             ),
             const SizedBox(height: 12),
             Text(

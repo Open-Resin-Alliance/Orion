@@ -392,14 +392,15 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                       color: Colors.grey.shade800,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 12),
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 12),
                           Text(
-                            'Loading models...',
+                            FlutterI18n.translate(
+                                context, 'calibration.loadingModels'),
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey,
@@ -557,7 +558,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (context) => _ResinProfilePickerScreen(
-          title: 'Select Resin Profile',
+          title: FlutterI18n.translate(context, 'calibration.selectResin'),
           resins: resins,
           selectedResin: _selectedResin,
         ),

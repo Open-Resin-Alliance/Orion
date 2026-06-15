@@ -393,7 +393,7 @@ class _LevelingOverlayState extends State<_LevelingOverlay> {
                 icon: Icon(PhosphorIcons.x()),
                 iconAfterLabel: false,
                 scale: 1.3,
-                label: 'Cancel',
+                label: FlutterI18n.translate(context, 'common.cancel'),
                 onPressed:
                     _isLoading ? null : () => Navigator.of(context).pop(false),
               ),
@@ -852,7 +852,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
               PhosphorIcon(PhosphorIcons.house(), color: accent),
               const SizedBox(width: 8),
               Text(
-                'Homing Z Axis',
+                FlutterI18n.translate(context, 'levelingGuide.homingZ'),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
@@ -911,11 +911,15 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
                           Text(
                             widget.skipHome
                                 ? (widget.homeIsUp
-                                    ? 'Moving Upward'
-                                    : 'Moving Downward')
+                                    ? FlutterI18n.translate(
+                                        context, 'levelingGuide.movingUp')
+                                    : FlutterI18n.translate(
+                                        context, 'levelingGuide.movingDown'))
                                 : (widget.homeIsUp
-                                    ? 'Homing Upward'
-                                    : 'Homing Downward'),
+                                    ? FlutterI18n.translate(
+                                        context, 'levelingGuide.homingUp')
+                                    : FlutterI18n.translate(
+                                        context, 'levelingGuide.homingDown')),
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 32,
@@ -926,8 +930,10 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
                           const SizedBox(height: 16),
                           Text(
                             widget.homeIsUp
-                                ? 'Moving safely away from the screen'
-                                : 'Ensure the motion path is clear',
+                                ? FlutterI18n.translate(
+                                    context, 'levelingGuide.movingAway')
+                                : FlutterI18n.translate(
+                                    context, 'levelingGuide.ensureClear'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 18,
@@ -948,7 +954,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
           tint: GlassButtonTint.negative,
           icon: Icon(PhosphorIcons.stop()),
           scale: 1.3,
-          label: 'Emergency Stop',
+          label: FlutterI18n.translate(context, 'levelingGuide.emergencyStop'),
           onPressed: () {
             final manual = Provider.of<ManualProvider>(context, listen: false);
             manual.emergencyStop();
@@ -996,7 +1002,7 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Clear the Motion Path',
+                FlutterI18n.translate(context, 'levelingGuide.clearPath'),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
@@ -1031,7 +1037,8 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'This printer homes downward toward the screen.',
+                                FlutterI18n.translate(
+                                    context, 'leveling.downwardWarning'),
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
@@ -1044,17 +1051,20 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         _levelingChecklistRow(
                           context,
-                          'Remove the resin vat so the build plate cannot collide with it.',
+                          FlutterI18n.translate(
+                              context, 'leveling.downwardStep1'),
                         ),
                         const SizedBox(height: 12),
                         _levelingChecklistRow(
                           context,
-                          'Take the build plate off the carriage to keep the screen safe.',
+                          FlutterI18n.translate(
+                              context, 'leveling.downwardStep2'),
                         ),
                         const SizedBox(height: 12),
                         _levelingChecklistRow(
                           context,
-                          'Make sure nothing is sitting on the LCD before homing starts.',
+                          FlutterI18n.translate(
+                              context, 'leveling.downwardStep3'),
                         ),
                       ],
                     ),
@@ -1076,7 +1086,7 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
                 icon: Icon(PhosphorIcons.arrowLeft()),
                 iconAfterLabel: false,
                 scale: 1.3,
-                label: 'Back',
+                label: FlutterI18n.translate(context, 'common.back'),
                 onPressed: onCancel,
               ),
               GlassFloatingActionButton.extended(
@@ -1085,7 +1095,7 @@ class _DownwardHomingWarningScreen extends StatelessWidget {
                 icon: PhosphorIcon(PhosphorIcons.check()),
                 iconAfterLabel: true,
                 scale: 1.3,
-                label: 'All clear',
+                label: FlutterI18n.translate(context, 'leveling.allClear'),
                 onPressed: onContinue,
               ),
             ],
@@ -1132,7 +1142,7 @@ class _BuildArmSelectionScreen extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Select Build Arm',
+                FlutterI18n.translate(context, 'leveling.selectBuildArm'),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
@@ -1241,7 +1251,7 @@ class _BuildArmSelectionScreen extends StatelessWidget {
                 icon: Icon(PhosphorIcons.arrowLeft()),
                 iconAfterLabel: false,
                 scale: 1.3,
-                label: 'Back',
+                label: FlutterI18n.translate(context, 'common.back'),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ],
@@ -1332,7 +1342,7 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Assisted Leveling',
+                FlutterI18n.translate(context, 'leveling.assisted'),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
@@ -1358,7 +1368,8 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'This wizard will guide you through the leveling process.',
+                          FlutterI18n.translate(
+                              context, 'leveling.introMessage'),
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -1367,7 +1378,8 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'The printer will move to the home position to begin. Please ensure the motion path is clear.',
+                          FlutterI18n.translate(
+                              context, 'leveling.introDetail'),
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.grey.shade300,
@@ -1394,7 +1406,7 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
                 icon: Icon(PhosphorIcons.x()),
                 iconAfterLabel: false,
                 scale: 1.3,
-                label: 'Cancel',
+                label: FlutterI18n.translate(context, 'common.cancel'),
                 onPressed:
                     _isLoading ? null : () => Navigator.of(context).pop(),
               ),
@@ -1413,7 +1425,9 @@ class _LevelingIntroScreenState extends State<_LevelingIntroScreen> {
                     : PhosphorIcon(PhosphorIcons.arrowRight()),
                 iconAfterLabel: !_isLoading,
                 scale: 1.3,
-                label: _isLoading ? 'Starting...' : 'Start Leveling',
+                label: _isLoading
+                    ? FlutterI18n.translate(context, 'leveling.starting')
+                    : FlutterI18n.translate(context, 'leveling.startLeveling'),
                 onPressed: _isLoading
                     ? null
                     : () async {
@@ -1568,7 +1582,11 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Leveling Guide (${_currentStep + 1}/${widget.guide.steps.length})',
+                FlutterI18n.translate(context, 'leveling.guideProgress',
+                    translationParams: {
+                      '0': (_currentStep + 1).toString(),
+                      '1': widget.guide.steps.length.toString()
+                    }),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
@@ -1669,7 +1687,7 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
                 icon: Icon(PhosphorIcons.arrowLeft()),
                 iconAfterLabel: false,
                 scale: 1.3,
-                label: 'Back',
+                label: FlutterI18n.translate(context, 'common.back'),
                 onPressed: _prevStep,
               ),
               GlassFloatingActionButton.extended(
@@ -1683,8 +1701,8 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
                 iconAfterLabel: true,
                 scale: 1.3,
                 label: _currentStep == widget.guide.steps.length - 1
-                    ? 'Finish'
-                    : 'Next',
+                    ? FlutterI18n.translate(context, 'common.done')
+                    : FlutterI18n.translate(context, 'leveling.next'),
                 onPressed: _nextStep,
               ),
             ],

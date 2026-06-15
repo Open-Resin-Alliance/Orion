@@ -84,7 +84,11 @@
     "disconnectMsgLong": "¿Desconectar WiFi? Las impresiones en curso pueden fallar.",
     "section": "WiFi",
     "ipAddress": "Dirección IP",
-    "signalStrength": "Potencia de señal"
+    "signalStrength": "Potencia de señal",
+    "networkName": "Nombre de red",
+    "macAddress": "Dirección MAC",
+    "linkSpeed": "Velocidad",
+    "connectTo": "Conectar a %s"
   },
   "complete": {
     "section": "Listo",
@@ -210,6 +214,8 @@
     "tapsAway": "Te faltan %d toques para ser desarrollador",
     "na": "N/D",
     "versionInfo": "Versión %s — %s",
+    "localBuild": "Compilación local",
+    "commit": "Commit %s",
     "hardwareLocal": "Hardware (Local)",
     "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
@@ -301,6 +307,7 @@
     "bouncingLogoDesc": "Logo rebotando",
     "retryDetection": "Reintentar",
     "rescanDevices": "Reescanear",
+    "noBacklightDevices": "Sin dispositivos de retroiluminación"
     "logo": "Logotipo"
   },
   "update": {
@@ -325,6 +332,7 @@
     "updateAthena": "Actualizar AthenaOS",
     "updateAthenaMsg": "¿Actualizar AthenaOS?\nInicia una actualización en la impresora Athena.",
     "triggeringAthena": "Iniciando actualización AthenaOS…",
+    "athenaOsInternal": "AthenaOS Interno",
     "devWarningDetailed": "Build de desarrollo inestable.\nPosibles fallos y daños.\n\nUsted asume todos los riesgos.",
     "confirmDevMsg": "¿Continuar con este firmware de desarrollo?\n\nEl sistema puede volverse inestable.",
     "finalWarningMsgDetailed": "Último aviso.\n\nPosibles daños permanentes.\n\nCancele si no acepta el riesgo.",
@@ -411,7 +419,8 @@
     "maximum": "Máximo",
     "current": "Actual",
     "minimum": "Mínimo",
-    "noData": "Sin datos"
+    "noData": "Sin datos",
+    "loadError": "Error al cargar datos del sensor de fuerza"
   },
   "leveling": {
     "assisted": "Nivelación asistida",
@@ -434,7 +443,16 @@
     "homingFailed": "Error de referencia: %s",
     "emergencyStop": "Parada de emergencia",
     "allClear": "Todo listo",
-    "downwardWarning": "Aviso descenso"
+    "downwardWarning": "Esta impresora desciende hacia la pantalla.",
+    "downwardStep1": "Retire la cubeta de resina para que la placa no pueda chocar.",
+    "downwardStep2": "Retire la placa de construcción para proteger la pantalla.",
+    "downwardStep3": "Asegúrese de que no haya nada sobre la LCD antes de iniciar.",
+    "introMessage": "Este asistente le guiará en el proceso de nivelación.",
+    "introDetail": "La impresora se moverá a la posición de inicio. Asegúrese de que la ruta esté despejada.",
+    "startLeveling": "Iniciar nivelación",
+    "starting": "Iniciando...",
+    "guideProgress": "Guía de nivelación (%s/%s)",
+    "selectBuildArm": "Seleccionar brazo"
   },
   "manualLeveling": {
     "title": "Nivelación manual",
@@ -547,6 +565,7 @@
     "readGuide": "Lea antes de seleccionar la exposición.",
     "optimal": "Óptimo",
     "layerExposureUpdated": "Exposición actualizada",
+    "fineTuned": "Ajustado",
     "fineTuneExposure": "Ajuste fino",
     "selectValueBetween": "Valor entre %s y %s",
     "selectPieceGuide": "Elija la pieza correspondiente.",
@@ -680,7 +699,8 @@
     "attemptingReconnect": "Reconectando en",
     "pollAttempts": "Intentos polling",
     "sseAttempts": "Intentos SSE",
-    "connectionLost": "Conexión perdida"
+    "connectionLost": "Conexión perdida",
+    "pollingOnly": "Usando solo polling (SSE no compatible)"
   },
   "markdown": {
     "title": "Documento"

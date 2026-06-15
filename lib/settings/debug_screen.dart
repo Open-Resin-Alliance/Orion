@@ -19,6 +19,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:fading_edge_scrollview/fading_edge_scrollview.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:orion/util/install_locator.dart';
@@ -346,7 +347,11 @@ class DebugScreenState extends State<DebugScreen> {
                                 children: [
                                   GlassFilterChip(
                                     label: Text(
-                                      'All (${logMessages.length})',
+                                      FlutterI18n.translate(
+                                          context, 'debug.all',
+                                          translationParams: {
+                                            '0': logMessages.length.toString()
+                                          }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     selected: showInfo &&
@@ -372,7 +377,10 @@ class DebugScreenState extends State<DebugScreen> {
                                   const SizedBox(width: 12.0),
                                   GlassFilterChip(
                                     label: Text(
-                                      'INFO (${logCounts['INFO'] ?? 0})',
+                                      FlutterI18n.translate(context,
+                                          'debug.info', translationParams: {
+                                        '0': (logCounts['INFO'] ?? 0).toString()
+                                      }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     selected: showInfo,
@@ -385,7 +393,12 @@ class DebugScreenState extends State<DebugScreen> {
                                   const SizedBox(width: 8.0),
                                   GlassFilterChip(
                                     label: Text(
-                                      'CONFIG (${logCounts['CONFIG'] ?? 0})',
+                                      FlutterI18n.translate(
+                                          context, 'debug.config',
+                                          translationParams: {
+                                            '0': (logCounts['CONFIG'] ?? 0)
+                                                .toString()
+                                          }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     selected: showConfig,
@@ -398,7 +411,10 @@ class DebugScreenState extends State<DebugScreen> {
                                   const SizedBox(width: 8.0),
                                   GlassFilterChip(
                                     label: Text(
-                                      'FINE (${logCounts['FINE'] ?? 0})',
+                                      FlutterI18n.translate(context,
+                                          'debug.fine', translationParams: {
+                                        '0': (logCounts['FINE'] ?? 0).toString()
+                                      }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     selected: showFine,
@@ -411,7 +427,12 @@ class DebugScreenState extends State<DebugScreen> {
                                   const SizedBox(width: 8.0),
                                   GlassFilterChip(
                                     label: Text(
-                                      'WARNING (${logCounts['WARNING'] ?? 0})',
+                                      FlutterI18n.translate(
+                                          context, 'debug.warning',
+                                          translationParams: {
+                                            '0': (logCounts['WARNING'] ?? 0)
+                                                .toString()
+                                          }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     selected: showWarning,
@@ -424,7 +445,12 @@ class DebugScreenState extends State<DebugScreen> {
                                   const SizedBox(width: 8.0),
                                   GlassFilterChip(
                                     label: Text(
-                                      'SEVERE (${logCounts['SEVERE'] ?? 0})',
+                                      FlutterI18n.translate(
+                                          context, 'debug.severe',
+                                          translationParams: {
+                                            '0': (logCounts['SEVERE'] ?? 0)
+                                                .toString()
+                                          }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     selected: showSevere,

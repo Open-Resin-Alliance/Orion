@@ -514,9 +514,7 @@ class StatusScreenState extends State<StatusScreen> {
                   children: [
                     Text(
                       '${FlutterI18n.translate(context, 'status.error')}\n\n'
-                      'Please ensure that Odyssey is running and accessible.\n\n'
-                      'If the issue persists, please contact support.\n'
-                      'Error Code: PINK-CARROT',
+                      '${FlutterI18n.translate(context, 'status.errorContactSupport')}',
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -1093,8 +1091,9 @@ class StatusScreenState extends State<StatusScreen> {
                                       ),
                                     ),
                                   )
-                                : const Center(
-                                    child: Text('2D preview unavailable'),
+                                : Center(
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'status.previewUnavailable')),
                                   )),
                       ),
                   ]),
@@ -1733,7 +1732,8 @@ class StatusScreenState extends State<StatusScreen> {
             maxLines: 1,
             (isCanceled || isFinished)
                 ? (_isCalibrationPrint == true
-                    ? FlutterI18n.translate(context, 'status.finalizeCalibration')
+                    ? FlutterI18n.translate(
+                        context, 'status.finalizeCalibration')
                     : FlutterI18n.translate(context, 'status.returnToHome'))
                 : isPaused
                     ? FlutterI18n.translate(context, 'status.resume')
@@ -1816,16 +1816,22 @@ class StatusScreenState extends State<StatusScreen> {
             children: [
               Expanded(
                   child: _buildStatItem(
-                      context, FlutterI18n.translate(context, 'status.statMin'), _formatForceValue(minVal))),
+                      context,
+                      FlutterI18n.translate(context, 'status.statMin'),
+                      _formatForceValue(minVal))),
               Container(width: 1, color: Theme.of(context).dividerColor),
               Expanded(
                   child: _buildStatItem(
-                      context, FlutterI18n.translate(context, 'status.statCurrent'), _formatForceValue(currentVal),
+                      context,
+                      FlutterI18n.translate(context, 'status.statCurrent'),
+                      _formatForceValue(currentVal),
                       isLarge: true)),
               Container(width: 1, color: Theme.of(context).dividerColor),
               Expanded(
                   child: _buildStatItem(
-                      context, FlutterI18n.translate(context, 'status.statMax'), _formatForceValue(maxVal))),
+                      context,
+                      FlutterI18n.translate(context, 'status.statMax'),
+                      _formatForceValue(maxVal))),
             ],
           ),
         ),
@@ -2122,7 +2128,10 @@ class StatusScreenState extends State<StatusScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8),
-                                        child: _buildStatItem(ctx, FlutterI18n.translate(context, 'status.statMin'),
+                                        child: _buildStatItem(
+                                            ctx,
+                                            FlutterI18n.translate(
+                                                context, 'status.statMin'),
                                             _formatForceValue(minVal)),
                                       ),
                                     ),
@@ -2133,7 +2142,10 @@ class StatusScreenState extends State<StatusScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8),
-                                        child: _buildStatItem(ctx, FlutterI18n.translate(context, 'status.statCurrent'),
+                                        child: _buildStatItem(
+                                            ctx,
+                                            FlutterI18n.translate(
+                                                context, 'status.statCurrent'),
                                             _formatForceValue(currentVal),
                                             isLarge: true),
                                       ),
@@ -2145,7 +2157,10 @@ class StatusScreenState extends State<StatusScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8),
-                                        child: _buildStatItem(ctx, FlutterI18n.translate(context, 'status.statMax'),
+                                        child: _buildStatItem(
+                                            ctx,
+                                            FlutterI18n.translate(
+                                                context, 'status.statMax'),
                                             _formatForceValue(maxVal)),
                                       ),
                                     ),
@@ -2240,7 +2255,7 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Force Sensor',
+                      FlutterI18n.translate(context, 'tools.forceSensor'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
@@ -2250,7 +2265,7 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'No Data',
+                      FlutterI18n.translate(context, 'force.noData'),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
@@ -2280,7 +2295,7 @@ class StatusScreenState extends State<StatusScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Error loading force sensor data',
+              FlutterI18n.translate(context, 'force.loadError'),
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 8),

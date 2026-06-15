@@ -84,7 +84,11 @@
     "connectedEthernet": "Per Ethernet verbunden",
     "connectedWifi": "Per WLAN verbunden",
     "ipAddress": "IP-Adresse",
-    "signalStrength": "Signalstärke"
+    "signalStrength": "Signalstärke",
+    "networkName": "Netzwerkname",
+    "macAddress": "MAC-Adresse",
+    "linkSpeed": "Verbindungsgeschw.",
+    "connectTo": "Mit %s verbinden"
   },
   "complete": {
     "section": "Fertig",
@@ -211,6 +215,8 @@
     "uiVersion": "UI- und API-Version",
     "na": "k. A.",
     "versionInfo": "Version %s — %s",
+    "localBuild": "Lokaler Build",
+    "commit": "Commit %s",
     "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
   "settings": {
@@ -301,6 +307,7 @@
     "bouncingLogoDesc": "Bouncing-Logo-Bildschirmschoner",
     "retryDetection": "Erkennung wiederholen",
     "rescanDevices": "Geräte neu scannen",
+    "noBacklightDevices": "Keine Hintergrundbeleuchtung erkannt"
     "logo": "Logo"
   },
   "update": {
@@ -324,6 +331,7 @@
     "updateAthena": "AthenaOS aktualisieren",
     "updateAthenaMsg": "Möchten Sie AthenaOS aktualisieren?\nDies löst ein Update auf dem verbundenen Athena-Drucker aus.",
     "triggeringAthena": "AthenaOS-Update wird ausgelöst...",
+    "athenaOsInternal": "AthenaOS Intern",
     "devWarningDetailed": "Instabiler Entwicklungs-Build.\nFehlverhalten und Hardwareschäden möglich.\n\nDu übernimmst alle Konsequenzen.",
     "confirmDevMsg": "Wirklich mit dieser Entwicklungs-Firmware fortfahren?\n\nSystem könnte instabil werden.",
     "finalWarningMsgDetailed": "Letzte Warnung.\n\nPermanente Hardwareschäden möglich.\n\nAbbrechen, wenn du das Risiko nicht akzeptierst.",
@@ -411,7 +419,8 @@
     "noData": "Keine Daten",
     "pause": "Pause",
     "maximum": "Maximum",
-    "minimum": "Minimum"
+    "minimum": "Minimum",
+    "loadError": "Fehler beim Laden der Kraftsensordaten"
   },
   "leveling": {
     "assisted": "Assistierte Nivellierung",
@@ -434,7 +443,16 @@
     "homingFailed": "Referenzfahrt fehlgeschlagen: %s",
     "emergencyStop": "Not-Stopp",
     "allClear": "Alles klar",
-    "downwardWarning": "Abwärtswarnung"
+    "downwardWarning": "Dieser Drucker fährt zum Bildschirm hin ab.",
+    "downwardStep1": "Entfernen Sie die Harzwanne, damit die Bauplatte nicht kollidieren kann.",
+    "downwardStep2": "Nehmen Sie die Bauplatte ab, um den Bildschirm zu schützen.",
+    "downwardStep3": "Stellen Sie sicher, dass nichts auf dem LCD liegt, bevor die Referenzfahrt startet.",
+    "introMessage": "Dieser Assistent führt Sie durch den Nivellierungsprozess.",
+    "introDetail": "Der Drucker fährt in die Ausgangsposition. Bitte stellen Sie sicher, dass der Bewegungsweg frei ist.",
+    "startLeveling": "Nivellierung starten",
+    "starting": "Starte...",
+    "guideProgress": "Nivellierungsanleitung (%s/%s)",
+    "selectBuildArm": "Bauarm auswählen"
   },
   "manualLeveling": {
     "title": "Manuelle Nivellierung",
@@ -547,6 +565,7 @@
     "readGuide": "Vor der Auswahl der optimalen Belichtung lesen.",
     "optimal": "Optimal",
     "layerExposureUpdated": "Belichtungszeit aktualisiert",
+    "fineTuned": "Feinabgestimmt",
     "fineTuneExposure": "Belichtung feinjustieren",
     "selectValueBetween": "Wert zwischen %s und %s wählen",
     "selectPieceGuide": "Passendes Stück aus der Anleitung wählen.",
@@ -680,7 +699,8 @@
     "attemptingReconnect": "Wiederverbindungsversuch in",
     "pollAttempts": "Polling-Versuche",
     "sseAttempts": "SSE-Versuche",
-    "connectionLost": "Verbindung verloren"
+    "connectionLost": "Verbindung verloren",
+    "pollingOnly": "Nur Polling (SSE nicht unterstützt)"
   },
   "markdown": {
     "title": "Dokument"

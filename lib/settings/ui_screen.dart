@@ -408,13 +408,15 @@ class _UIScreenState extends State<UIScreen> {
                     buildOption(
                       value: 'clock',
                       title: FlutterI18n.translate(context, 'uiSettings.clock'),
-                      subtitle: FlutterI18n.translate(context, 'uiSettings.showClockDesc'),
+                      subtitle: FlutterI18n.translate(
+                          context, 'uiSettings.showClockDesc'),
                     ),
                     const SizedBox(height: 12),
                     buildOption(
                       value: 'logo',
                       title: FlutterI18n.translate(context, 'uiSettings.logo'),
-                      subtitle: FlutterI18n.translate(context, 'uiSettings.bouncingLogoDesc'),
+                      subtitle: FlutterI18n.translate(
+                          context, 'uiSettings.bouncingLogoDesc'),
                     ),
                   ],
                 ),
@@ -533,7 +535,8 @@ class _BacklightDeviceSelectorState extends State<_BacklightDeviceSelector> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'No backlight devices detected',
+                        FlutterI18n.translate(
+                            context, 'uiSettings.noBacklightDevices'),
                         style: TextStyle(
                           fontSize: 14.0,
                           color: Colors.grey,
@@ -550,7 +553,8 @@ class _BacklightDeviceSelectorState extends State<_BacklightDeviceSelector> {
                             });
                           },
                           icon: const Icon(Icons.refresh),
-                          label: Text(FlutterI18n.translate(context, 'uiSettings.retryDetection')),
+                          label: Text(FlutterI18n.translate(
+                              context, 'uiSettings.retryDetection')),
                         ),
                       ),
                     ],
@@ -585,7 +589,8 @@ class _BacklightDeviceSelectorState extends State<_BacklightDeviceSelector> {
                             });
                           },
                           icon: const Icon(Icons.refresh),
-                          label: Text(FlutterI18n.translate(context, 'uiSettings.rescanDevices')),
+                          label: Text(FlutterI18n.translate(
+                              context, 'uiSettings.rescanDevices')),
                         ),
                       ),
                     ],

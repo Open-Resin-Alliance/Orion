@@ -229,7 +229,8 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
         setState(() {
           _apiErrorState = true;
         });
-        _safeShowError('Failed to move Z');
+        _safeShowError(
+            FlutterI18n.translate(context, 'manualLeveling.failedMoveZ'));
       }
     } catch (e) {
       _logger.severe('Failed to move Z: $e');
@@ -237,7 +238,8 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
       setState(() {
         _apiErrorState = true;
       });
-      _safeShowError('Failed to move Z');
+      _safeShowError(
+          FlutterI18n.translate(context, 'manualLeveling.failedMoveZ'));
     }
   }
 
@@ -661,7 +663,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                               PhosphorIcon(PhosphorIconsFill.house, size: 26),
                               const Expanded(
                                 child: AutoSizeText(
-                                  'Home',
+                                  FlutterI18n.translate(context, 'moveZ.home'),
                                   style: TextStyle(fontSize: 24),
                                   minFontSize: 16,
                                   maxLines: 1,
@@ -724,7 +726,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           child: Builder(builder: (ctx) {
                             final cfg = OrionConfig();
                             final topLabel =
-                                cfg.isHomePositionUp() ? 'Floor' : 'Top';
+                                cfg.isHomePositionUp() ? 'floor' : 'top';
                             final icon = cfg.isHomePositionUp()
                                 ? PhosphorIcon(PhosphorIcons.arrowDown(),
                                     size: 26)
@@ -736,7 +738,11 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                                 icon,
                                 Expanded(
                                   child: AutoSizeText(
-                                    topLabel,
+                                    cfg.isHomePositionUp()
+                                        ? FlutterI18n.translate(
+                                            context, 'moveZ.floor')
+                                        : FlutterI18n.translate(
+                                            context, 'moveZ.top'),
                                     style: const TextStyle(fontSize: 24),
                                     minFontSize: 16,
                                     maxLines: 1,
@@ -781,7 +787,8 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                               size: 26),
                           const Expanded(
                             child: AutoSizeText(
-                              'Reset',
+                              FlutterI18n.translate(
+                                  context, 'manualLeveling.resetOffset'),
                               style: TextStyle(fontSize: 24),
                               minFontSize: 16,
                               maxLines: 1,
@@ -809,7 +816,8 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           PhosphorIcon(PhosphorIcons.crosshair(), size: 26),
                           const Expanded(
                             child: AutoSizeText(
-                              'Z = 0',
+                              FlutterI18n.translate(
+                                  context, 'manualLeveling.setZZero'),
                               style: TextStyle(fontSize: 24),
                               minFontSize: 16,
                               maxLines: 1,
@@ -859,7 +867,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                             : Theme.of(context).colorScheme.error),
                     Expanded(
                       child: AutoSizeText(
-                        'Emergency Stop',
+                        FlutterI18n.translate(context, 'moveZ.emergencyStop'),
                         style: TextStyle(
                           fontSize: 24,
                           color: _apiErrorState
@@ -872,7 +880,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                           padding: EdgeInsets.only(right: 20.0),
                           child: Center(
                             child: Text(
-                              'Stop',
+                              FlutterI18n.translate(context, 'moveZ.stop'),
                               style: TextStyle(
                                 fontSize: 24,
                                 color: _apiErrorState

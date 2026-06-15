@@ -84,7 +84,11 @@
     "disconnectMsgLong": "Verbinding met huidige WiFi verbreken? Lopende afdrukken kunnen mislukken.",
     "section": "WiFi",
     "ipAddress": "IP-adres",
-    "signalStrength": "Signaalsterkte"
+    "signalStrength": "Signaalsterkte",
+    "networkName": "Netwerknaam",
+    "macAddress": "MAC-adres",
+    "linkSpeed": "Snelheid",
+    "connectTo": "Verbinden met %s"
   },
   "complete": {
     "section": "Voltooid",
@@ -211,6 +215,8 @@
     "tapsAway": "U bent nog %d tikken verwijderd van ontwikkelaarsmodus",
     "na": "N.v.t.",
     "versionInfo": "Versie %s — %s",
+    "localBuild": "Lokale build",
+    "commit": "Commit %s",
     "copyright": "Apache Licentie 2.0 — © %d Open Resin Alliance"
   },
   "settings": {
@@ -301,6 +307,7 @@
     "bouncingLogoDesc": "Bounce-logo screensaver",
     "retryDetection": "Detectie opnieuw proberen",
     "rescanDevices": "Apparaten opnieuw scannen",
+    "noBacklightDevices": "Geen backlight-apparaten gedetecteerd"
     "logo": "Logo"
   },
   "update": {
@@ -325,6 +332,7 @@
     "updateAthena": "AthenaOS updaten",
     "updateAthenaMsg": "AthenaOS updaten?\nDit start een update op de aangesloten Athena-printer.",
     "triggeringAthena": "Bezig met starten AthenaOS-update…",
+    "athenaOsInternal": "AthenaOS Intern",
     "devWarningDetailed": "Dit is een instabiele ontwikkelbuild.\nOnverwacht gedrag en hardwareschade zijn mogelijk.\n\nU aanvaardt alle gevolgen.",
     "confirmDevMsg": "Weet u zeker dat u door wilt gaan met deze firmware?\n\nHet systeem kan instabiel worden.",
     "finalWarningMsgDetailed": "Dit is uw laatste waarschuwing.\n\nPermanente hardwareschade is mogelijk.\n\nAnnuleer tenzij u dit risico volledig aanvaardt.",
@@ -411,7 +419,8 @@
     "current": "Huidig",
     "noData": "Geen gegevens",
     "maximum": "Maximum",
-    "minimum": "Minimum"
+    "minimum": "Minimum",
+    "loadError": "Fout bij laden krachtsensor gegevens"
   },
   "leveling": {
     "assisted": "Begeleid waterpas stellen",
@@ -434,7 +443,16 @@
     "homingFailed": "Referentiepunt zoeken mislukt: %s",
     "emergencyStop": "Noodstop",
     "allClear": "Alles veilig",
-    "downwardWarning": "Neerwaartse waarschuwing"
+    "downwardWarning": "Deze printer beweegt omlaag naar het scherm.",
+    "downwardStep1": "Verwijder de harsbak zodat de bouwplaat niet kan botsen.",
+    "downwardStep2": "Haal de bouwplaat van de slede om het scherm te beschermen.",
+    "downwardStep3": "Zorg dat er niets op het LCD ligt voordat het parkeren start.",
+    "introMessage": "Deze wizard leidt u door het waterpas stellen.",
+    "introDetail": "De printer gaat naar de startpositie. Zorg dat het bewegingstraject vrij is.",
+    "startLeveling": "Waterpas stellen starten",
+    "starting": "Starten...",
+    "guideProgress": "Waterpas gids (%s/%s)",
+    "selectBuildArm": "Bouward selecteren"
   },
   "manualLeveling": {
     "title": "Handmatig waterpas stellen",
@@ -547,6 +565,7 @@
     "readGuide": "Lees de gids voordat je de belichting kiest.",
     "optimal": "Optimaal",
     "layerExposureUpdated": "Belichtingstijd bijgewerkt",
+    "fineTuned": "Fijn afgesteld",
     "fineTuneExposure": "Belichting fijnregelen",
     "selectValueBetween": "Kies waarde tussen %s en %s",
     "selectPieceGuide": "Kies het stuk dat overeenkomt met de gids.",
@@ -679,6 +698,7 @@
     "pollAttempts": "Poll-pogingen",
     "sseAttempts": "SSE-pogingen",
     "connectionLost": "Verbinding verbroken",
+    "pollingOnly": "Alleen polling (SSE niet ondersteund)",
     "sec0": "0 sec",
     "sec": "%s sec"
   },

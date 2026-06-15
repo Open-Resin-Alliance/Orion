@@ -217,10 +217,20 @@ class AboutScreenState extends State<AboutScreen> {
           showOrionAboutDialog(
             context: context,
             applicationName: 'Orion',
-            applicationVersion:
-                'Version ${Pubspec.version} - ${Pubspec.versionFull.toString().split('+')[1] == 'SELFCOMPILED' ? 'Local Build' : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}'}',
-            applicationLegalese:
-                'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
+            applicationVersion: FlutterI18n.translate(
+                context, 'about.versionInfo',
+                translationParams: {
+                  '0': Pubspec.version,
+                  '1': Pubspec.versionFull.toString().split('+')[1] ==
+                          'SELFCOMPILED'
+                      ? FlutterI18n.translate(context, 'about.localBuild')
+                      : '${FlutterI18n.translate(context, 'about.commit', translationParams: {
+                              '0': Pubspec.versionFull.toString().split('+')[1]
+                            })}',
+                }),
+            applicationLegalese: FlutterI18n.translate(
+                context, 'about.copyright',
+                translationParams: {'0': DateTime.now().year.toString()}),
             applicationIcon: Image.asset(
               'assets/images/ora/open_resin_alliance_logo_darkmode.png',
               width: 100,
@@ -312,11 +322,24 @@ class AboutScreenState extends State<AboutScreen> {
           future: getDeviceModel(),
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
             // Sanitize the model string to remove non-printable characters before logging and displaying
+            final rawModel = snapshot.data ?? '';
+            // Map known English platform identifiers to translation keys
+            final deviceModelMap = {
+              'macOS Device': 'about.deviceMacos',
+              'Android Device': 'about.deviceAndroid',
+              'iOS Device': 'about.deviceIos',
+              'Windows Device': 'about.deviceWindows',
+              'Unsupported Device': 'about.deviceUnsupported',
+              'Unknown Model': 'about.unknownModel',
+            };
             final sanitizedModel =
-                snapshot.data?.replaceAll(RegExp(r'[^\x20-\x7E]'), '') ??
-                    FlutterI18n.translate(context, 'about.na');
+                rawModel.replaceAll(RegExp(r'[^\x20-\x7E]'), '');
+            final displayModel = deviceModelMap.containsKey(sanitizedModel)
+                ? FlutterI18n.translate(
+                    context, deviceModelMap[sanitizedModel]!)
+                : sanitizedModel;
             _logger.info('Device Model: $sanitizedModel');
-            return Text(sanitizedModel);
+            return Text(displayModel);
           },
         ),
       ),
@@ -517,7 +540,8 @@ class AboutScreenState extends State<AboutScreen> {
             style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 2),
             title: Text(
-                'You are ${5 - qrTapCount} ${5 - qrTapCount == 1 ? 'tap' : 'taps'} away from becoming a developer',
+                FlutterI18n.translate(context, 'about.tapsAway',
+                    translationParams: {'0': (5 - qrTapCount).toString()}),
                 style: const TextStyle(fontSize: 18)),
             alignment: Alignment.topCenter,
             primaryColor: Theme.of(context).colorScheme.primary,

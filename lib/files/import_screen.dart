@@ -190,7 +190,8 @@ class ImportScreenState extends State<ImportScreen> {
       final plateId = await backendService.importFile(importRequest);
 
       if (mounted) {
-        messageNotifier.value = FlutterI18n.translate(context, 'calibration.processingFile');
+        messageNotifier.value =
+            FlutterI18n.translate(context, 'calibration.processingFile');
 
         // Poll for the newly imported file to appear with valid metadata
         bool fileReady = false;
@@ -571,7 +572,7 @@ class ImportScreenState extends State<ImportScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               child: Text(
-                'Material Profile',
+                FlutterI18n.translate(context, 'import.materialProfile'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -656,9 +657,9 @@ class ImportScreenState extends State<ImportScreen> {
               ),
               minimumSize: const Size(0, 65),
             ),
-            child: const Text(
-              'Delete',
-              style: TextStyle(fontSize: 20),
+            child: Text(
+              FlutterI18n.translate(context, 'common.delete'),
+              style: const TextStyle(fontSize: 20),
               textAlign: TextAlign.center,
             ),
           ),
@@ -676,7 +677,9 @@ class ImportScreenState extends State<ImportScreen> {
               minimumSize: const Size(0, 65),
             ),
             child: Text(
-              _isStlFile() ? 'Slice' : 'Import',
+              _isStlFile()
+                  ? FlutterI18n.translate(context, 'common.slice')
+                  : FlutterI18n.translate(context, 'common.import_'),
               style: const TextStyle(fontSize: 22),
               textAlign: TextAlign.center,
             ),
@@ -699,7 +702,7 @@ class _ImportResinProfilePickerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ResinProfileSelectionScreen(
-      title: 'Select Resin Profile',
+      title: FlutterI18n.translate(context, 'calibration.selectResin'),
       resins: resins,
       selectedResinKey: selectedResinKey,
       onSelected: (resin) {

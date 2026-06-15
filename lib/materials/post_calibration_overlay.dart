@@ -914,7 +914,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                               Column(
                                 children: [
                                   Text(
-                                    'Fine-Tuned',
+                                    FlutterI18n.translate(
+                                        context, 'calibration.fineTuned'),
                                     style: TextStyle(
                                       fontSize: 18,
                                       color: Colors.grey.shade400,
@@ -936,7 +937,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Layer exposure time updated',
+                            FlutterI18n.translate(
+                                context, 'calibration.layerExposureUpdated'),
                             style: TextStyle(
                               fontSize: 20,
                               color: Colors.grey.shade500,

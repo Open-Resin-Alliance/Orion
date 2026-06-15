@@ -119,7 +119,9 @@ class ResinsScreenState extends State<ResinsScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('No resin profiles found',
+                            Text(
+                                FlutterI18n.translate(
+                                    context, 'resins.noProfiles'),
                                 style: TextStyle(color: Colors.grey.shade300)),
                             const SizedBox(height: 12),
                             GlassButton(
@@ -204,8 +206,12 @@ class ResinsScreenState extends State<ResinsScreen> {
   Widget _buildResinCard(ResinProfile resin, ResinsProvider provider) {
     final meta = resin.meta;
     final parts = <String>[];
-    if (meta['viscosity'] != null) parts.add(FlutterI18n.translate(context, 'resins.viscosity', translationParams: {'0': '${meta['viscosity']}'}));
-    if (meta['exposure'] != null) parts.add(FlutterI18n.translate(context, 'resins.exposureLabel', translationParams: {'0': '${meta['exposure']}'}));
+    if (meta['viscosity'] != null)
+      parts.add(FlutterI18n.translate(context, 'resins.viscosity',
+          translationParams: {'0': '${meta['viscosity']}'}));
+    if (meta['exposure'] != null)
+      parts.add(FlutterI18n.translate(context, 'resins.exposureLabel',
+          translationParams: {'0': '${meta['exposure']}'}));
 
     final key = resin.path ?? resin.name;
     final isDefault =
@@ -398,7 +404,8 @@ class ResinsScreenState extends State<ResinsScreen> {
       context: context,
       builder: (_) => GlassAlertDialog(
         title: Text(FlutterI18n.translate(context, 'resins.addResin')),
-        content: Text(FlutterI18n.translate(context, 'resins.implementAddResin')),
+        content:
+            Text(FlutterI18n.translate(context, 'resins.implementAddResin')),
         actions: [
           GlassButton(
               onPressed: () => Navigator.pop(context),

@@ -84,7 +84,11 @@
     "disconnectMsgLong": "Disconnettersi dal WiFi? Le stampe in corso potrebbero fallire.",
     "section": "WiFi",
     "ipAddress": "Indirizzo IP",
-    "signalStrength": "Potenza segnale"
+    "signalStrength": "Potenza segnale",
+    "networkName": "Nome rete",
+    "macAddress": "Indirizzo MAC",
+    "linkSpeed": "Velocità",
+    "connectTo": "Connetti a %s"
   },
   "complete": {
     "section": "Completato",
@@ -211,6 +215,8 @@
     "tapsAway": "Sei a %d tocchi dal diventare sviluppatore",
     "na": "N/D",
     "versionInfo": "Versione %s — %s",
+    "localBuild": "Build locale",
+    "commit": "Commit %s",
     "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
   },
   "settings": {
@@ -301,6 +307,7 @@
     "bouncingLogoDesc": "Logo rimbalzante",
     "retryDetection": "Riprova",
     "rescanDevices": "Riscansiona",
+    "noBacklightDevices": "Nessun display retroilluminato rilevato"
     "logo": "Logo"
   },
   "update": {
@@ -325,6 +332,7 @@
     "updateAthena": "Aggiorna AthenaOS",
     "updateAthenaMsg": "Aggiornare AthenaOS?\nAvvierà un aggiornamento sulla stampante Athena collegata.",
     "triggeringAthena": "Avvio aggiornamento AthenaOS…",
+    "athenaOsInternal": "AthenaOS Interno",
     "devWarningDetailed": "Questa è una build di sviluppo instabile.\nComportamenti imprevisti e danni hardware sono possibili.\n\nAccetti tutte le conseguenze.",
     "confirmDevMsg": "Sei sicuro di voler procedere con questo firmware di sviluppo?\n\nIl sistema potrebbe diventare instabile.",
     "finalWarningMsgDetailed": "Questo è il tuo ultimo avviso.\n\nSono possibili danni hardware permanenti.\n\nAnnulla a meno che non accetti pienamente questo rischio.",
@@ -411,7 +419,8 @@
     "maximum": "Massimo",
     "current": "Corrente",
     "minimum": "Minimo",
-    "noData": "Nessun dato"
+    "noData": "Nessun dato",
+    "loadError": "Errore caricamento dati sensore di forza"
   },
   "leveling": {
     "assisted": "Livellamento assistito",
@@ -434,7 +443,16 @@
     "homingFailed": "Riferimento fallito: %s",
     "emergencyStop": "Arresto emergenza",
     "allClear": "Tutto ok",
-    "downwardWarning": "Avviso discesa"
+    "downwardWarning": "Questa stampante scende verso lo schermo.",
+    "downwardStep1": "Rimuovere la vasca della resina per evitare collisioni.",
+    "downwardStep2": "Togliere il piano di stampa per proteggere lo schermo.",
+    "downwardStep3": "Assicurarsi che non ci sia nulla sul LCD prima di iniziare.",
+    "introMessage": "Questa procedura guidata ti accompagnerà nel livellamento.",
+    "introDetail": "La stampante si sposterà verso la posizione di home. Assicurati che il percorso sia libero.",
+    "startLeveling": "Avvia livellamento",
+    "starting": "Avvio...",
+    "guideProgress": "Guida livellamento (%s/%s)",
+    "selectBuildArm": "Seleziona braccio"
   },
   "manualLeveling": {
     "title": "Livellamento manuale",
@@ -547,6 +565,7 @@
     "readGuide": "Leggi prima di scegliere l'esposizione.",
     "optimal": "Ottimale",
     "layerExposureUpdated": "Esposizione aggiornata",
+    "fineTuned": "Regolato",
     "fineTuneExposure": "Regolazione fine",
     "selectValueBetween": "Valore tra %s e %s",
     "selectPieceGuide": "Scegli il pezzo corrispondente.",
@@ -679,6 +698,7 @@
     "pollAttempts": "Tentativi poll",
     "sseAttempts": "Tentativi SSE",
     "connectionLost": "Connessione persa",
+    "pollingOnly": "Solo polling (SSE non supportato)",
     "sec0": "0 sec",
     "sec": "%s sec"
   },

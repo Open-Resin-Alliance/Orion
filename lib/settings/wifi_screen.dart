@@ -368,7 +368,7 @@ class WifiScreenState extends State<WifiScreen> {
                         title: Text(network['SSID'] ?? '',
                             style: const TextStyle(fontSize: 22)),
                         subtitle: Text(
-                            'Signal Strength: ${network['SIGNAL']} dBm',
+                            '${FlutterI18n.translate(context, 'wifi.signalStrength')}: ${network['SIGNAL']} dBm',
                             style: const TextStyle(fontSize: 18)),
                         trailing: _getSignalStrengthIcon(
                             int.tryParse(network['SIGNAL'] ?? '0') ?? 0,
@@ -523,7 +523,8 @@ class WifiScreenState extends State<WifiScreen> {
         if (connectionType != 'ethernet')
           buildInfoCard(
               FlutterI18n.translate(context, 'wifi.networkName'), currentSSID),
-        buildInfoCard('IP Address', net['ip'] ?? ''),
+        buildInfoCard(
+            FlutterI18n.translate(context, 'wifi.ipAddress'), net['ip'] ?? ''),
         if (connectionType == 'ethernet')
           buildInfoCard(FlutterI18n.translate(context, 'wifi.macAddress'),
               net['mac'] ?? ''),
@@ -532,7 +533,7 @@ class WifiScreenState extends State<WifiScreen> {
               net['speed'] ?? ''),
         if (connectionType != 'ethernet')
           buildInfoCard(
-            'Signal Strength',
+            FlutterI18n.translate(context, 'wifi.signalStrength'),
             wifiProvider.getSignalQuality(wifiProvider.signalStrength),
           ),
         const SizedBox(height: 16),
@@ -577,7 +578,7 @@ class WifiScreenState extends State<WifiScreen> {
                 net['speed'] ?? ''),
           if (connectionType != 'ethernet')
             buildInfoCard(
-              'Signal Strength',
+              FlutterI18n.translate(context, 'wifi.signalStrength'),
               wifiProvider.getSignalQuality(wifiProvider.signalStrength),
             ),
         ];
@@ -654,8 +655,8 @@ class WifiScreenState extends State<WifiScreen> {
           barrierDismissible: false,
           builder: (ctx) => GlassAlertDialog(
             title: Text(FlutterI18n.translate(context, 'wifi.disconnectTitle')),
-            content: const Text(
-                'Do you want to disconnect from the current WiFi network? This may cause any ongoing print jobs to fail.'),
+            content:
+                Text(FlutterI18n.translate(context, 'wifi.disconnectMsgLong')),
             actions: [
               GlassButton(
                 tint: GlassButtonTint.negative,
@@ -663,8 +664,8 @@ class WifiScreenState extends State<WifiScreen> {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(90, 60),
                 ),
-                child: const Text(
-                  'Disconnect',
+                child: Text(
+                  FlutterI18n.translate(context, 'wifi.disconnect'),
                   softWrap: true,
                 ),
               ),
@@ -685,7 +686,7 @@ class WifiScreenState extends State<WifiScreen> {
       child: Row(
         children: [
           Text(
-            'Disconnect',
+            FlutterI18n.translate(context, 'wifi.disconnect'),
             style: TextStyle(fontSize: 20),
           ),
           SizedBox(width: 10),

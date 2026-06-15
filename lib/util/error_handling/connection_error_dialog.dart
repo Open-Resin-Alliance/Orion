@@ -234,15 +234,18 @@ class _ConnectionErrorDialogContentState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Connection Lost',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    FlutterI18n.translate(context, 'connection.connectionLost'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     sseSupported == false
-                        ? 'Using polling only (SSE unsupported)'
-                        : 'Attempting to reconnect...',
+                        ? FlutterI18n.translate(
+                            context, 'connection.pollingOnly')
+                        : FlutterI18n.translate(
+                            context, 'connection.attemptingReconnect'),
                     style: TextStyle(
                       fontSize: 16,
                       color: scheme.onSurface.withValues(alpha: 0.72),
@@ -266,7 +269,9 @@ class _ConnectionErrorDialogContentState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(FlutterI18n.translate(context, 'connection.backend'),
+                        Text(
+                            FlutterI18n.translate(
+                                context, 'connection.backend'),
                             style:
                                 TextStyle(fontSize: 14, color: Colors.white70)),
                         const SizedBox(height: 4),
@@ -283,7 +288,8 @@ class _ConnectionErrorDialogContentState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(FlutterI18n.translate(context, 'connection.target'),
+                        Text(
+                            FlutterI18n.translate(context, 'connection.target'),
                             style:
                                 TextStyle(fontSize: 14, color: Colors.white70)),
                         const SizedBox(height: 4),
@@ -302,7 +308,9 @@ class _ConnectionErrorDialogContentState
               ),
             ],
             const SizedBox(height: 12),
-            Text(FlutterI18n.translate(context, 'connection.attemptingReconnect'),
+            Text(
+                FlutterI18n.translate(
+                    context, 'connection.attemptingReconnect'),
                 style: TextStyle(fontSize: 14, color: Colors.white70)),
             const SizedBox(height: 6),
             Text(
@@ -318,7 +326,9 @@ class _ConnectionErrorDialogContentState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(FlutterI18n.translate(context, 'connection.pollAttempts'),
+                      Text(
+                          FlutterI18n.translate(
+                              context, 'connection.pollAttempts'),
                           style: TextStyle(fontSize: 14)),
                       const SizedBox(height: 4),
                       Text('$pollAttempts',
@@ -331,7 +341,9 @@ class _ConnectionErrorDialogContentState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(FlutterI18n.translate(context, 'connection.sseAttempts'),
+                      Text(
+                          FlutterI18n.translate(
+                              context, 'connection.sseAttempts'),
                           style: TextStyle(fontSize: 14)),
                       const SizedBox(height: 4),
                       Text('$sseAttempts',
@@ -366,10 +378,11 @@ class _ConnectionErrorDialogContentState
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Connection Lost',
-                        style: TextStyle(
+                        FlutterI18n.translate(
+                            context, 'connection.connectionLost'),
+                        style: const TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),

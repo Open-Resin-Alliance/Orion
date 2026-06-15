@@ -604,7 +604,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       if (developerMode) const SizedBox(height: 20.0),
                       if (developerMode)
                         OrionListTile(
-                          title: 'Developer Mode',
+                          title: FlutterI18n.translate(
+                              context, 'generalSettings.developerMode'),
                           icon: PhosphorIcons.code,
                           value: developerMode,
                           onChanged: (bool value) {
@@ -715,8 +716,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     final defaultFileExists =
                                         defaultFile.existsSync();
                                     final rebootMessage = defaultFileExists
-                                        ? 'Restoring settings to factory defaults and restarting now.'
-                                        : 'Clearing custom settings and restarting now.';
+                                        ? FlutterI18n.translate(context,
+                                            'generalSettings.rebootingMsg')
+                                        : FlutterI18n.translate(context,
+                                            'generalSettings.clearingMsg');
 
                                     // Show rebooting message then reboot
                                     if (!context.mounted) return;
@@ -901,7 +904,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
             ),
             const SizedBox(height: 20.0),
             OrionListTile(
-              title: 'Release Tag Override',
+              title: FlutterI18n.translate(context, 'update.releaseTagOverride'),
               icon: PhosphorIcons.download(),
               value: releaseOverride,
               onChanged: (bool value) {
@@ -931,7 +934,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           // Wrap in Center widget
                           child: AutoSizeText(
                             overrideRelease == ''
-                                ? 'Select Release Tag'
+                                ? FlutterI18n.translate(
+                                    context, 'update.selectReleaseVersion')
                                 : overrideRelease,
                             style: const TextStyle(fontSize: 22),
                             minFontSize: 20,
@@ -959,13 +963,12 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   () {}, // Empty callback for disabled state
                               child: Opacity(
                                 opacity: 0.5, // Make it look disabled
-                                child: const Center(
-                                  // Wrap in Center widget
+                                child: Center(
                                   child: Text(
-                                    'Clear Release',
-                                    style: TextStyle(fontSize: 18),
-                                    textAlign: TextAlign
-                                        .center, // Center text alignment
+                                    FlutterI18n.translate(
+                                        context, 'update.clearRelease'),
+                                    style: const TextStyle(fontSize: 18),
+                                    textAlign: TextAlign.center,
                                   ),
                                 ),
                               ),
@@ -973,8 +976,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           : GlassButton(
                               style: ElevatedButton.styleFrom(
                                 elevation: 3,
-                                alignment:
-                                    Alignment.center, // Center the content
+                                alignment: Alignment.center,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -984,22 +986,19 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       category: 'developer');
                                 });
                               },
-                              child: const Center(
-                                // Wrap in Center widget
+                              child: Center(
                                 child: AutoSizeText(
-                                  'Clear Release Tag',
-                                  style: TextStyle(
-                                      fontSize: 18), // Reduce font size
-                                  minFontSize: 16, // Reduce min font size
+                                  FlutterI18n.translate(
+                                      context, 'update.clearReleaseTag'),
+                                  style: const TextStyle(fontSize: 18),
+                                  minFontSize: 16,
                                   maxLines: 1,
-                                  textAlign:
-                                      TextAlign.center, // Center text alignment
+                                  textAlign: TextAlign.center,
                                   overflowReplacement: Text(
-                                    'Clear Tag',
-                                    style: TextStyle(
-                                        fontSize: 18), // Reduce font size
-                                    textAlign: TextAlign
-                                        .center, // Center text alignment
+                                    FlutterI18n.translate(
+                                        context, 'update.clearTag'),
+                                    style: const TextStyle(fontSize: 18),
+                                    textAlign: TextAlign.center,
                                   ),
                                 ),
                               ),
@@ -1010,7 +1009,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
               ),
             const SizedBox(height: 20.0),
             OrionListTile(
-              title: 'Force Update',
+              title: FlutterI18n.translate(context, 'update.forceUpdate'),
               icon: PhosphorIcons.warning(),
               value: overrideUpdateCheck,
               onChanged: (bool value) {
@@ -1023,7 +1022,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
             ),
             const SizedBox(height: 20.0),
             OrionListTile(
-              title: 'Raw Force Sensor Values',
+              title: FlutterI18n.translate(
+                  context, 'update.rawForceSensor'),
               icon: PhosphorIcons.scales(),
               value: overrideRawForceSensorValues,
               onChanged: (bool value) {
@@ -1037,7 +1037,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
             ),
             const SizedBox(height: 20.0),
             OrionListTile(
-              title: 'Reuse Calibration Plate (Debug)',
+              title: FlutterI18n.translate(
+                  context, 'update.reuseCalPlate'),
               icon: PhosphorIcons.flask(),
               value: reuseCalibrationPlate,
               onChanged: (bool value) {
@@ -1064,9 +1065,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                             builder: (ctx) => GlassAlertDialog(
                               title: Text(FlutterI18n.translate(context,
                                   'generalSettings.clearThumbnailCache')),
-                              content: const Text(
-                                  'Clear all cached thumbnails from memory and disk? This will free up disk space and memory. Continue?',
-                                  style: TextStyle(fontSize: 18.0)),
+                              content: Text(
+                                  FlutterI18n.translate(context,
+                                      'generalSettings.cacheClearMsg'),
+                                  style: const TextStyle(fontSize: 18.0)),
                               actions: [
                                 GlassButton(
                                     style: ElevatedButton.styleFrom(
@@ -1099,15 +1101,18 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           showDialog(
                             context: navCtx,
                             barrierDismissible: false,
-                            builder: (ctx) => const GlassAlertDialog(
-                              title: Text('Clearing Cache'),
+                            builder: (ctx) => GlassAlertDialog(
+                              title: Text(FlutterI18n.translate(
+                                  context, 'generalSettings.clearingCache')),
                               content: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 16),
-                                  Text('Clearing thumbnail cache...',
-                                      style: TextStyle(fontSize: 18)),
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    FlutterI18n.translate(context,
+                                        'generalSettings.cacheClearing'),
+                                    style: const TextStyle(fontSize: 18)),
                                 ],
                               ),
                             ),
@@ -1126,9 +1131,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                               builder: (ctx) => GlassAlertDialog(
                                 title: Text(FlutterI18n.translate(
                                     context, 'common.success')),
-                                content: const Text(
-                                    'Thumbnail cache cleared successfully.',
-                                    style: TextStyle(fontSize: 18)),
+                                content: Text(
+                                    FlutterI18n.translate(context,
+                                        'generalSettings.cacheCleared'),
+                                    style: const TextStyle(fontSize: 18)),
                                 actions: [
                                   GlassButton(
                                     style: ElevatedButton.styleFrom(
@@ -1154,7 +1160,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                 title: Text(FlutterI18n.translate(
                                     context, 'common.error')),
                                 content: Text(
-                                    'Failed to clear thumbnail cache: $e',
+                                    '${FlutterI18n.translate(context, 'generalSettings.failedToClearCache')}$e',
                                     style: const TextStyle(fontSize: 18)),
                                 actions: [
                                   GlassButton(
@@ -1172,9 +1178,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         }
                       }
                     },
-                    child: const Text(
-                      'Clear Thumbnail Cache',
-                      style: TextStyle(fontSize: 22),
+                    child: Text(
+                      FlutterI18n.translate(
+                          context, 'generalSettings.clearThumbnailCache'),
+                      style: const TextStyle(fontSize: 22),
                     ),
                   ),
                 ),
@@ -1268,7 +1275,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     setRouteState(() {
                       _isLoadingReleases = false;
                       _loadError =
-                          'Failed to fetch releases: HTTP ${response.statusCode}';
+                          '${FlutterI18n.translate(context, 'update.failedToLoadReleases')}: HTTP ${response.statusCode}';
                     });
                   }
                 } catch (e) {
@@ -1284,7 +1291,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
               }
 
               return DetailedSelectionScreen(
-                title: 'Select Release Version',
+                title: FlutterI18n.translate(
+                    context, 'update.selectReleaseVersion'),
                 child: Column(
                   children: [
                     if (overrideRelease.isNotEmpty)
@@ -1307,7 +1315,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Current Release Override',
+                                      FlutterI18n.translate(context,
+                                          'update.currentReleaseOverride'),
                                       style: TextStyle(
                                         fontSize: 14,
                                         color: Theme.of(context)
@@ -1339,22 +1348,24 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     if (overrideRelease.isNotEmpty) const SizedBox(height: 12),
                     Expanded(
                       child: _isLoadingReleases
-                          ? const Center(
+                          ? Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 24),
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 24),
                                   Text(
-                                    'Loading available releases...',
-                                    style: TextStyle(
+                                    FlutterI18n.translate(
+                                        context, 'update.loadingReleases'),
+                                    style: const TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.w600),
                                   ),
-                                  SizedBox(height: 8),
+                                  const SizedBox(height: 8),
                                   Text(
-                                    'This may take a few seconds',
-                                    style: TextStyle(
+                                    FlutterI18n.translate(
+                                        context, 'update.loadingReleasesHint'),
+                                    style: const TextStyle(
                                         fontSize: 16, color: Colors.grey),
                                   ),
                                 ],
@@ -1371,7 +1382,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                             size: 64, color: Colors.red),
                                         const SizedBox(height: 24),
                                         Text(
-                                          'Failed to Load Releases',
+                                          FlutterI18n.translate(context,
+                                              'update.failedToLoadReleases'),
                                           style: TextStyle(
                                             fontSize: 24,
                                             fontWeight: FontWeight.bold,
@@ -1389,12 +1401,13 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           onPressed: fetchReleases,
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
-                                            children: const [
-                                              Icon(Icons.refresh, size: 20),
-                                              SizedBox(width: 8),
-                                              Text('Retry',
+                                            children: [
+                                              const Icon(Icons.refresh, size: 20),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                  FlutterI18n.translate(context, 'common.retry'),
                                                   style:
-                                                      TextStyle(fontSize: 18)),
+                                                      const TextStyle(fontSize: 18)),
                                             ],
                                           ),
                                         ),
@@ -1402,24 +1415,26 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     ),
                                   ),
                                 )
-                              : _availableReleases.isEmpty
-                                  ? const Center(
+                              : _avaCenter(
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.inbox_outlined,
+                                          const Icon(Icons.inbox_outlined,
                                               size: 64, color: Colors.grey),
-                                          SizedBox(height: 24),
+                                          const SizedBox(height: 24),
                                           Text(
-                                            'No Releases Found',
-                                            style: TextStyle(
+                                            FlutterI18n.translate(context,
+                                                'update.noReleasesFound'),
+                                            style: const TextStyle(
                                                 fontSize: 24,
                                                 fontWeight: FontWeight.bold),
                                           ),
-                                          SizedBox(height: 8),
+                                          const SizedBox(height: 8),
                                           Text(
-                                            'There are no releases available at this time',
+                                            FlutterI18n.translate(context,
+                                                'update.noReleasesDesc'),
                                             textAlign: TextAlign.center,
+                                            style: constign: TextAlign.center,
                                             style: TextStyle(
                                                 fontSize: 16,
                                                 color: Colors.grey),
@@ -1497,8 +1512,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         if (regularReleases.isNotEmpty) ...[
           _buildReleaseSectionHeader(
             icon: Icons.verified,
-            title: 'Stable Releases',
-            subtitle: 'Recommended for normal use',
+            title: FlutterI18n.translate(context, 'update.stableReleases'),
+            subtitle: FlutterI18n.translate(
+                context, 'update.stableReleasesDesc'),
             accent: Colors.green.shade300,
           ),
           ...regularReleases
@@ -1509,8 +1525,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         if (branchReleases.isNotEmpty) ...[
           _buildReleaseSectionHeader(
             icon: Icons.science,
-            title: 'Development Branches',
-            subtitle: 'Experimental and branch builds',
+            title: FlutterI18n.translate(context, 'update.devBranches'),
+            subtitle: FlutterI18n.translate(
+                context, 'update.devBranchesDesc'),
             accent: Colors.orange.shade300,
           ),
           ...branchReleases
@@ -1521,7 +1538,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   }
 
   /// Builds an individual release item with Orion card styling
-  Widget _buildReleaseItem(String release, {required bool isStable}) {
+  Widget _buildReleaseItem(String release, {requi
+        FlutterI18n.translate(context, 'update.unknownDate')le}) {
     final isSelected = overrideRelease == release;
     final releaseDate = _releaseDates[release] ?? 'Unknown date';
     final accent = isStable ? Colors.green.shade300 : Colors.orange.shade300;
