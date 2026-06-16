@@ -27,7 +27,7 @@ import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/l10n/generated/app_localizations.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
@@ -61,7 +61,6 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     Size homeBtnSize = const Size(double.infinity, double.infinity);
-    final l10n = AppLocalizations.of(context)!;
 
     final theme = Theme.of(context).copyWith(
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -97,7 +96,7 @@ class HomeScreenState extends State<HomeScreen> {
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      '${l10n.homePowerOptions} ${isRemote ? l10n.homePowerRemote : l10n.homePowerLocal}',
+                      '${FlutterI18n.translate(context, 'home.powerOptions')} ${isRemote ? FlutterI18n.translate(context, 'home.powerRemote') : FlutterI18n.translate(context, 'home.powerLocal')}',
                       style: const TextStyle(
                           fontSize: 24, fontWeight: FontWeight.bold),
                     ),
@@ -121,7 +120,8 @@ class HomeScreenState extends State<HomeScreen> {
                           }
                         },
                         child: Text(
-                          l10n.homeFirmwareRestart,
+                          FlutterI18n.translate(
+                              context, 'home.firmwareRestart'),
                           style: const TextStyle(fontSize: 24),
                         ),
                       ),
@@ -140,7 +140,7 @@ class HomeScreenState extends State<HomeScreen> {
                             Process.run('sudo', ['reboot', 'now']);
                           },
                           child: Text(
-                            l10n.homeRebootSystem,
+                            FlutterI18n.translate(context, 'home.rebootSystem'),
                             style: const TextStyle(fontSize: 24),
                           ),
                         ),
@@ -158,7 +158,8 @@ class HomeScreenState extends State<HomeScreen> {
                             Process.run('sudo', ['shutdown', 'now']);
                           },
                           child: Text(
-                            l10n.homeShutdownSystem,
+                            FlutterI18n.translate(
+                                context, 'home.shutdownSystem'),
                             style: const TextStyle(fontSize: 24),
                           ),
                         ),
@@ -285,7 +286,8 @@ class HomeScreenState extends State<HomeScreen> {
                               children: [
                                 PhosphorIcon(PhosphorIcons.printer(), size: 52),
                                 Text(
-                                  l10n.homeBtnPrint,
+                                  FlutterI18n.translate(
+                                      context, 'home.btnPrint'),
                                   style: const TextStyle(fontSize: 28),
                                 ),
                               ],
@@ -304,7 +306,8 @@ class HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   PhosphorIcon(PhosphorIcons.flask(), size: 52),
                                   Text(
-                                    'Materials',
+                                    FlutterI18n.translate(
+                                        context, 'home.materials'),
                                     style: const TextStyle(fontSize: 28),
                                   ),
                                 ],
@@ -331,7 +334,8 @@ class HomeScreenState extends State<HomeScreen> {
                               children: [
                                 PhosphorIcon(PhosphorIcons.toolbox(), size: 52),
                                 Text(
-                                  l10n.homeBtnTools,
+                                  FlutterI18n.translate(
+                                      context, 'home.btnTools'),
                                   style: const TextStyle(fontSize: 28),
                                 ),
                               ],
@@ -349,7 +353,8 @@ class HomeScreenState extends State<HomeScreen> {
                               children: [
                                 PhosphorIcon(PhosphorIcons.gear(), size: 52),
                                 Text(
-                                  l10n.homeBtnSettings,
+                                  FlutterI18n.translate(
+                                      context, 'home.btnSettings'),
                                   style: const TextStyle(fontSize: 28),
                                 ),
                               ],
@@ -368,7 +373,8 @@ class HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   PhosphorIcon(PhosphorIcons.power(), size: 52),
                                   Text(
-                                    'Power',
+                                    FlutterI18n.translate(
+                                        context, 'home.btnPower'),
                                     style: const TextStyle(fontSize: 28),
                                   ),
                                 ],

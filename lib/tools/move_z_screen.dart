@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:logging/logging.dart';
@@ -79,7 +80,7 @@ class MoveZScreenState extends State<MoveZScreen> {
         setState(() {
           _apiErrorState = true;
         });
-        _safeShowError('Failed to move Z');
+        _safeShowError(FlutterI18n.translate(context, 'moveZ.failedMoveZ'));
       }
     } catch (e) {
       _logger.severe('Failed to move Z: $e');
@@ -87,7 +88,7 @@ class MoveZScreenState extends State<MoveZScreen> {
       setState(() {
         _apiErrorState = true;
       });
-      _safeShowError('Failed to move Z');
+      _safeShowError(FlutterI18n.translate(context, 'moveZ.failedMoveZ'));
     }
   }
 
@@ -303,9 +304,9 @@ class MoveZScreenState extends State<MoveZScreen> {
                   children: [
                     const SizedBox(width: 16),
                     PhosphorIcon(PhosphorIconsFill.house, size: 34),
-                    const Expanded(
+                    Expanded(
                       child: AutoSizeText(
-                        'Return to Home',
+                        FlutterI18n.translate(context, 'moveZ.returnHome'),
                         style: TextStyle(fontSize: 24),
                         minFontSize: 20,
                         maxLines: 1,
@@ -313,7 +314,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                           padding: EdgeInsets.only(right: 20.0),
                           child: Center(
                             child: Text(
-                              'Home',
+                              FlutterI18n.translate(context, 'moveZ.home'),
                               style: TextStyle(fontSize: 24),
                             ),
                           ),
@@ -352,7 +353,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                             : Theme.of(context).colorScheme.error),
                     Expanded(
                       child: AutoSizeText(
-                        'Emergency Stop',
+                        FlutterI18n.translate(context, 'moveZ.emergencyStop'),
                         style: TextStyle(
                           fontSize: 24,
                           color: _apiErrorState
@@ -365,7 +366,7 @@ class MoveZScreenState extends State<MoveZScreen> {
                           padding: EdgeInsets.only(right: 20.0),
                           child: Center(
                             child: Text(
-                              'Stop',
+                              FlutterI18n.translate(context, 'moveZ.stop'),
                               style: TextStyle(
                                 fontSize: 24,
                                 color: _apiErrorState
@@ -434,8 +435,10 @@ class MoveZScreenState extends State<MoveZScreen> {
                           child: Builder(builder: (ctx) {
                             final cfg = OrionConfig();
                             final topLabel = cfg.isHomePositionUp()
-                                ? 'Move to Floor'
-                                : 'Move to Top';
+                                ? FlutterI18n.translate(
+                                    context, 'moveZ.moveToFloor')
+                                : FlutterI18n.translate(
+                                    context, 'moveZ.moveToTop');
                             final icon = cfg.isHomePositionUp()
                                 ? PhosphorIcon(PhosphorIcons.caretLineDown(),
                                     size: 34)
@@ -457,9 +460,13 @@ class MoveZScreenState extends State<MoveZScreen> {
                                           const EdgeInsets.only(right: 20.0),
                                       child: Center(
                                         child: Text(
-                                          topLabel == 'Move to Floor'
-                                              ? 'Floor'
-                                              : 'Top',
+                                          topLabel ==
+                                                  FlutterI18n.translate(context,
+                                                      'moveZ.moveToFloor')
+                                              ? FlutterI18n.translate(
+                                                  context, 'moveZ.floor')
+                                              : FlutterI18n.translate(
+                                                  context, 'moveZ.top'),
                                           style: const TextStyle(fontSize: 24),
                                         ),
                                       ),

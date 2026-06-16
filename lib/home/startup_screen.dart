@@ -19,6 +19,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/src/gradient_utils.dart';
@@ -87,7 +88,8 @@ class _StartupScreenState extends State<StartupScreen>
     final config = OrionConfig();
     final rawPrinterName =
         config.getString('machineName', category: 'machine').trim();
-    _printerName = rawPrinterName.isEmpty ? '3D Printer' : rawPrinterName;
+    // We set a placeholder here; the actual translated name is used in build().
+    _printerName = rawPrinterName;
 
     // Load vendor-specific logo or default to ORA logo
     final vendorLogo =
@@ -656,7 +658,8 @@ class _StartupScreenState extends State<StartupScreen>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'Powered by ',
+                                    FlutterI18n.translate(
+                                        context, 'startup.poweredBy'),
                                     style: TextStyle(
                                       fontFamily: 'AtkinsonHyperlegible',
                                       fontSize: 22,
@@ -675,8 +678,9 @@ class _StartupScreenState extends State<StartupScreen>
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
                                     ).createShader(bounds),
-                                    child: const Text(
-                                      'Open Resin Alliance',
+                                    child: Text(
+                                      FlutterI18n.translate(
+                                          context, 'startup.openResinAlliance'),
                                       style: TextStyle(
                                         fontFamily: 'AtkinsonHyperlegible',
                                         fontSize: 22,
@@ -708,7 +712,7 @@ class _StartupScreenState extends State<StartupScreen>
               child: FadeTransition(
                 opacity: _loaderOpacity,
                 child: Text(
-                  'Starting up $_printerName',
+                  '${FlutterI18n.translate(context, 'startup.startingUp')} ${_printerName.isNotEmpty ? _printerName : FlutterI18n.translate(context, 'startup.defaultPrinter')}',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'AtkinsonHyperlegible',

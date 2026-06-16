@@ -20,6 +20,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:path/path.dart' as path;
 
@@ -125,7 +126,8 @@ class SearchFileScreenState extends State<SearchFileScreen> {
                           const EdgeInsets.only(right: 15), // Adjust as needed
                       child: SpawnOrionTextField(
                         key: widget.searchKey,
-                        keyboardHint: "Search File Name",
+                        keyboardHint:
+                            FlutterI18n.translate(context, 'files.searchFile'),
                         locale: Localizations.localeOf(context).toString(),
                         scrollController: _scrollController,
                         isHidden: false,
@@ -143,12 +145,16 @@ class SearchFileScreenState extends State<SearchFileScreen> {
                     ? const Center(child: CircularProgressIndicator())
                     : filteredFiles.isEmpty
                         ? searchText == ''
-                            ? const Center(
-                                child: Text('Enter Search Term.',
-                                    style: TextStyle(fontSize: 24)))
-                            : const Center(
-                                child: Text('No Results (╯°□°)╯︵ ┻━┻',
-                                    style: TextStyle(fontSize: 24)))
+                            ? Center(
+                                child: Text(
+                                    FlutterI18n.translate(
+                                        context, 'files.enterSearch'),
+                                    style: const TextStyle(fontSize: 24)))
+                            : Center(
+                                child: Text(
+                                    FlutterI18n.translate(
+                                        context, 'files.noResults'),
+                                    style: const TextStyle(fontSize: 24)))
                         : ListView.builder(
                             itemCount: filteredFiles.length,
                             itemBuilder: (context, index) {
@@ -161,8 +167,10 @@ class SearchFileScreenState extends State<SearchFileScreen> {
                                     style: TextStyle(
                                         color: isSl1 ? null : Colors.grey)),
                                 subtitle: isSl1
-                                    ? Text(
-                                        'Last modified: ${fileStat.modified}')
+                                    ? Text(FlutterI18n.translate(
+                                            context, 'files.lastModified')
+                                        .replaceAll(
+                                            '%s', '${fileStat.modified}'))
                                     : null,
                                 onTap: () {
                                   if (file is File &&

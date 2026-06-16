@@ -39,7 +39,8 @@ import 'package:orion/files/grid_files_screen.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/home/home_screen.dart';
 import 'package:orion/home/startup_gate.dart';
-import 'package:orion/l10n/generated/app_localizations.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:flutter_i18n/loaders/decoders/json_decode_strategy.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/status/status_screen.dart';
@@ -300,6 +301,11 @@ Future<File> _resolveLogFile() async {
   return File(p.join(Directory.current.path, 'app.log'));
 }
 
+/// Handle missing translation keys by logging them.
+void missingTranslationHandler(String key, Locale? locale) {
+  debugPrint('flutter_i18n: Missing translation key "$key" for $locale');
+}
+
 class OrionRoot extends StatelessWidget {
   const OrionRoot({super.key});
 
@@ -402,6 +408,7 @@ class OrionMainApp extends StatefulWidget {
 
 class OrionMainAppState extends State<OrionMainApp> {
   late final GoRouter _router;
+  late final FlutterI18nDelegate _i18nDelegate;
   ConnectionErrorWatcher? _connWatcher;
   NotificationWatcher? _notifWatcher;
   UpdateNotificationWatcher? _updateWatcher;
@@ -416,6 +423,15 @@ class OrionMainAppState extends State<OrionMainApp> {
   void initState() {
     super.initState();
     _initRouter();
+    _i18nDelegate = FlutterI18nDelegate(
+      translationLoader: FileTranslationLoader(
+        useCountryCode: false,
+        fallbackFile: 'en',
+        basePath: 'assets/i18n',
+        decodeStrategies: [JsonDecodeStrategy()],
+      ),
+      missingTranslationHandler: missingTranslationHandler,
+    );
     _activeBackendId = _resolveActiveBackendId();
     _initializeActiveBackendSubmodules();
   }
@@ -653,13 +669,22 @@ class OrionMainAppState extends State<OrionMainApp> {
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,
           locale: localeProvider.locale,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
+          localizationsDelegates: [
+            _i18nDelegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: AppLocalizations.supportedLocales,
+          supportedLocales: const [
+            Locale('en', 'US'),
+            Locale('de', 'DE'),
+            Locale('nl', 'NL'),
+            Locale('fr', 'FR'),
+            Locale('es', 'ES'),
+            Locale('it', 'IT'),
+            Locale('ja', 'JP'),
+            Locale('zh', 'CN'),
+          ],
         );
       }),
     );

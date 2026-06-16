@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -101,7 +102,7 @@ class _UpdateProgressOverlayState extends State<UpdateProgressOverlay>
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'UPDATE IN PROGRESS',
+                        FlutterI18n.translate(context, 'update.inProgress'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 30,
@@ -111,7 +112,7 @@ class _UpdateProgressOverlayState extends State<UpdateProgressOverlay>
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        'Please do not turn off the machine.',
+                        FlutterI18n.translate(context, 'update.doNotTurnOff'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 24,

@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Orion - Tools Screen
 * Copyright (C) 2025 Open Resin Alliance
 *
@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -53,7 +54,7 @@ class ToolsScreenState extends State<ToolsScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: OrionAppBar(
-          title: const Text('Tools'),
+          title: Text(FlutterI18n.translate(context, 'tools.title')),
           toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: const [SystemStatusWidget()],
         ),
@@ -75,7 +76,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                 PhosphorIconsFill.arrowsDownUp,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              label: 'Move Z',
+              label: FlutterI18n.translate(context, 'tools.moveZ'),
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.scales()),
@@ -83,7 +84,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                 PhosphorIconsFill.scales,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              label: 'Leveling',
+              label: FlutterI18n.translate(context, 'tools.leveling'),
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),
@@ -91,7 +92,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                 PhosphorIconsFill.lightbulbFilament,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              label: 'Exposure',
+              label: FlutterI18n.translate(context, 'tools.exposure'),
             ),
             BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.chartLineUp()),
@@ -99,7 +100,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                 PhosphorIconsFill.chartLineUp,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              label: 'Force Sensor',
+              label: FlutterI18n.translate(context, 'tools.forceSensor'),
             ),
             // TODO: Implement Self Test
             /*BottomNavigationBarItem(

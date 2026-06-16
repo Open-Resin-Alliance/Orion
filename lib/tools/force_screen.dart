@@ -20,6 +20,7 @@ import 'dart:math';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
@@ -281,7 +282,9 @@ Widget buildControlButtons(BuildContext context,
               const SizedBox(
                   height: 8), // Add some space between icon and label
               Text(
-                isPaused ? 'Resume' : 'Pause',
+                isPaused
+                    ? FlutterI18n.translate(context, 'force.resume')
+                    : FlutterI18n.translate(context, 'force.pause'),
                 style: const TextStyle(fontSize: 22),
               ),
             ],
@@ -300,14 +303,14 @@ Widget buildControlButtons(BuildContext context,
           tint: GlassButtonTint.none,
           onPressed: isPaused ? null : onTare,
           style: theme.elevatedButtonTheme.style,
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               PhosphorIcon(PhosphorIconsFill.scales, size: 40),
               SizedBox(height: 8), // Add some space between icon and label
               Text(
-                'Tare',
+                FlutterI18n.translate(context, 'force.tare'),
                 style: TextStyle(fontSize: 22),
               ),
             ],
@@ -388,7 +391,7 @@ Widget buildLandscapeLayout(
               child: SizedBox(
                 width: 140,
                 child: buildStatsCard(
-                  'Maximum',
+                  FlutterI18n.translate(context, 'force.maximum'),
                   _formatMass(maxVal),
                 ),
               ),
@@ -398,7 +401,7 @@ Widget buildLandscapeLayout(
               child: SizedBox(
                 width: 140,
                 child: buildStatsCard(
-                  'Current',
+                  FlutterI18n.translate(context, 'force.current'),
                   _formatMass(currentVal),
                   onTap: onCurrentCardTap,
                 ),
@@ -409,7 +412,7 @@ Widget buildLandscapeLayout(
               child: SizedBox(
                 width: 140,
                 child: buildStatsCard(
-                  'Minimum',
+                  FlutterI18n.translate(context, 'force.minimum'),
                   _formatMass(minVal),
                 ),
               ),
@@ -581,7 +584,10 @@ class _PressureLineChartState extends State<_PressureLineChart> {
   @override
   Widget build(BuildContext context) {
     final spots = _toSpots(widget.series);
-    if (spots.isEmpty) return const Center(child: Text('No data'));
+    if (spots.isEmpty) {
+      return Center(
+          child: Text(FlutterI18n.translate(context, 'force.noData')));
+    }
 
     // Only update display range when not paused
     if (!widget.isPaused) {

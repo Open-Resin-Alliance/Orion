@@ -30,7 +30,7 @@ import 'package:orion/home/home_screen.dart';
 import 'package:orion/home/onboarding/animations.dart';
 import 'package:orion/home/onboarding/pages.dart';
 import 'package:orion/home/onboarding/welcome_bubbles.dart';
-import 'package:orion/l10n/generated/app_localizations.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/settings/wifi_screen.dart';
 import 'package:orion/util/locales/all_countries.dart';
 import 'package:orion/util/locales/available_languages.dart';
@@ -92,26 +92,26 @@ class OnboardingScreenState extends State<OnboardingScreen>
   late String vendorUrl;
 
   // Static UI text
-  List<String> _getTitles(AppLocalizations l10n) => [
+  List<String> _getTitles(BuildContext context) => [
         '',
-        l10n.setupLanguageTitle,
-        l10n.setupRegionTitle,
-        l10n.setupTimezoneTitle,
-        l10n.setupNameTitle,
-        l10n.setupThemeTitle,
-        l10n.setupWifiTitle,
-        l10n.setupCompleteTitle
+        FlutterI18n.translate(context, 'setup.languageTitle'),
+        FlutterI18n.translate(context, 'setup.regionTitle'),
+        FlutterI18n.translate(context, 'setup.timezoneTitle'),
+        FlutterI18n.translate(context, 'setup.nameTitle'),
+        FlutterI18n.translate(context, 'setup.themeTitle'),
+        FlutterI18n.translate(context, 'setup.wifiTitle'),
+        FlutterI18n.translate(context, 'setup.completeTitle'),
       ];
 
-  List<String> _getBtnTitles(AppLocalizations l10n) => [
-        l10n.setupGetStarted,
-        l10n.commonNext,
-        l10n.commonNext,
-        l10n.commonNext,
-        l10n.commonNext,
-        l10n.commonNext,
-        l10n.commonNext,
-        l10n.commonCompleteSetup
+  List<String> _getBtnTitles(BuildContext context) => [
+        FlutterI18n.translate(context, 'setup.getStarted'),
+        FlutterI18n.translate(context, 'common.next'),
+        FlutterI18n.translate(context, 'common.next'),
+        FlutterI18n.translate(context, 'common.next'),
+        FlutterI18n.translate(context, 'common.next'),
+        FlutterI18n.translate(context, 'common.next'),
+        FlutterI18n.translate(context, 'common.next'),
+        FlutterI18n.translate(context, 'common.completeSetup'),
       ];
 
   // Add this to the existing class variables
@@ -413,7 +413,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
   // Bubble transition helpers removed; exit sequence is handled via
   // OnboardingPages.startExitSequence to avoid duplicate logic.
 
-  Widget _buildPageView(AppLocalizations l10n) {
+  Widget _buildPageView(BuildContext context) {
     return PageTransitionSwitcher(
       reverse: _currentPage > 0 &&
           _currentPage < _previousPage, // true when going back
@@ -447,13 +447,13 @@ class OnboardingScreenState extends State<OnboardingScreen>
       },
       child: KeyedSubtree(
         key: ValueKey<int>(_currentPage),
-        child: _buildPage(l10n, _currentPage),
+        child: _buildPage(context, _currentPage),
       ),
     );
   }
 
   // Replace existing page building methods with calls to OnboardingPages
-  Widget _buildPage(AppLocalizations l10n, int page) {
+  Widget _buildPage(BuildContext context, int page) {
     if (_prebuiltPages.containsKey(page)) return _prebuiltPages[page]!;
 
     switch (page) {
@@ -530,7 +530,6 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     _printerName = config.getString('machineName', category: 'machine');
 
     return GlassApp(
@@ -540,12 +539,12 @@ class OnboardingScreenState extends State<OnboardingScreen>
         // setting `_isAppBarTransparent = false`.
         extendBodyBehindAppBar:
             _currentPage <= 1 && _isAppBarTransparent, // welcome/lang only
-        appBar: _buildAppBar(l10n),
+        appBar: _buildAppBar(context),
         body: Stack(
           children: [
             IgnorePointer(
               ignoring: _showWelcomeOverlay,
-              child: _buildPageView(l10n),
+              child: _buildPageView(context),
             ),
             if (_showWelcomeOverlay)
               Positioned.fill(
@@ -558,12 +557,12 @@ class OnboardingScreenState extends State<OnboardingScreen>
               ),
           ],
         ),
-        floatingActionButton: _buildFloatingActionButton(l10n),
+        floatingActionButton: _buildFloatingActionButton(context),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(AppLocalizations l10n) {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       centerTitle: true,
       backgroundColor: _isAppBarTransparent ? Colors.transparent : null,
@@ -571,18 +570,18 @@ class OnboardingScreenState extends State<OnboardingScreen>
         position: _titleSlideInAnimation,
         child: FadeTransition(
           opacity: _titleOpacityAnimation,
-          child: Text(_getTitles(l10n)[_currentPage]),
+          child: Text(_getTitles(context)[_currentPage]),
         ),
       ),
-      actions: [_buildAppBarActions(l10n)],
+      actions: [_buildAppBarActions(context)],
     );
   }
 
-  Widget _buildAppBarActions(AppLocalizations l10n) {
+  Widget _buildAppBarActions(BuildContext context) {
     return const SizedBox.shrink();
   }
 
-  Widget _buildFloatingActionButton(AppLocalizations l10n) {
+  Widget _buildFloatingActionButton(BuildContext context) {
     final bool hideBackButton = _currentPage == 1;
     final bool isTimezonePageWithNoData = _currentPage == 3 &&
         countryData[_selectedCountry]?['timezones'] == null;
@@ -601,7 +600,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
           if (_currentPage > 0)
             _buildButton(
               hide: hideBackButton,
-              label: l10n.commonBack,
+              label: FlutterI18n.translate(context, 'common.back'),
               icon: Icons.arrow_back,
               onPressed: () {
                 _handlePageChange(_currentPage - 1);
@@ -616,8 +615,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
               return _buildButton(
                 hide: hideNextButton,
                 label: _currentPage == 6 && !connected
-                    ? l10n.commonSkip
-                    : _getBtnTitles(l10n)[_currentPage],
+                    ? FlutterI18n.translate(context, 'common.skip')
+                    : _getBtnTitles(context)[_currentPage],
                 icon: _currentPage < 6 ? Icons.arrow_forward : Icons.check,
                 onPressed: () {
                   if (isTimezonePageWithNoData) {
@@ -711,19 +710,19 @@ class OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _showSkipWifiDialog() {
-    final l10n = AppLocalizations.of(context);
+    final ctx = context;
     showDialog(
-      context: context,
+      context: ctx,
       builder: (context) {
         return GlassAlertDialog(
-          title: Text(l10n!.wifiSkipTitle),
-          content: Text(l10n.wifiSkipMessage),
+          title: I18nText('wifi.skipTitle'),
+          content: I18nText('wifi.skipMessage'),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text(l10n.wifiConnectNow),
+              child: I18nText('wifi.connectNow'),
             ),
             TextButton(
               onPressed: () {
@@ -732,7 +731,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
                   _currentPage++;
                 });
               },
-              child: Text(l10n.wifiSkipAnyway),
+              child: I18nText('wifi.skipAnyway'),
             ),
           ],
         );

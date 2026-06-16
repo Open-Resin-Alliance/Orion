@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Orion - Calibration Progress Overlay
 * Copyright (C) 2025 Open Resin Alliance
 *
@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
@@ -223,7 +224,7 @@ class _CalibrationProgressOverlayState extends State<CalibrationProgressOverlay>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'CALIBRATION PREPARATION',
+                  FlutterI18n.translate(context, 'calibrationProgress.preparing'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 30,
@@ -233,7 +234,7 @@ class _CalibrationProgressOverlayState extends State<CalibrationProgressOverlay>
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Processing calibration print job',
+                  FlutterI18n.translate(context, 'calibrationProgress.processing'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,
@@ -313,7 +314,7 @@ class _CalibrationProgressOverlayState extends State<CalibrationProgressOverlay>
           ),
           const SizedBox(height: 10),
           Text(
-            'PREPARATION COMPLETE',
+            FlutterI18n.translate(context, 'calibrationProgress.complete'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 30,
@@ -323,7 +324,7 @@ class _CalibrationProgressOverlayState extends State<CalibrationProgressOverlay>
           ),
           const SizedBox(height: 5),
           Text(
-            'Calibration job ready',
+            FlutterI18n.translate(context, 'calibrationProgress.ready'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 24,
@@ -335,3 +336,4 @@ class _CalibrationProgressOverlayState extends State<CalibrationProgressOverlay>
     );
   }
 }
+

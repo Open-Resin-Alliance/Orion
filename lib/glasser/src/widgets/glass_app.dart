@@ -59,8 +59,18 @@ class GlassApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
+    // Use explicit DecoratedBox wrappers so the internal widget-tree
+    // composition stays identical regardless of theme mode.  Container
+    // creates a different internal structure depending on whether
+    // decoration is null, which destroys child elements on switch.
     if (!themeProvider.isGlassTheme) {
-      return child;
+      return DecoratedBox(
+        decoration: const BoxDecoration(),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(),
+          child: child,
+        ),
+      );
     }
 
     // Use gradient from provider, fall back to custom gradientColors, then auto-generate
@@ -69,7 +79,7 @@ class GlassApp extends StatelessWidget {
       override: gradientColors,
     );
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: gradientBegin,
@@ -77,7 +87,7 @@ class GlassApp extends StatelessWidget {
           colors: finalGradient,
         ),
       ),
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.5),
         ),

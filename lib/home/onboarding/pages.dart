@@ -24,7 +24,7 @@ import 'package:country_flags/country_flags.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/l10n/generated/app_localizations.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/settings/about_screen.dart';
 import 'package:orion/settings/wifi_screen.dart';
 import 'package:orion/util/locales/all_countries.dart';
@@ -323,7 +323,6 @@ class OnboardingPages {
     String? selectedLanguage,
     Function(String) onCountrySelected,
   ) {
-    final l10n = AppLocalizations.of(context)!;
     final suggestedCountries =
         languageCountrySuggestions[selectedLanguage] ?? [];
 
@@ -346,7 +345,7 @@ class OnboardingPages {
           children: [
             if (suggestedCountries.isNotEmpty) ...[
               Text(
-                l10n.regionSuggestedCountries,
+                FlutterI18n.translate(context, 'region.suggestedCountries'),
                 style:
                     const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
@@ -358,7 +357,7 @@ class OnboardingPages {
               const SizedBox(height: 16),
             ],
             Text(
-              l10n.regionAllCountries,
+              FlutterI18n.translate(context, 'region.allCountries'),
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -446,7 +445,6 @@ class OnboardingPages {
     String? selectedCountry,
     Function(String) onTimezoneSelected,
   ) {
-    final l10n = AppLocalizations.of(context)!;
     final countryTimezones = countryData[selectedCountry]?['timezones'];
 
     if (countryTimezones == null) {
@@ -455,7 +453,7 @@ class OnboardingPages {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              l10n.timezoneNoneAvailable,
+              FlutterI18n.translate(context, 'timezone.noneAvailable'),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 20),
             ),
@@ -473,7 +471,7 @@ class OnboardingPages {
         child: ListView(
           children: [
             Text(
-              l10n.timezoneSuggested,
+              FlutterI18n.translate(context, 'timezone.suggested'),
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -484,7 +482,7 @@ class OnboardingPages {
                 )),
             const SizedBox(height: 16),
             Text(
-              l10n.timezoneOther,
+              FlutterI18n.translate(context, 'timezone.other'),
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -505,8 +503,6 @@ class OnboardingPages {
     ScrollController scrollController,
     Function(String) onNameChanged,
   ) {
-    final l10n = AppLocalizations.of(context)!;
-
     return GlassApp(
       child: Center(
         child: Padding(
@@ -522,7 +518,8 @@ class OnboardingPages {
                     presetText:
                         config.getString('machineName', category: 'machine'),
                     key: nameTextFieldKey,
-                    keyboardHint: l10n.printerName,
+                    keyboardHint:
+                        FlutterI18n.translate(context, 'printer.name'),
                     locale: Localizations.localeOf(context).toString(),
                     scrollController: scrollController,
                     onChanged: onNameChanged,
@@ -542,7 +539,6 @@ class OnboardingPages {
     BuildContext context,
     Function(OrionThemeMode) onThemeChanged,
   ) {
-    final l10n = AppLocalizations.of(context)!;
     final themeProvider = context.watch<ThemeProvider>();
     final config = OrionConfig();
 
@@ -596,7 +592,8 @@ class OnboardingPages {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  l10n.themeVendorLocked,
+                                  FlutterI18n.translate(
+                                      context, 'theme.vendorLocked'),
                                   style: TextStyle(
                                     color: themeProvider.isGlassTheme
                                         ? Colors.white.withValues(alpha: 0.9)
@@ -687,8 +684,6 @@ class OnboardingPages {
     Animation<Offset> completeAnimation,
     String printerName,
   ) {
-    final l10n = AppLocalizations.of(context)!;
-
     return GlassApp(
       child: Center(
         child: Column(
@@ -697,7 +692,7 @@ class OnboardingPages {
             SlideTransition(
               position: completeAnimation,
               child: Text(
-                '$printerName ${l10n.setupCompletionMessage}',
+                '$printerName ${FlutterI18n.translate(context, 'complete.completionMessage')}',
                 style: const TextStyle(
                     fontSize: 30, fontWeight: FontWeight.normal),
               ),

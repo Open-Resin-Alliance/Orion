@@ -134,7 +134,7 @@ class NanoDlpSimulatedClient implements BackendClient {
 
       final profiles = <String, dynamic>{};
       for (final entry in _profiles.entries) {
-        profiles['${entry.key}'] = entry.value;
+        profiles[entry.key.toString()] = entry.value;
       }
 
       final payload = {

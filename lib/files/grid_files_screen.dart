@@ -26,6 +26,7 @@ import 'dart:math' as math;
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:image/image.dart' as img;
 import 'package:logging/logging.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
@@ -566,8 +567,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         try {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('USB unavailable, switched to Internal')),
+            SnackBar(
+                content: Text(FlutterI18n.translate(
+                    context, 'files.usbSwitchToInternal'))),
           );
         } catch (_) {
           // ignore
@@ -619,6 +621,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _apiErrorState = true;
         showErrorDialog(context, 'PINK-CARROT');
@@ -661,8 +664,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
     if (_isUSB && _useLocalFilesProvider) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bulk delete not supported for local USB files.'),
+        SnackBar(
+          content: Text(
+              FlutterI18n.translate(context, 'files.bulkDeleteNotSupported')),
         ),
       );
       return;
@@ -670,10 +674,13 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
     final count = _selectedFileKeys.length;
     final isSingle = count == 1;
-    final dialogTitle = isSingle ? 'Delete File' : 'Delete Files';
+    final dialogTitle = isSingle
+        ? FlutterI18n.translate(context, 'files.deleteFile')
+        : FlutterI18n.translate(context, 'files.deleteFile');
     final targetLabel = isSingle
         ? _resolveSelectionDisplayName(_selectedFileKeys.first)
-        : '$count files';
+        : FlutterI18n.translate(context, 'files.files',
+            translationParams: {'0': count.toString()});
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -704,7 +711,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
           children: [
             Text.rich(
               TextSpan(
-                text: 'You are about to delete ',
+                text:
+                    FlutterI18n.translate(context, 'files.deleteConfirmPrefix'),
                 children: [
                   TextSpan(
                     text: targetLabel,
@@ -712,13 +720,15 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  const TextSpan(text: '.\nDo you want to continue?'),
+                  TextSpan(
+                      text: FlutterI18n.translate(
+                          context, 'files.deleteConfirmSuffix')),
                 ],
               ),
             ),
             const SizedBox(height: 10),
-            const Text(
-              'This action cannot be undone.',
+            Text(
+              FlutterI18n.translate(context, 'files.deleteCannotUndo'),
               style: TextStyle(
                 decoration: TextDecoration.underline,
               ),
@@ -733,7 +743,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 60),
             ),
-            child: const Text('Cancel'),
+            child: Text(FlutterI18n.translate(context, 'common.cancel')),
           ),
           GlassButton(
             tint: GlassButtonTint.negative,
@@ -742,13 +752,14 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 60),
             ),
-            child: const Text('Delete'),
+            child: Text(FlutterI18n.translate(context, 'common.delete')),
           ),
         ],
       ),
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     setState(() {
       _isBulkDeleting = true;
@@ -775,7 +786,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       if (failures.isNotEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to delete ${failures.length} file(s).'),
+            content: Text(FlutterI18n.translate(context, 'files.deleteFailed',
+                translationParams: {'0': failures.length.toString()})),
           ),
         );
       }
@@ -827,7 +839,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       if (fallback.isNotEmpty) return fallback;
     }
 
-    return 'this file';
+    return FlutterI18n.translate(context, 'files.thisFile');
   }
 
   String _selectionKeyToPath(String key) {
@@ -872,44 +884,31 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     }
   }
 
-  // _getItems replaced by FilesProvider.loadItems/listItemsAsOrionApiItems
-
-  // TODO: Re-implement sorting
-  /*void _toggleSortOrder() {
-    setState(() {
-      _items.sort((a, b) {
-        if (a is OrionApiFile && b is OrionApiFile) {
-          if (a.lastModified == null || b.lastModified == null) {
-            return 0; // or any default value
-          }
-          return _sortAscending
-              ? a.lastModified!.compareTo(b.lastModified!)
-              : b.lastModified!.compareTo(a.lastModified!);
-        }
-        return 0;
-      });
-    });
-  }*/
-
-  String _getDisplayNameForDirectory(String directory) {
+  String _getDisplayNameForDirectory(BuildContext context, String directory) {
     if (directory == _defaultDirectory && !_apiErrorState) {
-      if (_isNanoDlp) return 'Print Files';
-      return _isUSB == false ? 'Print Files (Internal)' : 'Print Files (USB)';
+      if (_isNanoDlp) return FlutterI18n.translate(context, 'files.printFiles');
+      return _isUSB == false
+          ? FlutterI18n.translate(context, 'print.titleInternal')
+          : FlutterI18n.translate(context, 'print.titleUsb');
     }
 
     // If it's a subdirectory of the default directory, only show the relative path
-    if (_apiErrorState) return 'Odyssey API Error';
+    if (_apiErrorState) {
+      return FlutterI18n.translate(context, 'print.titleApiError');
+    }
 
     try {
       final relativePath = path.relative(directory, from: _defaultDirectory);
       if (relativePath == '.') {
         // If we're at the base, show the label
-        return _isUSB == false ? 'Print Files (Internal)' : 'Print Files (USB)';
+        return _isUSB == false
+            ? FlutterI18n.translate(context, 'print.titleInternal')
+            : FlutterI18n.translate(context, 'print.titleUsb');
       }
-      return "$relativePath ${_isUSB ? '(USB)' : '(Internal)'}";
+      return "$relativePath ${_isUSB ? FlutterI18n.translate(context, 'print.titleUsbError') : FlutterI18n.translate(context, 'print.titleInternalError')}";
     } catch (_) {
       // Fallback to full path if relative fails
-      return "$directory ${_isUSB ? '(USB)' : '(Internal)'}";
+      return "$directory ${_isUSB ? FlutterI18n.translate(context, 'print.titleUsbError') : FlutterI18n.translate(context, 'print.titleInternalError')}";
     }
   }
 
@@ -947,7 +946,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: OrionAppBar(
-          title: Text(_getDisplayNameForDirectory(_directory)),
+          title: Text(_getDisplayNameForDirectory(context, _directory)),
           toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: <Widget>[SystemStatusWidget()],
         ),
@@ -1179,8 +1178,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
                               'Failed to navigate to parent directory', e);
                           if (e is FileSystemException) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Operation not permitted'),
+                              SnackBar(
+                                content: Text(FlutterI18n.translate(
+                                    context, 'files.operationNotPermitted')),
                               ),
                             );
                           }
@@ -1193,10 +1193,11 @@ class GridFilesScreenState extends State<GridFilesScreen> {
               _directory == _defaultDirectory
                   ? _isUSB == false
                       ? _usbAvailable
-                          ? 'Switch to USB'
-                          : 'USB unavailable'
-                      : 'Switch to Internal'
-                  : 'Parent Directory',
+                          ? FlutterI18n.translate(context, 'print.switchUsb')
+                          : FlutterI18n.translate(
+                              context, 'print.usbUnavailable')
+                      : FlutterI18n.translate(context, 'print.internalSwitch')
+                  : FlutterI18n.translate(context, 'print.parentDir'),
               textAlign: TextAlign.center,
               maxLines: 2,
               minFontSize: 18,
@@ -1653,8 +1654,12 @@ class GridFilesScreenState extends State<GridFilesScreen> {
 
     final showDeleting = _isBulkDeleting;
     final progressText = _bulkDeleteTotal > 0
-        ? 'Deleting $_bulkDeleteCompleted/$_bulkDeleteTotal'
-        : 'Deleting…';
+        ? FlutterI18n.translate(context, 'files.deletingProgress',
+            translationParams: {
+                '0': _bulkDeleteCompleted.toString(),
+                '1': _bulkDeleteTotal.toString()
+              })
+        : FlutterI18n.translate(context, 'files.deleting');
 
     final color = Theme.of(context).colorScheme.primary;
     return Stack(

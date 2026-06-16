@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/materials/heater_screen.dart';
@@ -69,7 +70,7 @@ class MaterialsScreenState extends State<MaterialsScreen> {
         icon: PhosphorIcon(PhosphorIcons.thermometer()),
         activeIcon: PhosphorIcon(PhosphorIconsFill.thermometer,
             color: Theme.of(context).colorScheme.primary),
-        label: 'Heaters',
+        label: FlutterI18n.translate(context, 'materials.heaters'),
       ));
     }
 
@@ -78,7 +79,7 @@ class MaterialsScreenState extends State<MaterialsScreen> {
       icon: PhosphorIcon(PhosphorIcons.flask()),
       activeIcon: PhosphorIcon(PhosphorIconsFill.flask,
           color: Theme.of(context).colorScheme.primary),
-      label: 'Resins',
+      label: FlutterI18n.translate(context, 'materials.resins'),
     ));
 
     screens.add(const CalibrationScreen());
@@ -86,7 +87,7 @@ class MaterialsScreenState extends State<MaterialsScreen> {
       icon: PhosphorIcon(PhosphorIcons.hourglassHigh()),
       activeIcon: PhosphorIcon(PhosphorIconsFill.hourglassLow,
           color: Theme.of(context).colorScheme.primary),
-      label: 'Calibration',
+      label: FlutterI18n.translate(context, 'materials.calibration'),
     ));
 
     // Ensure selected index is within bounds
@@ -95,7 +96,7 @@ class MaterialsScreenState extends State<MaterialsScreen> {
     return GlassApp(
       child: Scaffold(
         appBar: OrionAppBar(
-          title: const Text('Materials'),
+          title: Text(FlutterI18n.translate(context, 'materials.title')),
           toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
           actions: const [SystemStatusWidget()],
         ),

@@ -17,6 +17,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
@@ -146,10 +147,13 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                         // Resin Profile
                         Expanded(
                           child: _buildCompactCard(
-                            title: 'Resin Profile',
+                            title: FlutterI18n.translate(
+                                context, 'calibration.resinProfile'),
                             value: isResinsLoading
                                 ? 'Loading...'
-                                : (_selectedResin?.name ?? 'Select Resin'),
+                                : (_selectedResin?.name ??
+                                    FlutterI18n.translate(
+                                        context, 'calibration.selectResin')),
                             onTap: isResinsLoading
                                 ? () {}
                                 : () => _selectResinProfile(resins),
@@ -159,12 +163,14 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                         // Starting Exposure
                         Expanded(
                           child: _buildCompactCard(
-                            title: 'Starting Exposure',
+                            title: FlutterI18n.translate(
+                                context, 'calibration.startingExposure'),
                             value: '${_startingExposure.toStringAsFixed(2)} s',
                             onTap: () => _editValue(
-                              title: 'Starting Exposure',
-                              description:
-                                  'The exposure time for the first test piece. This should be lower than your expected optimal exposure.',
+                              title: FlutterI18n.translate(
+                                  context, 'calibration.startingExposure'),
+                              description: FlutterI18n.translate(
+                                  context, 'calibration.exposureDesc'),
                               currentValue: _startingExposure,
                               min: 0.5,
                               max: 10,
@@ -180,12 +186,14 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                         // Exposure Increment
                         Expanded(
                           child: _buildCompactCard(
-                            title: 'Exposure Increment',
+                            title: FlutterI18n.translate(
+                                context, 'calibration.exposureIncrement'),
                             value: '${_exposureIncrement.toStringAsFixed(2)} s',
                             onTap: () => _editValue(
-                              title: 'Exposure Increment',
-                              description:
-                                  'How much exposure time increases for each successive test piece. Larger increments cover a wider range faster.',
+                              title: FlutterI18n.translate(
+                                  context, 'calibration.exposureIncrement'),
+                              description: FlutterI18n.translate(
+                                  context, 'calibration.incrementDesc'),
                               currentValue: _exposureIncrement,
                               min: 0.1,
                               max: 2,
@@ -234,8 +242,9 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 65),
                       ),
-                      child:
-                          const Text('Reset', style: TextStyle(fontSize: 22)),
+                      child: Text(
+                          FlutterI18n.translate(context, 'calibration.reset'),
+                          style: TextStyle(fontSize: 22)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -248,7 +257,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 65),
                       ),
-                      child: const Text('Start Calibration',
+                      child: Text(
+                          FlutterI18n.translate(context, 'calibration.start'),
                           style: TextStyle(fontSize: 22)),
                     ),
                   ),
@@ -314,7 +324,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     ValueNotifier<double> progressNotifier,
     ValueNotifier<String> messageNotifier,
   ) async {
-    messageNotifier.value = 'Slicing calibration file...';
+    messageNotifier.value =
+        FlutterI18n.translate(context, 'calibration.slicing');
 
     final startTime = DateTime.now();
     const timeout = Duration(minutes: 10); // 10 minute timeout for slicing
@@ -323,6 +334,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     while (mounted) {
       // Get slicer progress for UI display
       final progress = await BackendService().getSlicerProgress();
+      if (!mounted) return;
 
       if (progress != null) {
         // Treat 93% as complete (show as 100% on progress bar)
@@ -337,10 +349,12 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       // Calibration prints don't report percentage correctly in /slicer endpoint
       // so we check plates.json directly for plate 0's Processed flag
       final isProcessed = await BackendService().isCalibrationPlateProcessed();
+      if (!mounted) return;
 
       // Break at 93% or when processed flag is set (print starts at 99%)
       if (isProcessed == true || (progress != null && progress >= 0.93)) {
-        messageNotifier.value = 'Slicing complete';
+        messageNotifier.value =
+            FlutterI18n.translate(context, 'calibration.slicingComplete');
         progressNotifier.value = 1.0;
         _log.info('Calibration preparation complete');
         break;
@@ -380,14 +394,15 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                       color: Colors.grey.shade800,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 12),
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 12),
                           Text(
-                            'Loading models...',
+                            FlutterI18n.translate(
+                                context, 'calibration.loadingModels'),
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey,
@@ -447,7 +462,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                               size: 64, color: Colors.grey.shade600),
                           const SizedBox(height: 12),
                           Text(
-                            'No Model Selected',
+                            FlutterI18n.translate(
+                                context, 'calibration.noModel'),
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey.shade500,
@@ -544,7 +560,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (context) => _ResinProfilePickerScreen(
-          title: 'Select Resin Profile',
+          title: FlutterI18n.translate(context, 'calibration.selectResin'),
           resins: resins,
           selectedResin: _selectedResin,
         ),
@@ -650,7 +666,8 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         }
 
         // Show progress
-        messageNotifier.value = 'Submitting calibration job...';
+        messageNotifier.value =
+            FlutterI18n.translate(context, 'calibration.submittingJob');
         progressNotifier.value = 0.1;
 
         final reuseCalibrationPlate = OrionConfig()
@@ -925,7 +942,7 @@ class _CalibrationModelPickerScreen extends StatelessWidget {
     final resinsProvider = Provider.of<ResinsProvider>(context, listen: false);
 
     return DetailedSelectionScreen(
-      title: 'Select Calibration Model',
+      title: FlutterI18n.translate(context, 'calibration.selectModel'),
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1031,7 +1048,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Header ──────────────────────────────────────────────
+              // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Header ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1071,12 +1088,12 @@ class _PreCalibrationOverlay extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // ── Body ─────────────────────────────────────────────────
+              // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Body ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Left – What's happening
+                    // Left ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ What's happening
                     Expanded(
                       child: GlassCard(
                         outlined: true,
@@ -1087,7 +1104,9 @@ class _PreCalibrationOverlay extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                'WHAT WILL HAPPEN',
+                                FlutterI18n.translate(
+                                        context, 'calibration.whatWillHappen')
+                                    .toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -1100,7 +1119,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                '$testPiecesCount test pieces will be printed back-to-back, each with a slightly longer exposure than the last.',
+                                '$testPiecesCount ${FlutterI18n.translate(context, 'calibration.testPiecesExplanation')}',
                                 style: TextStyle(
                                   fontSize: 18,
                                   color: Theme.of(context)
@@ -1114,7 +1133,8 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               _buildStatRow(
                                 context,
                                 icon: Icon(PhosphorIcons.timer()),
-                                label: 'Starting exposure',
+                                label: FlutterI18n.translate(
+                                    context, 'calibration.startingExposure'),
                                 value:
                                     '${startingExposure.toStringAsFixed(1)} s',
                                 primary: primary,
@@ -1123,7 +1143,8 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               _buildStatRow(
                                 context,
                                 icon: Icon(PhosphorIcons.arrowRight()),
-                                label: 'Step between pieces',
+                                label: FlutterI18n.translate(
+                                    context, 'calibration.stepBetween'),
                                 value:
                                     '+${exposureIncrement.toStringAsFixed(1)} s',
                                 primary: primary,
@@ -1132,7 +1153,8 @@ class _PreCalibrationOverlay extends StatelessWidget {
                               _buildStatRow(
                                 context,
                                 icon: Icon(PhosphorIcons.arrowLineRight()),
-                                label: 'Final exposure',
+                                label: FlutterI18n.translate(
+                                    context, 'calibration.finalExposure'),
                                 value:
                                     '${(startingExposure + exposureIncrement * (testPiecesCount - 1)).toStringAsFixed(1)} s',
                                 primary: primary,
@@ -1145,7 +1167,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
 
                     const SizedBox(width: 16),
 
-                    // Right – Pre-flight checklist
+                    // Right ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ Pre-flight checklist
                     Expanded(
                       child: GlassCard(
                         outlined: true,
@@ -1156,7 +1178,9 @@ class _PreCalibrationOverlay extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                'PRE-FLIGHT CHECK',
+                                FlutterI18n.translate(
+                                        context, 'calibration.preFlightCheck')
+                                    .toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -1174,12 +1198,18 @@ class _PreCalibrationOverlay extends StatelessWidget {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    _buildChecklistItem(context,
-                                        'Correct resin is filled into the vat.'),
                                     _buildChecklistItem(
-                                        context, 'The build plate is clean.'),
-                                    _buildChecklistItem(context,
-                                        'The vat is clear of any debris.'),
+                                        context,
+                                        FlutterI18n.translate(
+                                            context, 'calibration.checkResin')),
+                                    _buildChecklistItem(
+                                        context,
+                                        FlutterI18n.translate(
+                                            context, 'calibration.checkPlate')),
+                                    _buildChecklistItem(
+                                        context,
+                                        FlutterI18n.translate(
+                                            context, 'calibration.checkVat')),
                                   ],
                                 ),
                               ),
@@ -1194,7 +1224,7 @@ class _PreCalibrationOverlay extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // ── Action buttons ────────────────────────────────────────
+              // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Action buttons ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
               Row(
                 children: [
                   Expanded(
@@ -1209,7 +1239,8 @@ class _PreCalibrationOverlay extends StatelessWidget {
                         children: [
                           Icon(PhosphorIcons.x(), size: 20),
                           const SizedBox(width: 10),
-                          const Text('Cancel', style: TextStyle(fontSize: 20)),
+                          Text(FlutterI18n.translate(context, 'common.cancel'),
+                              style: TextStyle(fontSize: 20)),
                         ],
                       ),
                     ),
@@ -1225,7 +1256,9 @@ class _PreCalibrationOverlay extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('Start Print',
+                          Text(
+                              FlutterI18n.translate(
+                                  context, 'calibration.startPrint'),
                               style: TextStyle(fontSize: 20)),
                           const SizedBox(width: 10),
                           Icon(PhosphorIcons.play(), size: 20),

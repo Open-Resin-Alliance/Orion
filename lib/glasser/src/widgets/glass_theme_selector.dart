@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Glasser - Glass Theme Selector Widget
 * Copyright (C) 2025 Open Resin Alliance
 *
@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/util/orion_config.dart';
@@ -73,7 +74,7 @@ class GlassThemeSelector extends StatelessWidget {
             isSelected: selectedTheme == OrionThemeMode.light,
             onTap: () => onThemeChanged(OrionThemeMode.light),
             icon: PhosphorIcons.sun(),
-            label: 'Light',
+            label: FlutterI18n.translate(context, 'themeSelector.light'),
             primaryColor: Colors.blue,
             backgroundColor: Colors.white,
             textColor: Colors.black87,
@@ -91,7 +92,7 @@ class GlassThemeSelector extends StatelessWidget {
             isSelected: selectedTheme == OrionThemeMode.dark,
             onTap: () => onThemeChanged(OrionThemeMode.dark),
             icon: PhosphorIcons.moonStars(),
-            label: 'Dark',
+            label: FlutterI18n.translate(context, 'themeSelector.dark'),
             primaryColor: Colors.blue,
             backgroundColor: const Color(0xFF1E1E1E),
             textColor: Colors.white,
@@ -109,7 +110,7 @@ class GlassThemeSelector extends StatelessWidget {
             isSelected: selectedTheme == OrionThemeMode.glass,
             onTap: () => onThemeChanged(OrionThemeMode.glass),
             icon: PhosphorIcons.drop(),
-            label: 'Glass',
+            label: FlutterI18n.translate(context, 'themeSelector.glass'),
             primaryColor: Colors.white,
             backgroundColor: Colors.transparent,
             textColor: Colors.white,

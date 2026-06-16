@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 
 class VersionComparison extends StatelessWidget {
   final String title;
@@ -49,7 +50,7 @@ class VersionComparison extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'Current',
+                    FlutterI18n.translate(context, 'version.current'),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey.shade500,
@@ -83,7 +84,7 @@ class VersionComparison extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'New',
+                    FlutterI18n.translate(context, 'version.new_'),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey.shade400,

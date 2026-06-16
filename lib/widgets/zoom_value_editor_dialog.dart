@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter/services.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_kb/orion_numeric_field.dart';
@@ -331,7 +332,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                         // Empty: show just integer placeholder dashes
                         final intPlaces =
                             widget.max.toString().split('.')[0].length;
-                        valueStr = '−' * intPlaces;
+                        valueStr = 'Ã¢Ë†â€™' * intPlaces;
                       } else {
                         valueStr = _tempEditValue!;
                         // Only add decimal placeholder if user has entered decimal point
@@ -340,7 +341,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                           if (parts[1].length < activeDecimals) {
                             // Has decimal but incomplete, pad with dashes
                             valueStr +=
-                                '−' * (activeDecimals - parts[1].length);
+                                'Ã¢Ë†â€™' * (activeDecimals - parts[1].length);
                           }
                         }
                       }
@@ -377,7 +378,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                         int currentExp = digitsBeforeDecimal - 1;
                         for (var i = 0; i < valueStr.length; i++) {
                           final ch = valueStr[i];
-                          if (ch == '-' || ch == '−') {
+                          if (ch == '-' || ch == 'Ã¢Ë†â€™') {
                             spans.add(TextSpan(
                                 text: ch,
                                 style: baseStyle.copyWith(color: dimColor)));
@@ -413,7 +414,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                       for (var i = 0; i < valueStr.length; i++) {
                         final ch = valueStr[i];
                         // Make placeholder dashes blink based on editing position
-                        if (showCursor && ch == '−') {
+                        if (showCursor && ch == 'Ã¢Ë†â€™') {
                           // Find if we're before or after decimal point
                           bool isBeforeDecimal = true;
                           for (var j = 0; j < i; j++) {
@@ -625,7 +626,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
             minimumSize: const Size(120, 60),
           ),
           onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancel'),
+          child: Text(FlutterI18n.translate(context, 'common.cancel')),
         ),
         GlassButton(
           tint: GlassButtonTint.positive,
@@ -633,9 +634,10 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
             minimumSize: const Size(120, 60),
           ),
           onPressed: () => Navigator.of(context).pop(_currentValue),
-          child: const Text('Save'),
+          child: Text(FlutterI18n.translate(context, 'common.save')),
         ),
       ],
     );
   }
 }
+

@@ -20,7 +20,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:orion/l10n/generated/app_localizations.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 
@@ -34,32 +34,31 @@ class ThemeColorSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     var themeOptions = [
       ThemeOption(
-        name: l10n.themePurple,
+        name: FlutterI18n.translate(context, 'theme.purple'),
         colorSeed: Colors.deepPurple,
         optionKey: 'purple',
       ),
       ThemeOption(
-        name: l10n.themeBlue,
+        name: FlutterI18n.translate(context, 'theme.blue'),
         colorSeed: Colors.blue,
         optionKey: 'blue',
       ),
       ThemeOption(
-        name: l10n.themeGreen,
+        name: FlutterI18n.translate(context, 'theme.green'),
         colorSeed: Colors.green,
         optionKey: 'green',
       ),
       ThemeOption(
-        name: l10n.themeRed,
+        name: FlutterI18n.translate(context, 'theme.red'),
         colorSeed: Colors.red,
         optionKey: 'red',
       ),
       ThemeOption(
-        name: l10n.themeOrange,
+        name: FlutterI18n.translate(context, 'theme.orange'),
         colorSeed: Colors.orange,
         optionKey: 'orange',
       ),

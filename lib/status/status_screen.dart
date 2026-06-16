@@ -19,6 +19,7 @@
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/materials/post_calibration_overlay.dart';
@@ -446,7 +447,7 @@ class StatusScreenState extends State<StatusScreen> {
         // the thumbnail so the UI doesn't immediately render a stale/placeholder
         // preview. However, if the backend reports the job has already finished
         // (idle with layer data) or is canceled we should not remain in a
-        // spinner indefinitely — render the final status instead.
+        // spinner indefinitely â€” render the final status instead.
         final bool finishedSnapshot =
             status?.isIdle == true && status?.layer != null;
         final bool canceledSnapshot = status?.isCanceled == true;
@@ -488,10 +489,10 @@ class StatusScreenState extends State<StatusScreen> {
                   children: [
                     const CircularProgressIndicator(),
                     if (awaiting && waitMillis > 5000)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 16.0),
                         child: Text(
-                          'Waiting for printer to start…',
+                          FlutterI18n.translate(context, 'status.waiting'),
                           style: TextStyle(fontSize: 16),
                         ),
                       ),
@@ -505,16 +506,15 @@ class StatusScreenState extends State<StatusScreen> {
         if (provider.error != null) {
           return GlassApp(
             child: Scaffold(
-              appBar: AppBar(title: const Text('Error')),
-              body: const Center(
+              appBar: AppBar(
+                  title: Text(FlutterI18n.translate(context, 'status.error'))),
+              body: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'An Error has occurred while fetching status!\n'
-                      'Please ensure that Odyssey is running and accessible.\n\n'
-                      'If the issue persists, please contact support.\n'
-                      'Error Code: PINK-CARROT',
+                      '${FlutterI18n.translate(context, 'status.error')}\n\n'
+                      '${FlutterI18n.translate(context, 'status.errorContactSupport')}',
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -528,7 +528,7 @@ class StatusScreenState extends State<StatusScreen> {
         if (!awaiting && status.printData == null) {
           return Scaffold(
             appBar: AppBar(
-              title: const Text('No Print Data Available'),
+              title: Text(FlutterI18n.translate(context, 'status.noPrintData')),
             ),
             body: Center(
               child: GlassButton(
@@ -540,10 +540,10 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                   );
                 },
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.all(20),
                   child: Text(
-                    'Go to Files',
+                    FlutterI18n.translate(context, 'status.goToFiles'),
                     style: TextStyle(fontSize: 26),
                   ),
                 ),
@@ -710,7 +710,9 @@ class StatusScreenState extends State<StatusScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      fileName.isNotEmpty ? fileName : 'No file',
+                      fileName.isNotEmpty
+                          ? fileName
+                          : FlutterI18n.translate(context, 'status.noFile'),
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -827,13 +829,13 @@ class StatusScreenState extends State<StatusScreen> {
                   Row(children: [
                     Expanded(
                       child: _buildInfoCard(
-                        'Current Z Position',
+                        FlutterI18n.translate(context, 'status.currentZ'),
                         '${statusModel?.physicalState.z.toStringAsFixed(3) ?? '-'} mm',
                       ),
                     ),
                     Expanded(
                       child: _buildInfoCard(
-                        'Print Layers',
+                        FlutterI18n.translate(context, 'status.printLayers'),
                         layerCurrent == null || layerTotal == null
                             ? '- / -'
                             : '$layerCurrent / $layerTotal',
@@ -841,10 +843,12 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                   ]),
                   const SizedBox(height: 5),
-                  _buildInfoCard('Estimated Print Time', elapsedStr),
+                  _buildInfoCard(
+                      FlutterI18n.translate(context, 'status.estimatedTime'),
+                      elapsedStr),
                   const SizedBox(height: 5),
                   _buildInfoCard(
-                    'Estimated Volume',
+                    FlutterI18n.translate(context, 'status.estimatedVolume'),
                     usedMaterial == null
                         ? '-'
                         : '${usedMaterial.toStringAsFixed(2)} mL',
@@ -874,18 +878,20 @@ class StatusScreenState extends State<StatusScreen> {
             child: Column(children: [
               Spacer(),
               _buildInfoCard(
-                'Current Z Position',
+                FlutterI18n.translate(context, 'status.currentZ'),
                 '${statusModel?.physicalState.z.toStringAsFixed(3) ?? '-'} mm',
               ),
               _buildInfoCard(
-                'Print Layers',
+                FlutterI18n.translate(context, 'status.printLayers'),
                 layerCurrent == null || layerTotal == null
                     ? '- / -'
                     : '$layerCurrent / $layerTotal',
               ),
-              _buildInfoCard('Estimated Print Time', elapsedStr),
               _buildInfoCard(
-                'Estimated Volume',
+                  FlutterI18n.translate(context, 'status.estimatedTime'),
+                  elapsedStr),
+              _buildInfoCard(
+                FlutterI18n.translate(context, 'status.estimatedVolume'),
                 usedMaterial == null
                     ? '-'
                     : '${usedMaterial.toStringAsFixed(2)} mL',
@@ -929,7 +935,7 @@ class StatusScreenState extends State<StatusScreen> {
   Widget _buildThumbnailView(
       BuildContext context, StatusProvider provider, StatusModel? status) {
     // Prefer provider's thumbnail bytes. If none yet, consider the
-    // initialThumbnailBytes passed from the Details screen — but do not
+    // initialThumbnailBytes passed from the Details screen â€” but do not
     // show a generated placeholder as the initial preview while the
     // provider is still probing for a real preview. In that case show the
     // spinner until provider provides a non-placeholder or finishes.
@@ -1085,8 +1091,9 @@ class StatusScreenState extends State<StatusScreen> {
                                       ),
                                     ),
                                   )
-                                : const Center(
-                                    child: Text('2D preview unavailable'),
+                                : Center(
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'status.previewUnavailable')),
                                   )),
                       ),
                   ]),
@@ -1266,7 +1273,7 @@ class StatusScreenState extends State<StatusScreen> {
               BackendService(), plateId, layerIndex,
               filePath: filePath);
       if (bytes.isNotEmpty) {
-        // Start precaching but don't await it — decoding can be expensive
+        // Start precaching but don't await it â€” decoding can be expensive
         // and awaiting here can cause UI jank. Fire-and-forget instead.
         _precacheLayerPreview(bytes).catchError((_) {});
         setState(() {
@@ -1295,7 +1302,7 @@ class StatusScreenState extends State<StatusScreen> {
     try {
       final fileData = status.printData?.fileData;
       if (fileData != null) {
-        // Prefetch 3D thumbnail (Large size) — fetch bytes and precache so
+        // Prefetch 3D thumbnail (Large size) â€” fetch bytes and precache so
         // Flutter's image cache holds a decoded image for instant display.
         BackendService()
             .getFileThumbnail(
@@ -1496,7 +1503,8 @@ class StatusScreenState extends State<StatusScreen> {
                 borderRadius: BorderRadius.circular(15),
               ),
             ),
-            child: const Text('Raise Plate', style: TextStyle(fontSize: 24)),
+            child: Text(FlutterI18n.translate(context, 'status.raisePlate'),
+                style: TextStyle(fontSize: 24)),
           ),
         ),
         const SizedBox(width: 20),
@@ -1523,8 +1531,8 @@ class StatusScreenState extends State<StatusScreen> {
               minFontSize: 16,
               maxLines: 1,
               _isCalibrationPrint == true
-                  ? 'Finalize Calibration'
-                  : 'Return to Menu',
+                  ? FlutterI18n.translate(context, 'status.finalizeCalibration')
+                  : FlutterI18n.translate(context, 'status.returnToMenu'),
               style: const TextStyle(fontSize: 24),
             ),
           ),
@@ -1556,11 +1564,12 @@ class StatusScreenState extends State<StatusScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Padding(
-                              padding: EdgeInsets.all(8.0),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
                               child: Text(
-                                'Options',
-                                style: TextStyle(
+                                FlutterI18n.translate(
+                                    context, 'status.options'),
+                                style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1585,9 +1594,10 @@ class StatusScreenState extends State<StatusScreen> {
                                       ),
                                     );
                                   },
-                                  child: const Text(
-                                    'Settings',
-                                    style: TextStyle(fontSize: 24),
+                                  child: Text(
+                                    FlutterI18n.translate(
+                                        context, 'status.settings'),
+                                    style: const TextStyle(fontSize: 24),
                                   ),
                                 ),
                               ),
@@ -1606,9 +1616,10 @@ class StatusScreenState extends State<StatusScreen> {
                                     Navigator.pop(ctx);
                                     provider.cancel();
                                   },
-                                  child: const Text(
-                                    'Cancel Print',
-                                    style: TextStyle(fontSize: 24),
+                                  child: Text(
+                                    FlutterI18n.translate(
+                                        context, 'status.cancelPrint'),
+                                    style: const TextStyle(fontSize: 24),
                                   ),
                                 ),
                               ),
@@ -1628,9 +1639,10 @@ class StatusScreenState extends State<StatusScreen> {
                                     final manualProvider = ManualProvider();
                                     await manualProvider.emergencyStop();
                                   },
-                                  child: const Text(
-                                    'Force Stop',
-                                    style: TextStyle(fontSize: 24),
+                                  child: Text(
+                                    FlutterI18n.translate(
+                                        context, 'status.forceStop'),
+                                    style: const TextStyle(fontSize: 24),
                                   ),
                                 ),
                               ),
@@ -1649,7 +1661,8 @@ class StatusScreenState extends State<StatusScreen> {
               borderRadius: BorderRadius.circular(15),
             ),
           ),
-          child: const Text('Options', style: TextStyle(fontSize: 24)),
+          child: Text(FlutterI18n.translate(context, 'status.options'),
+              style: TextStyle(fontSize: 24)),
         ),
       ),
       const SizedBox(width: 20),
@@ -1670,7 +1683,9 @@ class StatusScreenState extends State<StatusScreen> {
             ),
           ),
           child: Text(
-            _showAnalytics ? 'Simple' : 'Advanced',
+            _showAnalytics
+                ? FlutterI18n.translate(context, 'status.simple')
+                : FlutterI18n.translate(context, 'status.advanced'),
             style: const TextStyle(fontSize: 24),
           ),
         ),
@@ -1717,11 +1732,12 @@ class StatusScreenState extends State<StatusScreen> {
             maxLines: 1,
             (isCanceled || isFinished)
                 ? (_isCalibrationPrint == true
-                    ? 'Finalize Calibration'
-                    : 'Return to Home')
+                    ? FlutterI18n.translate(
+                        context, 'status.finalizeCalibration')
+                    : FlutterI18n.translate(context, 'status.returnToHome'))
                 : isPaused
-                    ? 'Resume'
-                    : 'Pause',
+                    ? FlutterI18n.translate(context, 'status.resume')
+                    : FlutterI18n.translate(context, 'status.pause'),
             style: const TextStyle(fontSize: 24),
           ),
         ),
@@ -1751,7 +1767,8 @@ class StatusScreenState extends State<StatusScreen> {
   Widget _buildAnalyticsView(
       BuildContext context, StatusProvider provider, StatusModel? status) {
     if (status == null) {
-      return const Center(child: Text('No print data available'));
+      return Center(
+          child: Text(FlutterI18n.translate(context, 'status.noPrintData')));
     }
 
     final layerCurrent = status.layer;
@@ -1799,16 +1816,22 @@ class StatusScreenState extends State<StatusScreen> {
             children: [
               Expanded(
                   child: _buildStatItem(
-                      context, 'Min', _formatForceValue(minVal))),
+                      context,
+                      FlutterI18n.translate(context, 'status.statMin'),
+                      _formatForceValue(minVal))),
               Container(width: 1, color: Theme.of(context).dividerColor),
               Expanded(
                   child: _buildStatItem(
-                      context, 'Current', _formatForceValue(currentVal),
+                      context,
+                      FlutterI18n.translate(context, 'status.statCurrent'),
+                      _formatForceValue(currentVal),
                       isLarge: true)),
               Container(width: 1, color: Theme.of(context).dividerColor),
               Expanded(
                   child: _buildStatItem(
-                      context, 'Max', _formatForceValue(maxVal))),
+                      context,
+                      FlutterI18n.translate(context, 'status.statMax'),
+                      _formatForceValue(maxVal))),
             ],
           ),
         ),
@@ -1860,7 +1883,7 @@ class StatusScreenState extends State<StatusScreen> {
                   Row(children: [
                     Expanded(
                       child: _buildInfoCard(
-                        'Print Progress',
+                        FlutterI18n.translate(context, 'status.printProgress'),
                         layerCurrent == null || layerTotal == null
                             ? '- / -'
                             : '$layerCurrent / $layerTotal',
@@ -1868,7 +1891,7 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                     Expanded(
                       child: _buildInfoCard(
-                        'CPU Temp',
+                        FlutterI18n.translate(context, 'status.cpuTemp'),
                         provider.cpuTemperature != null
                             ? '${provider.cpuTemperature!.toStringAsFixed(1)}°C'
                             : 'N/A',
@@ -1880,7 +1903,7 @@ class StatusScreenState extends State<StatusScreen> {
                   Row(children: [
                     Expanded(
                       child: _buildInfoCard(
-                        'Vat Temperature',
+                        FlutterI18n.translate(context, 'status.vatTemp'),
                         provider.resinTemperature != null
                             ? '${provider.resinTemperature}°C'
                             : 'N/A',
@@ -1888,7 +1911,7 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                     Expanded(
                       child: _buildInfoCard(
-                        'Resin Name',
+                        FlutterI18n.translate(context, 'status.resinName'),
                         'N/A', // TODO: Connect to resin profile data
                       ),
                     ),
@@ -1923,13 +1946,13 @@ class StatusScreenState extends State<StatusScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildInfoCard(
-                    'Print Progress',
+                    FlutterI18n.translate(context, 'status.printProgress'),
                     layerCurrent == null || layerTotal == null
                         ? '- / -'
                         : '$layerCurrent / $layerTotal',
                   ),
                   _buildInfoCard(
-                    'Last Layer Time',
+                    FlutterI18n.translate(context, 'status.lastLayerTime'),
                     // Prefer live analytics LayerTime (currentLayerSeconds), then
                     // the provider-parsed PrevLayerTime (provider.prevLayerSeconds),
                     // finally fall back to the model field when present.
@@ -1943,7 +1966,7 @@ class StatusScreenState extends State<StatusScreen> {
                         : 'N/A',
                   ),
                   _buildInfoCard(
-                      'Resin Temp.',
+                      FlutterI18n.translate(context, 'status.resinTemp'),
                       provider.resinTemperature != null
                           ? '${provider.resinTemperature}°C'
                           : 'N/A', // TODO: Connect to actual data
@@ -1957,7 +1980,10 @@ class StatusScreenState extends State<StatusScreen> {
                     final double uvVal = uvRaw is num
                         ? uvRaw.toDouble()
                         : (double.tryParse(uvRaw?.toString() ?? '') ?? 0.0);
-                    return _buildInfoCard('UV LED Temp.', uvText, uvVal);
+                    return _buildInfoCard(
+                        FlutterI18n.translate(context, 'status.uvLedTemp'),
+                        uvText,
+                        uvVal);
                   }),
                 ],
               ),
@@ -1987,7 +2013,9 @@ class StatusScreenState extends State<StatusScreen> {
                     waitText = waitRaw.toString();
                   }
                 }
-                return _buildInfoCard('Last Wait Time', waitText);
+                return _buildInfoCard(
+                    FlutterI18n.translate(context, 'status.lastWaitTime'),
+                    waitText);
               }),
               Builder(builder: (ctx) {
                 final analyticsProv =
@@ -2007,7 +2035,9 @@ class StatusScreenState extends State<StatusScreen> {
                     liftText = liftRaw.toString();
                   }
                 }
-                return _buildInfoCard('Last Lift Height', liftText);
+                return _buildInfoCard(
+                    FlutterI18n.translate(context, 'status.lastLiftHeight'),
+                    liftText);
               }),
               Builder(builder: (ctx) {
                 final analyticsProv = Provider.of<AnalyticsProvider>(ctx);
@@ -2017,10 +2047,13 @@ class StatusScreenState extends State<StatusScreen> {
                 final double mcuVal = mcuRaw is num
                     ? mcuRaw.toDouble()
                     : (double.tryParse(mcuRaw?.toString() ?? '') ?? 0.0);
-                return _buildInfoCard('MCU Temp.', mcuText, mcuVal);
+                return _buildInfoCard(
+                    FlutterI18n.translate(context, 'status.mcuTemp'),
+                    mcuText,
+                    mcuVal);
               }),
               _buildInfoCard(
-                  'CPU Temp.',
+                  FlutterI18n.translate(context, 'status.cpuTemp'),
                   provider.cpuTemperature != null
                       ? '${provider.cpuTemperature!.toStringAsFixed(1)}°C'
                       : 'N/A',
@@ -2095,7 +2128,10 @@ class StatusScreenState extends State<StatusScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8),
-                                        child: _buildStatItem(ctx, 'Min',
+                                        child: _buildStatItem(
+                                            ctx,
+                                            FlutterI18n.translate(
+                                                context, 'status.statMin'),
                                             _formatForceValue(minVal)),
                                       ),
                                     ),
@@ -2106,7 +2142,10 @@ class StatusScreenState extends State<StatusScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8),
-                                        child: _buildStatItem(ctx, 'Current',
+                                        child: _buildStatItem(
+                                            ctx,
+                                            FlutterI18n.translate(
+                                                context, 'status.statCurrent'),
                                             _formatForceValue(currentVal),
                                             isLarge: true),
                                       ),
@@ -2118,7 +2157,10 @@ class StatusScreenState extends State<StatusScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8),
-                                        child: _buildStatItem(ctx, 'Max',
+                                        child: _buildStatItem(
+                                            ctx,
+                                            FlutterI18n.translate(
+                                                context, 'status.statMax'),
                                             _formatForceValue(maxVal)),
                                       ),
                                     ),
@@ -2213,7 +2255,7 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Force Sensor',
+                      FlutterI18n.translate(context, 'tools.forceSensor'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
@@ -2223,7 +2265,7 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'No Data',
+                      FlutterI18n.translate(context, 'force.noData'),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
@@ -2253,7 +2295,7 @@ class StatusScreenState extends State<StatusScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Error loading force sensor data',
+              FlutterI18n.translate(context, 'force.loadError'),
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 8),
@@ -2495,7 +2537,10 @@ class _ForceSensorDialogChartState extends State<_ForceSensorDialogChart> {
   @override
   Widget build(BuildContext context) {
     final spots = _toSpots(widget.series);
-    if (spots.isEmpty) return const Center(child: Text('No data'));
+    if (spots.isEmpty) {
+      return Center(
+          child: Text(FlutterI18n.translate(context, 'status.noData')));
+    }
 
     _updateDisplayRange(spots);
     final displayMin = _displayMin ?? spots.map((s) => s.y).reduce(min) - 1.0;
@@ -2639,7 +2684,10 @@ class _ForceSensorMiniChartState extends State<_ForceSensorMiniChart> {
   @override
   Widget build(BuildContext context) {
     final spots = _toSpots(widget.series);
-    if (spots.isEmpty) return const Center(child: Text('No data'));
+    if (spots.isEmpty) {
+      return Center(
+          child: Text(FlutterI18n.translate(context, 'status.noData')));
+    }
 
     _updateDisplayRange(spots);
     final displayMin = _displayMin ?? -100.0;

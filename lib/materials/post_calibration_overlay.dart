@@ -16,6 +16,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/backend_service.dart';
@@ -118,7 +119,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       key: const ValueKey('step0'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Header ──────────────────────────────────────────────
+        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Header ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -129,7 +130,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Calibration Complete',
+              FlutterI18n.translate(context, 'postCal.complete'),
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -158,14 +159,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
         const SizedBox(height: 12),
 
-        // ── Body ─────────────────────────────────────────────────
+        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Body ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
         Expanded(
           child: _buildQrCodeView(),
         ),
 
         const SizedBox(height: 16),
 
-        // ── Action buttons ────────────────────────────────────────
+        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Action buttons ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
         _buildActionButtons(context),
       ],
     );
@@ -178,7 +179,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       key: const ValueKey('step1'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Header ──────────────────────────────────────────────
+        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Header ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -189,7 +190,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Evaluate Test Print',
+              FlutterI18n.translate(context, 'postCal.evaluateTest'),
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -218,14 +219,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
         const SizedBox(height: 12),
 
-        // ── Body ─────────────────────────────────────────────────
+        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Body ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
         Expanded(
           child: _buildEvaluationView(),
         ),
 
         const SizedBox(height: 16),
 
-        // ── Action buttons ────────────────────────────────────────
+        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Action buttons ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
         _buildActionButtons(context),
       ],
     );
@@ -267,7 +268,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  const Text('Skip Guide', style: TextStyle(fontSize: 18)),
+                  Text(FlutterI18n.translate(context, 'postCal.skipGuide'),
+                      style: TextStyle(fontSize: 18)),
                 ],
               ),
             ),
@@ -283,7 +285,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Next', style: TextStyle(fontSize: 18)),
+                  Text(FlutterI18n.translate(context, 'postCal.next'),
+                      style: TextStyle(fontSize: 18)),
                   const SizedBox(width: 8),
                   Icon(PhosphorIcons.caretRight(), size: 20),
                 ],
@@ -341,7 +344,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 children: [
                   Icon(PhosphorIconsFill.arrowCounterClockwise, size: 20),
                   const SizedBox(width: 8),
-                  const Text('Reconfigure', style: TextStyle(fontSize: 18)),
+                  Text(FlutterI18n.translate(context, 'postCal.reconfigure'),
+                      style: TextStyle(fontSize: 18)),
                 ],
               ),
             ),
@@ -358,7 +362,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Fine-Tune', style: TextStyle(fontSize: 18)),
+                    Text(FlutterI18n.translate(context, 'postCal.fineTune'),
+                        style: TextStyle(fontSize: 18)),
                     const SizedBox(width: 8),
                     Icon(PhosphorIcons.slidersHorizontal(), size: 20),
                   ],
@@ -377,7 +382,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Save', style: TextStyle(fontSize: 18)),
+                    Text(FlutterI18n.translate(context, 'postCal.save'),
+                        style: TextStyle(fontSize: 18)),
                     const SizedBox(width: 8),
                     Icon(PhosphorIcons.check(), size: 20),
                   ],
@@ -417,7 +423,6 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── Left: description ──────────────────────────────────
             Expanded(
               child: GlassCard(
                 elevation: 1.0,
@@ -430,7 +435,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'EVALUATION GUIDE',
+                          FlutterI18n.translate(
+                              context, 'postCal.evaluationGuide'),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -440,7 +446,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Use the evaluation guide to correctly identify the optimal exposure from your calibration print.',
+                          FlutterI18n.translate(context, 'postCal.guideDesc'),
                           style: TextStyle(
                             fontSize: 18,
                             color: onSurface.withValues(alpha: 0.75),
@@ -450,12 +456,12 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         const SizedBox(height: 20),
                         _buildGuideItem(
                           context,
-                          'Scan the QR code with your phone to open the ${widget.calibrationModelName} evaluation guide.',
+                          FlutterI18n.translate(context, 'postCal.scanQr'),
                         ),
                         const SizedBox(height: 10),
                         _buildGuideItem(
                           context,
-                          'Read it thoroughly before selecting the optimal exposure on the next screen.',
+                          FlutterI18n.translate(context, 'postCal.readGuide'),
                         ),
                       ],
                     ),
@@ -466,7 +472,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
             const SizedBox(width: 16),
 
-            // ── Right: QR code ─────────────────────────────────────
+            // Right: QR code
             Expanded(
               child: GlassCard(
                 elevation: 1.0,
@@ -607,9 +613,9 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Text(
-            'Select the piece matching the guide. If unsure, pick the two that look best.',
+            FlutterI18n.translate(context, 'postCal.selectPieceGuide'),
             style: TextStyle(
               fontSize: 16,
               color: Theme.of(context)
@@ -660,13 +666,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     showDialog(
       context: navCtx,
       builder: (context) => GlassAlertDialog(
-        title: const Text('Calibration Complete',
+        title: Text(FlutterI18n.translate(context, 'postCal.complete'),
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.resinProfileName ?? 'Resin Profile',
+              widget.resinProfileName ??
+                  FlutterI18n.translate(context, 'calibration.resinProfile'),
               style: TextStyle(
                 fontSize: 22,
                 color: Colors.grey.shade400,
@@ -680,7 +687,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 Column(
                   children: [
                     Text(
-                      'Previous',
+                      FlutterI18n.translate(context, 'postCal.previous'),
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.grey.shade500,
@@ -709,7 +716,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 Column(
                   children: [
                     Text(
-                      'Optimal',
+                      FlutterI18n.translate(context, 'postCal.optimal'),
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.grey.shade400,
@@ -730,7 +737,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Layer exposure time updated',
+              FlutterI18n.translate(context, 'postCal.layerExposureUpdated'),
               style: TextStyle(
                 fontSize: 20,
                 color: Colors.grey.shade500,
@@ -748,7 +755,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               Navigator.of(context).pop(); // Close dialog
               widget.onComplete(); // Close overlay
             },
-            child: const Text('Done'),
+            child: Text(FlutterI18n.translate(context, 'common.done')),
           ),
         ],
       ),
@@ -776,13 +783,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
               range <= 0.0001 ? 1 : ((range / 0.05).round()).clamp(1, 1000);
 
           return GlassAlertDialog(
-            title: const Text('Fine-Tune Exposure',
+            title: Text(
+                FlutterI18n.translate(context, 'postCal.fineTuneExposure'),
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Select a value between ${minExp.toStringAsFixed(2)}s and ${maxExp.toStringAsFixed(2)}s',
+                  '${FlutterI18n.translate(context, 'postCal.selectValueBetween')} ${minExp.toStringAsFixed(2)} - ${maxExp.toStringAsFixed(2)}',
                   style: const TextStyle(fontSize: 20),
                 ),
                 const SizedBox(height: 16),
@@ -817,7 +825,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Cancel'),
+                child: Text(FlutterI18n.translate(context, 'common.cancel')),
               ),
               GlassButton(
                 tint: GlassButtonTint.positive,
@@ -854,14 +862,17 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   showDialog(
                     context: fineTuneCtx,
                     builder: (context) => GlassAlertDialog(
-                      title: const Text('Calibration Complete',
+                      title: Text(
+                          FlutterI18n.translate(context, 'postCal.complete'),
                           style: TextStyle(
                               fontSize: 26, fontWeight: FontWeight.bold)),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            widget.resinProfileName ?? 'Resin Profile',
+                            widget.resinProfileName ??
+                                FlutterI18n.translate(
+                                    context, 'calibration.resinProfile'),
                             style: TextStyle(
                               fontSize: 22,
                               color: Colors.grey.shade400,
@@ -875,7 +886,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                               Column(
                                 children: [
                                   Text(
-                                    'Previous',
+                                    FlutterI18n.translate(
+                                        context, 'postCal.previous'),
                                     style: TextStyle(
                                       fontSize: 18,
                                       color: Colors.grey.shade500,
@@ -905,7 +917,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                               Column(
                                 children: [
                                   Text(
-                                    'Fine-Tuned',
+                                    FlutterI18n.translate(
+                                        context, 'calibration.fineTuned'),
                                     style: TextStyle(
                                       fontSize: 18,
                                       color: Colors.grey.shade400,
@@ -927,7 +940,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Layer exposure time updated',
+                            FlutterI18n.translate(
+                                context, 'calibration.layerExposureUpdated'),
                             style: TextStyle(
                               fontSize: 20,
                               color: Colors.grey.shade500,
@@ -945,13 +959,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                             Navigator.of(context).pop();
                             widget.onComplete();
                           },
-                          child: const Text('Done'),
+                          child: Text(
+                              FlutterI18n.translate(context, 'common.done')),
                         ),
                       ],
                     ),
                   );
                 },
-                child: const Text('Save'),
+                child: Text(FlutterI18n.translate(context, 'postCal.save')),
               ),
             ],
           );

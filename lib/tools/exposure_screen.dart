@@ -19,6 +19,7 @@ import 'dart:async';
 
 import 'package:async/async.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 
 import 'package:orion/backend_service/backend_registry.dart';
@@ -67,7 +68,10 @@ class ExposureScreenState extends State<ExposureScreen> {
         setState(() {
           _apiErrorState = true;
         });
-        if (mounted) showErrorDialog(context, 'Failed to start display test');
+        if (mounted) {
+          showErrorDialog(
+              context, FlutterI18n.translate(context, 'exposure.failedStart'));
+        }
         return;
       }
 
@@ -76,7 +80,10 @@ class ExposureScreenState extends State<ExposureScreen> {
         setState(() {
           _apiErrorState = true;
         });
-        if (mounted) showErrorDialog(context, 'Failed to enable cure');
+        if (mounted) {
+          showErrorDialog(
+              context, FlutterI18n.translate(context, 'exposure.failedCure'));
+        }
         return;
       }
 
@@ -142,6 +149,19 @@ class ExposureScreenState extends State<ExposureScreen> {
     );
   }
 
+  String _translateExposureType(BuildContext context, String type) {
+    switch (type) {
+      case 'Grid':
+        return FlutterI18n.translate(context, 'exposure.grid');
+      case 'Logo':
+        return FlutterI18n.translate(context, 'exposure.logo');
+      case 'Measure':
+        return FlutterI18n.translate(context, 'exposure.measure');
+      default:
+        return type;
+    }
+  }
+
   GlassDialog _buildExposureDialog(BuildContext context,
       AsyncSnapshot<int> snapshot, int countdownTime, String? type) {
     return GlassDialog(
@@ -154,10 +174,10 @@ class ExposureScreenState extends State<ExposureScreen> {
           children: [
             Text(
               type == 'White'
-                  ? 'Cleaning'
+                  ? FlutterI18n.translate(context, 'exposure.cleaning')
                   : type != null
-                      ? 'Testing $type'
-                      : 'Exposing',
+                      ? '${FlutterI18n.translate(context, 'exposure.testing')} ${_translateExposureType(context, type)}'
+                      : FlutterI18n.translate(context, 'exposure.exposing'),
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -189,8 +209,8 @@ class ExposureScreenState extends State<ExposureScreen> {
                             (snapshot.data! / 1000).toStringAsFixed(0),
                             style: const TextStyle(fontSize: 50),
                           )
-                        : const Text(
-                            'Testing',
+                        : Text(
+                            FlutterI18n.translate(context, 'exposure.testing_'),
                             style: TextStyle(fontSize: 30),
                           ),
                   ),
@@ -213,8 +233,8 @@ class ExposureScreenState extends State<ExposureScreen> {
                 Navigator.of(context, rootNavigator: true).pop(true);
               },
               child: Text(
-                'Stop Exposure',
-                style: TextStyle(fontSize: 24),
+                FlutterI18n.translate(context, 'exposure.stop'),
+                style: const TextStyle(fontSize: 24),
               ),
             ),
           ],
@@ -334,7 +354,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Grid',
+                              FlutterI18n.translate(context, 'exposure.grid'),
                               style: TextStyle(
                                 fontSize: 24,
                                 color: _apiErrorState ? Colors.grey : null,
@@ -367,7 +387,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Logo',
+                              FlutterI18n.translate(context, 'exposure.logo'),
                               style: TextStyle(
                                 fontSize: 24,
                                 color: _apiErrorState ? Colors.grey : null,
@@ -408,7 +428,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Measure',
+                        FlutterI18n.translate(context, 'exposure.measure'),
                         style: TextStyle(
                           fontSize: 24,
                           color: _apiErrorState ? Colors.grey : null,
@@ -440,7 +460,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Clean',
+                        FlutterI18n.translate(context, 'exposure.clean'),
                         style: TextStyle(
                           fontSize: 24,
                           color: _apiErrorState ? Colors.grey : null,
@@ -458,7 +478,7 @@ class ExposureScreenState extends State<ExposureScreen> {
   }
 
   Widget buildChoiceCards(BuildContext context) {
-    final values = [3, 10, 30, 'Persistent'];
+    final values = [3, 10, 30, 'persistent'];
     return Column(
       children: [
         for (int index = 0; index < values.length; index++) ...[
@@ -469,7 +489,12 @@ class ExposureScreenState extends State<ExposureScreen> {
                 label: SizedBox(
                   width: double.infinity,
                   child: Text(
-                    value is int ? '$value Seconds' : value as String,
+                    value is int
+                        ? '$value ${FlutterI18n.translate(context, 'exposure.unitSec')}'
+                        : (value == 'persistent'
+                            ? FlutterI18n.translate(
+                                context, 'exposure.persistent')
+                            : value as String),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 22,
@@ -479,7 +504,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                 selected: exposureTime ==
                     (value is int
                         ? value
-                        : (value == 'Persistent'
+                        : (value == 'persistent'
                             ? 999999
                             : int.parse(value as String))),
                 onSelected: _apiErrorState
@@ -489,7 +514,7 @@ class ExposureScreenState extends State<ExposureScreen> {
                           setState(() {
                             exposureTime = value is int
                                 ? value
-                                : (value == 'Persistent'
+                                : (value == 'persistent'
                                     ? 999999
                                     : int.parse(value as String));
                           });

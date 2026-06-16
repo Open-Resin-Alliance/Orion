@@ -195,7 +195,7 @@ class ResinProfileSelectionScreen extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.only(top: 2.0),
                             child: Text(
-                              parts.join(' • '),
+                              parts.join(' ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ '),
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Theme.of(context)
@@ -238,3 +238,4 @@ class ResinProfileSelectionScreen extends StatelessWidget {
     );
   }
 }
+

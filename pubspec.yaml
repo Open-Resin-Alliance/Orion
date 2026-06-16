@@ -73,6 +73,7 @@ dependencies:
   fl_chart: ^1.1.1
   video_player: ^2.10.1
   google_fonts: ^6.1.0
+  flutter_i18n: ^0.37.1
 
 dev_dependencies:
   flutter_test:
@@ -93,7 +94,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-  generate: true
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
@@ -102,6 +102,7 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - assets/
+    - assets/i18n/
     - assets/images/opensource.svg
     - assets/images/placeholder.png
     - assets/images/bsod.png

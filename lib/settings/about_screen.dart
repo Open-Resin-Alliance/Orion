@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Orion - About Screen
 * Copyright (C) 2025 Open Resin Alliance
 *
@@ -20,6 +20,7 @@ import 'dart:io';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -54,6 +55,8 @@ Future<String> executeCommand(String command, List<String> arguments) async {
 Future<String> getDeviceModel() async {
   if (!Platform.isLinux) {
     switch (Platform.operatingSystem) {
+      // These are top-level function return values without context.
+      // They will be translated at the call site.
       case 'macos':
         return 'macOS Device';
       case 'android':
@@ -111,7 +114,12 @@ class AboutScreenState extends State<AboutScreen> {
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: OrionSpacing.settingsScreenPadding,
+            padding: EdgeInsets.only(
+              left: OrionSpacing.settingsScreenPaddingTightTop.left,
+              right: OrionSpacing.settingsScreenPaddingTightTop.right,
+              top: OrionSpacing.settingsScreenPaddingTightTop.top,
+              bottom: OrionSpacing.screenBottomNavClearance,
+            ),
             child: isLandscape
                 ? buildLandscapeLayout(context)
                 : buildPortraitLayout(context),
@@ -127,7 +135,7 @@ class AboutScreenState extends State<AboutScreen> {
       children: [
         buildNameCard(config.getString('machineName', category: 'machine')),
         buildInfoCard(
-          'Serial Number',
+          FlutterI18n.translate(context, 'about.serialNumber'),
           kDebugMode
               ? 'DBG-0001-001'
               : config.getString('machineSerial', category: 'machine'),
@@ -151,7 +159,7 @@ class AboutScreenState extends State<AboutScreen> {
         final leftCards = [
           buildNameCard(config.getString('machineName', category: 'machine')),
           buildInfoCard(
-            'Serial Number',
+            FlutterI18n.translate(context, 'about.serialNumber'),
             kDebugMode
                 ? 'DBG-0001-001'
                 : config.getString('machineSerial', category: 'machine'),
@@ -209,10 +217,21 @@ class AboutScreenState extends State<AboutScreen> {
           showOrionAboutDialog(
             context: context,
             applicationName: 'Orion',
-            applicationVersion:
-                'Version ${Pubspec.version} - ${Pubspec.versionFull.toString().split('+')[1] == 'SELFCOMPILED' ? 'Local Build' : 'Commit ${Pubspec.versionFull.toString().split('+')[1]}'}',
-            applicationLegalese:
-                'Apache License 2.0 - Copyright © ${DateTime.now().year} Open Resin Alliance',
+            applicationVersion: FlutterI18n.translate(
+                context, 'about.versionInfo',
+                translationParams: {
+                  '0': Pubspec.version,
+                  '1': Pubspec.versionFull.toString().split('+')[1] ==
+                          'SELFCOMPILED'
+                      ? FlutterI18n.translate(context, 'about.localBuild')
+                      : FlutterI18n.translate(context, 'about.commit',
+                          translationParams: {
+                              '0': Pubspec.versionFull.toString().split('+')[1]
+                            }),
+                }),
+            applicationLegalese: FlutterI18n.translate(
+                context, 'about.copyright',
+                translationParams: {'0': DateTime.now().year.toString()}),
             applicationIcon: Image.asset(
               'assets/images/ora/open_resin_alliance_logo_darkmode.png',
               width: 100,
@@ -221,11 +240,14 @@ class AboutScreenState extends State<AboutScreen> {
             ),
             children: <Widget>[
               Padding(
-                padding: const EdgeInsets.only(left: 10, right: 10),
+                padding: EdgeInsets.only(
+                    left: OrionSpacing.settingsScreenHorizontal,
+                    right: OrionSpacing.settingsScreenHorizontal),
                 child: GlassCard(
                   child: ListTile(
                     leading: const Icon(Icons.list, size: 30),
-                    title: const Text('Changelog'),
+                    title:
+                        Text(FlutterI18n.translate(context, 'about.changelog')),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -242,7 +264,8 @@ class AboutScreenState extends State<AboutScreen> {
                 padding: const EdgeInsets.all(10),
                 child: GlassCard(
                   child: ListTile(
-                    title: const Text('Open-Source Licenses'),
+                    title:
+                        Text(FlutterI18n.translate(context, 'about.licenses')),
                     leading: const Icon(Icons.favorite, size: 30),
                     onTap: () {
                       showFancyLicensePage(
@@ -262,9 +285,11 @@ class AboutScreenState extends State<AboutScreen> {
             TextSpan(
               style: Theme.of(context).textTheme.titleMedium,
               children: [
-                const TextSpan(text: 'UI & API Version '),
                 TextSpan(
-                  text: '(Tap for more info)',
+                    text: FlutterI18n.translate(context, 'about.uiVersion')),
+                const TextSpan(text: '  '),
+                TextSpan(
+                  text: FlutterI18n.translate(context, 'about.tapForInfo'),
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w600,
@@ -277,7 +302,7 @@ class AboutScreenState extends State<AboutScreen> {
             future: getVersionNumber(),
             builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
               return AutoSizeText(
-                snapshot.data ?? 'N/A',
+                snapshot.data ?? FlutterI18n.translate(context, 'about.na'),
                 maxLines: 1,
                 minFontSize: 12,
               );
@@ -293,15 +318,29 @@ class AboutScreenState extends State<AboutScreen> {
       elevation: 1.0,
       outlined: true,
       child: ListTile(
-        title: const Text('Hardware (Local)'),
+        title: Text(FlutterI18n.translate(context, 'about.hardwareLocal')),
         subtitle: FutureBuilder<String>(
           future: getDeviceModel(),
           builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
             // Sanitize the model string to remove non-printable characters before logging and displaying
+            final rawModel = snapshot.data ?? '';
+            // Map known English platform identifiers to translation keys
+            final deviceModelMap = {
+              'macOS Device': 'about.deviceMacos',
+              'Android Device': 'about.deviceAndroid',
+              'iOS Device': 'about.deviceIos',
+              'Windows Device': 'about.deviceWindows',
+              'Unsupported Device': 'about.deviceUnsupported',
+              'Unknown Model': 'about.unknownModel',
+            };
             final sanitizedModel =
-                snapshot.data?.replaceAll(RegExp(r'[^\x20-\x7E]'), '') ?? 'N/A';
+                rawModel.replaceAll(RegExp(r'[^\x20-\x7E]'), '');
+            final displayModel = deviceModelMap.containsKey(sanitizedModel)
+                ? FlutterI18n.translate(
+                    context, deviceModelMap[sanitizedModel]!)
+                : sanitizedModel;
             _logger.info('Device Model: $sanitizedModel');
-            return Text(sanitizedModel);
+            return Text(displayModel);
           },
         ),
       ),
@@ -315,7 +354,11 @@ class AboutScreenState extends State<AboutScreen> {
       child: Align(
         alignment: Alignment.centerLeft,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: EdgeInsets.only(
+              left: OrionSpacing.settingsScreenHorizontal,
+              right: OrionSpacing.settingsScreenHorizontal,
+              top: 8.0,
+              bottom: 8.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -345,8 +388,9 @@ class AboutScreenState extends State<AboutScreen> {
                       context: context,
                       builder: (BuildContext context) {
                         return GlassAlertDialog(
-                          title:
-                              const Center(child: Text('Custom Machine Name')),
+                          title: Center(
+                              child: Text(FlutterI18n.translate(
+                                  context, 'about.customName'))),
                           content: SizedBox(
                             width: MediaQuery.of(context).size.width * 0.5,
                             child: SingleChildScrollView(
@@ -354,7 +398,8 @@ class AboutScreenState extends State<AboutScreen> {
                                 children: [
                                   SpawnOrionTextField(
                                     key: cNameTextFieldKey,
-                                    keyboardHint: 'Enter a custom name',
+                                    keyboardHint: FlutterI18n.translate(
+                                        context, 'about.enterName'),
                                     locale: Localizations.localeOf(context)
                                         .toString(),
                                     scrollController: _scrollController,
@@ -374,7 +419,9 @@ class AboutScreenState extends State<AboutScreen> {
                               },
                               style: ElevatedButton.styleFrom(
                                   minimumSize: const Size(0, 60)),
-                              child: const Text('Close',
+                              child: Text(
+                                  FlutterI18n.translate(
+                                      context, 'common.close'),
                                   style: TextStyle(fontSize: 20)),
                             ),
                             GlassButton(
@@ -389,7 +436,9 @@ class AboutScreenState extends State<AboutScreen> {
                               },
                               style: ElevatedButton.styleFrom(
                                   minimumSize: const Size(0, 60)),
-                              child: const Text('Confirm',
+                              child: Text(
+                                  FlutterI18n.translate(
+                                      context, 'common.confirm'),
                                   style: TextStyle(fontSize: 20)),
                             ),
                           ],
@@ -399,8 +448,8 @@ class AboutScreenState extends State<AboutScreen> {
                   },
                   child: Row(
                     children: [
-                      const Text(
-                        'Edit',
+                      Text(
+                        FlutterI18n.translate(context, 'common.edit'),
                         style: TextStyle(
                           fontSize: 20,
                         ),
@@ -459,7 +508,7 @@ class AboutScreenState extends State<AboutScreen> {
           type: ToastificationType.success,
           style: ToastificationStyle.fillColored,
           autoCloseDuration: const Duration(seconds: 2),
-          title: const Text('You are already a developer',
+          title: Text(FlutterI18n.translate(context, 'about.alreadyDeveloper'),
               style: TextStyle(fontSize: 18)),
           alignment: Alignment.topCenter,
           primaryColor: Colors.green,
@@ -476,8 +525,8 @@ class AboutScreenState extends State<AboutScreen> {
             type: ToastificationType.success,
             style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 2),
-            title: const Text(
-                'Developer Mode Activated: You are now a developer!',
+            title: Text(
+                FlutterI18n.translate(context, 'about.developerActivated'),
                 style: TextStyle(fontSize: 18)),
             alignment: Alignment.topCenter,
             primaryColor: Colors.green,
@@ -492,7 +541,8 @@ class AboutScreenState extends State<AboutScreen> {
             style: ToastificationStyle.fillColored,
             autoCloseDuration: const Duration(seconds: 2),
             title: Text(
-                'You are ${5 - qrTapCount} ${5 - qrTapCount == 1 ? 'tap' : 'taps'} away from becoming a developer',
+                FlutterI18n.translate(context, 'about.tapsAway',
+                    translationParams: {'0': (5 - qrTapCount).toString()}),
                 style: const TextStyle(fontSize: 18)),
             alignment: Alignment.topCenter,
             primaryColor: Theme.of(context).colorScheme.primary,

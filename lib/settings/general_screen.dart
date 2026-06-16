@@ -21,14 +21,18 @@ import 'dart:math';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:http/http.dart' as http;
 import 'package:orion/settings/machine_settings_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
+import 'package:country_flags/country_flags.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/settings/settings_screen.dart';
 import 'package:orion/settings/ui_screen.dart';
+import 'package:orion/settings/language_screen.dart';
+import 'package:orion/util/locales/available_languages.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
@@ -125,14 +129,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     return rand.nextInt(1000) == 0;
   }
 
-  bool isJune() {
-    final now = DateTime.now();
-    return now.month == 6;
-  }
-
   Widget _buildOffsetNavCard({
     required BuildContext context,
-    required IconData icon,
+    required Widget leading,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
@@ -147,7 +146,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
       outlined: true,
       elevation: navCardElevation,
       child: ListTile(
-        leading: Icon(icon),
+        leading: leading,
         title: Text(title, style: const TextStyle(fontSize: 20)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 16)),
         trailing: Icon(
@@ -161,6 +160,16 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentLocale = Localizations.localeOf(context);
+    final currentLangCode =
+        '${currentLocale.languageCode}_${currentLocale.countryCode}';
+    final langMatch =
+        availableLanguages.cast<Map<String, String>?>().firstWhere(
+              (e) => e!['code'] == currentLangCode,
+              orElse: () => null,
+            );
+    final flagCode = langMatch?['flag'] ?? '';
+
     return PopScope(
       child: Scaffold(
         body: Padding(
@@ -168,28 +177,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
           child: ListView(
             controller: _scrollController,
             children: <Widget>[
-              if (isJune())
-                Dismissible(
-                  key: UniqueKey(),
-                  direction: DismissDirection.horizontal,
-                  onDismissed: (direction) {},
-                  background: Container(color: Colors.transparent),
-                  child: const GlassCard(
-                    outlined: true,
-                    elevation: 1,
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                          left: 16, right: 16, top: 10, bottom: 10),
-                      child: ListTile(
-                        title: Text(
-                          'Happy Pride Month!',
-                          style: TextStyle(fontSize: 24),
-                        ),
-                        leading: Icon(Icons.favorite, color: Colors.pink),
-                      ),
-                    ),
-                  ),
-                ),
               if (shouldDestruct())
                 GlassCard(
                   elevation: 1,
@@ -218,7 +205,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       padding: const EdgeInsets.all(16),
                       child: OrionListTile(
                         ignoreColor: true,
-                        title: 'Self-Destruct Mode',
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.selfDestruct'),
                         icon: PhosphorIcons.skull,
                         value: selfDestructMode,
                         onChanged: (bool value) {
@@ -241,31 +229,67 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'General',
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'generalSettings.section'),
                         style: TextStyle(
                           fontSize: 28.0,
                         ),
                       ),
                       const SizedBox(height: 20.0),
 
-                      // UI Settings Navigation
-                      _buildOffsetNavCard(
-                        context: context,
-                        icon: Icons.palette,
-                        title: 'User Interface',
-                        subtitle: 'Theme and appearance settings',
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const UIScreen(),
+                      // UI Settings & Language Navigation
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildOffsetNavCard(
+                              context: context,
+                              leading: Icon(Icons.palette),
+                              title: FlutterI18n.translate(
+                                  context, 'generalSettings.ui'),
+                              subtitle: FlutterI18n.translate(
+                                  context, 'generalSettings.uiDesc'),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const UIScreen(),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildOffsetNavCard(
+                              context: context,
+                              leading: flagCode.isNotEmpty
+                                  ? CountryFlag.fromCountryCode(
+                                      flagCode,
+                                      height: 32,
+                                      width: 48,
+                                      shape: RoundedRectangle(6),
+                                    )
+                                  : const Icon(Icons.language),
+                              title: FlutterI18n.translate(
+                                  context, 'generalSettings.language'),
+                              subtitle: FlutterI18n.translate(
+                                  context, 'generalSettings.languageDesc'),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const LanguageScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20.0),
                       OrionListTile(
-                        title: 'Use USB by Default',
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.useUsbDefault'),
                         icon: PhosphorIcons.usb,
                         value: useUsbByDefault,
                         onChanged: (bool value) {
@@ -287,8 +311,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Advanced',
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'generalSettings.advanced'),
                         style: TextStyle(
                           fontSize: 28.0,
                         ),
@@ -296,9 +321,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       const SizedBox(height: 20.0),
                       _buildOffsetNavCard(
                         context: context,
-                        icon: Icons.engineering,
-                        title: 'Machine Settings',
-                        subtitle: 'Configure machine features',
+                        leading: Icon(Icons.engineering),
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.machineSettings'),
+                        subtitle: FlutterI18n.translate(
+                            context, 'generalSettings.machineDesc'),
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -311,7 +338,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       if (Platform.isLinux) const SizedBox(height: 20.0),
                       if (Platform.isLinux)
                         OrionListTile(
-                          title: 'Override Screen Rotation',
+                          title: FlutterI18n.translate(
+                              context, 'generalSettings.overrideRotation'),
                           icon: PhosphorIcons.deviceRotate(),
                           value: overrideScreenRotation,
                           onChanged: (bool value) {
@@ -370,7 +398,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         ),
                       const SizedBox(height: 20.0),
                       OrionListTile(
-                        title: 'Use Custom Backend URL',
+                        title: FlutterI18n.translate(
+                            context, 'generalSettings.useCustomUrl'),
                         icon: PhosphorIcons.network,
                         value: useCustomUrl,
                         onChanged: (bool value) {
@@ -399,9 +428,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       context: context,
                                       builder: (BuildContext context) {
                                         return GlassAlertDialog(
-                                          title: const Center(
-                                              child:
-                                                  Text('Custom Backend URL')),
+                                          title: Center(
+                                              child: Text(FlutterI18n.translate(
+                                                  context,
+                                                  'generalSettings.customUrl'))),
                                           content: SizedBox(
                                             width: MediaQuery.of(context)
                                                     .size
@@ -412,7 +442,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 children: [
                                                   SpawnOrionTextField(
                                                     key: urlTextFieldKey,
-                                                    keyboardHint: 'Enter URL',
+                                                    keyboardHint:
+                                                        FlutterI18n.translate(
+                                                            context,
+                                                            'generalSettings.enterUrl'),
                                                     locale:
                                                         Localizations.localeOf(
                                                                 context)
@@ -440,7 +473,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               style: ElevatedButton.styleFrom(
                                                   minimumSize:
                                                       const Size(0, 60)),
-                                              child: const Text('Close'),
+                                              child: Text(FlutterI18n.translate(
+                                                  context, 'common.close')),
                                             ),
                                             GlassButton(
                                               tint: GlassButtonTint.positive,
@@ -458,7 +492,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               style: ElevatedButton.styleFrom(
                                                   minimumSize:
                                                       const Size(0, 60)),
-                                              child: const Text('Confirm'),
+                                              child: Text(FlutterI18n.translate(
+                                                  context, 'common.confirm')),
                                             ),
                                           ],
                                         );
@@ -469,7 +504,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     // Wrap in Center widget
                                     child: AutoSizeText(
                                       customUrl == ''
-                                          ? 'Set URL'
+                                          ? FlutterI18n.translate(
+                                              context, 'generalSettings.setUrl')
                                           : customUrl.split('//').last,
                                       style: const TextStyle(fontSize: 22),
                                       minFontSize: 20,
@@ -498,13 +534,13 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                             () {}, // Empty callback for disabled state
                                         child: Opacity(
                                           opacity: 0.5, // Make it look disabled
-                                          child: const Center(
-                                            // Wrap in Center widget
+                                          child: Center(
                                             child: Text(
-                                              'Clear URL',
-                                              style: TextStyle(fontSize: 20),
-                                              textAlign: TextAlign
-                                                  .center, // Center text alignment
+                                              FlutterI18n.translate(
+                                                  context, 'common.clear'),
+                                              style:
+                                                  const TextStyle(fontSize: 20),
+                                              textAlign: TextAlign.center,
                                             ),
                                           ),
                                         ),
@@ -523,13 +559,13 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 category: 'advanced');
                                           });
                                         },
-                                        child: const Center(
-                                          // Wrap in Center widget
+                                        child: Center(
                                           child: Text(
-                                            'Clear URL',
-                                            style: TextStyle(fontSize: 20),
-                                            textAlign: TextAlign
-                                                .center, // Center text alignment
+                                            FlutterI18n.translate(
+                                                context, 'common.clear'),
+                                            style:
+                                                const TextStyle(fontSize: 20),
+                                            textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
@@ -540,7 +576,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       if (developerMode) const SizedBox(height: 20.0),
                       if (developerMode)
                         OrionListTile(
-                          title: 'Developer Mode',
+                          title: FlutterI18n.translate(
+                              context, 'generalSettings.developerMode'),
                           icon: PhosphorIcons.code,
                           value: developerMode,
                           onChanged: (bool value) {
@@ -570,13 +607,15 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Danger Zone',
+                        FlutterI18n.translate(
+                            context, 'generalSettings.dangerZone'),
                         style:
                             TextStyle(fontSize: 28.0, color: Colors.redAccent),
                       ),
                       const SizedBox(height: 12.0),
                       Text(
-                        'Critical actions that may remove user data or change the device state. Use with caution.',
+                        FlutterI18n.translate(
+                            context, 'generalSettings.dangerZoneDesc'),
                         style: TextStyle(
                             fontSize: 20, color: Colors.redAccent.shade100),
                       ),
@@ -593,19 +632,24 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                 final confirmed = await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => GlassAlertDialog(
-                                        title: const Text('Reset User Config'),
-                                        content: const Text(
-                                            'Restore settings to factory defaults? If a factory preset is available it will be used. Otherwise your custom settings will be cleared. The device will restart immediately. Continue?',
+                                        title: Text(FlutterI18n.translate(
+                                            context,
+                                            'generalSettings.resetUserConfig')),
+                                        content: Text(
+                                            FlutterI18n.translate(context,
+                                                'generalSettings.resetConfirmMsg'),
                                             style: TextStyle(fontSize: 18.0)),
                                         actions: [
                                           GlassButton(
-                                              style: ElevatedButton.styleFrom(
-                                                minimumSize: const Size(0, 60),
-                                              ),
-                                              tint: GlassButtonTint.warn,
-                                              onPressed: () =>
-                                                  Navigator.of(ctx).pop(false),
-                                              child: const Text('Cancel')),
+                                            style: ElevatedButton.styleFrom(
+                                              minimumSize: const Size(0, 60),
+                                            ),
+                                            tint: GlassButtonTint.warn,
+                                            onPressed: () =>
+                                                Navigator.of(ctx).pop(false),
+                                            child: Text(FlutterI18n.translate(
+                                                context, 'common.cancel')),
+                                          ),
                                           GlassButton(
                                               tint: GlassButtonTint.negative,
                                               style: ElevatedButton.styleFrom(
@@ -613,15 +657,27 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               ),
                                               onPressed: () =>
                                                   Navigator.of(ctx).pop(true),
-                                              child: const Text('Reset')),
+                                              child: Text(FlutterI18n.translate(
+                                                  context, 'common.reset'))),
                                         ],
                                       ),
                                     ) ??
                                     false;
 
                                 if (confirmed) {
+                                  // Capture translations before any async gaps
+                                  if (!context.mounted) return;
+                                  final cfgPath = config.getConfigPath();
+                                  final hasDefault =
+                                      File('$cfgPath/orion.default.cfg')
+                                          .existsSync();
+                                  final rebootingMsg = hasDefault
+                                      ? FlutterI18n.translate(context,
+                                          'generalSettings.rebootingMsg')
+                                      : FlutterI18n.translate(context,
+                                          'generalSettings.clearingMsg');
+
                                   try {
-                                    final cfgPath = config.getConfigPath();
                                     final defaultFile =
                                         File('$cfgPath/orion.default.cfg');
                                     final targetFile =
@@ -639,21 +695,16 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       }
                                     }
 
-                                    // Decide a message based on whether a default exists
-                                    final defaultFileExists =
-                                        defaultFile.existsSync();
-                                    final rebootMessage = defaultFileExists
-                                        ? 'Restoring settings to factory defaults and restarting now.'
-                                        : 'Clearing custom settings and restarting now.';
-
                                     // Show rebooting message then reboot
                                     if (!context.mounted) return;
                                     showDialog(
                                       context: context,
                                       barrierDismissible: false,
                                       builder: (ctx) => GlassAlertDialog(
-                                        title: const Text('Rebooting'),
-                                        content: Text(rebootMessage),
+                                        title: Text(FlutterI18n.translate(
+                                            context,
+                                            'generalSettings.rebooting')),
+                                        content: Text(rebootingMsg),
                                       ),
                                     );
 
@@ -665,14 +716,17 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     showDialog(
                                       context: context,
                                       builder: (ctx) => GlassAlertDialog(
-                                        title: const Text('Error'),
-                                        content: const Text(
-                                            'Unable to reset settings. Please try again.'),
+                                        title: Text(FlutterI18n.translate(
+                                            context, 'common.error')),
+                                        content: Text(FlutterI18n.translate(
+                                            context,
+                                            'generalSettings.unableToResetMsg')),
                                         actions: [
                                           GlassButton(
                                             onPressed: () =>
                                                 Navigator.of(ctx).pop(),
-                                            child: const Text('OK'),
+                                            child: Text(FlutterI18n.translate(
+                                                context, 'common.ok')),
                                           ),
                                         ],
                                       ),
@@ -680,9 +734,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   }
                                 }
                               },
-                              child: const Text(
-                                'Reset User Config',
-                                style: TextStyle(fontSize: 22),
+                              child: Text(
+                                FlutterI18n.translate(
+                                    context, 'generalSettings.resetUserConfig'),
+                                style: const TextStyle(fontSize: 22),
                               ),
                             ),
                           ),
@@ -702,11 +757,14 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   final confirmed = await showDialog<bool>(
                                         context: context,
                                         builder: (ctx) => GlassAlertDialog(
-                                          title: const Text(
-                                              'Prepare for Delivery'),
-                                          content: const Text(
-                                              'Prepare this device for shipping? The device will shut down now. On next start you will run the initial setup wizard. Use only when shipping the device. Continue?',
-                                              style: TextStyle(fontSize: 18.0)),
+                                          title: Text(FlutterI18n.translate(
+                                              context,
+                                              'generalSettings.prepareForDelivery')),
+                                          content: Text(
+                                              FlutterI18n.translate(context,
+                                                  'generalSettings.deliveryMsg'),
+                                              style: const TextStyle(
+                                                  fontSize: 18.0)),
                                           actions: [
                                             GlassButton(
                                                 style: ElevatedButton.styleFrom(
@@ -717,7 +775,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 onPressed: () =>
                                                     Navigator.of(ctx)
                                                         .pop(false),
-                                                child: const Text('Cancel')),
+                                                child: Text(
+                                                    FlutterI18n.translate(
+                                                        context,
+                                                        'common.cancel'))),
                                             GlassButton(
                                                 tint: GlassButtonTint.negative,
                                                 style: ElevatedButton.styleFrom(
@@ -726,7 +787,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                                 ),
                                                 onPressed: () =>
                                                     Navigator.of(ctx).pop(true),
-                                                child: const Text('Prepare')),
+                                                child: Text(FlutterI18n.translate(
+                                                    context,
+                                                    'generalSettings.prepareForDelivery'))),
                                           ],
                                         ),
                                       ) ??
@@ -744,9 +807,12 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         context: context,
                                         barrierDismissible: false,
                                         builder: (ctx) => GlassAlertDialog(
-                                          title: const Text('Shutting down'),
-                                          content: const Text(
-                                              'Shutting down now. On next start you will be guided through setup.'),
+                                          title: Text(FlutterI18n.translate(
+                                              context,
+                                              'generalSettings.shuttingDown')),
+                                          content: Text(FlutterI18n.translate(
+                                              context,
+                                              'generalSettings.shuttingDownMsg')),
                                         ),
                                       );
 
@@ -757,14 +823,17 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       showDialog(
                                         context: context,
                                         builder: (ctx) => GlassAlertDialog(
-                                          title: const Text('Error'),
-                                          content: const Text(
-                                              'Unable to prepare the device. Please try again.'),
+                                          title: Text(FlutterI18n.translate(
+                                              context, 'common.error')),
+                                          content: Text(FlutterI18n.translate(
+                                              context,
+                                              'generalSettings.unableToPrepare')),
                                           actions: [
                                             GlassButton(
                                               onPressed: () =>
                                                   Navigator.of(ctx).pop(),
-                                              child: const Text('OK'),
+                                              child: Text(FlutterI18n.translate(
+                                                  context, 'common.ok')),
                                             ),
                                           ],
                                         ),
@@ -772,9 +841,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     }
                                   }
                                 },
-                                child: const Text(
-                                  'Prepare for Delivery',
-                                  style: TextStyle(fontSize: 22),
+                                child: Text(
+                                  FlutterI18n.translate(context,
+                                      'generalSettings.prepareForDelivery'),
+                                  style: const TextStyle(fontSize: 22),
                                 ),
                               ),
                             ),
@@ -800,15 +870,16 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Developer',
-              style: TextStyle(
+            Text(
+              FlutterI18n.translate(context, 'generalSettings.developer'),
+              style: const TextStyle(
                 fontSize: 28.0,
               ),
             ),
             const SizedBox(height: 20.0),
             OrionListTile(
-              title: 'Release Tag Override',
+              title:
+                  FlutterI18n.translate(context, 'update.releaseTagOverride'),
               icon: PhosphorIcons.download(),
               value: releaseOverride,
               onChanged: (bool value) {
@@ -838,7 +909,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           // Wrap in Center widget
                           child: AutoSizeText(
                             overrideRelease == ''
-                                ? 'Select Release Tag'
+                                ? FlutterI18n.translate(
+                                    context, 'update.selectReleaseVersion')
                                 : overrideRelease,
                             style: const TextStyle(fontSize: 22),
                             minFontSize: 20,
@@ -866,13 +938,12 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   () {}, // Empty callback for disabled state
                               child: Opacity(
                                 opacity: 0.5, // Make it look disabled
-                                child: const Center(
-                                  // Wrap in Center widget
+                                child: Center(
                                   child: Text(
-                                    'Clear Release',
-                                    style: TextStyle(fontSize: 18),
-                                    textAlign: TextAlign
-                                        .center, // Center text alignment
+                                    FlutterI18n.translate(
+                                        context, 'update.clearRelease'),
+                                    style: const TextStyle(fontSize: 18),
+                                    textAlign: TextAlign.center,
                                   ),
                                 ),
                               ),
@@ -880,8 +951,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           : GlassButton(
                               style: ElevatedButton.styleFrom(
                                 elevation: 3,
-                                alignment:
-                                    Alignment.center, // Center the content
+                                alignment: Alignment.center,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -891,22 +961,19 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       category: 'developer');
                                 });
                               },
-                              child: const Center(
-                                // Wrap in Center widget
+                              child: Center(
                                 child: AutoSizeText(
-                                  'Clear Release Tag',
-                                  style: TextStyle(
-                                      fontSize: 18), // Reduce font size
-                                  minFontSize: 16, // Reduce min font size
+                                  FlutterI18n.translate(
+                                      context, 'update.clearReleaseTag'),
+                                  style: const TextStyle(fontSize: 18),
+                                  minFontSize: 16,
                                   maxLines: 1,
-                                  textAlign:
-                                      TextAlign.center, // Center text alignment
+                                  textAlign: TextAlign.center,
                                   overflowReplacement: Text(
-                                    'Clear Tag',
-                                    style: TextStyle(
-                                        fontSize: 18), // Reduce font size
-                                    textAlign: TextAlign
-                                        .center, // Center text alignment
+                                    FlutterI18n.translate(
+                                        context, 'update.clearTag'),
+                                    style: const TextStyle(fontSize: 18),
+                                    textAlign: TextAlign.center,
                                   ),
                                 ),
                               ),
@@ -917,7 +984,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
               ),
             const SizedBox(height: 20.0),
             OrionListTile(
-              title: 'Force Update',
+              title: FlutterI18n.translate(context, 'update.forceUpdate'),
               icon: PhosphorIcons.warning(),
               value: overrideUpdateCheck,
               onChanged: (bool value) {
@@ -930,7 +997,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
             ),
             const SizedBox(height: 20.0),
             OrionListTile(
-              title: 'Raw Force Sensor Values',
+              title: FlutterI18n.translate(context, 'update.rawForceSensor'),
               icon: PhosphorIcons.scales(),
               value: overrideRawForceSensorValues,
               onChanged: (bool value) {
@@ -944,7 +1011,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
             ),
             const SizedBox(height: 20.0),
             OrionListTile(
-              title: 'Reuse Calibration Plate (Debug)',
+              title: FlutterI18n.translate(context, 'update.reuseCalPlate'),
               icon: PhosphorIcons.flask(),
               value: reuseCalibrationPlate,
               onChanged: (bool value) {
@@ -969,10 +1036,12 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => GlassAlertDialog(
-                              title: const Text('Clear Thumbnail Cache'),
-                              content: const Text(
-                                  'Clear all cached thumbnails from memory and disk? This will free up disk space and memory. Continue?',
-                                  style: TextStyle(fontSize: 18.0)),
+                              title: Text(FlutterI18n.translate(context,
+                                  'generalSettings.clearThumbnailCache')),
+                              content: Text(
+                                  FlutterI18n.translate(
+                                      context, 'generalSettings.cacheClearMsg'),
+                                  style: const TextStyle(fontSize: 18.0)),
                               actions: [
                                 GlassButton(
                                     style: ElevatedButton.styleFrom(
@@ -981,7 +1050,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     tint: GlassButtonTint.neutral,
                                     onPressed: () =>
                                         Navigator.of(ctx).pop(false),
-                                    child: const Text('Cancel')),
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'common.cancel'))),
                                 GlassButton(
                                     tint: GlassButtonTint.warn,
                                     style: ElevatedButton.styleFrom(
@@ -989,7 +1059,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     ),
                                     onPressed: () =>
                                         Navigator.of(ctx).pop(true),
-                                    child: const Text('Clear')),
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'common.clear'))),
                               ],
                             ),
                           ) ??
@@ -1003,15 +1074,18 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                           showDialog(
                             context: navCtx,
                             barrierDismissible: false,
-                            builder: (ctx) => const GlassAlertDialog(
-                              title: Text('Clearing Cache'),
+                            builder: (ctx) => GlassAlertDialog(
+                              title: Text(FlutterI18n.translate(
+                                  context, 'generalSettings.clearingCache')),
                               content: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 16),
-                                  Text('Clearing thumbnail cache...',
-                                      style: TextStyle(fontSize: 18)),
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                      FlutterI18n.translate(context,
+                                          'generalSettings.cacheClearing'),
+                                      style: const TextStyle(fontSize: 18)),
                                 ],
                               ),
                             ),
@@ -1028,17 +1102,20 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                             showDialog(
                               context: context,
                               builder: (ctx) => GlassAlertDialog(
-                                title: const Text('Success'),
-                                content: const Text(
-                                    'Thumbnail cache cleared successfully.',
-                                    style: TextStyle(fontSize: 18)),
+                                title: Text(FlutterI18n.translate(
+                                    context, 'common.success')),
+                                content: Text(
+                                    FlutterI18n.translate(context,
+                                        'generalSettings.cacheCleared'),
+                                    style: const TextStyle(fontSize: 18)),
                                 actions: [
                                   GlassButton(
                                     style: ElevatedButton.styleFrom(
                                       minimumSize: const Size(0, 60),
                                     ),
                                     onPressed: () => Navigator.of(ctx).pop(),
-                                    child: const Text('OK'),
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'common.ok')),
                                   ),
                                 ],
                               ),
@@ -1053,9 +1130,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                             showDialog(
                               context: context,
                               builder: (ctx) => GlassAlertDialog(
-                                title: const Text('Error'),
+                                title: Text(FlutterI18n.translate(
+                                    context, 'common.error')),
                                 content: Text(
-                                    'Failed to clear thumbnail cache: $e',
+                                    '${FlutterI18n.translate(context, 'generalSettings.failedToClearCache')}$e',
                                     style: const TextStyle(fontSize: 18)),
                                 actions: [
                                   GlassButton(
@@ -1063,7 +1141,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                       minimumSize: const Size(0, 60),
                                     ),
                                     onPressed: () => Navigator.of(ctx).pop(),
-                                    child: const Text('OK'),
+                                    child: Text(FlutterI18n.translate(
+                                        context, 'common.ok')),
                                   ),
                                 ],
                               ),
@@ -1072,9 +1151,10 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                         }
                       }
                     },
-                    child: const Text(
-                      'Clear Thumbnail Cache',
-                      style: TextStyle(fontSize: 22),
+                    child: Text(
+                      FlutterI18n.translate(
+                          context, 'generalSettings.clearThumbnailCache'),
+                      style: const TextStyle(fontSize: 22),
                     ),
                   ),
                 ),
@@ -1125,6 +1205,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     headers: {'Accept': 'application/vnd.github.v3+json'},
                   ).timeout(const Duration(seconds: 10));
 
+                  if (!context.mounted) return;
+
                   if (response.statusCode == 200) {
                     final List<dynamic> releases = json.decode(response.body);
                     List<String> regularReleases = [];
@@ -1165,10 +1247,11 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                       _isLoadingReleases = false;
                     });
                   } else {
+                    final errMsg =
+                        '${FlutterI18n.translate(context, 'update.failedToLoadReleases')}: HTTP ${response.statusCode}';
                     setRouteState(() {
                       _isLoadingReleases = false;
-                      _loadError =
-                          'Failed to fetch releases: HTTP ${response.statusCode}';
+                      _loadError = errMsg;
                     });
                   }
                 } catch (e) {
@@ -1184,7 +1267,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
               }
 
               return DetailedSelectionScreen(
-                title: 'Select Release Version',
+                title: FlutterI18n.translate(
+                    context, 'update.selectReleaseVersion'),
                 child: Column(
                   children: [
                     if (overrideRelease.isNotEmpty)
@@ -1207,7 +1291,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Current Release Override',
+                                      FlutterI18n.translate(context,
+                                          'update.currentReleaseOverride'),
                                       style: TextStyle(
                                         fontSize: 14,
                                         color: Theme.of(context)
@@ -1239,22 +1324,24 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                     if (overrideRelease.isNotEmpty) const SizedBox(height: 12),
                     Expanded(
                       child: _isLoadingReleases
-                          ? const Center(
+                          ? Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  CircularProgressIndicator(),
-                                  SizedBox(height: 24),
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 24),
                                   Text(
-                                    'Loading available releases...',
-                                    style: TextStyle(
+                                    FlutterI18n.translate(
+                                        context, 'update.loadingReleases'),
+                                    style: const TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.w600),
                                   ),
-                                  SizedBox(height: 8),
+                                  const SizedBox(height: 8),
                                   Text(
-                                    'This may take a few seconds',
-                                    style: TextStyle(
+                                    FlutterI18n.translate(
+                                        context, 'update.loadingReleasesHint'),
+                                    style: const TextStyle(
                                         fontSize: 16, color: Colors.grey),
                                   ),
                                 ],
@@ -1271,7 +1358,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                             size: 64, color: Colors.red),
                                         const SizedBox(height: 24),
                                         Text(
-                                          'Failed to Load Releases',
+                                          FlutterI18n.translate(context,
+                                              'update.failedToLoadReleases'),
                                           style: TextStyle(
                                             fontSize: 24,
                                             fontWeight: FontWeight.bold,
@@ -1289,12 +1377,15 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                           onPressed: fetchReleases,
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
-                                            children: const [
-                                              Icon(Icons.refresh, size: 20),
-                                              SizedBox(width: 8),
-                                              Text('Retry',
-                                                  style:
-                                                      TextStyle(fontSize: 18)),
+                                            children: [
+                                              const Icon(Icons.refresh,
+                                                  size: 20),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                  FlutterI18n.translate(
+                                                      context, 'common.retry'),
+                                                  style: const TextStyle(
+                                                      fontSize: 18)),
                                             ],
                                           ),
                                         ),
@@ -1303,24 +1394,26 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   ),
                                 )
                               : _availableReleases.isEmpty
-                                  ? const Center(
+                                  ? Center(
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.inbox_outlined,
+                                          const Icon(Icons.inbox_outlined,
                                               size: 64, color: Colors.grey),
-                                          SizedBox(height: 24),
+                                          const SizedBox(height: 24),
                                           Text(
-                                            'No Releases Found',
-                                            style: TextStyle(
+                                            FlutterI18n.translate(context,
+                                                'update.noReleasesFound'),
+                                            style: const TextStyle(
                                                 fontSize: 24,
                                                 fontWeight: FontWeight.bold),
                                           ),
-                                          SizedBox(height: 8),
+                                          const SizedBox(height: 8),
                                           Text(
-                                            'There are no releases available at this time',
+                                            FlutterI18n.translate(context,
+                                                'update.noReleasesDesc'),
                                             textAlign: TextAlign.center,
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                                 fontSize: 16,
                                                 color: Colors.grey),
                                           ),
@@ -1397,8 +1490,9 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         if (regularReleases.isNotEmpty) ...[
           _buildReleaseSectionHeader(
             icon: Icons.verified,
-            title: 'Stable Releases',
-            subtitle: 'Recommended for normal use',
+            title: FlutterI18n.translate(context, 'update.stableReleases'),
+            subtitle:
+                FlutterI18n.translate(context, 'update.stableReleasesDesc'),
             accent: Colors.green.shade300,
           ),
           ...regularReleases
@@ -1409,8 +1503,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         if (branchReleases.isNotEmpty) ...[
           _buildReleaseSectionHeader(
             icon: Icons.science,
-            title: 'Development Branches',
-            subtitle: 'Experimental and branch builds',
+            title: FlutterI18n.translate(context, 'update.devBranches'),
+            subtitle: FlutterI18n.translate(context, 'update.devBranchesDesc'),
             accent: Colors.orange.shade300,
           ),
           ...branchReleases
@@ -1423,7 +1517,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   /// Builds an individual release item with Orion card styling
   Widget _buildReleaseItem(String release, {required bool isStable}) {
     final isSelected = overrideRelease == release;
-    final releaseDate = _releaseDates[release] ?? 'Unknown date';
+    final releaseDate = _releaseDates[release] ??
+        FlutterI18n.translate(context, 'update.unknownDate');
     final accent = isStable ? Colors.green.shade300 : Colors.orange.shade300;
 
     return Container(
