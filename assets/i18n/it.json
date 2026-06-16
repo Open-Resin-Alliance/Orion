@@ -212,12 +212,12 @@
         "unknownModel": "Modello sconosciuto",
         "alreadyDeveloper": "Sei già uno sviluppatore",
         "developerActivated": "Modalità sviluppatore attivata!",
-        "tapsAway": "Sei a %d tocchi dal diventare sviluppatore",
-        "na": "N/D",
-        "versionInfo": "Versione %s — %s",
+        "tapsAway": "Sei a {count} tocchi dal diventare sviluppatore",
+        "na": "N/A",
+        "versionInfo": "Versione {version} — {build}",
         "localBuild": "Build locale",
-        "commit": "Commit %s",
-        "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
+        "commit": "Commit {hash}",
+        "copyright": "Apache License 2.0 — © {year} Open Resin Alliance"
     },
     "settings": {
         "finalize": "Finalizza impostazioni",
@@ -438,9 +438,9 @@
         "checkLcdClean": "Verificare che LCD e piastra siano puliti e asciutti",
         "checkInstallPlate": "Installare la piattaforma di costruzione",
         "failedMoveToTop": "Salita fallita",
-        "moveFailed": "Movimento fallito: %s",
+        "moveFailed": "Movimento fallito: {error}",
         "failedHoming": "Riferimento fallito",
-        "homingFailed": "Riferimento fallito: %s",
+        "homingFailed": "Riferimento fallito: {error}",
         "emergencyStop": "Arresto emergenza",
         "allClear": "Tutto ok",
         "downwardWarning": "Questa stampante scende verso lo schermo.",
@@ -451,7 +451,7 @@
         "introDetail": "La stampante si sposterà verso la posizione di home. Assicurati che il percorso sia libero.",
         "startLeveling": "Avvia livellamento",
         "starting": "Avvio...",
-        "guideProgress": "Guida livellamento (%s/%s)",
+        "guideProgress": "Guida livellamento ({step}/{total})",
         "selectBuildArm": "Seleziona braccio"
     },
     "manualLeveling": {
@@ -582,8 +582,8 @@
         "locked": "Bloccato",
         "edit": "Modifica",
         "addResin": "Aggiungi resina",
-        "viscosity": "Viscosità: %s",
-        "exposureLabel": "Esposizione: %s",
+        "viscosity": "Viscosità: {value}",
+        "exposureLabel": "Esposizione: {value}",
         "implementAddResin": "Aggiunta resina in arrivo",
         "ok": "OK"
     },
@@ -630,12 +630,12 @@
     "debug": {
         "logNotFound": "File di log non trovato.",
         "errorReading": "Errore durante la lettura del log: %s",
-        "all": "Tutti (%d)",
-        "warning": "ATTENZIONE (%d)",
-        "severe": "GRAVE (%d)",
-        "info": "INFO (%d)",
-        "config": "CONFIG (%d)",
-        "fine": "FINE (%d)"
+        "all": "Tutti ({count})",
+        "warning": "ATTENZIONE ({count})",
+        "severe": "GRAVE ({count})",
+        "info": "INFO ({count})",
+        "config": "CONFIG ({count})",
+        "fine": "FINE ({count})"
     },
     "licenses": {
         "subtitle": "realizzato con questi fantastici pacchetti",
@@ -742,9 +742,9 @@
         "emergencyStop": "Arresto emergenza",
         "clearPath": "Liberare il percorso",
         "failedMoveTop": "Salita fallita",
-        "moveFailed": "Movimento fallito: %s",
+        "moveFailed": "Movimento fallito: {error}",
         "failedHoming": "Riferimento fallito",
-        "homingFailed": "Riferimento fallito: %s"
+        "homingFailed": "Riferimento fallito: {error}"
     },
     "notification": {
         "error": "Errore",

@@ -212,11 +212,11 @@
         "unknownModel": "不明",
         "alreadyDeveloper": "既に開発者です",
         "developerActivated": "開発者モードを有効化！",
-        "tapsAway": "あと%dタップで開発者モード",
-        "versionInfo": "バージョン %s — %s",
+        "tapsAway": "あと{count}タップで開発者モード",
+        "versionInfo": "バージョン {version} — {build}",
         "localBuild": "ローカルビルド",
-        "commit": "コミット %s",
-        "copyright": "Apache License 2.0 — © %d Open Resin Alliance",
+        "commit": "コミット {hash}",
+        "copyright": "Apache License 2.0 — © {year} Open Resin Alliance",
         "na": "N/A"
     },
     "settings": {
@@ -438,9 +438,9 @@
         "checkLcdClean": "LCDとビルドプレートが清潔で乾いていることを確認",
         "checkInstallPlate": "ビルドプレートを取り付けて固定",
         "failedMoveToTop": "上昇失敗",
-        "moveFailed": "移動失敗: %s",
+        "moveFailed": "移動失敗: {error}",
         "failedHoming": "原点復帰失敗",
-        "homingFailed": "原点復帰失敗: %s",
+        "homingFailed": "原点復帰失敗: {error}",
         "emergencyStop": "緊急停止",
         "allClear": "異常なし",
         "downwardWarning": "このプリンターはスクリーンに向かって下降します。",
@@ -451,7 +451,7 @@
         "introDetail": "プリンターがホームポジションに移動します。動作経路が安全であることを確認してください。",
         "startLeveling": "レベリング開始",
         "starting": "起動中...",
-        "guideProgress": "レベリングガイド (%s/%s)",
+        "guideProgress": "レベリングガイド ({step}/{total})",
         "selectBuildArm": "ビルドアーム選択"
     },
     "manualLeveling": {
@@ -582,8 +582,8 @@
         "locked": "ロック済",
         "edit": "編集",
         "addResin": "レジン追加",
-        "viscosity": "粘度: %s",
-        "exposureLabel": "露光: %s",
+        "viscosity": "粘度: {value}",
+        "exposureLabel": "露光: {value}",
         "implementAddResin": "レジン追加は近日対応予定",
         "ok": "OK"
     },
@@ -630,12 +630,12 @@
     "debug": {
         "logNotFound": "ログファイルが見つかりません。",
         "errorReading": "ログ読込エラー: %s",
-        "all": "すべて(%d)",
-        "info": "INFO (%d)",
-        "config": "CONFIG (%d)",
-        "fine": "FINE (%d)",
-        "warning": "WARNING (%d)",
-        "severe": "SEVERE (%d)"
+        "all": "すべて({count})",
+        "info": "INFO ({count})",
+        "config": "CONFIG ({count})",
+        "fine": "FINE ({count})",
+        "warning": "WARNING ({count})",
+        "severe": "SEVERE ({count})"
     },
     "licenses": {
         "subtitle": "これらの素晴らしいパッケージに支えられています",
@@ -742,9 +742,9 @@
         "emergencyStop": "緊急停止",
         "clearPath": "移動経路を確保",
         "failedMoveTop": "上昇失敗",
-        "moveFailed": "移動失敗: %s",
+        "moveFailed": "移動失敗: {error}",
         "failedHoming": "原点復帰失敗",
-        "homingFailed": "原点復帰失敗: %s"
+        "homingFailed": "原点復帰失敗: {error}"
     },
     "notification": {
         "error": "エラー",

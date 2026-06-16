@@ -211,13 +211,13 @@
         "unknownModel": "Unbekanntes Modell",
         "alreadyDeveloper": "Sie sind bereits ein Entwickler",
         "developerActivated": "Entwicklermodus aktiviert: Sie sind jetzt ein Entwickler!",
-        "tapsAway": "Noch %d Taps bis zum Entwicklermodus",
+        "tapsAway": "Noch {count} Taps bis zum Entwicklermodus",
         "uiVersion": "UI- und API-Version",
         "na": "k. A.",
-        "versionInfo": "Version %s — %s",
+        "versionInfo": "Version {version} — {build}",
         "localBuild": "Lokaler Build",
-        "commit": "Commit %s",
-        "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
+        "commit": "Commit {hash}",
+        "copyright": "Apache License 2.0 — © {year} Open Resin Alliance"
     },
     "settings": {
         "finalize": "Einstellungen übernehmen",
@@ -438,9 +438,9 @@
         "checkLcdClean": "Sicherstellen, dass LCD und Bauplatte sauber und trocken sind",
         "checkInstallPlate": "Bauplatte installieren und festziehen",
         "failedMoveToTop": "Bewegung nach oben fehlgeschlagen",
-        "moveFailed": "Bewegung fehlgeschlagen: %s",
+        "moveFailed": "Bewegung fehlgeschlagen: {error}",
         "failedHoming": "Referenzfahrt fehlgeschlagen",
-        "homingFailed": "Referenzfahrt fehlgeschlagen: %s",
+        "homingFailed": "Referenzfahrt fehlgeschlagen: {error}",
         "emergencyStop": "Not-Stopp",
         "allClear": "Alles klar",
         "downwardWarning": "Dieser Drucker fährt zum Bildschirm hin ab.",
@@ -451,7 +451,7 @@
         "introDetail": "Der Drucker fährt in die Ausgangsposition. Bitte stellen Sie sicher, dass der Bewegungsweg frei ist.",
         "startLeveling": "Nivellierung starten",
         "starting": "Starte...",
-        "guideProgress": "Nivellierungsanleitung (%s/%s)",
+        "guideProgress": "Nivellierungsanleitung ({step}/{total})",
         "selectBuildArm": "Bauarm auswählen"
     },
     "manualLeveling": {
@@ -582,8 +582,8 @@
         "locked": "Gesperrt",
         "edit": "Bearb.",
         "addResin": "Harz hinzufügen",
-        "viscosity": "Viskosität: %s",
-        "exposureLabel": "Belichtung: %s",
+        "viscosity": "Viskosität: {value}",
+        "exposureLabel": "Belichtung: {value}",
         "implementAddResin": "Harz hinzufügen in Kürze verfügbar",
         "ok": "OK"
     },
@@ -630,12 +630,12 @@
     "debug": {
         "logNotFound": "Logdatei nicht gefunden.",
         "errorReading": "Fehler beim Lesen der Logdatei: %s",
-        "all": "Alle (%d)",
-        "info": "INFO (%d)",
-        "config": "CONFIG (%d)",
-        "fine": "FINE (%d)",
-        "warning": "WARNUNG (%d)",
-        "severe": "SCHWERWIEGEND (%d)"
+        "all": "Alle ({count})",
+        "info": "INFO ({count})",
+        "config": "CONFIG ({count})",
+        "fine": "FINE ({count})",
+        "warning": "WARNUNG ({count})",
+        "severe": "SCHWERWIEGEND ({count})"
     },
     "licenses": {
         "subtitle": "erstellt mit Hilfe dieser großartigen Pakete",
@@ -742,9 +742,9 @@
         "emergencyStop": "Not-Stopp",
         "clearPath": "Bewegungsbahn freimachen",
         "failedMoveTop": "Bewegung nach oben fehlgeschlagen",
-        "moveFailed": "Bewegung fehlgeschlagen: %s",
+        "moveFailed": "Bewegung fehlgeschlagen: {error}",
         "failedHoming": "Referenzfahrt fehlgeschlagen",
-        "homingFailed": "Referenzfahrt fehlgeschlagen: %s"
+        "homingFailed": "Referenzfahrt fehlgeschlagen: {error}"
     },
     "notification": {
         "error": "Fehler",

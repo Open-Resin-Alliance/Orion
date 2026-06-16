@@ -184,7 +184,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
     final confirmed = await _showConfirmationDialog(
       title: FlutterI18n.translate(context, 'manualLeveling.setZZero'),
       message: FlutterI18n.translate(context, 'manualLeveling.setZConfirm',
-          translationParams: {'0': currentZ.toStringAsFixed(2)}),
+          translationParams: {'z': currentZ.toStringAsFixed(2)}),
       confirmLabel: FlutterI18n.translate(context, 'manualLeveling.setOffset'),
       icon: PhosphorIcons.warning(),
       accentColor: Colors.orangeAccent,

@@ -680,7 +680,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     final targetLabel = isSingle
         ? _resolveSelectionDisplayName(_selectedFileKeys.first)
         : FlutterI18n.translate(context, 'files.files',
-            translationParams: {'0': count.toString()});
+            translationParams: {'count': count.toString()});
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -787,7 +787,7 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(FlutterI18n.translate(context, 'files.deleteFailed',
-                translationParams: {'0': failures.length.toString()})),
+                translationParams: {'count': failures.length.toString()})),
           ),
         );
       }
@@ -1656,8 +1656,8 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     final progressText = _bulkDeleteTotal > 0
         ? FlutterI18n.translate(context, 'files.deletingProgress',
             translationParams: {
-                '0': _bulkDeleteCompleted.toString(),
-                '1': _bulkDeleteTotal.toString()
+                'completed': _bulkDeleteCompleted.toString(),
+                'total': _bulkDeleteTotal.toString()
               })
         : FlutterI18n.translate(context, 'files.deleting');
 

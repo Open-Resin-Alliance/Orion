@@ -315,7 +315,7 @@ class ImportScreenState extends State<ImportScreen> {
       _logger.severe('Failed to import file', e, st);
       if (mounted) {
         final failMsg = FlutterI18n.translate(context, 'import.failedToImport',
-            translationParams: {'0': e.toString()});
+            translationParams: {'error': e.toString()});
         messageNotifier.value = failMsg;
         progressNotifier.value = 0.0;
 

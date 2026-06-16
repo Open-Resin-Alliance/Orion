@@ -656,7 +656,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
             SnackBar(
                 content: Text(FlutterI18n.translate(
                     context, 'leveling.moveFailed',
-                    translationParams: {'0': e.toString()}))),
+                    translationParams: {'error': e.toString()}))),
           );
         }
       } else {
@@ -684,7 +684,7 @@ class _LevelingHomingScreenState extends State<_LevelingHomingScreen>
             SnackBar(
                 content: Text(FlutterI18n.translate(
                     context, 'leveling.homingFailed',
-                    translationParams: {'0': e.toString()}))),
+                    translationParams: {'error': e.toString()}))),
           );
         }
       }
@@ -1586,8 +1586,8 @@ class _LevelingGuideScreenState extends State<_LevelingGuideScreen> {
               Text(
                 FlutterI18n.translate(context, 'leveling.guideProgress',
                     translationParams: {
-                      '0': (_currentStep + 1).toString(),
-                      '1': widget.guide.steps.length.toString()
+                      'step': (_currentStep + 1).toString(),
+                      'total': widget.guide.steps.length.toString()
                     }),
                 style: TextStyle(
                   fontSize: 24,

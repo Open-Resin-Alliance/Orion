@@ -211,13 +211,13 @@
     "unknownModel": "Modelo desconocido",
     "alreadyDeveloper": "Ya eres desarrollador",
     "developerActivated": "¡Modo desarrollador activado!",
-    "tapsAway": "Te faltan %d toques para ser desarrollador",
+    "tapsAway": "Te faltan {count} toques para ser desarrollador",
     "na": "N/D",
-    "versionInfo": "Versión %s — %s",
+    "versionInfo": "Versión {version} — {build}",
     "localBuild": "Compilación local",
-    "commit": "Commit %s",
+    "commit": "Commit {hash}",
     "hardwareLocal": "Hardware (Local)",
-    "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
+    "copyright": "Apache License 2.0 — © {year} Open Resin Alliance"
   },
   "settings": {
     "finalize": "Finalizar",
@@ -438,9 +438,9 @@
     "checkLcdClean": "Confirmar que LCD y placa están limpios y secos",
     "checkInstallPlate": "Instalar la placa de construcción",
     "failedMoveToTop": "Error al subir",
-    "moveFailed": "Error de movimiento: %s",
+    "moveFailed": "Error de movimiento: {error}",
     "failedHoming": "Error de referencia",
-    "homingFailed": "Error de referencia: %s",
+    "homingFailed": "Error de referencia: {error}",
     "emergencyStop": "Parada de emergencia",
     "allClear": "Todo listo",
     "downwardWarning": "Esta impresora desciende hacia la pantalla.",
@@ -451,7 +451,7 @@
     "introDetail": "La impresora se moverá a la posición de inicio. Asegúrese de que la ruta esté despejada.",
     "startLeveling": "Iniciar nivelación",
     "starting": "Iniciando...",
-    "guideProgress": "Guía de nivelación (%s/%s)",
+    "guideProgress": "Guía de nivelación ({step}/{total})",
     "selectBuildArm": "Seleccionar brazo"
   },
   "manualLeveling": {
@@ -582,8 +582,8 @@
     "locked": "Bloqueado",
     "edit": "Editar",
     "addResin": "Añadir resina",
-    "viscosity": "Viscosidad: %s",
-    "exposureLabel": "Exposición: %s",
+    "viscosity": "Viscosidad: {value}",
+    "exposureLabel": "Exposición: {value}",
     "implementAddResin": "Añadir resina próximamente",
     "ok": "OK"
   },
@@ -630,12 +630,12 @@
   "debug": {
     "logNotFound": "Log no encontrado.",
     "errorReading": "Error al leer: %s",
-    "all": "Todo (%d)",
-    "warning": "ADVERTENCIA (%d)",
-    "severe": "GRAVE (%d)",
-    "info": "INFO (%d)",
-    "config": "CONFIG (%d)",
-    "fine": "FINE (%d)"
+    "all": "Todo ({count})",
+    "warning": "ADVERTENCIA ({count})",
+    "severe": "GRAVE ({count})",
+    "info": "INFO ({count})",
+    "config": "CONFIG ({count})",
+    "fine": "FINE ({count})"
   },
   "licenses": {
     "subtitle": "construido con estos paquetes increíbles",
@@ -742,9 +742,9 @@
     "emergencyStop": "Parada de emergencia",
     "clearPath": "Liberar la trayectoria",
     "failedMoveTop": "Error al subir",
-    "moveFailed": "Error de movimiento: %s",
+    "moveFailed": "Error de movimiento: {error}",
     "failedHoming": "Error de referencia",
-    "homingFailed": "Error de referencia: %s"
+    "homingFailed": "Error de referencia: {error}"
   },
   "notification": {
     "error": "Error",

@@ -350,7 +350,8 @@ class DebugScreenState extends State<DebugScreen> {
                                       FlutterI18n.translate(
                                           context, 'debug.all',
                                           translationParams: {
-                                            '0': logMessages.length.toString()
+                                            'count':
+                                                logMessages.length.toString()
                                           }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
@@ -377,10 +378,12 @@ class DebugScreenState extends State<DebugScreen> {
                                   const SizedBox(width: 12.0),
                                   GlassFilterChip(
                                     label: Text(
-                                      FlutterI18n.translate(context,
-                                          'debug.info', translationParams: {
-                                        '0': (logCounts['INFO'] ?? 0).toString()
-                                      }),
+                                      FlutterI18n.translate(
+                                          context, 'debug.info',
+                                          translationParams: {
+                                            'count': (logCounts['INFO'] ?? 0)
+                                                .toString()
+                                          }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     selected: showInfo,
@@ -396,7 +399,7 @@ class DebugScreenState extends State<DebugScreen> {
                                       FlutterI18n.translate(
                                           context, 'debug.config',
                                           translationParams: {
-                                            '0': (logCounts['CONFIG'] ?? 0)
+                                            'count': (logCounts['CONFIG'] ?? 0)
                                                 .toString()
                                           }),
                                       style: const TextStyle(fontSize: 18),
@@ -411,10 +414,12 @@ class DebugScreenState extends State<DebugScreen> {
                                   const SizedBox(width: 8.0),
                                   GlassFilterChip(
                                     label: Text(
-                                      FlutterI18n.translate(context,
-                                          'debug.fine', translationParams: {
-                                        '0': (logCounts['FINE'] ?? 0).toString()
-                                      }),
+                                      FlutterI18n.translate(
+                                          context, 'debug.fine',
+                                          translationParams: {
+                                            'count': (logCounts['FINE'] ?? 0)
+                                                .toString()
+                                          }),
                                       style: const TextStyle(fontSize: 18),
                                     ),
                                     selected: showFine,
@@ -430,7 +435,7 @@ class DebugScreenState extends State<DebugScreen> {
                                       FlutterI18n.translate(
                                           context, 'debug.warning',
                                           translationParams: {
-                                            '0': (logCounts['WARNING'] ?? 0)
+                                            'count': (logCounts['WARNING'] ?? 0)
                                                 .toString()
                                           }),
                                       style: const TextStyle(fontSize: 18),
@@ -448,7 +453,7 @@ class DebugScreenState extends State<DebugScreen> {
                                       FlutterI18n.translate(
                                           context, 'debug.severe',
                                           translationParams: {
-                                            '0': (logCounts['SEVERE'] ?? 0)
+                                            'count': (logCounts['SEVERE'] ?? 0)
                                                 .toString()
                                           }),
                                       style: const TextStyle(fontSize: 18),

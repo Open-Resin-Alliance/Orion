@@ -212,12 +212,12 @@
         "unknownModel": "Onbekend model",
         "alreadyDeveloper": "U bent al een ontwikkelaar",
         "developerActivated": "Ontwikkelaarsmodus geactiveerd!",
-        "tapsAway": "U bent nog %d tikken verwijderd van ontwikkelaarsmodus",
-        "na": "N.v.t.",
-        "versionInfo": "Versie %s — %s",
+        "tapsAway": "U bent nog {count} tikken verwijderd van ontwikkelaarsmodus",
+        "na": "N/A",
+        "versionInfo": "Versie {version} — {build}",
         "localBuild": "Lokale build",
-        "commit": "Commit %s",
-        "copyright": "Apache Licentie 2.0 — © %d Open Resin Alliance"
+        "commit": "Commit {hash}",
+        "copyright": "Apache Licentie 2.0 — © {year} Open Resin Alliance"
     },
     "settings": {
         "finalize": "Instellingen voltooien",
@@ -438,9 +438,9 @@
         "checkLcdClean": "Controleer of LCD en bouwplaat schoon en droog zijn",
         "checkInstallPlate": "Bouwplaat installeren en vastzetten",
         "failedMoveToTop": "Naar boven bewegen mislukt",
-        "moveFailed": "Beweging mislukt: %s",
+        "moveFailed": "Beweging mislukt: {error}",
         "failedHoming": "Referentiepunt zoeken mislukt",
-        "homingFailed": "Referentiepunt zoeken mislukt: %s",
+        "homingFailed": "Referentiepunt zoeken mislukt: {error}",
         "emergencyStop": "Noodstop",
         "allClear": "Alles veilig",
         "downwardWarning": "Deze printer beweegt omlaag naar het scherm.",
@@ -451,7 +451,7 @@
         "introDetail": "De printer gaat naar de startpositie. Zorg dat het bewegingstraject vrij is.",
         "startLeveling": "Waterpas stellen starten",
         "starting": "Starten...",
-        "guideProgress": "Waterpas gids (%s/%s)",
+        "guideProgress": "Waterpas gids ({step}/{total})",
         "selectBuildArm": "Bouward selecteren"
     },
     "manualLeveling": {
@@ -582,8 +582,8 @@
         "locked": "Vergrendeld",
         "edit": "Bewerken",
         "addResin": "Hars toevoegen",
-        "viscosity": "Viscositeit: %s",
-        "exposureLabel": "Belichting: %s",
+        "viscosity": "Viscositeit: {value}",
+        "exposureLabel": "Belichting: {value}",
         "implementAddResin": "Hars toevoegen binnenkort",
         "ok": "OK"
     },
@@ -630,12 +630,12 @@
     "debug": {
         "logNotFound": "Logbestand niet gevonden.",
         "errorReading": "Fout bij lezen logbestand: %s",
-        "all": "Alle (%d)",
-        "warning": "WAARSCHUWING (%d)",
-        "info": "INFO (%d)",
-        "config": "CONFIG (%d)",
-        "fine": "FINE (%d)",
-        "severe": "ERNSTIG (%d)"
+        "all": "Alle ({count})",
+        "warning": "WAARSCHUWING ({count})",
+        "info": "INFO ({count})",
+        "config": "CONFIG ({count})",
+        "fine": "FINE ({count})",
+        "severe": "ERNSTIG ({count})"
     },
     "licenses": {
         "subtitle": "gebouwd met deze geweldige pakketten",
@@ -742,9 +742,9 @@
         "emergencyStop": "Noodstop",
         "clearPath": "Bewegingspad vrijmaken",
         "failedMoveTop": "Naar boven bewegen mislukt",
-        "moveFailed": "Beweging mislukt: %s",
+        "moveFailed": "Beweging mislukt: {error}",
         "failedHoming": "Referentiepunt zoeken mislukt",
-        "homingFailed": "Referentiepunt zoeken mislukt: %s"
+        "homingFailed": "Referentiepunt zoeken mislukt: {error}"
     },
     "notification": {
         "error": "Fout",

@@ -220,18 +220,18 @@ class AboutScreenState extends State<AboutScreen> {
             applicationVersion: FlutterI18n.translate(
                 context, 'about.versionInfo',
                 translationParams: {
-                  '0': Pubspec.version,
-                  '1': Pubspec.versionFull.toString().split('+')[1] ==
+                  'version': Pubspec.version,
+                  'build': Pubspec.versionFull.toString().split('+')[1] ==
                           'SELFCOMPILED'
                       ? FlutterI18n.translate(context, 'about.localBuild')
-                      : FlutterI18n.translate(context, 'about.commit',
-                          translationParams: {
-                              '0': Pubspec.versionFull.toString().split('+')[1]
-                            }),
+                      : FlutterI18n.translate(
+                          context, 'about.commit', translationParams: {
+                          'hash': Pubspec.versionFull.toString().split('+')[1]
+                        }),
                 }),
             applicationLegalese: FlutterI18n.translate(
                 context, 'about.copyright',
-                translationParams: {'0': DateTime.now().year.toString()}),
+                translationParams: {'year': DateTime.now().year.toString()}),
             applicationIcon: Image.asset(
               'assets/images/ora/open_resin_alliance_logo_darkmode.png',
               width: 100,
@@ -542,7 +542,7 @@ class AboutScreenState extends State<AboutScreen> {
             autoCloseDuration: const Duration(seconds: 2),
             title: Text(
                 FlutterI18n.translate(context, 'about.tapsAway',
-                    translationParams: {'0': (5 - qrTapCount).toString()}),
+                    translationParams: {'count': (5 - qrTapCount).toString()}),
                 style: const TextStyle(fontSize: 18)),
             alignment: Alignment.topCenter,
             primaryColor: Theme.of(context).colorScheme.primary,

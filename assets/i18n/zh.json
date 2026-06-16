@@ -212,12 +212,12 @@
         "unknownModel": "未知型号",
         "alreadyDeveloper": "您已经是开发者",
         "developerActivated": "开发者模式已激活！",
-        "tapsAway": "再点击%d次即可成为开发者",
-        "na": "无",
-        "versionInfo": "版本 %s — %s",
+        "tapsAway": "再点击{count}次即可成为开发者",
+        "na": "N/A",
+        "versionInfo": "版本 {version} — {build}",
         "localBuild": "本地构建",
-        "commit": "提交 %s",
-        "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
+        "commit": "提交 {hash}",
+        "copyright": "Apache License 2.0 — © {year} Open Resin Alliance"
     },
     "settings": {
         "finalize": "完成设置",
@@ -451,7 +451,7 @@
         "introDetail": "打印机将移动到归位位置。请确保运动路径畅通。",
         "startLeveling": "开始调平",
         "starting": "启动中...",
-        "guideProgress": "调平指南 (%s/%s)",
+        "guideProgress": "调平指南 ({step}/{total})",
         "selectBuildArm": "选择构建臂"
     },
     "manualLeveling": {
@@ -583,8 +583,8 @@
         "edit": "编辑",
         "addResin": "添加树脂",
         "ok": "确定",
-        "viscosity": "粘度: %s",
-        "exposureLabel": "曝光: %s",
+        "viscosity": "粘度: {value}",
+        "exposureLabel": "曝光: {value}",
         "implementAddResin": "添加树脂功能即将推出"
     },
     "status": {
@@ -630,12 +630,12 @@
     "debug": {
         "logNotFound": "未找到日志文件。",
         "errorReading": "读取日志出错: %s",
-        "all": "全部(%d)",
-        "info": "INFO (%d)",
-        "config": "CONFIG (%d)",
-        "fine": "FINE (%d)",
-        "warning": "WARNING (%d)",
-        "severe": "SEVERE (%d)"
+        "all": "全部({count})",
+        "info": "INFO ({count})",
+        "config": "CONFIG ({count})",
+        "fine": "FINE ({count})",
+        "warning": "WARNING ({count})",
+        "severe": "SEVERE ({count})"
     },
     "licenses": {
         "subtitle": "借助这些出色的包构建",

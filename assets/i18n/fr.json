@@ -212,12 +212,12 @@
     "unknownModel": "Modèle inconnu",
     "alreadyDeveloper": "Vous êtes déjà développeur",
     "developerActivated": "Mode développeur activé !",
-    "tapsAway": "Plus que %d appuis pour devenir développeur",
-    "na": "N/D",
-    "versionInfo": "Version %s — %s",
+    "tapsAway": "Plus que {count} appuis pour devenir développeur",
+    "na": "N/A",
+    "versionInfo": "Version {version} — {build}",
     "localBuild": "Build local",
-    "commit": "Commit %s",
-    "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
+    "commit": "Commit {hash}",
+    "copyright": "Apache License 2.0 — © {year} Open Resin Alliance"
   },
   "settings": {
     "finalize": "Finaliser",
@@ -438,9 +438,9 @@
     "checkLcdClean": "Vérifier que l'écran et le plateau sont propres et secs",
     "checkInstallPlate": "Installer le plateau de construction",
     "failedMoveToTop": "Montée impossible",
-    "moveFailed": "Mouvement impossible : %s",
+    "moveFailed": "Mouvement impossible : {error}",
     "failedHoming": "Référencement impossible",
-    "homingFailed": "Référencement impossible : %s",
+    "homingFailed": "Référencement impossible : {error}",
     "emergencyStop": "Arrêt d'urgence",
     "allClear": "Tout est OK",
     "downwardWarning": "Cette imprimante descend vers l'écran.",
@@ -451,7 +451,7 @@
     "introDetail": "L'imprimante va se déplacer vers la position d'origine. Assurez-vous que la trajectoire est dégagée.",
     "startLeveling": "Démarrer le nivellement",
     "starting": "Démarrage...",
-    "guideProgress": "Guide de nivellement (%s/%s)",
+    "guideProgress": "Guide de nivellement ({step}/{total})",
     "selectBuildArm": "Sélectionner le bras"
   },
   "manualLeveling": {
@@ -582,8 +582,8 @@
     "locked": "Verrouillé",
     "edit": "Modifier",
     "addResin": "Ajouter",
-    "viscosity": "Viscosité : %s",
-    "exposureLabel": "Exposition : %s",
+    "viscosity": "Viscosité : {value}",
+    "exposureLabel": "Exposition : {value}",
     "implementAddResin": "Ajout de résine bientôt disponible",
     "ok": "OK"
   },
@@ -630,12 +630,12 @@
   "debug": {
     "logNotFound": "Log introuvable.",
     "errorReading": "Erreur de lecture : %s",
-    "all": "Tout (%d)",
-    "warning": "ATTENTION (%d)",
-    "severe": "GRAVE (%d)",
-    "info": "INFO (%d)",
-    "config": "CONFIG (%d)",
-    "fine": "FINE (%d)"
+    "all": "Tout ({count})",
+    "warning": "ATTENTION ({count})",
+    "severe": "GRAVE ({count})",
+    "info": "INFO ({count})",
+    "config": "CONFIG ({count})",
+    "fine": "FINE ({count})"
   },
   "licenses": {
     "subtitle": "construit avec ces super paquets",
@@ -742,9 +742,9 @@
     "emergencyStop": "Arrêt d'urgence",
     "clearPath": "Libérer la trajectoire",
     "failedMoveTop": "Montée impossible",
-    "moveFailed": "Mouvement impossible : %s",
+    "moveFailed": "Mouvement impossible : {error}",
     "failedHoming": "Référencement impossible",
-    "homingFailed": "Référencement impossible : %s"
+    "homingFailed": "Référencement impossible : {error}"
   },
   "notification": {
     "error": "Erreur",

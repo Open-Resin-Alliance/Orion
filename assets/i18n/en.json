@@ -145,16 +145,16 @@
         "noResults": "No Results (╯°□°)╯︵ ┻━┻",
         "usbSwitchToInternal": "USB unavailable, switched to Internal",
         "bulkDeleteNotSupported": "Bulk delete not supported for local USB files.",
-        "deleteFailed": "Failed to delete %s file(s).",
+        "deleteFailed": "Failed to delete {count} file(s).",
         "operationNotPermitted": "Operation not permitted",
         "deleteConfirmPlural": "You are about to delete %s files.\nDo you want to continue?\nThis action cannot be undone.",
         "deleting": "Deleting…",
-        "deletingProgress": "Deleting %s/%s",
+        "deletingProgress": "Deleting {completed}/{total}",
         "deleteConfirmPrefix": "You are about to delete ",
         "deleteConfirmSuffix": ".\nDo you want to continue?",
         "deleteCannotUndo": "This action cannot be undone.",
         "thisFile": "this file",
-        "files": "%s files"
+        "files": "{count} files"
     },
     "import": {
         "importingFile": "IMPORTING FILE",
@@ -169,7 +169,7 @@
         "importComplete": "Import complete!",
         "importCompletePending": "Import complete (metadata pending)",
         "importFailed": "Import failed!",
-        "failedToImport": "Failed to import file: %s",
+        "failedToImport": "Failed to import file: {error}",
         "failedLoadMaterials": "Failed to load material profiles",
         "dragonfruit": "Ever tried DragonFruit? It's delicious!",
         "waitingSlicer": "Waiting for slicer to start...",
@@ -212,12 +212,12 @@
         "unknownModel": "Unknown Model",
         "alreadyDeveloper": "You are already a developer",
         "developerActivated": "Developer Mode Activated: You are now a developer!",
-        "tapsAway": "You are %d taps away from becoming a developer",
+        "tapsAway": "You are {count} taps away from becoming a developer",
         "na": "N/A",
-        "versionInfo": "Version %s — %s",
+        "versionInfo": "Version {version} — {build}",
         "localBuild": "Local Build",
-        "commit": "Commit %s",
-        "copyright": "Apache License 2.0 — © %d Open Resin Alliance"
+        "commit": "Commit {hash}",
+        "copyright": "Apache License 2.0 — © {year} Open Resin Alliance"
     },
     "settings": {
         "finalize": "Finalize Settings",
@@ -438,9 +438,9 @@
         "checkLcdClean": "Confirm that LCD and build plate are clean and dry",
         "checkInstallPlate": "Install the build plate and ensure it is fully secured",
         "failedMoveToTop": "Failed to start move-to-top",
-        "moveFailed": "Move failed: %s",
+        "moveFailed": "Move failed: {error}",
         "failedHoming": "Failed to start homing",
-        "homingFailed": "Homing failed: %s",
+        "homingFailed": "Homing failed: {error}",
         "emergencyStop": "Emergency Stop",
         "allClear": "All clear",
         "downwardWarning": "This printer homes downward toward the screen.",
@@ -451,7 +451,7 @@
         "introDetail": "The printer will move to the home position to begin. Please ensure the motion path is clear.",
         "startLeveling": "Start Leveling",
         "starting": "Starting...",
-        "guideProgress": "Leveling Guide (%s/%s)",
+        "guideProgress": "Leveling Guide ({step}/{total})",
         "selectBuildArm": "Select Build Arm"
     },
     "manualLeveling": {
@@ -460,7 +460,7 @@
         "resetConfirm": "Reset Z offset to 0.00 mm?\n\nContinue?",
         "cancel": "Cancel",
         "setZZero": "Set Z = 0",
-        "setZConfirm": "Set current position (%s mm) as Z offset?\n\nContinue?",
+        "setZConfirm": "Set current position ({z} mm) as Z offset?\n\nContinue?",
         "setOffset": "Set Offset",
         "failedMoveZ": "Failed to move Z",
         "back": "Back",
@@ -583,8 +583,8 @@
         "edit": "Edit",
         "addResin": "Add Resin",
         "ok": "OK",
-        "viscosity": "Viscosity: %s",
-        "exposureLabel": "Exposure: %s",
+        "viscosity": "Viscosity: {value}",
+        "exposureLabel": "Exposure: {value}",
         "implementAddResin": "Add Resin flow coming soon"
     },
     "status": {
@@ -630,12 +630,12 @@
     "debug": {
         "logNotFound": "Log file not found.",
         "errorReading": "Error reading log file: %s",
-        "all": "All (%d)",
-        "info": "INFO (%d)",
-        "config": "CONFIG (%d)",
-        "fine": "FINE (%d)",
-        "warning": "WARNING (%d)",
-        "severe": "SEVERE (%d)"
+        "all": "All ({count})",
+        "info": "INFO ({count})",
+        "config": "CONFIG ({count})",
+        "fine": "FINE ({count})",
+        "warning": "WARNING ({count})",
+        "severe": "SEVERE ({count})"
     },
     "licenses": {
         "subtitle": "built with the help of these amazing packages",
@@ -741,9 +741,9 @@
         "emergencyStop": "Emergency Stop",
         "clearPath": "Clear the Motion Path",
         "failedMoveTop": "Failed to start move-to-top",
-        "moveFailed": "Move failed: %s",
+        "moveFailed": "Move failed: {error}",
         "failedHoming": "Failed to start homing",
-        "homingFailed": "Homing failed: %s",
+        "homingFailed": "Homing failed: {error}",
         "testZ": "Test Z Axis"
     },
     "notification": {

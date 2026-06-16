@@ -208,11 +208,11 @@ class ResinsScreenState extends State<ResinsScreen> {
     final parts = <String>[];
     if (meta['viscosity'] != null) {
       parts.add(FlutterI18n.translate(context, 'resins.viscosity',
-          translationParams: {'0': '${meta['viscosity']}'}));
+          translationParams: {'value': '${meta['viscosity']}'}));
     }
     if (meta['exposure'] != null) {
       parts.add(FlutterI18n.translate(context, 'resins.exposureLabel',
-          translationParams: {'0': '${meta['exposure']}'}));
+          translationParams: {'value': '${meta['exposure']}'}));
     }
 
     final key = resin.path ?? resin.name;
