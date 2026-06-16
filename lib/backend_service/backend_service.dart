@@ -21,6 +21,7 @@ import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 import 'package:orion/backend_service/athena_iot/models/athena_feature_flags.dart';
 import 'package:orion/backend_service/athena_iot/models/athena_printer_data.dart';
+import 'package:orion/backend_service/athena_iot/models/force_leveling_workflow.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
@@ -316,6 +317,35 @@ class BackendService implements BackendClient {
       _log.warning(
           'Failed to fetch Athena printer_data via BackendService', e, st);
       return <String, dynamic>{};
+    }
+  }
+
+  Future<ForceLevelingWorkflowResponse> runForceLevelingWorkflow(
+    String endpoint, {
+    Duration? requestTimeout,
+  }) async {
+    if (!supportsCapability(BackendCapabilities.supportsForceLeveling)) {
+      return const ForceLevelingWorkflowResponse(
+        result: false,
+        error: 'Force leveling is not supported by this backend.',
+      );
+    }
+
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) {
+        return const ForceLevelingWorkflowResponse(
+          result: false,
+          error: 'Athena IoT client is not available.',
+        );
+      }
+      return await client.runForceLevelingWorkflow(endpoint);
+    } catch (e, st) {
+      _log.warning('Failed to run force leveling workflow: $endpoint', e, st);
+      return ForceLevelingWorkflowResponse(
+        result: false,
+        error: e.toString(),
+      );
     }
   }
 

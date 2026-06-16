@@ -78,7 +78,6 @@ mixin Pubspec {
     'marquee': '^2.3.0',
     'json_annotation': '^4.9.0',
     'fl_chart': '^1.1.1',
-    'video_player': '^2.10.1',
     'google_fonts': '^6.1.0',
   };
 
@@ -105,7 +104,6 @@ mixin Pubspec {
       'assets/images/concepts_3d/c3d.svg',
       'assets/images/concepts_3d/a2_pro_arm.svg',
       'assets/images/concepts_3d/a2_standard_arm.svg',
-      'assets/videos/concepts_3d/athena2_regular_step1.mp4',
       'assets/scripts/set_orion_config.sh',
       'README.md',
       'CHANGELOG.md',

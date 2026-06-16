@@ -1,6 +1,6 @@
 /*
 * Orion - Leveling Configs
-* Copyright (C) 2025 Open Resin Alliance
+* Copyright (C) 2026 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -18,21 +18,29 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-class LevelingStep {
-  final String videoPath;
-  final String text;
-
-  const LevelingStep({
-    required this.videoPath,
-    required this.text,
-  });
+enum LevelingWorkflowStepKind {
+  prepare,
+  probe,
+  finalOffset,
 }
 
-class LevelingGuide {
-  final List<LevelingStep> steps;
+class LevelingWorkflowStep {
+  final String id;
+  final String endpoint;
+  final String titleKey;
+  final String instructionKey;
+  final String? imagePath;
+  final IconData icon;
+  final LevelingWorkflowStepKind kind;
 
-  const LevelingGuide({
-    required this.steps,
+  const LevelingWorkflowStep({
+    required this.id,
+    required this.endpoint,
+    required this.titleKey,
+    required this.instructionKey,
+    required this.icon,
+    this.imagePath,
+    this.kind = LevelingWorkflowStepKind.probe,
   });
 }
 
@@ -42,31 +50,97 @@ class LevelingVariant {
   final String description;
   final String? assetPath;
   final IconData? icon;
-  final LevelingGuide? guide;
+  final String finalEndpoint;
+  final String successKey;
 
   const LevelingVariant({
     required this.id,
     required this.label,
     required this.description,
+    required this.finalEndpoint,
+    required this.successKey,
     this.assetPath,
     this.icon,
-    this.guide,
   });
+
+  List<LevelingWorkflowStep> buildSteps() {
+    return [
+      ...athena2BaseWorkflowSteps,
+      LevelingWorkflowStep(
+        id: finalEndpoint,
+        endpoint: finalEndpoint,
+        titleKey: 'levelingWorkflow.finalOffsetTitle',
+        instructionKey: finalEndpoint == 'probe_standardarm'
+            ? 'levelingWorkflow.standardArmInstruction'
+            : 'levelingWorkflow.offsetInstruction',
+        icon: PhosphorIcons.crosshair(),
+        kind: LevelingWorkflowStepKind.finalOffset,
+      ),
+    ];
+  }
 }
 
 class LevelingConfig {
   final String machineIdPrefix;
+  final List<String> checklistKeys;
   final List<LevelingVariant> variants;
 
   const LevelingConfig({
     required this.machineIdPrefix,
+    required this.checklistKeys,
     required this.variants,
   });
 }
 
+const List<LevelingWorkflowStep> athena2BaseWorkflowSteps = [
+  LevelingWorkflowStep(
+    id: 'probe_prepare',
+    endpoint: 'probe_prepare',
+    titleKey: 'levelingWorkflow.prepareTitle',
+    instructionKey: 'levelingWorkflow.prepareInstruction',
+    icon: PhosphorIconsFill.house,
+    kind: LevelingWorkflowStepKind.prepare,
+  ),
+  LevelingWorkflowStep(
+    id: 'probe_screen',
+    endpoint: 'probe_screen',
+    titleKey: 'levelingWorkflow.screenTitle',
+    instructionKey: 'levelingWorkflow.screenInstruction',
+    icon: PhosphorIconsFill.crosshair,
+  ),
+  LevelingWorkflowStep(
+    id: 'probe_corner_prepare',
+    endpoint: 'probe_corner_prepare',
+    titleKey: 'levelingWorkflow.cornerPrepareTitle',
+    instructionKey: 'levelingWorkflow.cornerPrepareInstruction',
+    icon: PhosphorIconsFill.house,
+    kind: LevelingWorkflowStepKind.prepare,
+  ),
+  LevelingWorkflowStep(
+    id: 'probe_corner',
+    endpoint: 'probe_corner',
+    titleKey: 'levelingWorkflow.cornerTitle',
+    instructionKey: 'levelingWorkflow.cornerInstruction',
+    icon: PhosphorIconsFill.crosshair,
+  ),
+  LevelingWorkflowStep(
+    id: 'probe_levelcheck',
+    endpoint: 'probe_levelcheck',
+    titleKey: 'levelingWorkflow.levelCheckTitle',
+    instructionKey: 'levelingWorkflow.levelCheckInstruction',
+    icon: PhosphorIconsFill.checkCircle,
+  ),
+];
+
 const List<LevelingConfig> levelingConfigs = [
   LevelingConfig(
     machineIdPrefix: 'Athena2',
+    checklistKeys: [
+      'leveling.removeVat',
+      'leveling.checkHexKeys',
+      'leveling.checkInstallPlate',
+      'leveling.checkLcdClean',
+    ],
     variants: [
       LevelingVariant(
         id: 'regular',
@@ -74,20 +148,8 @@ const List<LevelingConfig> levelingConfigs = [
         description: 'Athena 2 standard build arm.',
         assetPath: 'assets/images/concepts_3d/a2_standard_arm.svg',
         icon: PhosphorIconsFill.wrench,
-        guide: LevelingGuide(
-          steps: [
-            LevelingStep(
-              videoPath: 'assets/videos/concepts_3d/athena2_regular_step1.mp4',
-              text:
-                  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-            ),
-            LevelingStep(
-              videoPath: 'assets/videos/concepts_3d/athena2_regular_step2.mp4',
-              text:
-                  'Gently press down on the build plate to ensure it is flat against the LCD screen. Tighten the screws in a cross pattern.',
-            ),
-          ],
-        ),
+        finalEndpoint: 'probe_standardarm',
+        successKey: 'levelingWorkflow.standardArmSuccess',
       ),
       LevelingVariant(
         id: 'pro',
@@ -95,20 +157,8 @@ const List<LevelingConfig> levelingConfigs = [
         description: 'Improved leveling & latching mechanism.',
         assetPath: 'assets/images/concepts_3d/a2_pro_arm.svg',
         icon: PhosphorIconsFill.star,
-        guide: LevelingGuide(
-          steps: [
-            LevelingStep(
-              videoPath: 'assets/videos/concepts_3d/athena2_pro_step1.mp4',
-              text:
-                  'Unlock the latch on the top of the build arm. The plate should be loose and able to self-level against the screen.',
-            ),
-            LevelingStep(
-              videoPath: 'assets/videos/concepts_3d/athena2_pro_step2.mp4',
-              text:
-                  'With the plate resting on the screen, lock the latch firmly. Verify that the plate does not shift during locking.',
-            ),
-          ],
-        ),
+        finalEndpoint: 'probe_offset',
+        successKey: 'levelingWorkflow.offsetSuccess',
       ),
     ],
   ),
