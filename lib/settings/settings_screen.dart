@@ -262,6 +262,55 @@ class SettingsScreenState extends State<SettingsScreen> {
           appBar: OrionAppBar(
             title: Text(FlutterI18n.translate(context, 'settings.general')),
             toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+            centerWidget: _selectedIndex == 0 && DateTime.now().month == 6
+                ? Tooltip(
+                    message: 'Happy Pride Month!',
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 3.0),
+                      child: ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: const [
+                            Color(0xFFF9A8A8),
+                            Color(0xFFFBD38D),
+                            Color(0xFFFDE68A),
+                            Color(0xFFA7F3D0),
+                            Color(0xFF93C5FD),
+                            Color(0xFFD8B4FE),
+                          ],
+                          tileMode: TileMode.mirror,
+                        ).createShader(bounds),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1.0),
+                              child: const Icon(
+                                Icons.favorite,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Happy Pride Month!',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .appBarTheme
+                                  .titleTextStyle
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
             actions: <Widget>[
               SystemStatusWidget(),
             ],

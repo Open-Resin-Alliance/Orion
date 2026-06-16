@@ -129,11 +129,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
     return rand.nextInt(1000) == 0;
   }
 
-  bool isJune() {
-    final now = DateTime.now();
-    return now.month == 6;
-  }
-
   Widget _buildOffsetNavCard({
     required BuildContext context,
     required Widget leading,
@@ -182,29 +177,6 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
           child: ListView(
             controller: _scrollController,
             children: <Widget>[
-              if (isJune())
-                Dismissible(
-                  key: UniqueKey(),
-                  direction: DismissDirection.horizontal,
-                  onDismissed: (direction) {},
-                  background: Container(color: Colors.transparent),
-                  child: GlassCard(
-                    outlined: true,
-                    elevation: 1,
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                          left: 16, right: 16, top: 10, bottom: 10),
-                      child: ListTile(
-                        title: Text(
-                          FlutterI18n.translate(
-                              context, 'generalSettings.happyPride'),
-                          style: TextStyle(fontSize: 24),
-                        ),
-                        leading: Icon(Icons.favorite, color: Colors.pink),
-                      ),
-                    ),
-                  ),
-                ),
               if (shouldDestruct())
                 GlassCard(
                   elevation: 1,
