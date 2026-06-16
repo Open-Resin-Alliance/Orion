@@ -292,7 +292,8 @@ class SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Happy Pride Month!',
+                              FlutterI18n.translate(
+                                  context, 'generalSettings.happyPride'),
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
