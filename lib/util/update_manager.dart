@@ -1,6 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/settings/update_progress.dart';
 import 'package:orion/util/providers/athena_update_provider.dart';
 import 'package:orion/util/providers/orion_update_provider.dart';
 import 'package:orion/util/orion_config.dart';
@@ -269,5 +277,371 @@ class UpdateManager extends ChangeNotifier {
       return 'Update Available';
     }
     return '';
+  }
+
+  /// Start an Orion update directly with a confirmation dialog, then perform
+  /// the update. Call this from the startup overlay instead of navigating to
+  /// the full UpdateScreen.
+  Future<void> startOrionUpdate(BuildContext context) async {
+    final shouldUpdate = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => GlassAlertDialog(
+            title: Row(
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.download(),
+                  color: Theme.of(ctx).colorScheme.primary,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  FlutterI18n.translate(ctx, 'update.updateOrion'),
+                  style: TextStyle(
+                    color: Theme.of(ctx).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(FlutterI18n.translate(ctx, 'update.updateOrionMsg')),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.negative,
+                onPressed: () => Navigator.of(ctx).pop(false),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'common.dismiss')),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'update.updateNow')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (shouldUpdate && context.mounted) {
+      clearPendingUpdates(components: {UpdateComponent.orion});
+      await orionProvider.performUpdate(context, orionProvider.assetUrl);
+    }
+  }
+
+  /// Start an AthenaOS update directly with the appropriate confirmation
+  /// flow, then trigger the backend update. Call this from the startup overlay
+  /// instead of navigating to the full UpdateScreen.
+  ///
+  /// When both Orion and AthenaOS updates are available, prefer this method
+  /// since an AthenaOS update also updates Orion.
+  Future<void> startAthenaUpdate(BuildContext context) async {
+    final isMasterBranch = athenaProvider.channel == 'master';
+
+    bool confirmed = false;
+
+    if (isMasterBranch) {
+      // Triple confirmation for development firmware
+      if (!await _showAthenaDevWarning(context)) {
+        await _offerAthenaResetChannel(context);
+        return;
+      }
+      if (!await _showAthenaSecondWarning(context)) {
+        await _offerAthenaResetChannel(context);
+        return;
+      }
+      if (!await _showAthenaFinalWarning(context)) {
+        await _offerAthenaResetChannel(context);
+        return;
+      }
+      confirmed = true;
+    } else {
+      // Regular confirmation for stable/beta channels
+      confirmed = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (dctx) => GlassAlertDialog(
+              title: Row(
+                children: [
+                  PhosphorIcon(
+                    PhosphorIcons.download(),
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 32,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    FlutterI18n.translate(context, 'update.updateAthena'),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                  FlutterI18n.translate(context, 'update.updateAthenaMsg')),
+              actions: [
+                GlassButton(
+                  tint: GlassButtonTint.negative,
+                  onPressed: () => Navigator.of(dctx).pop(false),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                  child: Text(FlutterI18n.translate(context, 'common.dismiss')),
+                ),
+                GlassButton(
+                  tint: GlassButtonTint.positive,
+                  onPressed: () => Navigator.of(dctx).pop(true),
+                  style:
+                      ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                  child:
+                      Text(FlutterI18n.translate(context, 'update.updateNow')),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+    }
+
+    if (!confirmed) return;
+    if (!context.mounted) return;
+
+    // Clear pending updates (both Orion and Athena, as AthenaOS may update both)
+    clearPendingUpdates(
+        components: {UpdateComponent.orion, UpdateComponent.athena});
+
+    // Pause polling to prevent connection error dialogs during update/reboot
+    final statusProvider = Provider.of<StatusProvider>(context, listen: false);
+    statusProvider.pausePolling();
+
+    // Create notifiers for the progress overlay (indeterminate progress)
+    final progressNotifier = ValueNotifier<double>(-1.0); // -1 = indeterminate
+    final messageNotifier = ValueNotifier<String>(
+        FlutterI18n.translate(context, 'update.triggeringAthena'));
+
+    // Navigate to the update progress overlay
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => UpdateProgressOverlay(
+          progress: progressNotifier,
+          message: messageNotifier,
+          icon: PhosphorIcons.warningDiamond(),
+        ),
+      ),
+    );
+
+    // Trigger the update in the background
+    // The system will reboot, so we don't need to dismiss the overlay
+    try {
+      final backend = BackendService();
+      await backend.updateBackend();
+      messageNotifier.value =
+          FlutterI18n.translate(context, 'update.athenaUpdateInitiated');
+    } catch (e) {
+      messageNotifier.value =
+          FlutterI18n.translate(context, 'update.athenaUpdateReboot');
+    }
+  }
+
+  // -- Private helpers for AthenaOS master-branch confirmation dialogs --
+
+  Future<bool> _showAthenaDevWarning(BuildContext ctx) async {
+    return await showDialog<bool>(
+          context: ctx,
+          barrierDismissible: false,
+          barrierColor: Colors.red.withValues(alpha: 0.15),
+          builder: (dctx) => GlassAlertDialog(
+            title: Row(
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.warning(),
+                  color: Colors.redAccent,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    FlutterI18n.translate(ctx, 'update.devFirmware'),
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              FlutterI18n.translate(ctx, 'update.devWarningDetailed'),
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
+            ),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.negative,
+                onPressed: () => Navigator.of(dctx).pop(true),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'update.iAccept')),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () => Navigator.of(dctx).pop(false),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'common.cancel')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<bool> _showAthenaSecondWarning(BuildContext ctx) async {
+    return await showDialog<bool>(
+          context: ctx,
+          barrierDismissible: false,
+          barrierColor: Colors.red.withValues(alpha: 0.15),
+          builder: (dctx) => GlassAlertDialog(
+            title: Row(
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.warning(),
+                  color: Colors.redAccent,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  FlutterI18n.translate(ctx, 'update.confirmUpdate'),
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              FlutterI18n.translate(ctx, 'update.confirmDevMsg'),
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
+            ),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () => Navigator.of(dctx).pop(false),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'common.cancel')),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.negative,
+                onPressed: () => Navigator.of(dctx).pop(true),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'common.continue_')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<bool> _showAthenaFinalWarning(BuildContext ctx) async {
+    return await showDialog<bool>(
+          context: ctx,
+          barrierDismissible: false,
+          barrierColor: Colors.red.withValues(alpha: 0.15),
+          builder: (dctx) => GlassAlertDialog(
+            title: Row(
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.warning(),
+                  color: Colors.redAccent,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  FlutterI18n.translate(ctx, 'update.finalWarning'),
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              FlutterI18n.translate(ctx, 'update.finalWarningMsgDetailed'),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.negative,
+                onPressed: () => Navigator.of(dctx).pop(true),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'update.updateNow')),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () => Navigator.of(dctx).pop(false),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'common.cancel')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _offerAthenaResetChannel(BuildContext ctx) async {
+    final resetConfirmed = await showDialog<bool>(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (dctx) => GlassAlertDialog(
+            title: Row(
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.arrowClockwise(),
+                  color: Colors.greenAccent,
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    FlutterI18n.translate(ctx, 'update.resetChannel'),
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              FlutterI18n.translate(ctx, 'update.resetChannelMsg'),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+            actions: [
+              GlassButton(
+                tint: GlassButtonTint.neutral,
+                onPressed: () => Navigator.of(dctx).pop(false),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'update.keepDev')),
+              ),
+              GlassButton(
+                tint: GlassButtonTint.positive,
+                onPressed: () => Navigator.of(dctx).pop(true),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+                child: Text(FlutterI18n.translate(ctx, 'update.resetToStable')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (resetConfirmed) {
+      try {
+        final backend = BackendService();
+        await backend
+            .manualCommand('[[Exec echo "stable" > /home/pi/channel]]');
+        // Refresh AthenaOS update status to reflect the new channel
+        if (ctx.mounted) {
+          final athenaProv =
+              Provider.of<AthenaUpdateProvider>(ctx, listen: false);
+          await athenaProv.checkForUpdates();
+        }
+      } catch (_) {
+        // Channel reset failed silently; the user can try again
+      }
+    }
   }
 }

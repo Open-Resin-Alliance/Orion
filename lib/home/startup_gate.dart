@@ -16,7 +16,6 @@
 */
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
@@ -27,6 +26,8 @@ import 'package:orion/home/startup_screen.dart';
 import 'package:orion/home/update_available_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/update_manager.dart';
+import 'package:orion/util/providers/orion_update_provider.dart';
+import 'package:orion/util/providers/athena_update_provider.dart';
 
 /// Blocks initial app content until the backend reports a successful
 /// initial connection. While waiting, shows the branded [StartupScreen].
@@ -218,13 +219,28 @@ class _StartupGateState extends State<StartupGate> {
         },
         onUpdateNow: () {
           updateManager.acknowledgeUpdatePrompt();
-          setState(() {
-            _dismissUpdateScreen = true;
-          });
-          // Navigate after frame to ensure HomeScreen is mounted
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.go('/updates');
-          });
+
+          // Decide which update to trigger based on what's available.
+          // AthenaOS updates take priority because they also update Orion.
+          final athenaProv =
+              Provider.of<AthenaUpdateProvider>(context, listen: false);
+          final orionProv =
+              Provider.of<OrionUpdateProvider>(context, listen: false);
+
+          if (athenaProv.shouldNotify) {
+            // Trigger AthenaOS update directly — the progress overlay covers
+            // everything and the system will reboot, so no need to dismiss.
+            updateManager.startAthenaUpdate(context);
+          } else if (orionProv.isUpdateAvailable) {
+            // Trigger Orion update with confirmation dialog. Keep the update
+            // overlay visible behind the dialog; only dismiss after the flow
+            // completes (user cancelled or update started its own overlay).
+            updateManager.startOrionUpdate(context).then((_) {
+              if (mounted) {
+                setState(() => _dismissUpdateScreen = true);
+              }
+            });
+          }
         },
       );
     } else {
