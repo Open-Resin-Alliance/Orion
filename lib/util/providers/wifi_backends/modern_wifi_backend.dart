@@ -260,17 +260,24 @@ class ModernWiFiBackend extends WiFiBackend {
       _log.fine('Failed reading MAC from sysfs: $e');
     }
 
-    // Speed from sysfs (ethernet only)
-    try {
-      final speedFile = File('/sys/class/net/$iface/speed');
-      if (await speedFile.exists()) {
-        final val = (await speedFile.readAsString()).trim();
-        if (val.isNotEmpty && val != '-1') {
-          // This would update link speed in the WiFiProvider
+    // Speed from sysfs (ethernet only — skip known-broken interfaces)
+    if (!_brokenSpeedInterfaces.contains(iface)) {
+      try {
+        final speedFile = File('/sys/class/net/$iface/speed');
+        if (await speedFile.exists()) {
+          final val = (await speedFile.readAsString()).trim();
+          if (val.isNotEmpty && val != '-1') {
+            // This would update link speed in the WiFiProvider
+          }
         }
+      } catch (e) {
+        _log.fine('Failed reading speed from sysfs: $e');
+        _brokenSpeedInterfaces.add(iface);
       }
-    } catch (e) {
-      _log.fine('Failed reading speed from sysfs: $e');
     }
   }
+
+  /// Tracks interfaces where /sys/class/net/<iface>/speed is known to fail
+  /// (e.g. WiFi interfaces) so we don't retry on every poll cycle.
+  final Set<String> _brokenSpeedInterfaces = {};
 }
