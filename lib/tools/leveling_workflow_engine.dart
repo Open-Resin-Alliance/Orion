@@ -103,6 +103,16 @@ class LevelingWorkflowEngine extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reset the current step back to idle so it can be re-run.
+  /// Used for multi-cycle steps like corner probing.
+  void resetToIdle() {
+    if (isRunning) return;
+    _status = LevelingWorkflowStatus.idle;
+    _errorMessage = null;
+    _lastResponse = null;
+    notifyListeners();
+  }
+
   void advanceAfterSuccessfulStep() {
     if (isRunning || _status != LevelingWorkflowStatus.stepComplete) return;
     if (_currentStepIndex >= _steps.length - 1) {

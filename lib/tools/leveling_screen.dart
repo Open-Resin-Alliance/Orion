@@ -24,6 +24,7 @@ import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/leveling_configs.dart';
+import 'package:orion/backend_service/athena_iot/models/force_leveling_workflow.dart';
 import 'package:orion/tools/leveling_workflow_engine.dart';
 import 'package:orion/tools/manual_leveling_screen.dart';
 import 'package:orion/util/orion_config.dart';
@@ -226,6 +227,21 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   DateTime? _runningSince;
   bool _holdingRunning = false;
 
+  // Intermediate screen flags
+  bool _loosenScrewsDone = false;
+
+  // Corner location labels for special screens
+  static const _cornerLocations = [
+    'front-left',
+    'front-right',
+    'back-left',
+    'back-right',
+  ];
+
+  // Corner measurements from probe steps
+  final List<ForceLevelingWorkflowResponse?> _cornerResults =
+      List.filled(4, null);
+
   @override
   void initState() {
     super.initState();
@@ -244,7 +260,46 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     if (_engine.isRunning) {
       _runningSince ??= DateTime.now();
       _holdingRunning = false;
-    } else if (_runningSince != null && !_holdingRunning) {
+      _loosenScrewsDone = false;
+    } else if (_engine.status == LevelingWorkflowStatus.stepComplete) {
+      final step = _engine.currentStep;
+      if (step != null) {
+        // Save measurements from probe steps (any step with a cornerLabel)
+        if (step.cornerLabel != null && _engine.lastResponse != null) {
+          final idx = _cornerResults.indexWhere((r) => r == null);
+          if (idx >= 0 && idx < 4) {
+            _cornerResults[idx] = _engine.lastResponse;
+          }
+        }
+
+        // Fire special screens
+        if (step.specialScreen != null) {
+          if (step.specialScreen == 'center') {
+            BackendService()
+                .showSpecialScreenCenter()
+                .then((_) {})
+                .catchError((_) {});
+          } else if (step.specialScreen!.startsWith('corner-')) {
+            final cornerIdx =
+                int.tryParse(step.specialScreen!.split('-')[1]) ?? 0;
+            if (cornerIdx >= 0 && cornerIdx < 4) {
+              BackendService()
+                  .showSpecialScreenCorner(_cornerLocations[cornerIdx])
+                  .then((_) {})
+                  .catchError((_) {});
+            }
+          }
+        }
+
+        // Auto-advance through steps that don't need user interaction
+        if (step.autoAdvance) {
+          _engine.advanceAfterSuccessfulStep();
+        }
+      }
+    }
+
+    // Minimum running duration — always checked, independent of status
+    if (!_engine.isRunning && _runningSince != null && !_holdingRunning) {
       final elapsed = DateTime.now().difference(_runningSince!);
       if (elapsed < _minRunningDuration) {
         _holdingRunning = true;
@@ -418,6 +473,8 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           key: const ValueKey('workflow'),
           engine: _engine,
           effectivelyRunning: _effectivelyRunning,
+          loosenScrewsDone: _loosenScrewsDone,
+          cornerResults: _cornerResults,
         );
     }
   }
@@ -624,6 +681,62 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
             ),
           ),
         ),
+      );
+    }
+
+    // Loosen-screws prompt: Cancel | Done
+    if (status == LevelingWorkflowStatus.stepComplete &&
+        _engine.currentStep?.intermediateScreen == 'loosen' &&
+        !_loosenScrewsDone) {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () {
+                _loosenScrewsDone = true;
+                _engine.advanceAfterSuccessfulStep();
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.check(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.done'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -1030,14 +1143,25 @@ class _VariantAsset extends StatelessWidget {
 // ────────────────────────────────────────────────────────────────
 
 class _WorkflowPane extends StatelessWidget {
+  static const _cornerLocations = [
+    'front-left',
+    'front-right',
+    'back-left',
+    'back-right',
+  ];
+
   const _WorkflowPane({
     super.key,
     required this.engine,
     required this.effectivelyRunning,
+    required this.loosenScrewsDone,
+    required this.cornerResults,
   });
 
   final LevelingWorkflowEngine engine;
   final bool effectivelyRunning;
+  final bool loosenScrewsDone;
+  final List<ForceLevelingWorkflowResponse?> cornerResults;
 
   @override
   Widget build(BuildContext context) {
@@ -1051,24 +1175,33 @@ class _WorkflowPane extends StatelessWidget {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
 
-    // After the first (prepare) step completes → show "Ready for Leveling"
-    final isReadyForLeveling = !effectivelyRunning &&
-        engine.currentStepIndex == 0 &&
-        engine.status == LevelingWorkflowStatus.stepComplete;
+    // Intermediate screens from step metadata
+    final String? intermediate = step.intermediateScreen;
+    final isLoosenScrews =
+        !effectivelyRunning && intermediate == 'loosen' && !loosenScrewsDone;
+    final isTightenScrews = !effectivelyRunning && intermediate == 'tighten';
+    final isAllCornersMeasured =
+        !effectivelyRunning && intermediate == 'allCorners';
 
     return Center(
       key: ValueKey(
         'workflow-${engine.currentStepIndex}-${engine.status.name}',
       ),
-      child: isReadyForLeveling
-          ? _buildReadyForLeveling(context, primary)
-          : effectivelyRunning
-              ? _buildRunningView(context, primary, step)
-              : _buildStepView(context, theme, primary, step),
+      child: isLoosenScrews
+          ? _buildLoosenScrewsView(context, primary)
+          : isTightenScrews
+              ? _buildTightenScrewsView(context, primary)
+              : isAllCornersMeasured
+                  ? _buildAllCornersMeasuredView(context, primary)
+                  : effectivelyRunning
+                      ? _buildRunningView(context, primary, step)
+                      : _buildStepView(context, theme, primary, step),
     );
   }
 
-  Widget _buildReadyForLeveling(BuildContext context, Color primary) {
+  Widget _buildLoosenScrewsView(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1077,33 +1210,35 @@ class _WorkflowPane extends StatelessWidget {
           height: 100,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.green.withValues(alpha: 0.15),
+            color: primary.withValues(alpha: 0.12),
           ),
-          child: const Icon(
-            PhosphorIconsFill.checkCircle,
+          child: Icon(
+            PhosphorIcons.wrench(),
             size: 52,
-            color: Colors.greenAccent,
+            color: primary,
           ),
         ),
         const SizedBox(height: 20),
-        const Text(
-          'Ready for Leveling',
+        Text(
+          'Loosen Plate Screws',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: Colors.greenAccent,
+            color: theme.colorScheme.primary,
           ),
         ),
         const SizedBox(height: 8),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
-            'The printer is ready to start leveling.',
+            'Please loosen the screws once the printer\n'
+            'has stopped moving.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
               height: 1.4,
+              color: onSurface.withValues(alpha: 0.72),
             ),
           ),
         ),
@@ -1118,9 +1253,12 @@ class _WorkflowPane extends StatelessWidget {
   ) {
     final onSurface =
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72);
-    final title = step.kind == LevelingWorkflowStepKind.prepare
-        ? 'Preparing Machine'
-        : 'Moving towards plate';
+    final title = step.runningTitle ??
+        switch (step.kind) {
+          LevelingWorkflowStepKind.prepare => 'Preparing Machine',
+          LevelingWorkflowStepKind.finalOffset => 'Saving Offset',
+          _ => 'Moving towards plate',
+        };
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1166,12 +1304,223 @@ class _WorkflowPane extends StatelessWidget {
     );
   }
 
+  Widget _buildTightenScrewsView(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: primary.withValues(alpha: 0.12),
+          ),
+          child: Icon(
+            PhosphorIcons.clockClockwise(),
+            size: 52,
+            color: primary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Tighten the Leveling Screws',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Please press down on the screen firmly and go\n'
+            'in a clockwise motion as you increasingly\n'
+            'tighten each screw.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.4,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAllCornersMeasuredView(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
+    final zValues = cornerResults.map((r) {
+      return r?.measurements?.secondStageTriggerZ;
+    }).toList();
+
+    final validZ = zValues.whereType<double>().toList();
+    final minZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a < b ? a : b);
+    final maxZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a > b ? a : b);
+    final deviation = maxZ - minZ;
+    final withinTolerance = deviation < 0.100;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          withinTolerance
+              ? PhosphorIconsFill.checkCircle
+              : PhosphorIcons.warning(),
+          size: 48,
+          color: withinTolerance ? Colors.greenAccent : Colors.orangeAccent,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'All Corners Measured',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: withinTolerance ? Colors.greenAccent : Colors.orangeAccent,
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Corner measurement cards
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.25),
+              border: Border.all(
+                color:
+                    (withinTolerance ? Colors.greenAccent : Colors.orangeAccent)
+                        .withValues(alpha: 0.3),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                children: [
+                  for (int i = 0; i < 4; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    _buildCornerRow(
+                      context,
+                      label: _cornerLocations[i],
+                      z: zValues[i],
+                      isBest: validZ.isNotEmpty && zValues[i] == minZ,
+                      isWorst: validZ.isNotEmpty && zValues[i] == maxZ,
+                    ),
+                  ],
+                  const Divider(height: 20),
+                  _buildDeviationRow(
+                    context,
+                    deviation: deviation,
+                    withinTolerance: withinTolerance,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCornerRow(
+    BuildContext context, {
+    required String label,
+    required double? z,
+    required bool isBest,
+    required bool isWorst,
+  }) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
+        const Spacer(),
+        if (z != null)
+          Text(
+            '${z.toStringAsFixed(3)} mm',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isBest
+                  ? Colors.greenAccent
+                  : isWorst
+                      ? Colors.orangeAccent
+                      : theme.colorScheme.onSurface,
+            ),
+          )
+        else
+          Text(
+            '--',
+            style: TextStyle(
+              fontSize: 14,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDeviationRow(
+    BuildContext context, {
+    required double deviation,
+    required bool withinTolerance,
+  }) {
+    return Row(
+      children: [
+        Text(
+          'Total Deviation',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          '${deviation.toStringAsFixed(3)} mm',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: withinTolerance ? Colors.greenAccent : Colors.orangeAccent,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Icon(
+          withinTolerance ? PhosphorIcons.check() : PhosphorIcons.x(),
+          size: 16,
+          color: withinTolerance ? Colors.greenAccent : Colors.orangeAccent,
+        ),
+      ],
+    );
+  }
+
+  // removed
+
   Widget _buildStepView(
     BuildContext context,
     ThemeData theme,
     Color primary,
     LevelingWorkflowStep step,
   ) {
+    final title =
+        step.stepTitle ?? FlutterI18n.translate(context, step.titleKey);
+    final instruction = step.stepInstruction ??
+        FlutterI18n.translate(context, step.instructionKey);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1193,7 +1542,7 @@ class _WorkflowPane extends StatelessWidget {
         const SizedBox(height: 20),
         // ── Title ──
         Text(
-          FlutterI18n.translate(context, step.titleKey),
+          title,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
@@ -1206,7 +1555,7 @@ class _WorkflowPane extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
-            FlutterI18n.translate(context, step.instructionKey),
+            instruction,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
