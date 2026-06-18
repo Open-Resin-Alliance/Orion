@@ -349,6 +349,37 @@ class BackendService implements BackendClient {
     }
   }
 
+  /// Show a corner alignment pattern on the projector via special screens.
+  ///
+  /// [location] must be one of: front-left, front-right, back-left, back-right.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> showSpecialScreenCorner(
+    String location, {
+    Duration? requestTimeout,
+  }) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.showCornerScreen(location);
+    } catch (e, st) {
+      _log.warning('Failed to show special screen corner: $location', e, st);
+      return false;
+    }
+  }
+
+  /// Show the center alignment pattern on the projector via special screens.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> showSpecialScreenCenter({Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.showCenterScreen();
+    } catch (e, st) {
+      _log.warning('Failed to show special screen center', e, st);
+      return false;
+    }
+  }
+
   @override
   Future<Map<String, dynamic>> getStatus() => _delegate.getStatus();
 

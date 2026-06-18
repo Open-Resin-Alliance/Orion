@@ -251,6 +251,73 @@ class AthenaIotClient {
     if (compact.length <= 800) return compact;
     return '${compact.substring(0, 800)}...';
   }
+
+  /// Show a corner alignment pattern on the projector.
+  ///
+  /// [location] must be one of: front-left, front-right, back-left, back-right.
+  /// Returns `true` on success (plain text "Ok"), `false` on failure.
+  Future<bool> showCornerScreen(String location) async {
+    final validLocations = {
+      'front-left',
+      'front-right',
+      'back-left',
+      'back-right',
+    };
+    if (!validLocations.contains(location)) {
+      _log.warning('Invalid corner location: $location');
+      return false;
+    }
+    return _getSpecialScreen(
+      path: '/athena-iot/specialscreens/corner',
+      queryParams: {'location': location},
+    );
+  }
+
+  /// Show the center alignment pattern on the projector.
+  /// Returns `true` on success (plain text "Ok"), `false` on failure.
+  Future<bool> showCenterScreen() async {
+    return _getSpecialScreen(path: '/athena-iot/specialscreens/center');
+  }
+
+  /// Shared helper for special screens GET requests.
+  Future<bool> _getSpecialScreen({
+    required String path,
+    Map<String, String>? queryParams,
+  }) async {
+    try {
+      final baseNoSlash = baseUrl.replaceAll(RegExp(r'/+$'), '');
+      final uri =
+          Uri.parse('$baseNoSlash$path').replace(queryParameters: queryParams);
+      final client = _createClient();
+      try {
+        final resp = await client.get(uri);
+        final body = resp.body.trim();
+        _log.info(
+          'Special screen response: $path status=${resp.statusCode} body="$body"',
+        );
+        if (resp.statusCode == 200 && body == 'Ok') return true;
+        if (resp.statusCode == 400) {
+          _log.warning('Special screen bad request: $path body="$body"');
+          return false;
+        }
+        _log.warning(
+          'Special screen failed: $path status=${resp.statusCode} body="$body"',
+        );
+        return false;
+      } finally {
+        client.close();
+      }
+    } on SocketException catch (e) {
+      _log.warning('Special screen connection failed: $path', e);
+      return false;
+    } on http.ClientException catch (e) {
+      _log.warning('Special screen HTTP error: $path', e);
+      return false;
+    } catch (e, st) {
+      _log.warning('Special screen unexpected error: $path', e, st);
+      return false;
+    }
+  }
 }
 
 class _TimeoutHttpClient extends http.BaseClient {
