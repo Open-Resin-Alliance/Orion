@@ -198,8 +198,8 @@ class LevelingScreen extends StatelessWidget {
 }
 
 enum _WizardPhase {
-  introAndChecklist,
   variant,
+  introAndChecklist,
   workflow,
 }
 
@@ -215,11 +215,16 @@ class _AssistedLevelingWizard extends StatefulWidget {
 
 class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   late final LevelingWorkflowEngine _engine;
-  _WizardPhase _phase = _WizardPhase.introAndChecklist;
+  _WizardPhase _phase = _WizardPhase.variant;
   bool _busyStop = false;
+  static const _minRunningDuration = Duration(milliseconds: 1500);
 
   // Pre-flight step-through: -1 = intro view, 0..N-1 = individual steps
   int _preFlightIndex = -1;
+
+  // Minimum running display duration
+  DateTime? _runningSince;
+  bool _holdingRunning = false;
 
   @override
   void initState() {
@@ -235,29 +240,48 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   }
 
   void _handleEngineUpdate() {
+    if (!mounted) return;
+    if (_engine.isRunning) {
+      _runningSince ??= DateTime.now();
+      _holdingRunning = false;
+    } else if (_runningSince != null && !_holdingRunning) {
+      final elapsed = DateTime.now().difference(_runningSince!);
+      if (elapsed < _minRunningDuration) {
+        _holdingRunning = true;
+        Future.delayed(_minRunningDuration - elapsed, () {
+          if (mounted) setState(() => _holdingRunning = false);
+        });
+      }
+      _runningSince = null;
+    }
     if (mounted) setState(() {});
   }
 
+  bool get _effectivelyRunning => _engine.isRunning || _holdingRunning;
+
   void _goBack() {
     switch (_phase) {
+      case _WizardPhase.variant:
+        Navigator.of(context).pop();
+        return;
       case _WizardPhase.introAndChecklist:
         if (_preFlightIndex >= 0) {
           setState(() => _preFlightIndex -= 1);
         } else {
-          Navigator.of(context).pop();
+          setState(() {
+            _phase = _WizardPhase.variant;
+            _preFlightIndex = -1;
+          });
         }
-        return;
-      case _WizardPhase.variant:
-        setState(() {
-          _phase = _WizardPhase.introAndChecklist;
-          _preFlightIndex = -1;
-        });
         return;
       case _WizardPhase.workflow:
         if (_engine.canGoBack) {
           _engine.previousStep();
         } else {
-          setState(() => _phase = _WizardPhase.variant);
+          setState(() {
+            _phase = _WizardPhase.introAndChecklist;
+            _preFlightIndex = -1;
+          });
         }
         return;
     }
@@ -268,9 +292,9 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     if (_preFlightIndex < keys.length - 1) {
       setState(() => _preFlightIndex += 1);
     } else {
-      // All pre-flight steps done → go to variant selection
+      // All pre-flight steps done → start workflow (variant already selected)
       setState(() {
-        _phase = _WizardPhase.variant;
+        _phase = _WizardPhase.workflow;
         _preFlightIndex = -1;
       });
     }
@@ -308,11 +332,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── Header (only for variant selection) ──
-                if (_phase == _WizardPhase.variant)
-                  _buildHeader(context, primary),
-                if (_phase == _WizardPhase.variant) const SizedBox(height: 20),
-                // ── Body ──
+                // ── Phase content (header + body, animated) ──
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 350),
@@ -321,7 +341,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
                     transitionBuilder: (child, animation) {
                       return FadeTransition(opacity: animation, child: child);
                     },
-                    child: _buildPhaseBody(context),
+                    child: _buildPhaseContent(context, primary),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -335,45 +355,69 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, Color primary) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(PhosphorIcons.swap(), size: 24, color: primary),
-        const SizedBox(width: 10),
-        Text(
-          FlutterI18n.translate(context, 'leveling.selectBuildArm'),
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: primary,
-          ),
-        ),
-      ],
-    );
+  Widget _buildPhaseContent(BuildContext context, Color primary) {
+    // Each phase returns its full layout (header + body) as one widget
+    // so AnimatedSwitcher can cross-fade the entire transition.
+    switch (_phase) {
+      case _WizardPhase.variant:
+        return Column(
+          key: const ValueKey('variant-phase'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PhosphorIcons.swap(), size: 24, color: primary),
+                const SizedBox(width: 10),
+                Text(
+                  FlutterI18n.translate(context, 'leveling.selectBuildArm'),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Expanded(child: _buildPhaseBody(context)),
+          ],
+        );
+      default:
+        // introAndChecklist and workflow have no header
+        return _buildPhaseBody(context);
+    }
   }
 
   Widget _buildPhaseBody(BuildContext context) {
     switch (_phase) {
       case _WizardPhase.introAndChecklist:
         if (_preFlightIndex < 0) {
-          return const _PreLevelingPane();
+          return const _PreLevelingPane(key: ValueKey('intro'));
         }
         return _PreFlightGuidePane(
+          key: ValueKey('preflight-$_preFlightIndex'),
           config: widget.config,
           stepIndex: _preFlightIndex,
         );
       case _WizardPhase.variant:
         return _VariantSelectionPane(
+          key: const ValueKey('variant'),
           config: widget.config,
           onVariantSelected: (variant) {
             _engine.selectVariant(variant);
-            setState(() => _phase = _WizardPhase.workflow);
+            setState(() {
+              _phase = _WizardPhase.introAndChecklist;
+              _preFlightIndex = -1;
+            });
           },
         );
       case _WizardPhase.workflow:
         return _WorkflowPane(
+          key: const ValueKey('workflow'),
           engine: _engine,
+          effectivelyRunning: _effectivelyRunning,
         );
     }
   }
@@ -409,7 +453,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: OrionSpacing.controlGap),
           Expanded(
             child: GlassButton(
               tint: GlassButtonTint.positive,
@@ -440,54 +484,31 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       );
     }
 
-    // Variant selection: Back | Cancel
+    // Variant selection (first step): Cancel only
     if (_phase == _WizardPhase.variant) {
-      return Row(
-        children: [
-          Expanded(
-            child: GlassButton(
-              tint: GlassButtonTint.neutral,
-              onPressed: _goBack,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 65),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(PhosphorIcons.arrowLeft(), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    FlutterI18n.translate(context, 'common.back'),
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
+      return Center(
+        child: SizedBox(
+          width: 260,
+          child: GlassButton(
+            tint: GlassButtonTint.negative,
+            onPressed: _cancelLeveling,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 65),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PhosphorIcons.x(), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  FlutterI18n.translate(context, 'common.cancel'),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: GlassButton(
-              tint: GlassButtonTint.negative,
-              onPressed: _cancelLeveling,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 65),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(PhosphorIcons.x(), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    FlutterI18n.translate(context, 'common.cancel'),
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       );
     }
 
@@ -514,7 +535,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: OrionSpacing.controlGap),
         Expanded(
           child: GlassButton(
             tint: GlassButtonTint.positive,
@@ -570,7 +591,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     }
 
     // Running: only Emergency Stop, centered
-    if (_engine.isRunning || _busyStop) {
+    if (_effectivelyRunning || _busyStop) {
       return Center(
         child: SizedBox(
           width: 320,
@@ -608,8 +629,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
     // Not running, not complete: Cancel + action button
     final primaryLabel = switch (status) {
-      LevelingWorkflowStatus.idle =>
-        FlutterI18n.translate(context, 'levelingWorkflow.runStep'),
+      LevelingWorkflowStatus.idle => 'Proceed',
       LevelingWorkflowStatus.stepComplete => isLast
           ? FlutterI18n.translate(context, 'common.done')
           : FlutterI18n.translate(context, 'leveling.next'),
@@ -619,11 +639,11 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     };
 
     final primaryIcon = switch (status) {
-      LevelingWorkflowStatus.idle => PhosphorIcons.play(),
+      LevelingWorkflowStatus.idle => PhosphorIcons.arrowRight(),
       LevelingWorkflowStatus.stepComplete =>
         isLast ? PhosphorIcons.check() : PhosphorIcons.arrowRight(),
       LevelingWorkflowStatus.failed => PhosphorIcons.arrowRight(),
-      _ => PhosphorIcons.play(),
+      _ => PhosphorIcons.arrowRight(),
     };
 
     final primaryTint = status == LevelingWorkflowStatus.failed
@@ -634,7 +654,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       children: [
         Expanded(
           child: GlassButton(
-            tint: GlassButtonTint.neutral,
+            tint: GlassButtonTint.negative,
             onPressed: _cancelLeveling,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 65),
@@ -653,7 +673,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: OrionSpacing.controlGap),
         Expanded(
           child: GlassButton(
             tint: primaryTint,
@@ -686,23 +706,45 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       builder: (ctx) => GlassAlertDialog(
         title: Row(
           children: [
-            Icon(PhosphorIcons.warning(), size: 22),
-            const SizedBox(width: 10),
-            Text('Cancel Leveling'),
+            Icon(PhosphorIcons.warning(), size: 26, color: Colors.orangeAccent),
+            const SizedBox(width: 14),
+            Text(
+              'Cancel Leveling',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.orangeAccent,
+              ),
+            ),
           ],
         ),
-        content: Text(
+        content: const Text(
           'Are you sure you want to cancel?\n\n'
           'Progress will be lost and you will return to the leveling menu.',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(FlutterI18n.translate(context, 'levelingWorkflow.no')),
-          ),
-          TextButton(
+          GlassButton(
+            tint: GlassButtonTint.negative,
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(FlutterI18n.translate(context, 'levelingWorkflow.yes')),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: Text(
+              FlutterI18n.translate(context, 'levelingWorkflow.yes'),
+              style: const TextStyle(fontSize: 18),
+            ),
+          ),
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: Text(
+              FlutterI18n.translate(context, 'levelingWorkflow.no'),
+              style: const TextStyle(fontSize: 18),
+            ),
           ),
         ],
       ),
@@ -732,7 +774,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 // ────────────────────────────────────────────────────────────────
 
 class _PreLevelingPane extends StatelessWidget {
-  const _PreLevelingPane();
+  const _PreLevelingPane({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -753,7 +795,7 @@ class _PreLevelingPane extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              FlutterI18n.translate(context, 'leveling.introMessage'),
+              'This wizard will guide you through assisted leveling.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
@@ -763,7 +805,8 @@ class _PreLevelingPane extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              FlutterI18n.translate(context, 'leveling.introDetail'),
+              'Your printer will utilize the force-sensor to help with '
+              'ensuring good leveling results.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -784,6 +827,7 @@ class _PreLevelingPane extends StatelessWidget {
 
 class _PreFlightGuidePane extends StatelessWidget {
   const _PreFlightGuidePane({
+    super.key,
     required this.config,
     required this.stepIndex,
   });
@@ -864,6 +908,7 @@ class _PreFlightGuidePane extends StatelessWidget {
 
 class _VariantSelectionPane extends StatelessWidget {
   const _VariantSelectionPane({
+    super.key,
     required this.config,
     required this.onVariantSelected,
   });
@@ -986,10 +1031,13 @@ class _VariantAsset extends StatelessWidget {
 
 class _WorkflowPane extends StatelessWidget {
   const _WorkflowPane({
+    super.key,
     required this.engine,
+    required this.effectivelyRunning,
   });
 
   final LevelingWorkflowEngine engine;
+  final bool effectivelyRunning;
 
   @override
   Widget build(BuildContext context) {
@@ -1003,68 +1051,171 @@ class _WorkflowPane extends StatelessWidget {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
 
-    return Center(
-      key:
-          ValueKey('workflow-${engine.currentStepIndex}-${engine.status.name}'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Icon ──
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: primary.withValues(alpha: 0.10),
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: engine.isRunning
-                  ? const SizedBox(
-                      key: ValueKey('spinner'),
-                      width: 48,
-                      height: 48,
-                      child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 4),
-                      ),
-                    )
-                  : Icon(
-                      step.icon,
-                      key: const ValueKey('icon'),
-                      size: 52,
-                      color: primary,
-                    ),
-            ),
-          ),
-          const SizedBox(height: 20),
+    // After the first (prepare) step completes → show "Ready for Leveling"
+    final isReadyForLeveling = !effectivelyRunning &&
+        engine.currentStepIndex == 0 &&
+        engine.status == LevelingWorkflowStatus.stepComplete;
 
-          // ── Title ──
-          Text(
-            FlutterI18n.translate(context, step.titleKey),
+    return Center(
+      key: ValueKey(
+        'workflow-${engine.currentStepIndex}-${engine.status.name}',
+      ),
+      child: isReadyForLeveling
+          ? _buildReadyForLeveling(context, primary)
+          : effectivelyRunning
+              ? _buildRunningView(context, primary, step)
+              : _buildStepView(context, theme, primary, step),
+    );
+  }
+
+  Widget _buildReadyForLeveling(BuildContext context, Color primary) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.green.withValues(alpha: 0.15),
+          ),
+          child: const Icon(
+            PhosphorIconsFill.checkCircle,
+            size: 52,
+            color: Colors.greenAccent,
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Ready for Leveling',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.greenAccent,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            'The printer is ready to start leveling.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: primary,
+              fontSize: 16,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 8),
+        ),
+      ],
+    );
+  }
 
-          // ── Instruction ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              FlutterI18n.translate(context, step.instructionKey),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                height: 1.4,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
-              ),
+  Widget _buildRunningView(
+    BuildContext context,
+    Color primary,
+    LevelingWorkflowStep step,
+  ) {
+    final onSurface =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72);
+    final title = step.kind == LevelingWorkflowStepKind.prepare
+        ? 'Preparing Machine'
+        : 'Moving towards plate';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: primary.withValues(alpha: 0.10),
+          ),
+          child: const SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 4),
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            'Please do not touch the printer',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.4,
+              color: onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStepView(
+    BuildContext context,
+    ThemeData theme,
+    Color primary,
+    LevelingWorkflowStep step,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Icon ──
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: primary.withValues(alpha: 0.10),
+          ),
+          child: Icon(
+            step.icon,
+            key: const ValueKey('icon'),
+            size: 52,
+            color: primary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        // ── Title ──
+        Text(
+          FlutterI18n.translate(context, step.titleKey),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        // ── Instruction ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            FlutterI18n.translate(context, step.instructionKey),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.4,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
