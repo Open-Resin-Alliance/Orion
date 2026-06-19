@@ -628,6 +628,9 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   Widget _buildWorkflowActions(BuildContext context) {
     final status = _engine.status;
     final isLast = _engine.currentStepIndex >= _engine.steps.length - 1;
+    final isAllCornersMeasured =
+        status == LevelingWorkflowStatus.stepComplete &&
+            _engine.currentStep?.intermediateScreen == 'allCorners';
 
     // Completion: single Done button
     if (status == LevelingWorkflowStatus.complete) {
@@ -753,9 +756,11 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     // Not running, not complete: Cancel + action button
     final primaryLabel = switch (status) {
       LevelingWorkflowStatus.idle => 'Proceed',
-      LevelingWorkflowStatus.stepComplete => isLast
-          ? FlutterI18n.translate(context, 'common.done')
-          : FlutterI18n.translate(context, 'leveling.next'),
+      LevelingWorkflowStatus.stepComplete => isAllCornersMeasured
+          ? 'Continue'
+          : isLast
+              ? FlutterI18n.translate(context, 'common.done')
+              : FlutterI18n.translate(context, 'leveling.next'),
       LevelingWorkflowStatus.failed =>
         FlutterI18n.translate(context, 'common.retry'),
       _ => '',
@@ -763,8 +768,11 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
     final primaryIcon = switch (status) {
       LevelingWorkflowStatus.idle => PhosphorIcons.arrowRight(),
-      LevelingWorkflowStatus.stepComplete =>
-        isLast ? PhosphorIcons.check() : PhosphorIcons.arrowRight(),
+      LevelingWorkflowStatus.stepComplete => isAllCornersMeasured
+          ? PhosphorIcons.arrowRight()
+          : isLast
+              ? PhosphorIcons.check()
+              : PhosphorIcons.arrowRight(),
       LevelingWorkflowStatus.failed => PhosphorIcons.arrowRight(),
       _ => PhosphorIcons.arrowRight(),
     };
@@ -1388,7 +1396,7 @@ class _WorkflowPane extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              'All Corners Measured',
+              'Corner Check Results',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -1421,35 +1429,22 @@ class _WorkflowPane extends StatelessWidget {
             margin: EdgeInsets.zero,
             child: Stack(
               children: [
-                // Front Left — top-left
+                // Back Left — top-left (back of printer, facing away)
                 Positioned(
                   top: OrionSpacing.cardPadding.top,
                   left: OrionSpacing.cardPadding.left,
                   child: _cornerValueCard(
                     theme,
-                    _cornerLabels[0],
-                    zValues[0],
+                    _cornerLabels[3],
+                    zValues[3],
                     validZ,
                     minZ,
                     maxZ,
                   ),
                 ),
-                // Front Right — top-right
+                // Back Right — top-right
                 Positioned(
                   top: OrionSpacing.cardPadding.top,
-                  right: OrionSpacing.cardPadding.right,
-                  child: _cornerValueCard(
-                    theme,
-                    _cornerLabels[1],
-                    zValues[1],
-                    validZ,
-                    minZ,
-                    maxZ,
-                  ),
-                ),
-                // Back Right — bottom-right
-                Positioned(
-                  bottom: OrionSpacing.cardPadding.bottom,
                   right: OrionSpacing.cardPadding.right,
                   child: _cornerValueCard(
                     theme,
@@ -1460,14 +1455,27 @@ class _WorkflowPane extends StatelessWidget {
                     maxZ,
                   ),
                 ),
-                // Back Left — bottom-left
+                // Front Right — bottom-right (front of printer, facing us)
+                Positioned(
+                  bottom: OrionSpacing.cardPadding.bottom,
+                  right: OrionSpacing.cardPadding.right,
+                  child: _cornerValueCard(
+                    theme,
+                    _cornerLabels[1],
+                    zValues[1],
+                    validZ,
+                    minZ,
+                    maxZ,
+                  ),
+                ),
+                // Front Left — bottom-left
                 Positioned(
                   bottom: OrionSpacing.cardPadding.bottom,
                   left: OrionSpacing.cardPadding.left,
                   child: _cornerValueCard(
                     theme,
-                    _cornerLabels[3],
-                    zValues[3],
+                    _cornerLabels[0],
+                    zValues[0],
                     validZ,
                     minZ,
                     maxZ,
@@ -1550,53 +1558,60 @@ class _WorkflowPane extends StatelessWidget {
     double minZ,
     double maxZ,
   ) {
-    final isBest = validZ.isNotEmpty && z == minZ;
-    final isWorst = validZ.isNotEmpty && z == maxZ;
-    final dotColor = isBest
+    final isLowest = validZ.isNotEmpty && z == minZ;
+    final isHighest = validZ.isNotEmpty && z == maxZ;
+    final dotColor = isLowest
         ? Colors.greenAccent
-        : isWorst
+        : isHighest
             ? Colors.orangeAccent
             : theme.colorScheme.primary;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         color:
             theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: dotColor,
+              if (isHighest)
+                Icon(PhosphorIcons.caretDoubleUp(), size: 14, color: dotColor),
+              if (isLowest)
+                Icon(PhosphorIcons.caretDoubleDown(),
+                    size: 14, color: dotColor),
+              if (!isHighest && !isLowest)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: dotColor,
+                  ),
                 ),
-              ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             z != null ? '${z.toStringAsFixed(3)} mm' : '--',
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: dotColor,
+              height: 1,
             ),
           ),
         ],
