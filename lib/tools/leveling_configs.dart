@@ -200,6 +200,8 @@ class LevelingVariant {
               'indicated on the screen.',
           runningTitle: 'Probing ${cornerDefs[i].$1} Corner',
           cornerLabel: cornerDefs[i].$1,
+          autoAdvance:
+              i < 3, // auto-advance to next prepare; last shows results
         ),
       ],
     ];

@@ -294,10 +294,11 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
         // Auto-advance through steps that don't need user interaction
         if (step.autoAdvance) {
           _engine.advanceAfterSuccessfulStep();
-          // Also auto-run the next step if it's the final offset
+          // Also auto-run the next step if it's a prepare move or final offset
           final nextStep = _engine.currentStep;
           if (nextStep != null &&
-              nextStep.kind == LevelingWorkflowStepKind.finalOffset) {
+              (nextStep.kind == LevelingWorkflowStepKind.finalOffset ||
+                  nextStep.kind == LevelingWorkflowStepKind.prepare)) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _engine.runCurrentStep();
             });
