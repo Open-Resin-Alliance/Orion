@@ -1372,8 +1372,7 @@ class _WorkflowPane extends StatelessWidget {
     final maxZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a > b ? a : b);
     final deviation = maxZ - minZ;
     final withinTolerance = deviation < 0.100;
-    final statusColor =
-        withinTolerance ? Colors.greenAccent : Colors.orangeAccent;
+    final statusColor = withinTolerance ? Colors.greenAccent : Colors.redAccent;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1406,7 +1405,7 @@ class _WorkflowPane extends StatelessWidget {
               child: Text(
                 withinTolerance ? 'PASS' : 'FAIL',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: statusColor,
                 ),
@@ -1482,7 +1481,7 @@ class _WorkflowPane extends StatelessWidget {
                       Text(
                         'Total Deviation',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface
                               .withValues(alpha: 0.5),
@@ -1495,7 +1494,7 @@ class _WorkflowPane extends StatelessWidget {
                           Text(
                             '${deviation.toStringAsFixed(3)}',
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
                               color: statusColor,
                               height: 1,
@@ -1526,7 +1525,7 @@ class _WorkflowPane extends StatelessWidget {
                               ? '✓ Within Tolerance'
                               : '⚠ Needs Adjustment',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: statusColor,
                           ),
