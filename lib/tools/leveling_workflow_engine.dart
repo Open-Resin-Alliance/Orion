@@ -126,6 +126,17 @@ class LevelingWorkflowEngine extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Jump to a specific step index (e.g. to re-run a phase).
+  void jumpToStep(int index) {
+    if (isRunning) return;
+    if (index < 0 || index >= _steps.length) return;
+    _currentStepIndex = index;
+    _status = LevelingWorkflowStatus.idle;
+    _errorMessage = null;
+    _lastResponse = null;
+    notifyListeners();
+  }
+
   Future<void> runCurrentStep() async {
     final step = currentStep;
     if (step == null || isRunning) return;

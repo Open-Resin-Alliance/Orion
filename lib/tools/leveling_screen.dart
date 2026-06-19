@@ -20,6 +20,7 @@ import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -202,6 +203,14 @@ enum _WizardPhase {
   variant,
   introAndChecklist,
   workflow,
+  adjustment,
+}
+
+enum _AdjustmentStep {
+  preparing,
+  puckPlacement,
+  probing,
+  feedback,
 }
 
 class _AssistedLevelingWizard extends StatefulWidget {
@@ -230,17 +239,24 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   // Intermediate screen flags
   bool _loosenScrewsDone = false;
 
-  // Corner location labels for special screens
+  // Corner measurements from probe steps
+  final List<ForceLevelingWorkflowResponse?> _cornerResults =
+      List.filled(4, null);
+
+  // Adjustment mode state
+  int? _adjustingCornerIndex;
+  bool _adjustmentIsCw = true;
+  bool _adjustmentBusy = false;
+  String? _adjustmentError;
+  bool _wizardDisposed = false;
+  _AdjustmentStep _adjustmentStep = _AdjustmentStep.preparing;
+
   static const _cornerLocations = [
     'front-left',
     'front-right',
     'back-right',
     'back-left',
   ];
-
-  // Corner measurements from probe steps
-  final List<ForceLevelingWorkflowResponse?> _cornerResults =
-      List.filled(4, null);
 
   @override
   void initState() {
@@ -250,13 +266,14 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
   @override
   void dispose() {
+    _wizardDisposed = true;
     _engine.removeListener(_handleEngineUpdate);
     _engine.dispose();
     super.dispose();
   }
 
   void _handleEngineUpdate() {
-    if (!mounted) return;
+    if (!mounted || _wizardDisposed) return;
     if (_engine.isRunning) {
       _runningSince ??= DateTime.now();
       _holdingRunning = false;
@@ -348,7 +365,135 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           });
         }
         return;
+      case _WizardPhase.adjustment:
+        // Back from adjustment → cancel
+        _cancelLeveling();
+        return;
     }
+  }
+
+  /// Compute deviation from corner measurements.
+  double get _cornerDeviation {
+    final zValues = _cornerResults
+        .map((r) => r?.measurements?.secondStageTriggerZ)
+        .whereType<double>()
+        .toList();
+    if (zValues.isEmpty) return 0.0;
+    final min = zValues.reduce((a, b) => a < b ? a : b);
+    final max = zValues.reduce((a, b) => a > b ? a : b);
+    return max - min;
+  }
+
+  bool get _isCornerCheckPassed => _cornerDeviation <= 0.100;
+
+  void _enterAdjustmentMode() {
+    // Find the corner furthest from average
+    final zValues = _cornerResults
+        .map((r) => r?.measurements?.secondStageTriggerZ)
+        .toList();
+    final validZ = zValues.whereType<double>().toList();
+    if (validZ.isEmpty) return;
+    final avg = validZ.reduce((a, b) => a + b) / validZ.length;
+
+    double maxDelta = 0;
+    int worstIdx = 0;
+    for (int i = 0; i < zValues.length; i++) {
+      if (zValues[i] == null) continue;
+      final delta = (zValues[i]! - avg).abs();
+      if (delta > maxDelta) {
+        maxDelta = delta;
+        worstIdx = i;
+      }
+    }
+
+    // LOW (below avg) → tighten (CW pulls up)
+    // HIGH (above avg) → loosen (CCW pushes down)
+    _adjustingCornerIndex = worstIdx;
+    _adjustmentIsCw = zValues[worstIdx]! < avg;
+    _adjustmentError = null;
+    // Must be set before setState so the rebuild sees the busy state
+    // and shows the spinner, not the feedback screen
+    _adjustmentBusy = true;
+
+    setState(() {
+      _phase = _WizardPhase.adjustment;
+      _adjustmentStep = _AdjustmentStep.preparing;
+    });
+
+    // Start the prepare cycle
+    _runAdjustmentPrepare();
+  }
+
+  Future<void> _runAdjustmentPrepare() async {
+    if (_adjustingCornerIndex == null) return;
+    _adjustmentBusy = true;
+    if (mounted) setState(() {});
+
+    try {
+      await BackendService().runForceLevelingWorkflow(
+        'probe_corner_prepare',
+        requestTimeout: const Duration(seconds: 90),
+      );
+      if (!mounted) return;
+
+      // Fire the special screen for this corner so the projector shows the position
+      final cornerIdx = _adjustingCornerIndex!;
+      if (cornerIdx >= 0 && cornerIdx < 4) {
+        BackendService()
+            .showSpecialScreenCorner(_cornerLocations[cornerIdx])
+            .then((_) {})
+            .catchError((_) {});
+      }
+    } catch (e) {
+      _adjustmentError = e.toString();
+      if (mounted) setState(() {});
+      return;
+    }
+
+    _adjustmentBusy = false;
+    _adjustmentStep = _AdjustmentStep.puckPlacement;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _runAdjustmentProbe() async {
+    if (_adjustingCornerIndex == null) return;
+    _adjustmentBusy = true;
+    _adjustmentStep = _AdjustmentStep.probing;
+    if (mounted) setState(() {});
+
+    try {
+      final response = await BackendService().runForceLevelingWorkflow(
+        'probe_corner',
+        requestTimeout: const Duration(seconds: 90),
+      );
+      if (!mounted) return;
+
+      if (!response.result) {
+        _adjustmentError = response.error.isNotEmpty
+            ? response.error
+            : 'Probe failed. Please try again.';
+        if (mounted) setState(() {});
+        return;
+      }
+
+      _cornerResults[_adjustingCornerIndex!] = response;
+    } catch (e) {
+      _adjustmentError = e.toString();
+      if (mounted) setState(() {});
+      return;
+    }
+
+    _adjustmentBusy = false;
+    _adjustmentStep = _AdjustmentStep.feedback;
+    if (mounted) setState(() {});
+  }
+
+  void _runRecheckCorners() {
+    for (int i = 0; i < _cornerResults.length; i++) {
+      _cornerResults[i] = null;
+    }
+    _engine.jumpToStep(3);
+    setState(() => _phase = _WizardPhase.workflow);
   }
 
   void _advancePreFlight() {
@@ -448,6 +593,8 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
             Expanded(child: _buildPhaseBody(context)),
           ],
         );
+      case _WizardPhase.adjustment:
+        return _buildAdjustmentPhase(context, primary);
       default:
         // introAndChecklist and workflow have no header
         return _buildPhaseBody(context);
@@ -485,12 +632,19 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           loosenScrewsDone: _loosenScrewsDone,
           cornerResults: _cornerResults,
         );
+      case _WizardPhase.adjustment:
+        // Handled in _buildPhaseContent
+        return const SizedBox.shrink();
     }
   }
 
   Widget _buildActions(BuildContext context) {
     if (_phase == _WizardPhase.workflow) {
       return _buildWorkflowActions(context);
+    }
+
+    if (_phase == _WizardPhase.adjustment) {
+      return _buildAdjustmentActions(context);
     }
 
     if (_phase == _WizardPhase.introAndChecklist && _preFlightIndex >= 0) {
@@ -755,10 +909,11 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     }
 
     // Not running, not complete: Cancel + action button
+    final bool needsAdjustment = isAllCornersMeasured && !_isCornerCheckPassed;
     final primaryLabel = switch (status) {
       LevelingWorkflowStatus.idle => 'Proceed',
       LevelingWorkflowStatus.stepComplete => isAllCornersMeasured
-          ? 'Continue'
+          ? (needsAdjustment ? 'Adjust' : 'Continue')
           : isLast
               ? FlutterI18n.translate(context, 'common.done')
               : FlutterI18n.translate(context, 'leveling.next'),
@@ -770,7 +925,9 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     final primaryIcon = switch (status) {
       LevelingWorkflowStatus.idle => PhosphorIcons.arrowRight(),
       LevelingWorkflowStatus.stepComplete => isAllCornersMeasured
-          ? PhosphorIcons.arrowRight()
+          ? (needsAdjustment
+              ? PhosphorIcons.wrench()
+              : PhosphorIcons.arrowRight())
           : isLast
               ? PhosphorIcons.check()
               : PhosphorIcons.arrowRight(),
@@ -778,9 +935,27 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       _ => PhosphorIcons.arrowRight(),
     };
 
-    final primaryTint = status == LevelingWorkflowStatus.failed
+    final primaryTint = needsAdjustment
         ? GlassButtonTint.warn
-        : GlassButtonTint.positive;
+        : status == LevelingWorkflowStatus.failed
+            ? GlassButtonTint.warn
+            : GlassButtonTint.positive;
+
+    VoidCallback? onPrimary() {
+      if (_engine.isRunning) return null;
+      if (isAllCornersMeasured && needsAdjustment) {
+        return () => _enterAdjustmentMode();
+      }
+      return switch (status) {
+        LevelingWorkflowStatus.idle => () => _engine.runCurrentStep(),
+        LevelingWorkflowStatus.failed => () => _engine.runCurrentStep(),
+        LevelingWorkflowStatus.stepComplete => () =>
+            _engine.advanceAfterSuccessfulStep(),
+        LevelingWorkflowStatus.complete => () =>
+            Navigator.of(context).popUntil((route) => route.isFirst),
+        LevelingWorkflowStatus.running => null,
+      };
+    }
 
     return Row(
       children: [
@@ -809,7 +984,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
         Expanded(
           child: GlassButton(
             tint: primaryTint,
-            onPressed: _primaryWorkflowAction(status),
+            onPressed: onPrimary(),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 65),
             ),
@@ -887,17 +1062,291 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     }
   }
 
-  VoidCallback? _primaryWorkflowAction(LevelingWorkflowStatus status) {
-    if (_engine.isRunning) return null;
-    return switch (status) {
-      LevelingWorkflowStatus.idle => () => _engine.runCurrentStep(),
-      LevelingWorkflowStatus.failed => () => _engine.runCurrentStep(),
-      LevelingWorkflowStatus.stepComplete => () =>
-          _engine.advanceAfterSuccessfulStep(),
-      LevelingWorkflowStatus.complete => () =>
-          Navigator.of(context).popUntil((route) => route.isFirst),
-      LevelingWorkflowStatus.running => null,
-    };
+
+
+  Widget _buildAdjustmentActions(BuildContext context) {
+    final isPuckStep = _adjustmentStep == _AdjustmentStep.puckPlacement;
+
+    // Busy (preparing / probing): single disabled spinner
+    if (_adjustmentBusy) {
+      return Center(
+        child: SizedBox(
+          width: 320,
+          child: GlassButton(
+            tint: GlassButtonTint.negative,
+            onPressed: null,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 65),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _adjustmentStep == _AdjustmentStep.probing
+                      ? 'Probing…'
+                      : 'Preparing…',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Puck placement: Cancel | Proceed
+    if (isPuckStep) {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: _runAdjustmentProbe,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.arrowRight(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.next'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Feedback / error: Cancel | Re-check
+    return Row(
+      children: [
+        Expanded(
+          child: GlassButton(
+            tint: GlassButtonTint.negative,
+            onPressed: _cancelLeveling,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 65),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PhosphorIcons.x(), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  FlutterI18n.translate(context, 'common.cancel'),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: OrionSpacing.controlGap),
+        Expanded(
+          child: GlassButton(
+            tint: GlassButtonTint.positive,
+            onPressed: _runRecheckCorners,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 65),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PhosphorIcons.arrowClockwise(), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Re-check All',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdjustmentPhase(BuildContext context, Color primary) {
+    if (_adjustmentError != null) {
+      return _buildAdjustmentError(context, primary);
+    }
+    if (_adjustingCornerIndex == null) {
+      return const SizedBox.shrink();
+    }
+
+    switch (_adjustmentStep) {
+      case _AdjustmentStep.preparing:
+      case _AdjustmentStep.probing:
+        return _buildAdjustmentRunning(context, primary);
+      case _AdjustmentStep.puckPlacement:
+        return _buildPuckPlacementView(context, primary);
+      case _AdjustmentStep.feedback:
+        final adjMeasurements =
+            _cornerResults[_adjustingCornerIndex!]?.measurements;
+        return _AdjustmentFeedbackScreen(
+          key: const ValueKey('adjustment-feedback'),
+          cornerIndex: _adjustingCornerIndex!,
+          isCw: _adjustmentIsCw,
+          zValue: adjMeasurements?.secondStageTriggerZ,
+          targetForce: adjMeasurements?.secondStageTriggerForce,
+        );
+    }
+  }
+
+  Widget _buildAdjustmentRunning(BuildContext context, Color primary) {
+    final idx = _adjustingCornerIndex ?? 0;
+    final isProbing = _adjustmentStep == _AdjustmentStep.probing;
+    final labels = ['Front Left', 'Front Right', 'Back Right', 'Back Left'];
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 100, height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: primary.withValues(alpha: 0.10),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 4),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            isProbing ? 'Probing Corner' : 'Preparing Corner',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primary),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isProbing
+                ? 'Measuring at ${labels[idx]}'
+                : 'Positioning at ${labels[idx]}',
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context)
+                  .colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPuckPlacementView(BuildContext context, Color primary) {
+    final labels = ['Front Left', 'Front Right', 'Back Right', 'Back Left'];
+    final idx = _adjustingCornerIndex ?? 0;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 100, height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: primary.withValues(alpha: 0.12),
+            ),
+            child: Icon(
+              PhosphorIcons.crosshair(),
+              size: 52,
+              color: primary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Place the Leveling Puck',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: primary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'Put the Leveling Puck under the\n'
+              '${labels[idx]} corner, then press Proceed\n'
+              'to measure the current force.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.4,
+                color: Theme.of(context)
+                    .colorScheme.onSurface.withValues(alpha: 0.72),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdjustmentError(BuildContext context, Color primary) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(PhosphorIcons.warning(), size: 64, color: Colors.orangeAccent),
+          const SizedBox(height: 20),
+          Text(
+            'Adjustment Failed',
+            style: TextStyle(
+              fontSize: 22, fontWeight: FontWeight.bold,
+              color: Colors.orangeAccent,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              _adjustmentError ?? 'Unknown error',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context)
+                    .colorScheme.onSurface.withValues(alpha: 0.72),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1671,6 +2120,319 @@ class _WorkflowPane extends StatelessWidget {
               fontSize: 16,
               height: 1.4,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Adjustment Feedback — live force gauge
+// ────────────────────────────────────────────────────────────────
+
+class _AdjustmentFeedbackScreen extends StatefulWidget {
+  const _AdjustmentFeedbackScreen({
+    super.key,
+    required this.cornerIndex,
+    required this.isCw,
+    this.zValue,
+    this.targetForce,
+  });
+
+  final int cornerIndex;
+  final bool isCw;
+  final double? zValue;
+  final double? targetForce;
+
+  @override
+  State<_AdjustmentFeedbackScreen> createState() =>
+      _AdjustmentFeedbackScreenState();
+}
+
+class _AdjustmentFeedbackScreenState
+    extends State<_AdjustmentFeedbackScreen> {
+  static const _cornerNames = [
+    'Front Left',
+    'Front Right',
+    'Back Right',
+    'Back Left',
+  ];
+
+  AnalyticsProvider? _analytics;
+  VoidCallback? _analyticsListener;
+  bool _listenerRegistered = false;
+  bool _analyticsDisposed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_listenerRegistered) return;
+    _analytics = Provider.of<AnalyticsProvider>(context, listen: false);
+    _analyticsListener = () {
+      if (!_analyticsDisposed) setState(() {});
+    };
+    _analytics!.addListener(_analyticsListener!);
+    _listenerRegistered = true;
+  }
+
+  @override
+  void dispose() {
+    _analyticsDisposed = true;
+    if (_analytics != null && _analyticsListener != null) {
+      _analytics!.removeListener(_analyticsListener!);
+    }
+    super.dispose();
+  }
+
+  String get _screwLabel {
+    if (widget.cornerIndex <= 1) {
+      return widget.cornerIndex == 0
+          ? 'Front Left screw'
+          : 'Front Right screw';
+    }
+    return 'Back screw';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+
+    final series = _analytics?.pressureSeries ?? [];
+    final currentForce = series.isNotEmpty
+        ? (series.last['v'] as num?)?.toDouble()
+        : null;
+
+    // Gauge target: use trigger force from probe, fallback to 3.0N
+    final target = widget.targetForce ?? 3.0;
+    const halfScale = 3.0;
+
+    // Normalized position: -1 (too loose) ... 0 (target) ... +1 (too tight)
+    final position = currentForce != null
+        ? ((currentForce - target) / halfScale).clamp(-1.0, 1.0)
+        : 0.0;
+    final gap = currentForce != null ? (currentForce - target).abs() : 0.0;
+
+    // Dynamic direction based on where the dot actually is
+    final directionLabel = position < -0.05
+        ? '⟳ TIGHTEN'
+        : position > 0.05
+            ? '⟲ LOOSEN'
+            : '✓ AT TARGET';
+    final accent = position < -0.05
+        ? const Color(0xFF57F0A4)   // green = tighten
+        : position > 0.05
+            ? const Color(0xFFFFC16D) // amber = loosen
+            : const Color(0xFF57F0A4); // green = at target
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(PhosphorIcons.wrench(), size: 24, color: accent),
+            const SizedBox(width: 10),
+            Text(
+              'Adjust: ${_cornerNames[widget.cornerIndex]}',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: accent,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Direction + screw label
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: accent.withValues(alpha: 0.12),
+                  ),
+                  child: Text(
+                    '$directionLabel — $_screwLabel',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
+                    ),
+                  ),
+                ),
+                if (widget.zValue != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Probed Z: ${widget.zValue!.toStringAsFixed(3)} mm',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 32),
+                // Gauge
+                SizedBox(
+                  width: 320,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Labels above gauge
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Too Loose',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFFFC16D),
+                            ),
+                          ),
+                          Text(
+                            'Target',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF57F0A4),
+                            ),
+                          ),
+                          Text(
+                            'Too Tight',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orangeAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Gauge track
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          height: 32,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFFFFC16D),
+                                Color(0xFF57F0A4),
+                                Colors.orangeAccent,
+                              ],
+                            ),
+                          ),
+                          child: Stack(
+                            children: [
+                              // Center target marker
+                              Center(
+                                child: Container(
+                                  width: 4,
+                                  height: 32,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                              ),
+                              // Moving dot
+                              Center(
+                                child: FractionallySizedBox(
+                                  widthFactor: 1,
+                                  child: Padding(
+                                    padding: EdgeInsetsDirectional.only(
+                                      start: (position + 1) / 2 * (320 - 32),
+                                    ),
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: position.abs() > 0.3
+                                                ? Colors.white
+                                                    .withValues(alpha: 0.4)
+                                                : const Color(0xFF57F0A4)
+                                                    .withValues(alpha: 0.4),
+                                            blurRadius: 12,
+                                            spreadRadius: 2,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      // Force value below gauge
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            PhosphorIcons.gauge(),
+                            size: 16,
+                            color: onSurface.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Force: ',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
+                          Text(
+                            currentForce != null
+                                ? '${currentForce.toStringAsFixed(2)} N'
+                                : '--',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: position.abs() < 0.15
+                                  ? const Color(0xFF57F0A4)
+                                  : position > 0
+                                      ? Colors.orangeAccent
+                                      : const Color(0xFFFFC16D),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'target ${target.toStringAsFixed(1)} N',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: onSurface.withValues(alpha: 0.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (gap > 0.2) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '${gap.toStringAsFixed(2)} N from target — keep turning',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: onSurface.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
