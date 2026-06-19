@@ -294,6 +294,14 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
         // Auto-advance through steps that don't need user interaction
         if (step.autoAdvance) {
           _engine.advanceAfterSuccessfulStep();
+          // Also auto-run the next step if it's the final offset
+          final nextStep = _engine.currentStep;
+          if (nextStep != null &&
+              nextStep.kind == LevelingWorkflowStepKind.finalOffset) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _engine.runCurrentStep();
+            });
+          }
         }
       }
     }
@@ -623,25 +631,27 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
     // Completion: single Done button
     if (status == LevelingWorkflowStatus.complete) {
-      return SizedBox(
-        width: double.infinity,
-        child: GlassButton(
-          tint: GlassButtonTint.positive,
-          onPressed: () =>
-              Navigator.of(context).popUntil((route) => route.isFirst),
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 65),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(PhosphorIcons.check(), size: 20),
-              const SizedBox(width: 10),
-              Text(
-                FlutterI18n.translate(context, 'common.done'),
-                style: const TextStyle(fontSize: 20),
-              ),
-            ],
+      return Center(
+        child: SizedBox(
+          width: 320,
+          child: GlassButton(
+            tint: GlassButtonTint.positive,
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 65),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PhosphorIcons.check(), size: 20),
+                const SizedBox(width: 10),
+                Text(
+                  FlutterI18n.translate(context, 'common.done'),
+                  style: const TextStyle(fontSize: 20),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -1175,26 +1185,26 @@ class _WorkflowPane extends StatelessWidget {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
 
-    // Intermediate screens from step metadata
+    // Intermediate screens from step metadata (only on stepComplete)
+    final isComplete = engine.status == LevelingWorkflowStatus.stepComplete;
     final String? intermediate = step.intermediateScreen;
     final isLoosenScrews =
-        !effectivelyRunning && intermediate == 'loosen' && !loosenScrewsDone;
-    final isTightenScrews = !effectivelyRunning && intermediate == 'tighten';
-    final isAllCornersMeasured =
-        !effectivelyRunning && intermediate == 'allCorners';
+        isComplete && intermediate == 'loosen' && !loosenScrewsDone;
+    final isTightenScrews = isComplete && intermediate == 'tighten';
+    final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
 
     return Center(
       key: ValueKey(
         'workflow-${engine.currentStepIndex}-${engine.status.name}',
       ),
-      child: isLoosenScrews
-          ? _buildLoosenScrewsView(context, primary)
-          : isTightenScrews
-              ? _buildTightenScrewsView(context, primary)
-              : isAllCornersMeasured
-                  ? _buildAllCornersMeasuredView(context, primary)
-                  : effectivelyRunning
-                      ? _buildRunningView(context, primary, step)
+      child: effectivelyRunning
+          ? _buildRunningView(context, primary, step)
+          : isLoosenScrews
+              ? _buildLoosenScrewsView(context, primary)
+              : isTightenScrews
+                  ? _buildTightenScrewsView(context, primary)
+                  : isAllCornersMeasured
+                      ? _buildAllCornersMeasuredView(context, primary)
                       : _buildStepView(context, theme, primary, step),
     );
   }
@@ -1585,96 +1595,95 @@ class _CompletionPane extends StatelessWidget {
 
     return Center(
       key: const ValueKey('complete'),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: GlassCard(
-          outlined: true,
-          accentColor: Colors.greenAccent,
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  PhosphorIconsFill.checkCircle,
-                  size: 64,
-                  color: Colors.greenAccent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.green.withValues(alpha: 0.15),
+            ),
+            child: const Icon(
+              PhosphorIconsFill.checkCircle,
+              size: 56,
+              color: Colors.greenAccent,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            FlutterI18n.translate(context, 'levelingWorkflow.complete'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.greenAccent,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              FlutterI18n.translate(
+                context,
+                variant?.successKey ?? 'levelingWorkflow.offsetSuccess',
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                height: 1.35,
+              ),
+            ),
+          ),
+          if (engine.zOffsetApplied != null) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 14,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.green.withValues(alpha: 0.10),
+                border: Border.all(
+                  color: Colors.greenAccent.withValues(alpha: 0.35),
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  FlutterI18n.translate(context, 'levelingWorkflow.complete'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    PhosphorIcons.ruler(),
+                    size: 20,
                     color: Colors.greenAccent,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  FlutterI18n.translate(
-                    context,
-                    variant?.successKey ?? 'levelingWorkflow.offsetSuccess',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 17,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
-                    height: 1.35,
-                  ),
-                ),
-                if (engine.zOffsetApplied != null) ...[
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
+                  const SizedBox(width: 12),
+                  Text(
+                    FlutterI18n.translate(
+                      context,
+                      'levelingWorkflow.appliedOffset',
                     ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.green.withValues(alpha: 0.10),
-                      border: Border.all(
-                        color: Colors.greenAccent.withValues(alpha: 0.35),
-                      ),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          PhosphorIcons.ruler(),
-                          size: 20,
-                          color: Colors.greenAccent,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            FlutterI18n.translate(
-                              context,
-                              'levelingWorkflow.appliedOffset',
-                            ),
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '${engine.zOffsetApplied!.toStringAsFixed(2)} mm',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.greenAccent,
-                          ),
-                        ),
-                      ],
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${engine.zOffsetApplied!.toStringAsFixed(2)} mm',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.greenAccent,
                     ),
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ),
+          ],
+        ],
       ),
     );
   }
