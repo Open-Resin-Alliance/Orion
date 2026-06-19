@@ -139,9 +139,16 @@ class LevelingVariant {
       ];
     }
 
-    // Pro variant Phase 1: Initial seating + offset calibration
-    return [
-      // 0: Prepare — shows loosen intermediate, Done button advances
+    // Pro variant: Stage 1 (initial seating + offset) + Stage 2 (fine leveling)
+    final cornerDefs = [
+      ('Front Left', 'front-left'),
+      ('Front Right', 'front-right'),
+      ('Back Right', 'back-right'),
+      ('Back Left', 'back-left'),
+    ];
+    final result = <LevelingWorkflowStep>[
+      // ── Stage 1 ──
+      // 0: Prepare — shows loosen intermediate
       athena2BaseWorkflowSteps[0].copyWith(
         intermediateScreen: 'loosen',
       ),
@@ -151,19 +158,7 @@ class LevelingVariant {
         stepInstruction: 'The plate will move towards the build plate.',
         intermediateScreen: 'tighten',
       ),
-      // 2: Calibrating Offset — verify + save as one combined action
-      LevelingWorkflowStep(
-        id: 'probe_levelcheck',
-        endpoint: 'probe_levelcheck',
-        titleKey: 'levelingWorkflow.levelCheckTitle',
-        instructionKey: 'levelingWorkflow.levelCheckInstruction',
-        icon: PhosphorIconsFill.checkCircle,
-        stepTitle: 'Verifying Level',
-        stepInstruction: 'Verifying plate level and saving Z offset.',
-        runningTitle: 'Verifying Level',
-        autoAdvance: true,
-      ),
-      // 3: Final offset (only reached if levelcheck passed)
+      // 2: Calibrating Offset
       LevelingWorkflowStep(
         id: finalEndpoint,
         endpoint: finalEndpoint,
@@ -178,7 +173,42 @@ class LevelingVariant {
         runningTitle: 'Calibrating Offset',
         autoAdvance: true,
       ),
+      // ── Stage 2: 4-corner fine leveling ──
+      for (int i = 0; i < 4; i++) ...[
+        LevelingWorkflowStep(
+          id: 'fine_prepare_${i + 1}',
+          endpoint: 'probe_corner_prepare',
+          titleKey: 'levelingWorkflow.cornerPrepareTitle',
+          instructionKey: 'levelingWorkflow.cornerPrepareInstruction',
+          icon: PhosphorIconsFill.house,
+          kind: LevelingWorkflowStepKind.prepare,
+          stepTitle: 'Preparing Corner Measurement',
+          stepInstruction: 'The printer will move to a home position. '
+              'Please ensure you have the Leveling Puck ready.',
+          autoAdvance: true,
+          specialScreen: 'corner-$i',
+        ),
+        LevelingWorkflowStep(
+          id: 'fine_corner_${i + 1}',
+          endpoint: 'probe_corner',
+          titleKey: 'levelingWorkflow.cornerTitle',
+          instructionKey: 'levelingWorkflow.cornerInstruction',
+          icon: PhosphorIconsFill.crosshair,
+          kind: LevelingWorkflowStepKind.probe,
+          stepTitle: 'Corner: ${cornerDefs[i].$1}',
+          stepInstruction: 'Please put the Leveling Puck at the position '
+              'indicated on the screen.',
+          runningTitle: 'Probing ${cornerDefs[i].$1} Corner',
+          cornerLabel: cornerDefs[i].$1,
+        ),
+      ],
     ];
+    // Mark the last corner probe to show measurements
+    final lastCornerIdx = result.length - 1;
+    result[lastCornerIdx] = result[lastCornerIdx].copyWith(
+      intermediateScreen: 'allCorners',
+    );
+    return result;
   }
 }
 

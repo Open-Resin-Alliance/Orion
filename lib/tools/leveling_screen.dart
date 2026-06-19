@@ -234,8 +234,8 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   static const _cornerLocations = [
     'front-left',
     'front-right',
-    'back-left',
     'back-right',
+    'back-left',
   ];
 
   // Corner measurements from probe steps
@@ -1153,11 +1153,11 @@ class _VariantAsset extends StatelessWidget {
 // ────────────────────────────────────────────────────────────────
 
 class _WorkflowPane extends StatelessWidget {
-  static const _cornerLocations = [
-    'front-left',
-    'front-right',
-    'back-left',
-    'back-right',
+  static const _cornerLabels = [
+    'Front Left',
+    'Front Right',
+    'Back Right',
+    'Back Left',
   ];
 
   const _WorkflowPane({
@@ -1372,153 +1372,238 @@ class _WorkflowPane extends StatelessWidget {
     final maxZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a > b ? a : b);
     final deviation = maxZ - minZ;
     final withinTolerance = deviation < 0.100;
+    final statusColor =
+        withinTolerance ? Colors.greenAccent : Colors.orangeAccent;
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(
-          withinTolerance
-              ? PhosphorIconsFill.checkCircle
-              : PhosphorIcons.warning(),
-          size: 48,
-          color: withinTolerance ? Colors.greenAccent : Colors.orangeAccent,
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'All Corners Measured',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: withinTolerance ? Colors.greenAccent : Colors.orangeAccent,
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Corner measurement cards
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.25),
-              border: Border.all(
-                color:
-                    (withinTolerance ? Colors.greenAccent : Colors.orangeAccent)
-                        .withValues(alpha: 0.3),
+        Row(
+          children: [
+            Icon(
+              withinTolerance
+                  ? PhosphorIconsFill.checkCircle
+                  : PhosphorIcons.warning(),
+              size: 24,
+              color: statusColor,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'All Corners Measured',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: statusColor,
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                children: [
-                  for (int i = 0; i < 4; i++) ...[
-                    if (i > 0) const SizedBox(height: 8),
-                    _buildCornerRow(
-                      context,
-                      label: _cornerLocations[i],
-                      z: zValues[i],
-                      isBest: validZ.isNotEmpty && zValues[i] == minZ,
-                      isWorst: validZ.isNotEmpty && zValues[i] == maxZ,
-                    ),
-                  ],
-                  const Divider(height: 20),
-                  _buildDeviationRow(
-                    context,
-                    deviation: deviation,
-                    withinTolerance: withinTolerance,
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                color: statusColor.withValues(alpha: 0.15),
+              ),
+              child: Text(
+                withinTolerance ? 'PASS' : 'FAIL',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        // Corner measurements - fill remaining space
+        Expanded(
+          child: GlassCard(
+            outlined: true,
+            margin: EdgeInsets.zero,
+            child: Stack(
+              children: [
+                // Front Left — top-left
+                Positioned(
+                  top: OrionSpacing.cardPadding.top,
+                  left: OrionSpacing.cardPadding.left,
+                  child: _cornerValueCard(
+                    theme,
+                    _cornerLabels[0],
+                    zValues[0],
+                    validZ,
+                    minZ,
+                    maxZ,
                   ),
-                ],
+                ),
+                // Front Right — top-right
+                Positioned(
+                  top: OrionSpacing.cardPadding.top,
+                  right: OrionSpacing.cardPadding.right,
+                  child: _cornerValueCard(
+                    theme,
+                    _cornerLabels[1],
+                    zValues[1],
+                    validZ,
+                    minZ,
+                    maxZ,
+                  ),
+                ),
+                // Back Right — bottom-right
+                Positioned(
+                  bottom: OrionSpacing.cardPadding.bottom,
+                  right: OrionSpacing.cardPadding.right,
+                  child: _cornerValueCard(
+                    theme,
+                    _cornerLabels[2],
+                    zValues[2],
+                    validZ,
+                    minZ,
+                    maxZ,
+                  ),
+                ),
+                // Back Left — bottom-left
+                Positioned(
+                  bottom: OrionSpacing.cardPadding.bottom,
+                  left: OrionSpacing.cardPadding.left,
+                  child: _cornerValueCard(
+                    theme,
+                    _cornerLabels[3],
+                    zValues[3],
+                    validZ,
+                    minZ,
+                    maxZ,
+                  ),
+                ),
+                // Total deviation — dead center
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Total Deviation',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${deviation.toStringAsFixed(3)}',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                              height: 1,
+                            ),
+                          ),
+                          Text(
+                            ' / 0.100 mm',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: statusColor.withValues(alpha: 0.12),
+                        ),
+                        child: Text(
+                          withinTolerance
+                              ? '✓ Within Tolerance'
+                              : '⚠ Needs Adjustment',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: statusColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _cornerValueCard(
+    ThemeData theme,
+    String label,
+    double? z,
+    List<double> validZ,
+    double minZ,
+    double maxZ,
+  ) {
+    final isBest = validZ.isNotEmpty && z == minZ;
+    final isWorst = validZ.isNotEmpty && z == maxZ;
+    final dotColor = isBest
+        ? Colors.greenAccent
+        : isWorst
+            ? Colors.orangeAccent
+            : theme.colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: dotColor,
+                ),
               ),
-            ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCornerRow(
-    BuildContext context, {
-    required String label,
-    required double? z,
-    required bool isBest,
-    required bool isWorst,
-  }) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-          ),
-        ),
-        const Spacer(),
-        if (z != null)
+          const SizedBox(height: 4),
           Text(
-            '${z.toStringAsFixed(3)} mm',
+            z != null ? '${z.toStringAsFixed(3)} mm' : '--',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
-              color: isBest
-                  ? Colors.greenAccent
-                  : isWorst
-                      ? Colors.orangeAccent
-                      : theme.colorScheme.onSurface,
-            ),
-          )
-        else
-          Text(
-            '--',
-            style: TextStyle(
-              fontSize: 14,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              color: dotColor,
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
-
-  Widget _buildDeviationRow(
-    BuildContext context, {
-    required double deviation,
-    required bool withinTolerance,
-  }) {
-    return Row(
-      children: [
-        Text(
-          'Total Deviation',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          '${deviation.toStringAsFixed(3)} mm',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: withinTolerance ? Colors.greenAccent : Colors.orangeAccent,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Icon(
-          withinTolerance ? PhosphorIcons.check() : PhosphorIcons.x(),
-          size: 16,
-          color: withinTolerance ? Colors.greenAccent : Colors.orangeAccent,
-        ),
-      ],
-    );
-  }
-
-  // removed
 
   Widget _buildStepView(
     BuildContext context,
