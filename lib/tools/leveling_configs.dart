@@ -183,9 +183,8 @@ class LevelingVariant {
           icon: PhosphorIconsFill.house,
           kind: LevelingWorkflowStepKind.prepare,
           stepTitle: 'Preparing Corner Measurement',
-          stepInstruction: 'The printer will move to a home position. '
-              'Please ensure you have the Leveling Puck ready.',
-          autoAdvance: true,
+          stepInstruction: 'The printer has positioned itself.\n'
+              'Place the Leveling Puck under the indicated corner.',
           specialScreen: 'corner-$i',
         ),
         LevelingWorkflowStep(

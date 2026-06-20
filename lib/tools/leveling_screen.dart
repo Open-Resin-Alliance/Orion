@@ -313,13 +313,13 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
         // Auto-advance through steps that don't need user interaction
         if (step.autoAdvance) {
-          _autoAdvancing = true;
           _engine.advanceAfterSuccessfulStep();
           // Also auto-run the next step if it's a prepare move or final offset
           final nextStep = _engine.currentStep;
           if (nextStep != null &&
               (nextStep.kind == LevelingWorkflowStepKind.finalOffset ||
                   nextStep.kind == LevelingWorkflowStepKind.prepare)) {
+            _autoAdvancing = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _engine.runCurrentStep();
             });
@@ -1010,13 +1010,18 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
     // Not running, not complete: Cancel + action button
     final bool needsAdjustment = isAllCornersMeasured && !_isCornerCheckPassed;
+    final bool isCornerPrepare = status == LevelingWorkflowStatus.stepComplete &&
+        _engine.currentStep?.kind == LevelingWorkflowStepKind.prepare &&
+        (_engine.currentStep?.id.startsWith('fine_prepare_') ?? false);
     final primaryLabel = switch (status) {
       LevelingWorkflowStatus.idle => 'Proceed',
       LevelingWorkflowStatus.stepComplete => isAllCornersMeasured
           ? (needsAdjustment ? 'Adjust' : 'Continue')
-          : isLast
-              ? FlutterI18n.translate(context, 'common.done')
-              : FlutterI18n.translate(context, 'leveling.next'),
+          : isCornerPrepare
+              ? FlutterI18n.translate(context, 'leveling.next')
+              : isLast
+                  ? FlutterI18n.translate(context, 'common.done')
+                  : FlutterI18n.translate(context, 'leveling.next'),
       LevelingWorkflowStatus.failed =>
         FlutterI18n.translate(context, 'common.retry'),
       _ => '',
@@ -1028,9 +1033,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           ? (needsAdjustment
               ? PhosphorIcons.wrench()
               : PhosphorIcons.arrowRight())
-          : isLast
-              ? PhosphorIcons.check()
-              : PhosphorIcons.arrowRight(),
+          : PhosphorIcons.arrowRight(),
       LevelingWorkflowStatus.failed => PhosphorIcons.arrowRight(),
       _ => PhosphorIcons.arrowRight(),
     };
@@ -1049,8 +1052,17 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       return switch (status) {
         LevelingWorkflowStatus.idle => () => _engine.runCurrentStep(),
         LevelingWorkflowStatus.failed => () => _engine.runCurrentStep(),
-        LevelingWorkflowStatus.stepComplete => () =>
-            _engine.advanceAfterSuccessfulStep(),
+        LevelingWorkflowStatus.stepComplete => () {
+            _engine.advanceAfterSuccessfulStep();
+            // If advancing from a corner prepare, auto-run the probe
+            if (isCornerPrepare) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _engine.canRunCurrentStep) {
+                  _engine.runCurrentStep();
+                }
+              });
+            }
+          },
         LevelingWorkflowStatus.complete => () =>
             Navigator.of(context).popUntil((route) => route.isFirst),
         LevelingWorkflowStatus.running => null,
