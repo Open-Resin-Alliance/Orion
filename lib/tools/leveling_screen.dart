@@ -922,6 +922,66 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       );
     }
 
+    // Tighten-screws prompt: Cancel | Done → auto-run offset
+    if (status == LevelingWorkflowStatus.stepComplete &&
+        _engine.currentStep?.intermediateScreen == 'tighten') {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () {
+                _engine.advanceAfterSuccessfulStep();
+                // Auto-run the calibrating offset step
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _engine.canRunCurrentStep) {
+                    _engine.runCurrentStep();
+                  }
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.check(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.done'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     // Not running, not complete: Cancel + action button
     final bool needsAdjustment = isAllCornersMeasured && !_isCornerCheckPassed;
     final primaryLabel = switch (status) {
