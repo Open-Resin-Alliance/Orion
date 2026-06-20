@@ -894,6 +894,12 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
               onPressed: () {
                 _loosenScrewsDone = true;
                 _engine.advanceAfterSuccessfulStep();
+                // Auto-run the initial leveling step
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _engine.canRunCurrentStep) {
+                    _engine.runCurrentStep();
+                  }
+                });
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
