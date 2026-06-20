@@ -236,6 +236,9 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   DateTime? _runningSince;
   bool _holdingRunning = false;
 
+  // Suppresses the brief idle-step flash between auto-advance and auto-run
+  bool _autoAdvancing = false;
+
   // Intermediate screen flags
   bool _loosenScrewsDone = false;
 
@@ -275,6 +278,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   void _handleEngineUpdate() {
     if (!mounted || _wizardDisposed) return;
     if (_engine.isRunning) {
+      _autoAdvancing = false;
       _runningSince ??= DateTime.now();
       _holdingRunning = false;
       _loosenScrewsDone = false;
@@ -310,6 +314,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
         // Auto-advance through steps that don't need user interaction
         if (step.autoAdvance) {
+          _autoAdvancing = true;
           _engine.advanceAfterSuccessfulStep();
           // Also auto-run the next step if it's a prepare move or final offset
           final nextStep = _engine.currentStep;
@@ -338,7 +343,8 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     if (mounted) setState(() {});
   }
 
-  bool get _effectivelyRunning => _engine.isRunning || _holdingRunning;
+  bool get _effectivelyRunning =>
+      _engine.isRunning || _holdingRunning || _autoAdvancing;
 
   void _goBack() {
     switch (_phase) {
@@ -519,6 +525,8 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       final status = Provider.of<StatusProvider>(context, listen: false);
       status.clearHomedStatus();
       await status.refreshKinematicStatus();
+      // Exit the wizard after emergency stop
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } finally {
       if (mounted) setState(() => _busyStop = false);
     }
@@ -1223,7 +1231,6 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           cornerIndex: _adjustingCornerIndex!,
           isCw: _adjustmentIsCw,
           zValue: adjMeasurements?.secondStageTriggerZ,
-          targetForce: adjMeasurements?.secondStageTriggerForce,
         );
     }
   }
@@ -2138,13 +2145,11 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
     required this.cornerIndex,
     required this.isCw,
     this.zValue,
-    this.targetForce,
   });
 
   final int cornerIndex;
   final bool isCw;
   final double? zValue;
-  final double? targetForce;
 
   @override
   State<_AdjustmentFeedbackScreen> createState() =>
@@ -2165,13 +2170,38 @@ class _AdjustmentFeedbackScreenState
   bool _listenerRegistered = false;
   bool _analyticsDisposed = false;
 
+  double? _baselineForce;
+  final List<double> _forceHistory = [];
+  static const int _smoothingWindow = 30; // ~2 seconds at 15Hz
+
+  double? get _smoothedForce {
+    if (_forceHistory.isEmpty) return null;
+    return _forceHistory.reduce((a, b) => a + b) / _forceHistory.length;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_listenerRegistered) return;
     _analytics = Provider.of<AnalyticsProvider>(context, listen: false);
     _analyticsListener = () {
-      if (!_analyticsDisposed) setState(() {});
+      if (!_analyticsDisposed) {
+        final series = _analytics!.pressureSeries;
+        if (series.isNotEmpty) {
+          final raw = (series.last['v'] as num?)?.toDouble();
+          if (raw != null) {
+            _forceHistory.add(raw);
+            if (_forceHistory.length > _smoothingWindow) {
+              _forceHistory.removeAt(0);
+            }
+          }
+        }
+        // Capture baseline from the first smoothed value
+        if (_baselineForce == null) {
+          _baselineForce = _smoothedForce;
+        }
+        setState(() {});
+      }
     };
     _analytics!.addListener(_analyticsListener!);
     _listenerRegistered = true;
@@ -2200,32 +2230,31 @@ class _AdjustmentFeedbackScreenState
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
-    final series = _analytics?.pressureSeries ?? [];
-    final currentForce = series.isNotEmpty
-        ? (series.last['v'] as num?)?.toDouble()
-        : null;
+    final currentForce = _smoothedForce;
 
-    // Gauge target: use trigger force from probe, fallback to 3.0N
-    final target = widget.targetForce ?? 3.0;
+    // Center the gauge on the force reading when the screen first appeared.
+    // As you turn the screw, the dot moves relative to this baseline:
+    //   tightening (CW) → force ↑ → dot moves right
+    //   loosening  (CCW) → force ↓ → dot moves left
+    final baseline = _baselineForce ?? currentForce ?? 0.0;
     const halfScale = 3.0;
-
-    // Normalized position: -1 (too loose) ... 0 (target) ... +1 (too tight)
     final position = currentForce != null
-        ? ((currentForce - target) / halfScale).clamp(-1.0, 1.0)
+        ? ((currentForce - baseline) / halfScale).clamp(-1.0, 1.0)
         : 0.0;
-    final gap = currentForce != null ? (currentForce - target).abs() : 0.0;
+    final gap = currentForce != null ? (currentForce - baseline).abs() : 0.0;
 
-    // Dynamic direction based on where the dot actually is
-    final directionLabel = position < -0.05
+    // 10% deadzone (±0.1 position) so small fluctuations don't flip labels
+    const deadzone = 0.10;
+    final directionLabel = position < -deadzone
         ? '⟳ TIGHTEN'
-        : position > 0.05
+        : position > deadzone
             ? '⟲ LOOSEN'
             : '✓ AT TARGET';
-    final accent = position < -0.05
-        ? const Color(0xFF57F0A4)   // green = tighten
-        : position > 0.05
-            ? const Color(0xFFFFC16D) // amber = loosen
-            : const Color(0xFF57F0A4); // green = at target
+    final accent = position < -deadzone
+        ? const Color(0xFF57F0A4)
+        : position > deadzone
+            ? const Color(0xFFFFC16D)
+            : const Color(0xFF57F0A4);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2291,7 +2320,7 @@ class _AdjustmentFeedbackScreenState
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Too Loose',
+                            '← Looser',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -2299,7 +2328,7 @@ class _AdjustmentFeedbackScreenState
                             ),
                           ),
                           Text(
-                            'Target',
+                            'Start',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -2307,7 +2336,7 @@ class _AdjustmentFeedbackScreenState
                             ),
                           ),
                           Text(
-                            'Too Tight',
+                            'Tighter →',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -2410,7 +2439,7 @@ class _AdjustmentFeedbackScreenState
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            'target ${target.toStringAsFixed(1)} N',
+                            'baseline ${baseline.toStringAsFixed(1)} N',
                             style: TextStyle(
                               fontSize: 12,
                               color: onSurface.withValues(alpha: 0.4),
@@ -2421,7 +2450,9 @@ class _AdjustmentFeedbackScreenState
                       if (gap > 0.2) ...[
                         const SizedBox(height: 8),
                         Text(
-                          '${gap.toStringAsFixed(2)} N from target — keep turning',
+                          gap > 0.5
+                              ? '${gap.toStringAsFixed(2)} N change'
+                              : '${gap.toStringAsFixed(2)} N change — small adjustments now',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
