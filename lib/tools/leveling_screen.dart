@@ -253,7 +253,6 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   String? _adjustmentError;
   bool _wizardDisposed = false;
   _AdjustmentStep _adjustmentStep = _AdjustmentStep.preparing;
-
   static const _cornerLocations = [
     'front-left',
     'front-right',
@@ -393,32 +392,60 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   bool get _isCornerCheckPassed => _cornerDeviation <= 0.100;
 
   void _enterAdjustmentMode() {
-    // Find the corner furthest from average
+    // The Pro Arm has 3 screws (2 front, 1 back) defining a plane.
+    // With all screws already snug, we need PAIRED adjustments
+    // (loosen one, tighten another) to maintain torque balance.
+    //
+    // Two independent axes:
+    //   Front-to-back: both front screws vs back screw
+    //   Left-to-right: FL screw vs FR screw
     final zValues = _cornerResults
         .map((r) => r?.measurements?.secondStageTriggerZ)
         .toList();
     final validZ = zValues.whereType<double>().toList();
     if (validZ.isEmpty) return;
-    final avg = validZ.reduce((a, b) => a + b) / validZ.length;
 
-    double maxDelta = 0;
-    int worstIdx = 0;
-    for (int i = 0; i < zValues.length; i++) {
-      if (zValues[i] == null) continue;
-      final delta = (zValues[i]! - avg).abs();
-      if (delta > maxDelta) {
-        maxDelta = delta;
-        worstIdx = i;
+    final avgFL = zValues[0] ?? 0.0;
+    final avgFR = zValues[1] ?? 0.0;
+    final avgBR = zValues[2] ?? 0.0;
+    final avgBL = zValues[3] ?? 0.0;
+    final avgFront = (avgFL + avgFR) / 2;
+    final avgBack = (avgBL + avgBR) / 2;
+    final avgLeft = (avgFL + avgBL) / 2;
+    final avgRight = (avgFR + avgBR) / 2;
+    final fbBias = avgFront - avgBack;  // + = front higher than back
+    final lrBias = avgLeft - avgRight;  // + = left higher than right
+
+    int probeCorner;
+    bool isCw;
+
+    if (fbBias.abs() >= lrBias.abs()) {
+      // Front-to-back is the dominant issue
+      if (fbBias > 0) {
+        // Front is high → loosen front screws, tighten back
+        probeCorner = 0;
+        isCw = false;
+      } else {
+        // Back is high → tighten front screws, loosen back
+        probeCorner = 0;
+        isCw = true;
+      }
+    } else {
+      // Left-to-right is the dominant issue
+      if (lrBias > 0) {
+        // Left is high → loosen left, tighten right
+        probeCorner = 0;
+        isCw = true;
+      } else {
+        // Right is high → tighten left, loosen right
+        probeCorner = 0;
+        isCw = true;
       }
     }
 
-    // LOW (below avg) → tighten (CW pulls up)
-    // HIGH (above avg) → loosen (CCW pushes down)
-    _adjustingCornerIndex = worstIdx;
-    _adjustmentIsCw = zValues[worstIdx]! < avg;
+    _adjustingCornerIndex = probeCorner;
+    _adjustmentIsCw = isCw;
     _adjustmentError = null;
-    // Must be set before setState so the rebuild sees the busy state
-    // and shows the spinner, not the feedback screen
     _adjustmentBusy = true;
 
     setState(() {
@@ -426,7 +453,6 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       _adjustmentStep = _AdjustmentStep.preparing;
     });
 
-    // Start the prepare cycle
     _runAdjustmentPrepare();
   }
 
@@ -1292,11 +1318,15 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       case _AdjustmentStep.feedback:
         final adjMeasurements =
             _cornerResults[_adjustingCornerIndex!]?.measurements;
+        final zValues = _cornerResults
+            .map((r) => r?.measurements?.secondStageTriggerZ)
+            .toList();
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
           isCw: _adjustmentIsCw,
           zValue: adjMeasurements?.secondStageTriggerZ,
+          zValues: zValues,
         );
     }
   }
@@ -2211,11 +2241,13 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
     required this.cornerIndex,
     required this.isCw,
     this.zValue,
+    this.zValues = const [],
   });
 
   final int cornerIndex;
   final bool isCw;
   final double? zValue;
+  final List<double?> zValues;
 
   @override
   State<_AdjustmentFeedbackScreen> createState() =>
@@ -2280,6 +2312,111 @@ class _AdjustmentFeedbackScreenState
       _analytics!.removeListener(_analyticsListener!);
     }
     super.dispose();
+  }
+
+  Widget _buildCornerOverview(ThemeData theme) {
+    final zValues = widget.zValues;
+    final validZ = zValues.whereType<double>().toList();
+    final minZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a < b ? a : b);
+    final maxZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a > b ? a : b);
+
+    // Labels in physical order: top row = back, bottom row = front
+    const rows = [
+      ['BL', 'BR'],
+      ['FL', 'FR'],
+    ];
+    // Indices match _cornerNames: 0=FL, 1=FR, 2=BR, 3=BL
+    const indices = [
+      [3, 2],
+      [0, 1],
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: theme.colorScheme.surfaceContainerHighest
+            .withValues(alpha: 0.10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('BACK', style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+            letterSpacing: 1,
+          )),
+          const SizedBox(height: 6),
+          for (int r = 0; r < rows.length; r++) ...[
+            if (r > 0) const SizedBox(height: 4),
+            Row(
+              children: [
+                for (int c = 0; c < rows[r].length; c++) ...[
+                  if (c > 0) const SizedBox(width: 10),
+                  Expanded(
+                    child: _miniBadge(
+                      theme, rows[r][c], zValues[indices[r][c]],
+                      validZ, minZ, maxZ,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text('FRONT', style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+            letterSpacing: 1,
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniBadge(
+    ThemeData theme, String label, double? z,
+    List<double> validZ, double minZ, double maxZ,
+  ) {
+    final isLowest = validZ.isNotEmpty && z == minZ;
+    final isHighest = validZ.isNotEmpty && z == maxZ;
+    final accent = isLowest
+        ? const Color(0xFF57F0A4)
+        : isHighest
+            ? const Color(0xFFFFC16D)
+            : theme.colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        color: accent.withValues(alpha: 0.10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isLowest ? PhosphorIcons.caretDoubleDown()
+                : isHighest ? PhosphorIcons.caretDoubleUp()
+                : PhosphorIcons.minus(),
+            size: 11, color: accent,
+          ),
+          const SizedBox(width: 3),
+          Text(label, style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          )),
+          const SizedBox(width: 4),
+          Text(
+            z != null ? z.toStringAsFixed(3) : '--',
+            style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.bold,
+              color: accent,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String get _screwLabel {
@@ -2374,7 +2511,13 @@ class _AdjustmentFeedbackScreenState
                     ),
                   ),
                 ],
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
+                // Corner overview
+                if (widget.zValues.length == 4) ...[
+                  _buildCornerOverview(theme),
+                  const SizedBox(height: 16),
+                ],
+                // Gauge
                 // Gauge
                 SizedBox(
                   width: 320,
