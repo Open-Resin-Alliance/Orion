@@ -180,11 +180,16 @@ class LevelingVariant {
           endpoint: 'probe_corner_prepare',
           titleKey: 'levelingWorkflow.cornerPrepareTitle',
           instructionKey: 'levelingWorkflow.cornerPrepareInstruction',
-          icon: PhosphorIconsFill.house,
+          icon: [
+            PhosphorIcons.arrowDownLeft(),
+            PhosphorIcons.arrowDownRight(),
+            PhosphorIcons.arrowUpRight(),
+            PhosphorIcons.arrowUpLeft(),
+          ][i],
           kind: LevelingWorkflowStepKind.prepare,
-          stepTitle: 'Preparing Corner Measurement',
-          stepInstruction: 'The printer has positioned itself.\n'
-              'Place the Leveling Puck under the indicated corner.',
+          stepTitle: 'Place Calibration Puck',
+          stepInstruction:
+              'Please place the Leveling Puck in the ${cornerDefs[i].$1} corner',
           specialScreen: 'corner-$i',
         ),
         LevelingWorkflowStep(

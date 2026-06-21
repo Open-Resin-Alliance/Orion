@@ -399,49 +399,61 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     // Two independent axes:
     //   Front-to-back: both front screws vs back screw
     //   Left-to-right: FL screw vs FR screw
+    //
+    // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
+    // Screw mapping:   corners 0-1 → respective front screw
+    //                  corners 2-3 → center back screw
     final zValues = _cornerResults
         .map((r) => r?.measurements?.secondStageTriggerZ)
         .toList();
     final validZ = zValues.whereType<double>().toList();
-    if (validZ.isEmpty) return;
+    if (validZ.length < 4) return;
 
-    final avgFL = zValues[0] ?? 0.0;
-    final avgFR = zValues[1] ?? 0.0;
-    final avgBR = zValues[2] ?? 0.0;
-    final avgBL = zValues[3] ?? 0.0;
-    final avgFront = (avgFL + avgFR) / 2;
-    final avgBack = (avgBL + avgBR) / 2;
-    final avgLeft = (avgFL + avgBL) / 2;
-    final avgRight = (avgFR + avgBR) / 2;
-    final fbBias = avgFront - avgBack;  // + = front higher than back
-    final lrBias = avgLeft - avgRight;  // + = left higher than right
+    final z0 = zValues[0]!; // FL
+    final z1 = zValues[1]!; // FR
+    final z2 = zValues[2]!; // BR
+    final z3 = zValues[3]!; // BL
+
+    // Analyze both axes to find the dominant imbalance
+    final frontAvg = (z0 + z1) / 2;
+    final backAvg = (z2 + z3) / 2;
+    final fbDelta = frontAvg - backAvg; // + = front higher
+
+    final leftAvg = (z0 + z3) / 2;
+    final rightAvg = (z1 + z2) / 2;
+    final lrDelta = leftAvg - rightAvg; // + = left higher
 
     int probeCorner;
-    bool isCw;
-
-    if (fbBias.abs() >= lrBias.abs()) {
-      // Front-to-back is the dominant issue
-      if (fbBias > 0) {
-        // Front is high → loosen front screws, tighten back
-        probeCorner = 0;
-        isCw = false;
+    if (fbDelta.abs() >= lrDelta.abs()) {
+      // ── Front-to-back is the dominant axis ──
+      if (fbDelta > 0) {
+        // Front is higher → tighten center back screw
+        // Probe at whichever back corner has the larger gap (lower Z)
+        probeCorner = z2 < z3 ? 2 : 3; // lower of BR, BL
       } else {
-        // Back is high → tighten front screws, loosen back
-        probeCorner = 0;
-        isCw = true;
+        // Back is higher → tighten front screws
+        // Probe at whichever front corner has the larger gap (lower Z)
+        probeCorner = z0 < z1 ? 0 : 1; // lower of FL, FR
       }
     } else {
-      // Left-to-right is the dominant issue
-      if (lrBias > 0) {
-        // Left is high → loosen left, tighten right
-        probeCorner = 0;
-        isCw = true;
+      // ── Left-to-right is the dominant axis ──
+      if (lrDelta > 0) {
+        // Left is higher → tighten FR screw
+        probeCorner = 1; // FR
       } else {
-        // Right is high → tighten left, loosen right
-        probeCorner = 0;
-        isCw = true;
+        // Right is higher → tighten FL screw
+        probeCorner = 0; // FL
       }
     }
+
+    // Determine turn direction for the selected screw.
+    // We probe at the corner the screw affects and compare its Z
+    // to the average of the opposite axis pair.
+    final axisAvg = probeCorner <= 1
+        ? backAvg // front screw → compare to back average
+        : frontAvg; // back screw → compare to front average
+    final cornerZ = zValues[probeCorner]!;
+    final isCw = cornerZ > axisAvg; // corner higher → tighten screw to raise opposite side
 
     _adjustingCornerIndex = probeCorner;
     _adjustmentIsCw = isCw;
@@ -1328,17 +1340,32 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       case _AdjustmentStep.puckPlacement:
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.feedback:
+        // Compute average force across all corners as the target.
+        // All four corners should converge to the same force when level.
+        final allForces = _cornerResults
+            .map((r) => r?.measurements?.secondStageTriggerForce)
+            .whereType<double>()
+            .toList();
+        final avgTargetForce = allForces.isNotEmpty
+            ? allForces.reduce((a, b) => a + b) / allForces.length
+            : null;
+        final allZ = _cornerResults
+            .map((r) => r?.measurements?.secondStageTriggerZ)
+            .whereType<double>()
+            .toList();
+        final avgZ = allZ.isNotEmpty
+            ? allZ.reduce((a, b) => a + b) / allZ.length
+            : null;
         final adjMeasurements =
             _cornerResults[_adjustingCornerIndex!]?.measurements;
-        final zValues = _cornerResults
-            .map((r) => r?.measurements?.secondStageTriggerZ)
-            .toList();
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
           isCw: _adjustmentIsCw,
           zValue: adjMeasurements?.secondStageTriggerZ,
-          zValues: zValues,
+          targetForce: avgTargetForce,
+          allCornerZ: allZ,
+          allCornerForces: allForces,
         );
     }
   }
@@ -1363,14 +1390,14 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           ),
           const SizedBox(height: 20),
           Text(
-            isProbing ? 'Probing Corner' : 'Preparing Corner',
+            isProbing ? 'Probing Corner' : 'Positioning Probe',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primary),
           ),
           const SizedBox(height: 8),
           Text(
             isProbing
                 ? 'Measuring at ${labels[idx]}'
-                : 'Positioning at ${labels[idx]}',
+                : 'Moving to ${labels[idx]}',
             style: TextStyle(
               fontSize: 16,
               color: Theme.of(context)
@@ -2253,13 +2280,17 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
     required this.cornerIndex,
     required this.isCw,
     this.zValue,
-    this.zValues = const [],
+    this.targetForce,
+    this.allCornerZ = const [],
+    this.allCornerForces = const [],
   });
 
   final int cornerIndex;
   final bool isCw;
   final double? zValue;
-  final List<double?> zValues;
+  final double? targetForce;
+  final List<double> allCornerZ;
+  final List<double> allCornerForces;
 
   @override
   State<_AdjustmentFeedbackScreen> createState() =>
@@ -2326,111 +2357,6 @@ class _AdjustmentFeedbackScreenState
     super.dispose();
   }
 
-  Widget _buildCornerOverview(ThemeData theme) {
-    final zValues = widget.zValues;
-    final validZ = zValues.whereType<double>().toList();
-    final minZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a < b ? a : b);
-    final maxZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a > b ? a : b);
-
-    // Labels in physical order: top row = back, bottom row = front
-    const rows = [
-      ['BL', 'BR'],
-      ['FL', 'FR'],
-    ];
-    // Indices match _cornerNames: 0=FL, 1=FR, 2=BR, 3=BL
-    const indices = [
-      [3, 2],
-      [0, 1],
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: theme.colorScheme.surfaceContainerHighest
-            .withValues(alpha: 0.10),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('BACK', style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
-            letterSpacing: 1,
-          )),
-          const SizedBox(height: 6),
-          for (int r = 0; r < rows.length; r++) ...[
-            if (r > 0) const SizedBox(height: 4),
-            Row(
-              children: [
-                for (int c = 0; c < rows[r].length; c++) ...[
-                  if (c > 0) const SizedBox(width: 10),
-                  Expanded(
-                    child: _miniBadge(
-                      theme, rows[r][c], zValues[indices[r][c]],
-                      validZ, minZ, maxZ,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-          const SizedBox(height: 6),
-          Text('FRONT', style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w700,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
-            letterSpacing: 1,
-          )),
-        ],
-      ),
-    );
-  }
-
-  Widget _miniBadge(
-    ThemeData theme, String label, double? z,
-    List<double> validZ, double minZ, double maxZ,
-  ) {
-    final isLowest = validZ.isNotEmpty && z == minZ;
-    final isHighest = validZ.isNotEmpty && z == maxZ;
-    final accent = isLowest
-        ? const Color(0xFF57F0A4)
-        : isHighest
-            ? const Color(0xFFFFC16D)
-            : theme.colorScheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        color: accent.withValues(alpha: 0.10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isLowest ? PhosphorIcons.caretDoubleDown()
-                : isHighest ? PhosphorIcons.caretDoubleUp()
-                : PhosphorIcons.minus(),
-            size: 11, color: accent,
-          ),
-          const SizedBox(width: 3),
-          Text(label, style: TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          )),
-          const SizedBox(width: 4),
-          Text(
-            z != null ? z.toStringAsFixed(3) : '--',
-            style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.bold,
-              color: accent,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   String get _screwLabel {
     if (widget.cornerIndex <= 1) {
       return widget.cornerIndex == 0
@@ -2447,14 +2373,19 @@ class _AdjustmentFeedbackScreenState
 
     final currentForce = _smoothedForce;
 
-    // Center the gauge on the force reading when the screen first appeared.
-    // As you turn the screw, the dot moves relative to this baseline:
-    //   tightening (CW) → force ↑ → dot moves right
-    //   loosening  (CCW) → force ↓ → dot moves left
-    final baseline = _baselineForce ?? currentForce ?? 0.0;
-    const halfScale = 3.0;
+    // Center the gauge on the probed target force. Athena force readings are
+    // negative under compression, so the direction flips for negative targets.
+    final targetForce = widget.targetForce ?? _baselineForce ?? currentForce;
+    final baseline = targetForce ?? 0.0;
+    final forceScale = baseline.abs() * 0.35 < 8.0
+        ? 8.0
+        : baseline.abs() * 0.35;
     final position = currentForce != null
-        ? ((currentForce - baseline) / halfScale).clamp(-1.0, 1.0)
+        ? ((baseline < 0
+                    ? baseline - currentForce
+                    : currentForce - baseline) /
+                forceScale)
+            .clamp(-1.0, 1.0)
         : 0.0;
     final gap = currentForce != null ? (currentForce - baseline).abs() : 0.0;
 
@@ -2475,217 +2406,286 @@ class _AdjustmentFeedbackScreenState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 4),
-        Row(
-          children: [
-            Icon(PhosphorIcons.wrench(), size: 24, color: accent),
-            const SizedBox(width: 10),
-            Text(
-              'Adjust: ${_cornerNames[widget.cornerIndex]}',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: accent,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
         Expanded(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Direction + screw label
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 6,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
                   ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: accent.withValues(alpha: 0.12),
-                  ),
-                  child: Text(
-                    '$directionLabel — $_screwLabel',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: accent,
-                    ),
-                  ),
-                ),
-                if (widget.zValue != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Probed Z: ${widget.zValue!.toStringAsFixed(3)} mm',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                // Corner overview
-                if (widget.zValues.length == 4) ...[
-                  _buildCornerOverview(theme),
-                  const SizedBox(height: 16),
-                ],
-                // Gauge
-                // Gauge
-                SizedBox(
-                  width: 320,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Labels above gauge
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Center(
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.only(bottom: 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            '← Looser',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFFFC16D),
+                          // ── Icon ──
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: accent.withValues(alpha: 0.10),
+                            ),
+                            child: Icon(
+                              [PhosphorIcons.arrowDownLeft(), PhosphorIcons.arrowDownRight(), PhosphorIcons.arrowUpRight(), PhosphorIcons.arrowUpLeft()][widget.cornerIndex],
+                              size: 52,
+                              color: accent,
                             ),
                           ),
+                          const SizedBox(height: 20),
+                          // ── Title ──
                           Text(
-                            'Start',
+                            'Adjusting ${_cornerNames[widget.cornerIndex]}',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF57F0A4),
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: accent,
                             ),
                           ),
-                          Text(
-                            'Tighter →',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.orangeAccent,
+                          const SizedBox(height: 8),
+                          // ── Description ──
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32),
+                            child: Text(
+                              'Turn the $_screwLabel${widget.zValue != null ? '  ·  Probed ${widget.zValue!.toStringAsFixed(3)} mm' : ''}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                height: 1.4,
+                                color: onSurface
+                                    .withValues(alpha: 0.72),
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Gauge track
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          height: 32,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFFFC16D),
-                                Color(0xFF57F0A4),
-                                Colors.orangeAccent,
+                          const SizedBox(height: 28),
+                          // ── Gauge ──
+                          ConstrainedBox(
+                            constraints:
+                                const BoxConstraints(maxWidth: 340),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Gauge track
+                                SizedBox(
+                                  height: 28,
+                                  child: LayoutBuilder(
+                                    builder: (_, trackBox) {
+                                      final w = trackBox.maxWidth;
+                                      final dotFrac = ((position + 1) / 2)
+                                          .clamp(0.0, 1.0);
+                                      final centerX = w / 2;
+                                      final dotCenter = dotFrac * w;
+                                      final fillLeft = dotCenter < centerX
+                                          ? dotCenter
+                                          : centerX;
+                                      final fillWidth =
+                                          (dotCenter - centerX).abs();
+                                      return Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          // Track
+                                          ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(14),
+                                            child: Container(
+                                              color: onSurface
+                                                  .withValues(alpha: 0.08),
+                                            ),
+                                          ),
+                                          // Center line
+                                          Positioned(
+                                            left: centerX - 1,
+                                            top: 0,
+                                            bottom: 0,
+                                            child: Container(
+                                              width: 2,
+                                              color: onSurface
+                                                  .withValues(alpha: 0.15),
+                                            ),
+                                          ),
+                                          // Fill
+                                          if (fillWidth > 0)
+                                            Positioned(
+                                              left: fillLeft,
+                                              top: 0,
+                                              bottom: 0,
+                                              width: fillWidth,
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                        14),
+                                                child: Container(
+                                                  color: accent
+                                                      .withValues(alpha: 0.50),
+                                                ),
+                                              ),
+                                            ),
+                                          // Dot
+                                          Positioned(
+                                            left: dotCenter - 14,
+                                            top: 0,
+                                            child: Container(
+                                              width: 28,
+                                              height: 28,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: accent,
+                                                border: Border.all(
+                                                  color: Colors.white,
+                                                  width: 3,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: accent.withValues(
+                                                        alpha: 0.35),
+                                                    blurRadius: 6,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                // Gauge labels
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Looser',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: onSurface
+                                            .withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                    Text(
+                                      'Tighter',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: onSurface
+                                            .withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 18),
+                                // ── Force value ──
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      currentForce != null
+                                          ? currentForce!
+                                              .toStringAsFixed(2)
+                                          : '--',
+                                      style: TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1,
+                                        color: accent,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'N',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: accent,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'avg ${baseline.toStringAsFixed(1)} N',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: onSurface
+                                        .withValues(alpha: 0.45),
+                                  ),
+                                ),
+                                // ── Direction ──
+                                if (currentForce != null) ...[
+                                  const SizedBox(height: 14),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        position < -deadzone
+                                            ? PhosphorIcons
+                                                .arrowClockwise()
+                                            : position > deadzone
+                                                ? PhosphorIcons
+                                                    .arrowCounterClockwise()
+                                                : PhosphorIcons.check(),
+                                        size: 16,
+                                        color: accent,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        directionLabel,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: accent,
+                                        ),
+                                      ),
+                                      if (position.abs() >= deadzone) ...[
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          '${((1.0 - (gap / (forceScale * 1.2))).clamp(0.0, 1.0) * 100).toStringAsFixed(0)}%',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: accent
+                                                .withValues(alpha: 0.6),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                                // ── Gap hint ──
+                                if (gap > 0.2 &&
+                                    currentForce != null) ...[
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    gap > 0.5
+                                        ? '${gap.toStringAsFixed(2)} N to go'
+                                        : '${gap.toStringAsFixed(2)} N — small turns now',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: onSurface
+                                          .withValues(alpha: 0.45),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
-                          child: Stack(
-                            children: [
-                              // Center target marker
-                              Center(
-                                child: Container(
-                                  width: 4,
-                                  height: 32,
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                ),
-                              ),
-                              // Moving dot
-                              Center(
-                                child: FractionallySizedBox(
-                                  widthFactor: 1,
-                                  child: Padding(
-                                    padding: EdgeInsetsDirectional.only(
-                                      start: (position + 1) / 2 * (320 - 32),
-                                    ),
-                                    child: Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.white,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: position.abs() > 0.3
-                                                ? Colors.white
-                                                    .withValues(alpha: 0.4)
-                                                : const Color(0xFF57F0A4)
-                                                    .withValues(alpha: 0.4),
-                                            blurRadius: 12,
-                                            spreadRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      // Force value below gauge
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            PhosphorIcons.gauge(),
-                            size: 16,
-                            color: onSurface.withValues(alpha: 0.5),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Force: ',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: onSurface.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          Text(
-                            currentForce != null
-                                ? '${currentForce.toStringAsFixed(2)} N'
-                                : '--',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: position.abs() < 0.15
-                                  ? const Color(0xFF57F0A4)
-                                  : position > 0
-                                      ? Colors.orangeAccent
-                                      : const Color(0xFFFFC16D),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'baseline ${baseline.toStringAsFixed(1)} N',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: onSurface.withValues(alpha: 0.4),
-                            ),
-                          ),
                         ],
                       ),
-                      if (gap > 0.2) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          gap > 0.5
-                              ? '${gap.toStringAsFixed(2)} N change'
-                              : '${gap.toStringAsFixed(2)} N change — small adjustments now',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: onSurface.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ],
