@@ -144,13 +144,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         // Auto-advance through steps that don't need user interaction
         if (step.autoAdvance) {
           _engine.advanceAfterSuccessfulStep();
-          // Also auto-run the next step if it's a prepare move or final offset
+          // Also auto-run the next step if it's a prepare move, final offset,
+          // or a skipBackend/intermediate step (e.g. corner results).
           // (but only if the workflow isn't complete)
           if (!_engine.isComplete) {
             final nextStep = _engine.currentStep;
             if (nextStep != null &&
                 (nextStep.kind == LevelingWorkflowStepKind.finalOffset ||
-                    nextStep.kind == LevelingWorkflowStepKind.prepare)) {
+                    nextStep.kind == LevelingWorkflowStepKind.prepare ||
+                    nextStep.skipBackend)) {
               _autoAdvancing = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) _engine.runCurrentStep();
@@ -338,7 +340,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       if (!response.result) {
         _adjustmentError = response.error.isNotEmpty
             ? response.error
-            : 'Probe failed. Please try again.';
+            : FlutterI18n.translate(context, 'leveling.wizardProbeFailed');
         if (mounted) setState(() {});
         return;
       }
@@ -647,7 +649,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Start Pre-Flight',
+                  FlutterI18n.translate(
+                      context, 'leveling.wizardStartPreFlight'),
                   style: const TextStyle(fontSize: 20),
                 ),
                 const SizedBox(width: 10),
@@ -734,7 +737,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     // Loosen-screws prompt: Cancel | Done
     if (status == LevelingWorkflowStatus.stepComplete &&
-        _engine.currentStep?.intermediateScreen == 'loosen' &&
+        _engine.currentStep?.intermediateScreen ==
+            FlutterI18n.translate(context, 'leveling.wizardLoosen') &&
         !_loosenScrewsDone) {
       return Row(
         children: [
@@ -796,7 +800,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     // Tighten-screws prompt: Cancel | Done â†’ auto-run offset
     if (status == LevelingWorkflowStatus.stepComplete &&
-        _engine.currentStep?.intermediateScreen == 'tighten') {
+        _engine.currentStep?.intermediateScreen ==
+            FlutterI18n.translate(context, 'leveling.wizardTighten')) {
       return Row(
         children: [
           Expanded(
@@ -921,9 +926,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _engine.currentStep?.kind == LevelingWorkflowStepKind.prepare &&
             (_engine.currentStep?.id.startsWith('fine_prepare_') ?? false);
     final primaryLabel = switch (status) {
-      LevelingWorkflowStatus.idle => 'Proceed',
+      LevelingWorkflowStatus.idle =>
+        FlutterI18n.translate(context, 'leveling.wizardProceed'),
       LevelingWorkflowStatus.stepComplete => isAllCornersMeasured
-          ? (needsAdjustment ? 'Adjust' : 'Continue')
+          ? (needsAdjustment
+              ? FlutterI18n.translate(context, 'leveling.wizardAdjust')
+              : FlutterI18n.translate(context, 'leveling.wizardContinue'))
           : isCornerPrepare
               ? FlutterI18n.translate(context, 'leveling.next')
               : isLast
@@ -1035,7 +1043,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             Icon(PhosphorIcons.warning(), size: 26, color: Colors.orangeAccent),
             const SizedBox(width: 14),
             Text(
-              'Cancel Leveling',
+              FlutterI18n.translate(context, 'leveling.wizardCancelTitle'),
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -1044,10 +1052,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             ),
           ],
         ),
-        content: const Text(
-          'Are you sure you want to cancel?\n\n'
-          'Progress will be lost and you will return to the leveling menu.',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+        content: Text(
+          FlutterI18n.translate(context, 'leveling.wizardCancelMsg'),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
         ),
         actions: [
           GlassButton(
@@ -1106,8 +1113,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 const SizedBox(width: 8),
                 Text(
                   _adjustmentStep == _AdjustmentStep.probing
-                      ? 'Probingâ€¦'
-                      : 'Preparingâ€¦',
+                      ? FlutterI18n.translate(
+                          context, 'leveling.wizardProbingBtn')
+                      : FlutterI18n.translate(
+                          context, 'leveling.wizardPreparingBtn'),
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w700),
                 ),
@@ -1207,7 +1216,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Icon(PhosphorIcons.arrowClockwise(), size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Re-check All',
+                  FlutterI18n.translate(context, 'leveling.wizardRecheckAll'),
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w700),
                 ),
@@ -1282,7 +1291,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           ),
           const SizedBox(height: 20),
           Text(
-            isProbing ? 'Probing Corner' : 'Positioningâ€¦',
+            isProbing
+                ? FlutterI18n.translate(context, 'leveling.wizardProbingBtn')
+                : FlutterI18n.translate(context, 'leveling.wizardPositioning'),
             style: TextStyle(
                 fontSize: 22, fontWeight: FontWeight.bold, color: primary),
           ),
@@ -1333,7 +1344,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Place Calibration Puck',
+            FlutterI18n.translate(context, 'leveling.wizardPlacePuck'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,
@@ -1345,8 +1356,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Please place the Leveling Puck in the\n'
-              '${labels[idx]} corner${screwHints[idx]}.',
+              FlutterI18n.translate(context, 'leveling.wizardPuckInstruction',
+                  translationParams: {
+                    'corner': labels[idx],
+                    'hint': screwHints[idx],
+                  }),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -1371,7 +1385,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           Icon(PhosphorIcons.warning(), size: 64, color: Colors.orangeAccent),
           const SizedBox(height: 20),
           Text(
-            'Adjustment Failed',
+            FlutterI18n.translate(context, 'leveling.wizardAdjustFailed'),
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -1382,7 +1396,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
-              _adjustmentError ?? 'Unknown error',
+              _adjustmentError ??
+                  FlutterI18n.translate(context, 'leveling.wizardUnknownError'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -1433,7 +1448,7 @@ class _PreLevelingPane extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'This wizard will guide you through assisted leveling.',
+              FlutterI18n.translate(context, 'leveling.wizardIntroMsg'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 22,
@@ -1446,8 +1461,7 @@ class _PreLevelingPane extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Your printer will utilize the force-sensor to help with '
-              'ensuring good leveling results.',
+              FlutterI18n.translate(context, 'leveling.wizardIntroDetail'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -1704,9 +1718,13 @@ class _WorkflowPane extends StatelessWidget {
     // Intermediate screens from step metadata (only on stepComplete)
     final isComplete = engine.status == LevelingWorkflowStatus.stepComplete;
     final String? intermediate = step.intermediateScreen;
-    final isLoosenScrews =
-        isComplete && intermediate == 'loosen' && !loosenScrewsDone;
-    final isTightenScrews = isComplete && intermediate == 'tighten';
+    final isLoosenScrews = isComplete &&
+        intermediate ==
+            FlutterI18n.translate(context, 'leveling.wizardLoosen') &&
+        !loosenScrewsDone;
+    final isTightenScrews = isComplete &&
+        intermediate ==
+            FlutterI18n.translate(context, 'leveling.wizardTighten');
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
     final isRemovePuck = isComplete && intermediate == 'removePuck';
 
@@ -1749,7 +1767,7 @@ class _WorkflowPane extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'Loosen Leveling Screws',
+          FlutterI18n.translate(context, 'leveling.loosenTitle'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
@@ -1761,7 +1779,7 @@ class _WorkflowPane extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
-            'Loosen until plate can move freely.',
+            FlutterI18n.translate(context, 'leveling.loosenInstruction'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -1783,9 +1801,11 @@ class _WorkflowPane extends StatelessWidget {
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72);
     final title = step.runningTitle ??
         switch (step.kind) {
-          LevelingWorkflowStepKind.prepare => 'Preparing Machine',
-          LevelingWorkflowStepKind.finalOffset => 'Saving Offset',
-          _ => 'Moving to Screen',
+          LevelingWorkflowStepKind.prepare =>
+            FlutterI18n.translate(context, 'leveling.wizardPreparingMachine'),
+          LevelingWorkflowStepKind.finalOffset =>
+            FlutterI18n.translate(context, 'leveling.wizardSavingOffset'),
+          _ => FlutterI18n.translate(context, 'leveling.wizardMovingToScreen'),
         };
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1819,7 +1839,7 @@ class _WorkflowPane extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
-            'Please do not touch the printer',
+            FlutterI18n.translate(context, 'leveling.wizardDoNotTouch'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -1852,7 +1872,7 @@ class _WorkflowPane extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'Tighten Leveling Screws',
+          FlutterI18n.translate(context, 'leveling.tightenTitle'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
@@ -1865,8 +1885,10 @@ class _WorkflowPane extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
             engine.variant?.id == 'pro'
-                ? 'Snug-tighten each screw in a cross pattern.'
-                : 'Fully tighten each screw in a cross pattern.',
+                ? FlutterI18n.translate(
+                    context, 'leveling.tightenInstructionPro')
+                : FlutterI18n.translate(
+                    context, 'leveling.tightenInstructionStandard'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -1900,7 +1922,7 @@ class _WorkflowPane extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'Remove Leveling Puck',
+          FlutterI18n.translate(context, 'leveling.wizardRemovePuck'),
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
@@ -1912,8 +1934,7 @@ class _WorkflowPane extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
-            'Corner leveling complete. Please remove the\n'
-            'Leveling Puck from the build plate.',
+            FlutterI18n.translate(context, 'leveling.wizardRemovePuckInstr'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -1953,7 +1974,7 @@ class _WorkflowPane extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              'Corner Check Results',
+              FlutterI18n.translate(context, 'leveling.wizardCornerResults'),
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -1968,7 +1989,9 @@ class _WorkflowPane extends StatelessWidget {
                 color: statusColor.withValues(alpha: 0.15),
               ),
               child: Text(
-                withinTolerance ? 'PASS' : 'FAIL',
+                withinTolerance
+                    ? FlutterI18n.translate(context, 'leveling.wizardPass')
+                    : FlutterI18n.translate(context, 'leveling.wizardFail'),
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -2044,7 +2067,8 @@ class _WorkflowPane extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Total Deviation',
+                        FlutterI18n.translate(
+                            context, 'leveling.wizardTotalDeviation'),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -2066,7 +2090,8 @@ class _WorkflowPane extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            ' / 0.100 mm',
+                            FlutterI18n.translate(
+                                context, 'leveling.wizardDeviationLimit'),
                             style: TextStyle(
                               fontSize: 14,
                               color: theme.colorScheme.onSurface
@@ -2087,8 +2112,10 @@ class _WorkflowPane extends StatelessWidget {
                         ),
                         child: Text(
                           withinTolerance
-                              ? 'âœ“ Within Tolerance'
-                              : 'âš  Needs Adjustment',
+                              ? FlutterI18n.translate(
+                                  context, 'leveling.wizardWithinTolerance')
+                              : FlutterI18n.translate(
+                                  context, 'leveling.wizardNeedsAdjust'),
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -2325,10 +2352,10 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   String get _adjustmentTitle {
     if (widget.cornerIndex <= 1) {
       return widget.cornerIndex == 0
-          ? 'Adjusting Front Left'
-          : 'Adjusting Front Right';
+          ? FlutterI18n.translate(context, 'leveling.wizardAdjustFL')
+          : FlutterI18n.translate(context, 'leveling.wizardAdjustFR');
     }
-    return 'Adjusting Rear';
+    return FlutterI18n.translate(context, 'leveling.wizardAdjustRear');
   }
 
   @override
@@ -2352,10 +2379,10 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     // 10% deadzone (Â±0.1 position) so small fluctuations don't flip labels
     const deadzone = 0.10;
     final directionLabel = position < -deadzone
-        ? 'TIGHTEN'
+        ? FlutterI18n.translate(context, 'leveling.wizardTighten')
         : position > deadzone
-            ? 'LOOSEN'
-            : 'AT TARGET';
+            ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
+            : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
     final accent = position < -deadzone
         ? const Color(0xFF57F0A4)
         : position > deadzone
@@ -2412,7 +2439,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                 Align(
                                   alignment: Alignment.topCenter,
                                   child: Text(
-                                    'ADJUST THIS SCREW',
+                                    FlutterI18n.translate(
+                                        context, 'leveling.wizardAdjustScrew'),
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
@@ -2499,7 +2527,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                 Align(
                                   alignment: Alignment.topCenter,
                                   child: Text(
-                                    'LIVE FORCE',
+                                    FlutterI18n.translate(
+                                        context, 'leveling.wizardLiveForce'),
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
@@ -2672,7 +2701,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                           .spaceBetween,
                                                   children: [
                                                     Text(
-                                                      'Tighter',
+                                                      FlutterI18n.translate(
+                                                          context,
+                                                          'leveling.wizardTighter'),
                                                       style: TextStyle(
                                                           fontSize: 11,
                                                           fontWeight:
@@ -2682,7 +2713,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                                   alpha: 0.3)),
                                                     ),
                                                     Text(
-                                                      'Looser',
+                                                      FlutterI18n.translate(
+                                                          context,
+                                                          'leveling.wizardLooser'),
                                                       style: TextStyle(
                                                           fontSize: 11,
                                                           fontWeight:

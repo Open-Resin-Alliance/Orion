@@ -191,20 +191,18 @@ class LevelingVariant {
           specialScreen: 'corner-$i',
         ),
         LevelingWorkflowStep(
-          id: 'fine_corner_${i + 1}',
-          endpoint: 'probe_corner',
-          titleKey: 'levelingWorkflow.cornerTitle',
-          instructionKey: 'levelingWorkflow.cornerInstruction',
-          icon: PhosphorIconsFill.crosshair,
-          kind: LevelingWorkflowStepKind.probe,
-          stepTitle: 'Corner: ${cornerDefs[i].$1}',
-          stepInstruction: 'Please put the Leveling Puck at the position '
-              'indicated on the screen.',
-          runningTitle: 'Probing ${cornerDefs[i].$1} Corner',
-          cornerLabel: cornerDefs[i].$1,
-          autoAdvance:
-              i < 3, // auto-advance to next prepare; last shows results
-        ),
+            id: 'fine_corner_${i + 1}',
+            endpoint: 'probe_corner',
+            titleKey: 'levelingWorkflow.cornerTitle',
+            instructionKey: 'levelingWorkflow.cornerInstruction',
+            icon: PhosphorIconsFill.crosshair,
+            kind: LevelingWorkflowStepKind.probe,
+            stepTitle: 'Corner: ${cornerDefs[i].$1}',
+            stepInstruction: 'Please put the Leveling Puck at the position '
+                'indicated on the screen.',
+            runningTitle: 'Probing ${cornerDefs[i].$1} Corner',
+            cornerLabel: cornerDefs[i].$1,
+            autoAdvance: true),
       ],
       // ── Stage 3: Corner results, remove puck, re-calibrate offset ──
       LevelingWorkflowStep(
