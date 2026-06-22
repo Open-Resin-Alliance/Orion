@@ -2292,26 +2292,13 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   bool _listenerRegistered = false;
   bool _analyticsDisposed = false;
 
-  double? _baselineForce;
   final List<double> _forceHistory = [];
   static const int _smoothingWindow = 30; // ~2 seconds at 15Hz
-
-  /// Frozen force reading — non-null when the sensor is being disturbed
-  /// (e.g. during screw adjustment), freezing the gauge on the last stable
-  /// value until readings settle again.
-  double? _frozenForce;
-  int _settledSampleCount = 0;
-  static const int _settledThreshold =
-      20; // consecutive stable samples to unfreeze
-  static const double _disruptionThreshold = 0.8; // N change triggers freeze
 
   double? get _smoothedForce {
     if (_forceHistory.isEmpty) return null;
     return _forceHistory.reduce((a, b) => a + b) / _forceHistory.length;
   }
-
-  /// The force value to display: frozen if disrupted, live smoothed otherwise.
-  double? get _displayForce => _frozenForce ?? _smoothedForce;
 
   @override
   void initState() {
@@ -2341,25 +2328,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
             if (_forceHistory.length > _smoothingWindow) {
               _forceHistory.removeAt(0);
             }
-            // Disruption detection: if raw jumps far from the current
-            // display value, freeze the gauge on the last stable reading.
-            final display = _displayForce;
-            if (display != null &&
-                (raw - display).abs() > _disruptionThreshold) {
-              _frozenForce = display;
-              _settledSampleCount = 0;
-            } else if (_frozenForce != null) {
-              // Readings have settled — count consecutive stable samples.
-              _settledSampleCount++;
-              if (_settledSampleCount >= _settledThreshold) {
-                _frozenForce = null;
-                _settledSampleCount = 0;
-              }
-            }
           }
         }
-        // Capture baseline from the first smoothed value
-        _baselineForce ??= _smoothedForce;
         setState(() {});
       }
     };
@@ -2400,8 +2370,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
         ? validForces.reduce((a, b) => a + b) / validForces.length
         : null;
     final double? forceDelta;
-    if (widget.cornerForce != null && avgForce != null) {
-      forceDelta = widget.cornerForce! - avgForce;
+    if (_smoothedForce != null && avgForce != null) {
+      forceDelta = _smoothedForce! - avgForce;
     } else {
       forceDelta = null;
     }
