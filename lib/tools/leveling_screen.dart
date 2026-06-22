@@ -314,14 +314,17 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
         if (step.autoAdvance) {
           _engine.advanceAfterSuccessfulStep();
           // Also auto-run the next step if it's a prepare move or final offset
-          final nextStep = _engine.currentStep;
-          if (nextStep != null &&
-              (nextStep.kind == LevelingWorkflowStepKind.finalOffset ||
-                  nextStep.kind == LevelingWorkflowStepKind.prepare)) {
-            _autoAdvancing = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _engine.runCurrentStep();
-            });
+          // (but only if the workflow isn't complete)
+          if (!_engine.isComplete) {
+            final nextStep = _engine.currentStep;
+            if (nextStep != null &&
+                (nextStep.kind == LevelingWorkflowStepKind.finalOffset ||
+                    nextStep.kind == LevelingWorkflowStepKind.prepare)) {
+              _autoAdvancing = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _engine.runCurrentStep();
+              });
+            }
           }
         }
       }
