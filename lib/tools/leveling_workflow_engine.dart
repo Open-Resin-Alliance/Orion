@@ -149,6 +149,14 @@ class LevelingWorkflowEngine extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    // Skip backend call for informational/intermediate-only steps
+    if (step.skipBackend) {
+      _status = LevelingWorkflowStatus.stepComplete;
+      _errorMessage = null;
+      notifyListeners();
+      return;
+    }
+
     late final ForceLevelingWorkflowResponse response;
     try {
       response = await _runner(step.endpoint);

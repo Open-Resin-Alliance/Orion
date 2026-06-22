@@ -391,7 +391,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
   bool get _isCornerCheckPassed => _cornerDeviation <= 0.100;
 
   void _enterAdjustmentMode() {
-    // The Pro Arm has 3 screws (2 front, 1 back) defining a plane.
+    // The build arm has 3 screws (2 front, 1 back) defining a plane.
     // With all screws already snug, we need PAIRED adjustments
     // (loosen one, tighten another) to maintain torque balance.
     //
@@ -1016,6 +1016,66 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       );
     }
 
+    // Remove puck prompt: Cancel | Done → advance + auto-run final prepare
+    if (status == LevelingWorkflowStatus.stepComplete &&
+        _engine.currentStep?.intermediateScreen == 'removePuck') {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () {
+                _engine.advanceAfterSuccessfulStep();
+                // Auto-run the final prepare step
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _engine.canRunCurrentStep) {
+                    _engine.runCurrentStep();
+                  }
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.check(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.done'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     // Not running, not complete: Cancel + action button
     final bool needsAdjustment = isAllCornersMeasured && !_isCornerCheckPassed;
     final bool isCornerPrepare =
@@ -1515,18 +1575,26 @@ class _PreLevelingPane extends StatelessWidget {
 
     return Center(
       key: const ValueKey('intro'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: primary.withValues(alpha: 0.12),
+            ),
+            child: Icon(
               PhosphorIcons.magicWand(),
-              size: 80,
+              size: 52,
               color: primary,
             ),
-            const SizedBox(height: 20),
-            Text(
+          ),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
               'This wizard will guide you through assisted leveling.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -1535,19 +1603,22 @@ class _PreLevelingPane extends StatelessWidget {
                 color: primary,
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
               'Your printer will utilize the force-sensor to help with '
               'ensuring good leveling results.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                height: 1.5,
+                height: 1.4,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1580,7 +1651,6 @@ class _PreFlightGuidePane extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Large icon
           Container(
             width: 100,
             height: 100,
@@ -1594,22 +1664,20 @@ class _PreFlightGuidePane extends StatelessWidget {
               color: primary,
             ),
           ),
-          const SizedBox(height: 24),
-          // Step label
+          const SizedBox(height: 20),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: theme.colorScheme.onSurface,
-                height: 1.3,
               ),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           // Progress dots
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1801,6 +1869,7 @@ class _WorkflowPane extends StatelessWidget {
         isComplete && intermediate == 'loosen' && !loosenScrewsDone;
     final isTightenScrews = isComplete && intermediate == 'tighten';
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
+    final isRemovePuck = isComplete && intermediate == 'removePuck';
 
     return Center(
       key: ValueKey(
@@ -1814,7 +1883,9 @@ class _WorkflowPane extends StatelessWidget {
                   ? _buildTightenScrewsView(context, primary)
                   : isAllCornersMeasured
                       ? _buildAllCornersMeasuredView(context, primary)
-                      : _buildStepView(context, theme, primary, step),
+                      : isRemovePuck
+                          ? _buildRemovePuckView(context, primary)
+                          : _buildStepView(context, theme, primary, step),
     );
   }
 
@@ -1839,7 +1910,7 @@ class _WorkflowPane extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'Loosen Plate Screws',
+          'Loosen Leveling Screws',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
@@ -1851,8 +1922,7 @@ class _WorkflowPane extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
-            'Please loosen the screws once the printer\n'
-            'has stopped moving.',
+            'Loosen until plate can move freely.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
@@ -1943,7 +2013,7 @@ class _WorkflowPane extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'Tighten the Leveling Screws',
+          'Tighten Leveling Screws',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 22,
@@ -1955,14 +2025,61 @@ class _WorkflowPane extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
-            'Please press down on the screen firmly and go\n'
-            'in a clockwise motion as you increasingly\n'
-            'tighten each screw.',
+            engine.variant?.id == 'pro'
+                ? 'Snug-tighten each screw in a cross pattern.'
+                : 'Fully tighten each screw in a cross pattern.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
               height: 1.4,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRemovePuckView(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: primary.withValues(alpha: 0.12),
+          ),
+          child: Icon(
+            PhosphorIconsFill.hand,
+            size: 52,
+            color: primary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Remove Leveling Puck',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Corner leveling complete. Please remove the\n'
+            'Leveling Puck from the build plate.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.4,
+              color: onSurface.withValues(alpha: 0.72),
             ),
           ),
         ),

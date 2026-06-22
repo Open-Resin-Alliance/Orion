@@ -56,6 +56,10 @@ class LevelingWorkflowStep {
   /// Display label for corner steps (e.g. 'Front Left')
   final String? cornerLabel;
 
+  /// If true, skip the backend endpoint call and mark the step as
+  /// complete immediately (for informational/intermediate screens).
+  final bool skipBackend;
+
   const LevelingWorkflowStep({
     required this.id,
     required this.endpoint,
@@ -71,6 +75,7 @@ class LevelingWorkflowStep {
     this.specialScreen,
     this.autoAdvance = false,
     this.cornerLabel,
+    this.skipBackend = false,
   });
 
   /// Create a copy with selected fields overridden.
@@ -82,6 +87,7 @@ class LevelingWorkflowStep {
     String? specialScreen,
     bool? autoAdvance,
     String? cornerLabel,
+    bool? skipBackend,
   }) {
     return LevelingWorkflowStep(
       id: id,
@@ -98,6 +104,7 @@ class LevelingWorkflowStep {
       specialScreen: specialScreen ?? this.specialScreen,
       autoAdvance: autoAdvance ?? this.autoAdvance,
       cornerLabel: cornerLabel ?? this.cornerLabel,
+      skipBackend: skipBackend ?? this.skipBackend,
     );
   }
 }
@@ -122,32 +129,8 @@ class LevelingVariant {
   });
 
   List<LevelingWorkflowStep> buildSteps() {
-    if (id != 'pro') {
-      // Regular variant: keep original single-corner flow
-      return [
-        ...athena2BaseWorkflowSteps,
-        LevelingWorkflowStep(
-          id: finalEndpoint,
-          endpoint: finalEndpoint,
-          titleKey: 'levelingWorkflow.finalOffsetTitle',
-          instructionKey: finalEndpoint == 'probe_standardarm'
-              ? 'levelingWorkflow.standardArmInstruction'
-              : 'levelingWorkflow.offsetInstruction',
-          icon: PhosphorIcons.crosshair(),
-          kind: LevelingWorkflowStepKind.finalOffset,
-        ),
-      ];
-    }
-
-    // Pro variant: Stage 1 (initial seating + offset) + Stage 2 (fine leveling)
-    final cornerDefs = [
-      ('Front Left', 'front-left'),
-      ('Front Right', 'front-right'),
-      ('Back Right', 'back-right'),
-      ('Back Left', 'back-left'),
-    ];
-    final result = <LevelingWorkflowStep>[
-      // ── Stage 1 ──
+    // Stage 1 (initial seating + offset) — common to all variants
+    final stage1 = <LevelingWorkflowStep>[
       // 0: Prepare — shows loosen intermediate
       athena2BaseWorkflowSteps[0].copyWith(
         intermediateScreen: 'loosen',
@@ -173,6 +156,20 @@ class LevelingVariant {
         runningTitle: 'Calibrating Offset',
         autoAdvance: true,
       ),
+    ];
+
+    // Regular build arm: done after stage 1 (no adjustable corner screws)
+    if (id != 'pro') return stage1;
+
+    // Pro build arm: Stage 2 adds 4-corner fine leveling
+    final cornerDefs = [
+      ('Front Left', 'front-left'),
+      ('Front Right', 'front-right'),
+      ('Back Right', 'back-right'),
+      ('Back Left', 'back-left'),
+    ];
+    final result = <LevelingWorkflowStep>[
+      ...stage1,
       // ── Stage 2: 4-corner fine leveling ──
       for (int i = 0; i < 4; i++) ...[
         LevelingWorkflowStep(
@@ -208,12 +205,49 @@ class LevelingVariant {
               i < 3, // auto-advance to next prepare; last shows results
         ),
       ],
+      // ── Stage 3: Corner results, remove puck, re-calibrate offset ──
+      LevelingWorkflowStep(
+        id: 'corner_results',
+        endpoint: '',
+        titleKey: '',
+        instructionKey: '',
+        icon: PhosphorIconsFill.checkCircle,
+        kind: LevelingWorkflowStepKind.probe,
+        skipBackend: true,
+        intermediateScreen: 'allCorners',
+      ),
+      LevelingWorkflowStep(
+        id: 'remove_puck',
+        endpoint: '',
+        titleKey: '',
+        instructionKey: '',
+        icon: PhosphorIconsFill.hand,
+        kind: LevelingWorkflowStepKind.prepare,
+        skipBackend: true,
+        intermediateScreen: 'removePuck',
+      ),
+      LevelingWorkflowStep(
+        id: 'final_prepare',
+        endpoint: 'probe_prepare',
+        titleKey: 'levelingWorkflow.prepareTitle',
+        instructionKey: 'levelingWorkflow.prepareInstruction',
+        icon: PhosphorIconsFill.house,
+        kind: LevelingWorkflowStepKind.prepare,
+        autoAdvance: true,
+      ),
+      LevelingWorkflowStep(
+        id: '${finalEndpoint}_final',
+        endpoint: finalEndpoint,
+        titleKey: 'levelingWorkflow.finalOffsetTitle',
+        instructionKey: 'levelingWorkflow.offsetInstruction',
+        icon: PhosphorIcons.crosshair(),
+        kind: LevelingWorkflowStepKind.finalOffset,
+        stepTitle: 'Final Calibration',
+        stepInstruction: 'Re-calibrating the Z offset.',
+        runningTitle: 'Final Calibration',
+        autoAdvance: true,
+      ),
     ];
-    // Mark the last corner probe to show measurements
-    final lastCornerIdx = result.length - 1;
-    result[lastCornerIdx] = result[lastCornerIdx].copyWith(
-      intermediateScreen: 'allCorners',
-    );
     return result;
   }
 }
