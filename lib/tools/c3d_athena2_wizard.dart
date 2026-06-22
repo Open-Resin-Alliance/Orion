@@ -2398,21 +2398,26 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
-    final currentForce = _displayForce;
+    // Compute Z deviation: how far this corner is from the average.
+    // Positive = corner is higher (too close to screen) → loosen screw
+    // Negative = corner is lower (too far from screen) → tighten screw
+    final validZ = widget.allCornerZ.whereType<double>().toList();
+    final avgZ = validZ.isNotEmpty
+        ? validZ.reduce((a, b) => a + b) / validZ.length
+        : null;
+    final double? zDeviation;
+    if (widget.zValue != null && avgZ != null) {
+      zDeviation = widget.zValue! - avgZ;
+    } else {
+      zDeviation = null;
+    }
 
-    // Center the gauge on the probed target force. Athena force readings are
-    // negative under compression, so the direction flips for negative targets.
-    final targetForce = widget.targetForce ?? _baselineForce ?? currentForce;
-    final baseline = targetForce ?? 0.0;
-    final forceScale =
-        baseline.abs() * 0.35 < 8.0 ? 8.0 : baseline.abs() * 0.35;
-    final position = currentForce != null
-        ? ((baseline < 0 ? baseline - currentForce : currentForce - baseline) /
-                forceScale)
-            .clamp(-1.0, 1.0)
-        : 0.0;
-    // 5% deadzone (±0.05 position) so small fluctuations don't flip labels
-    const deadzone = 0.05;
+    // Gauge scale: ±0.050 mm maps to the full range
+    const zScale = 0.050;
+    final position =
+        zDeviation != null ? (zDeviation / zScale).clamp(-1.0, 1.0) : 0.0;
+    // 10% deadzone so small fluctuations don't flip labels
+    const deadzone = 0.10;
     final directionLabel = position < -deadzone
         ? FlutterI18n.translate(context, 'leveling.wizardTighten')
         : position > deadzone
@@ -2574,7 +2579,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                   alignment: Alignment.topCenter,
                                   child: Text(
                                     FlutterI18n.translate(
-                                        context, 'leveling.wizardLiveForce'),
+                                        context, 'leveling.wizardZDeviation'),
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
@@ -2601,9 +2606,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                               SizedBox(
                                                 width: 160,
                                                 child: Text(
-                                                  currentForce != null
-                                                      ? currentForce
-                                                          .toStringAsFixed(2)
+                                                  zDeviation != null
+                                                      ? zDeviation
+                                                          .toStringAsFixed(3)
                                                       : '--',
                                                   textAlign: TextAlign.right,
                                                   style: TextStyle(
@@ -2620,7 +2625,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                               ),
                                               const SizedBox(width: 7),
                                               Text(
-                                                'N',
+                                                'mm',
                                                 style: TextStyle(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.w600,
