@@ -384,6 +384,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         _phase = _WizardPhase.workflow;
         _preFlightIndex = -1;
       });
+      // Auto-run the first workflow step (Prepare Printer)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _engine.canRunCurrentStep) {
+          _engine.runCurrentStep();
+        }
+      });
     }
   }
 
@@ -739,8 +745,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     // Loosen-screws prompt: Cancel | Done
     if (status == LevelingWorkflowStatus.stepComplete &&
-        _engine.currentStep?.intermediateScreen ==
-            FlutterI18n.translate(context, 'leveling.wizardLoosen') &&
+        _engine.currentStep?.intermediateScreen == 'loosen' &&
         !_loosenScrewsDone) {
       return Row(
         children: [
@@ -1715,13 +1720,9 @@ class _WorkflowPane extends StatelessWidget {
     // Intermediate screens from step metadata (only on stepComplete)
     final isComplete = engine.status == LevelingWorkflowStatus.stepComplete;
     final String? intermediate = step.intermediateScreen;
-    final isLoosenScrews = isComplete &&
-        intermediate ==
-            FlutterI18n.translate(context, 'leveling.wizardLoosen') &&
-        !loosenScrewsDone;
-    final isTightenScrews = isComplete &&
-        intermediate ==
-            FlutterI18n.translate(context, 'leveling.wizardTighten');
+    final isLoosenScrews =
+        isComplete && intermediate == 'loosen' && !loosenScrewsDone;
+    final isTightenScrews = isComplete && intermediate == 'tighten';
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
     final isRemovePuck = isComplete && intermediate == 'removePuck';
 
