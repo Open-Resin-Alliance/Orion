@@ -335,13 +335,13 @@ class BackendService implements BackendClient {
         _log.info('Simulated force leveling workflow: endpoint=$endpoint');
         // Cycle through different Z values for corner probes so the deviation
         // is large enough (>0.1mm) to trigger the adjustment mode.
-        const _cornerZValues = [5.000, 5.030, 5.180, 5.210];
+        const cornerZValues = [5.000, 5.030, 5.180, 5.210];
         late final double secondZ;
         if (endpoint == 'probe_corner') {
           // Use a static counter that cycles 0..3 so each of the 4 corner
           // probes gets a different Z value.
           _simCornerIndex = (_simCornerIndex + 1) % 4;
-          secondZ = _cornerZValues[_simCornerIndex];
+          secondZ = cornerZValues[_simCornerIndex];
         } else {
           secondZ = 5.0;
         }

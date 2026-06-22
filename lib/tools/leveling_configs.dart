@@ -17,6 +17,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:orion/tools/c3d_athena2_wizard_config.dart';
 
 enum LevelingWorkflowStepKind {
   prepare,
@@ -264,76 +265,8 @@ class LevelingConfig {
   });
 }
 
-const List<LevelingWorkflowStep> athena2BaseWorkflowSteps = [
-  LevelingWorkflowStep(
-    id: 'probe_prepare',
-    endpoint: 'probe_prepare',
-    titleKey: 'levelingWorkflow.prepareTitle',
-    instructionKey: 'levelingWorkflow.prepareInstruction',
-    icon: PhosphorIconsFill.house,
-    kind: LevelingWorkflowStepKind.prepare,
-  ),
-  LevelingWorkflowStep(
-    id: 'probe_screen',
-    endpoint: 'probe_screen',
-    titleKey: 'levelingWorkflow.screenTitle',
-    instructionKey: 'levelingWorkflow.screenInstruction',
-    icon: PhosphorIconsFill.crosshair,
-  ),
-  LevelingWorkflowStep(
-    id: 'probe_corner_prepare',
-    endpoint: 'probe_corner_prepare',
-    titleKey: 'levelingWorkflow.cornerPrepareTitle',
-    instructionKey: 'levelingWorkflow.cornerPrepareInstruction',
-    icon: PhosphorIconsFill.house,
-    kind: LevelingWorkflowStepKind.prepare,
-  ),
-  LevelingWorkflowStep(
-    id: 'probe_corner',
-    endpoint: 'probe_corner',
-    titleKey: 'levelingWorkflow.cornerTitle',
-    instructionKey: 'levelingWorkflow.cornerInstruction',
-    icon: PhosphorIconsFill.crosshair,
-  ),
-  LevelingWorkflowStep(
-    id: 'probe_levelcheck',
-    endpoint: 'probe_levelcheck',
-    titleKey: 'levelingWorkflow.levelCheckTitle',
-    instructionKey: 'levelingWorkflow.levelCheckInstruction',
-    icon: PhosphorIconsFill.checkCircle,
-  ),
-];
-
 const List<LevelingConfig> levelingConfigs = [
-  LevelingConfig(
-    machineIdPrefix: 'Athena2',
-    checklistKeys: [
-      'leveling.removeVat',
-      'leveling.checkHexKeys',
-      'leveling.checkInstallPlate',
-      'leveling.checkLcdClean',
-    ],
-    variants: [
-      LevelingVariant(
-        id: 'regular',
-        label: 'Regular Build Arm',
-        description: 'Athena 2 standard build arm.',
-        assetPath: 'assets/images/concepts_3d/a2_standard_arm.svg',
-        icon: PhosphorIconsFill.wrench,
-        finalEndpoint: 'probe_standardarm',
-        successKey: 'levelingWorkflow.standardArmSuccess',
-      ),
-      LevelingVariant(
-        id: 'pro',
-        label: 'Pro Build Arm',
-        description: 'Improved leveling & latching mechanism.',
-        assetPath: 'assets/images/concepts_3d/a2_pro_arm.svg',
-        icon: PhosphorIconsFill.star,
-        finalEndpoint: 'probe_offset',
-        successKey: 'levelingWorkflow.offsetSuccess',
-      ),
-    ],
-  ),
+  athena2LevelingConfig,
 ];
 
 LevelingConfig? getLevelingConfigForMachine(String machineModel) {
