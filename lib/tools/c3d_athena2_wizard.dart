@@ -2376,15 +2376,15 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                 forceScale)
             .clamp(-1.0, 1.0)
         : 0.0;
-    // 10% deadzone (Â±0.1 position) so small fluctuations don't flip labels
-    const deadzone = 0.10;
+    // 5% deadzone (±0.05 position) so small fluctuations don't flip labels
+    const deadzone = 0.05;
     final directionLabel = position < -deadzone
         ? FlutterI18n.translate(context, 'leveling.wizardTighten')
         : position > deadzone
             ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
     final accent = position < -deadzone
-        ? const Color(0xFF57F0A4)
+        ? const Color(0xFFFFC16D)
         : position > deadzone
             ? const Color(0xFFFFC16D)
             : const Color(0xFF57F0A4);
