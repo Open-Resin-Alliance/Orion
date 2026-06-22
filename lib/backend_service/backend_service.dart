@@ -39,6 +39,9 @@ import 'package:orion/util/orion_config.dart';
 class BackendService implements BackendClient {
   static final _log = Logger('BackendService');
   static BackendService? _sharedInstance;
+
+  /// Simulated corner probe index, cycles 0..3 on each `probe_corner` call.
+  static int _simCornerIndex = -1;
   static bool _sharedListenerRegistered = false;
 
   BackendClient _delegate;
@@ -324,6 +327,47 @@ class BackendService implements BackendClient {
     String endpoint, {
     Duration? requestTimeout,
   }) async {
+    // Simulated mode: return fake success data so devs can skip through the
+    // workflow without a real printer or Athena connection.
+    try {
+      final cfg = OrionConfig();
+      if (cfg.getFlag('simulated', category: 'developer')) {
+        _log.info('Simulated force leveling workflow: endpoint=$endpoint');
+        // Cycle through different Z values for corner probes so the deviation
+        // is large enough (>0.1mm) to trigger the adjustment mode.
+        const _cornerZValues = [5.000, 5.030, 5.180, 5.210];
+        late final double secondZ;
+        if (endpoint == 'probe_corner') {
+          // Use a static counter that cycles 0..3 so each of the 4 corner
+          // probes gets a different Z value.
+          _simCornerIndex = (_simCornerIndex + 1) % 4;
+          secondZ = _cornerZValues[_simCornerIndex];
+        } else {
+          secondZ = 5.0;
+        }
+        return ForceLevelingWorkflowResponse(
+          result: true,
+          error: '',
+          machineHomed: true,
+          measurements: ForceProbeMeasurements(
+            firstStageTriggerZ: 10.0,
+            firstStageTriggerForce: -15.0,
+            firstStagePeakForce: -18.0,
+            secondStageTriggerZ: secondZ,
+            secondStageTriggerForce: -20.0,
+            secondStagePeakForce: -22.0,
+          ),
+          zOffsetApplied:
+              endpoint == 'probe_offset' || endpoint == 'probe_standardarm'
+                  ? 0.5
+                  : null,
+          parkHeightMm: 150.0,
+        );
+      }
+    } catch (_) {
+      // Fall through to real backend if config can't be read.
+    }
+
     if (!supportsCapability(BackendCapabilities.supportsForceLeveling)) {
       return const ForceLevelingWorkflowResponse(
         result: false,

@@ -248,7 +248,6 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
   // Adjustment mode state
   int? _adjustingCornerIndex;
-  bool _adjustmentIsCw = true;
   bool _adjustmentBusy = false;
   String? _adjustmentError;
   bool _wizardDisposed = false;
@@ -446,17 +445,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       }
     }
 
-    // Determine turn direction for the selected screw.
-    // We probe at the corner the screw affects and compare its Z
-    // to the average of the opposite axis pair.
-    final axisAvg = probeCorner <= 1
-        ? backAvg // front screw → compare to back average
-        : frontAvg; // back screw → compare to front average
-    final cornerZ = zValues[probeCorner]!;
-    final isCw = cornerZ > axisAvg; // corner higher → tighten screw to raise opposite side
-
     _adjustingCornerIndex = probeCorner;
-    _adjustmentIsCw = isCw;
     _adjustmentError = null;
     _adjustmentBusy = true;
 
@@ -538,6 +527,13 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     }
     _engine.jumpToStep(3);
     setState(() => _phase = _WizardPhase.workflow);
+    // Auto-run the corner prepare step so the probe positions itself before
+    // showing the puck placement screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _engine.canRunCurrentStep) {
+        _engine.runCurrentStep();
+      }
+    });
   }
 
   void _advancePreFlight() {
@@ -861,7 +857,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
       );
     }
 
-    // Running: only Emergency Stop, centered
+    // Running: Emergency Stop only
     if (_effectivelyRunning || _busyStop) {
       return Center(
         child: SizedBox(
@@ -1022,9 +1018,10 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
     // Not running, not complete: Cancel + action button
     final bool needsAdjustment = isAllCornersMeasured && !_isCornerCheckPassed;
-    final bool isCornerPrepare = status == LevelingWorkflowStatus.stepComplete &&
-        _engine.currentStep?.kind == LevelingWorkflowStepKind.prepare &&
-        (_engine.currentStep?.id.startsWith('fine_prepare_') ?? false);
+    final bool isCornerPrepare =
+        status == LevelingWorkflowStatus.stepComplete &&
+            _engine.currentStep?.kind == LevelingWorkflowStepKind.prepare &&
+            (_engine.currentStep?.id.startsWith('fine_prepare_') ?? false);
     final primaryLabel = switch (status) {
       LevelingWorkflowStatus.idle => 'Proceed',
       LevelingWorkflowStatus.stepComplete => isAllCornersMeasured
@@ -1186,8 +1183,6 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     }
   }
 
-
-
   Widget _buildAdjustmentActions(BuildContext context) {
     final isPuckStep = _adjustmentStep == _AdjustmentStep.puckPlacement;
 
@@ -1206,7 +1201,8 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(
-                  width: 20, height: 20,
+                  width: 20,
+                  height: 20,
                   child: CircularProgressIndicator(strokeWidth: 3),
                 ),
                 const SizedBox(width: 8),
@@ -1353,15 +1349,11 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
             .map((r) => r?.measurements?.secondStageTriggerZ)
             .whereType<double>()
             .toList();
-        final avgZ = allZ.isNotEmpty
-            ? allZ.reduce((a, b) => a + b) / allZ.length
-            : null;
         final adjMeasurements =
             _cornerResults[_adjustingCornerIndex!]?.measurements;
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
-          isCw: _adjustmentIsCw,
           zValue: adjMeasurements?.secondStageTriggerZ,
           targetForce: avgTargetForce,
           allCornerZ: allZ,
@@ -1374,12 +1366,14 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
     final idx = _adjustingCornerIndex ?? 0;
     final isProbing = _adjustmentStep == _AdjustmentStep.probing;
     final labels = ['Front Left', 'Front Right', 'Back Right', 'Back Left'];
+    final screwHints = ['', '', ' (center screw)', ' (center screw)'];
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 100, height: 100,
+            width: 100,
+            height: 100,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: primary.withValues(alpha: 0.10),
@@ -1390,18 +1384,21 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           ),
           const SizedBox(height: 20),
           Text(
-            isProbing ? 'Probing Corner' : 'Positioning Probe',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: primary),
+            isProbing ? 'Probing Corner' : 'Positioning…',
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.bold, color: primary),
           ),
           const SizedBox(height: 8),
           Text(
             isProbing
-                ? 'Measuring at ${labels[idx]}'
-                : 'Moving to ${labels[idx]}',
+                ? 'Measuring at ${labels[idx]}${screwHints[idx]}'
+                : 'Moving to ${labels[idx]}${screwHints[idx]}',
             style: TextStyle(
               fontSize: 16,
               color: Theme.of(context)
-                  .colorScheme.onSurface.withValues(alpha: 0.72),
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.72),
             ),
           ),
         ],
@@ -1411,26 +1408,34 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
 
   Widget _buildPuckPlacementView(BuildContext context, Color primary) {
     final labels = ['Front Left', 'Front Right', 'Back Right', 'Back Left'];
+    final screwHints = ['', '', ' (center screw)', ' (center screw)'];
+    final cornerIcons = [
+      PhosphorIcons.arrowDownLeft(),
+      PhosphorIcons.arrowDownRight(),
+      PhosphorIcons.arrowUpRight(),
+      PhosphorIcons.arrowUpLeft(),
+    ];
     final idx = _adjustingCornerIndex ?? 0;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 100, height: 100,
+            width: 100,
+            height: 100,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: primary.withValues(alpha: 0.12),
             ),
             child: Icon(
-              PhosphorIcons.crosshair(),
+              cornerIcons[idx],
               size: 52,
               color: primary,
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            'Place the Leveling Puck',
+            'Place Calibration Puck',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,
@@ -1442,15 +1447,16 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Put the Leveling Puck under the\n'
-              '${labels[idx]} corner, then press Proceed\n'
-              'to measure the current force.',
+              'Please place the Leveling Puck in the\n'
+              '${labels[idx]} corner${screwHints[idx]}.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
                 height: 1.4,
                 color: Theme.of(context)
-                    .colorScheme.onSurface.withValues(alpha: 0.72),
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.72),
               ),
             ),
           ),
@@ -1469,7 +1475,8 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           Text(
             'Adjustment Failed',
             style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.bold,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
               color: Colors.orangeAccent,
             ),
           ),
@@ -1482,7 +1489,9 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
               style: TextStyle(
                 fontSize: 16,
                 color: Theme.of(context)
-                    .colorScheme.onSurface.withValues(alpha: 0.72),
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.72),
               ),
             ),
           ),
@@ -1867,7 +1876,7 @@ class _WorkflowPane extends StatelessWidget {
         switch (step.kind) {
           LevelingWorkflowStepKind.prepare => 'Preparing Machine',
           LevelingWorkflowStepKind.finalOffset => 'Saving Offset',
-          _ => 'Moving towards plate',
+          _ => 'Moving to Screen',
         };
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -2278,7 +2287,6 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
   const _AdjustmentFeedbackScreen({
     super.key,
     required this.cornerIndex,
-    required this.isCw,
     this.zValue,
     this.targetForce,
     this.allCornerZ = const [],
@@ -2286,7 +2294,6 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
   });
 
   final int cornerIndex;
-  final bool isCw;
   final double? zValue;
   final double? targetForce;
   final List<double> allCornerZ;
@@ -2297,15 +2304,9 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
       _AdjustmentFeedbackScreenState();
 }
 
-class _AdjustmentFeedbackScreenState
-    extends State<_AdjustmentFeedbackScreen> {
-  static const _cornerNames = [
-    'Front Left',
-    'Front Right',
-    'Back Right',
-    'Back Left',
-  ];
-
+class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
   AnalyticsProvider? _analytics;
   VoidCallback? _analyticsListener;
   bool _listenerRegistered = false;
@@ -2318,6 +2319,15 @@ class _AdjustmentFeedbackScreenState
   double? get _smoothedForce {
     if (_forceHistory.isEmpty) return null;
     return _forceHistory.reduce((a, b) => a + b) / _forceHistory.length;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -2350,6 +2360,7 @@ class _AdjustmentFeedbackScreenState
 
   @override
   void dispose() {
+    _pulseController.dispose();
     _analyticsDisposed = true;
     if (_analytics != null && _analyticsListener != null) {
       _analytics!.removeListener(_analyticsListener!);
@@ -2357,13 +2368,13 @@ class _AdjustmentFeedbackScreenState
     super.dispose();
   }
 
-  String get _screwLabel {
+  String get _adjustmentTitle {
     if (widget.cornerIndex <= 1) {
       return widget.cornerIndex == 0
-          ? 'Front Left screw'
-          : 'Front Right screw';
+          ? 'Adjusting Front Left'
+          : 'Adjusting Front Right';
     }
-    return 'Back screw';
+    return 'Adjusting Rear';
   }
 
   @override
@@ -2377,35 +2388,42 @@ class _AdjustmentFeedbackScreenState
     // negative under compression, so the direction flips for negative targets.
     final targetForce = widget.targetForce ?? _baselineForce ?? currentForce;
     final baseline = targetForce ?? 0.0;
-    final forceScale = baseline.abs() * 0.35 < 8.0
-        ? 8.0
-        : baseline.abs() * 0.35;
+    final forceScale =
+        baseline.abs() * 0.35 < 8.0 ? 8.0 : baseline.abs() * 0.35;
     final position = currentForce != null
-        ? ((baseline < 0
-                    ? baseline - currentForce
-                    : currentForce - baseline) /
+        ? ((baseline < 0 ? baseline - currentForce : currentForce - baseline) /
                 forceScale)
             .clamp(-1.0, 1.0)
         : 0.0;
-    final gap = currentForce != null ? (currentForce - baseline).abs() : 0.0;
-
     // 10% deadzone (±0.1 position) so small fluctuations don't flip labels
     const deadzone = 0.10;
     final directionLabel = position < -deadzone
-        ? '⟳ TIGHTEN'
+        ? 'TIGHTEN'
         : position > deadzone
-            ? '⟲ LOOSEN'
-            : '✓ AT TARGET';
+            ? 'LOOSEN'
+            : 'AT TARGET';
     final accent = position < -deadzone
         ? const Color(0xFF57F0A4)
         : position > deadzone
             ? const Color(0xFFFFC16D)
             : const Color(0xFF57F0A4);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.center,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Text(
+              _adjustmentTitle,
+              style: TextStyle(
+                color: accent,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -2414,273 +2432,326 @@ class _AdjustmentFeedbackScreenState
                   constraints: BoxConstraints(
                     minHeight: constraints.maxHeight,
                   ),
-                  child: Center(
-                    child: Padding(
-                      padding:
-                          const EdgeInsets.only(bottom: 24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // ── Icon ──
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: accent.withValues(alpha: 0.10),
-                            ),
-                            child: Icon(
-                              [PhosphorIcons.arrowDownLeft(), PhosphorIcons.arrowDownRight(), PhosphorIcons.arrowUpRight(), PhosphorIcons.arrowUpLeft()][widget.cornerIndex],
-                              size: 52,
-                              color: accent,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          // ── Title ──
-                          Text(
-                            'Adjusting ${_cornerNames[widget.cornerIndex]}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: accent,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // ── Description ──
-                          Padding(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // ── Left: screw diagram + title ──
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            height: 240,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 32),
-                            child: Text(
-                              'Turn the $_screwLabel${widget.zValue != null ? '  ·  Probed ${widget.zValue!.toStringAsFixed(3)} mm' : ''}',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                height: 1.4,
-                                color: onSurface
-                                    .withValues(alpha: 0.72),
+                              horizontal: 24,
+                              vertical: 18,
+                            ),
+                            decoration: BoxDecoration(
+                              color: onSurface.withValues(alpha: 0.035),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: onSurface.withValues(alpha: 0.10),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 28),
-                          // ── Gauge ──
-                          ConstrainedBox(
-                            constraints:
-                                const BoxConstraints(maxWidth: 340),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                            child: Stack(
                               children: [
-                                // Gauge track
-                                SizedBox(
-                                  height: 28,
-                                  child: LayoutBuilder(
-                                    builder: (_, trackBox) {
-                                      final w = trackBox.maxWidth;
-                                      final dotFrac = ((position + 1) / 2)
-                                          .clamp(0.0, 1.0);
-                                      final centerX = w / 2;
-                                      final dotCenter = dotFrac * w;
-                                      final fillLeft = dotCenter < centerX
-                                          ? dotCenter
-                                          : centerX;
-                                      final fillWidth =
-                                          (dotCenter - centerX).abs();
-                                      return Stack(
-                                        clipBehavior: Clip.none,
-                                        children: [
-                                          // Track
-                                          ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(14),
-                                            child: Container(
-                                              color: onSurface
-                                                  .withValues(alpha: 0.08),
-                                            ),
-                                          ),
-                                          // Center line
-                                          Positioned(
-                                            left: centerX - 1,
-                                            top: 0,
-                                            bottom: 0,
-                                            child: Container(
-                                              width: 2,
-                                              color: onSurface
-                                                  .withValues(alpha: 0.15),
-                                            ),
-                                          ),
-                                          // Fill
-                                          if (fillWidth > 0)
-                                            Positioned(
-                                              left: fillLeft,
-                                              top: 0,
-                                              bottom: 0,
-                                              width: fillWidth,
-                                              child: ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                        14),
-                                                child: Container(
-                                                  color: accent
-                                                      .withValues(alpha: 0.50),
-                                                ),
-                                              ),
-                                            ),
-                                          // Dot
-                                          Positioned(
-                                            left: dotCenter - 14,
-                                            top: 0,
-                                            child: Container(
-                                              width: 28,
-                                              height: 28,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: accent,
-                                                border: Border.all(
-                                                  color: Colors.white,
-                                                  width: 3,
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: accent.withValues(
-                                                        alpha: 0.35),
-                                                    blurRadius: 6,
+                                Align(
+                                  alignment: Alignment.topCenter,
+                                  child: Text(
+                                    'ADJUST THIS SCREW',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.2,
+                                      color: onSurface.withValues(alpha: 0.45),
+                                    ),
+                                  ),
+                                ),
+                                Positioned.fill(
+                                  child: Center(
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Positioned(
+                                          left: 0,
+                                          right: 0,
+                                          top: 13,
+                                          bottom: 24,
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 150,
+                                              height: 105,
+                                              child: AnimatedBuilder(
+                                                animation: _pulseController,
+                                                builder: (context, _) =>
+                                                    CustomPaint(
+                                                  size: const Size(150, 105),
+                                                  painter: _TrianglePainter(
+                                                    accent: accent,
+                                                    onSurface: onSurface,
+                                                    fillBack:
+                                                        widget.cornerIndex >= 2,
+                                                    fillFl:
+                                                        widget.cornerIndex == 0,
+                                                    fillFr:
+                                                        widget.cornerIndex == 1,
+                                                    pulse:
+                                                        _pulseController.value,
                                                   ),
-                                                ],
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                // Gauge labels
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Looser',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: onSurface
-                                            .withValues(alpha: 0.3),
-                                      ),
-                                    ),
-                                    Text(
-                                      'Tighter',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: onSurface
-                                            .withValues(alpha: 0.3),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 18),
-                                // ── Force value ──
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      currentForce != null
-                                          ? currentForce!
-                                              .toStringAsFixed(2)
-                                          : '--',
-                                      style: TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.w800,
-                                        height: 1,
-                                        color: accent,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'N',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: accent,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'avg ${baseline.toStringAsFixed(1)} N',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: onSurface
-                                        .withValues(alpha: 0.45),
-                                  ),
-                                ),
-                                // ── Direction ──
-                                if (currentForce != null) ...[
-                                  const SizedBox(height: 14),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        position < -deadzone
-                                            ? PhosphorIcons
-                                                .arrowClockwise()
-                                            : position > deadzone
-                                                ? PhosphorIcons
-                                                    .arrowCounterClockwise()
-                                                : PhosphorIcons.check(),
-                                        size: 16,
-                                        color: accent,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        directionLabel,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: accent,
                                         ),
-                                      ),
-                                      if (position.abs() >= deadzone) ...[
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          '${((1.0 - (gap / (forceScale * 1.2))).clamp(0.0, 1.0) * 100).toStringAsFixed(0)}%',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: accent
-                                                .withValues(alpha: 0.6),
+                                        Align(
+                                          alignment: Alignment.bottomCenter,
+                                          child: Text(
+                                            directionLabel,
+                                            style: TextStyle(
+                                              color: accent,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0.8,
+                                            ),
                                           ),
                                         ),
                                       ],
-                                    ],
-                                  ),
-                                ],
-                                // ── Gap hint ──
-                                if (gap > 0.2 &&
-                                    currentForce != null) ...[
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    gap > 0.5
-                                        ? '${gap.toStringAsFixed(2)} N to go'
-                                        : '${gap.toStringAsFixed(2)} N — small turns now',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: onSurface
-                                          .withValues(alpha: 0.45),
                                     ),
                                   ),
-                                ],
+                                ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 24),
+                        // ── Right: force readout + gauge ──
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            height: 240,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 18,
+                            ),
+                            decoration: BoxDecoration(
+                              color: onSurface.withValues(alpha: 0.035),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: onSurface.withValues(alpha: 0.10),
+                              ),
+                            ),
+                            child: Stack(
+                              children: [
+                                Align(
+                                  alignment: Alignment.topCenter,
+                                  child: Text(
+                                    'LIVE FORCE',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.2,
+                                      color: onSurface.withValues(alpha: 0.45),
+                                    ),
+                                  ),
+                                ),
+                                Positioned.fill(
+                                  child: Center(
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // Force value
+                                        Positioned(
+                                          left: 0,
+                                          right: 0,
+                                          top: 13,
+                                          bottom: 47,
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              SizedBox(
+                                                width: 128,
+                                                child: Text(
+                                                  currentForce != null
+                                                      ? currentForce
+                                                          .toStringAsFixed(2)
+                                                      : '--',
+                                                  textAlign: TextAlign.right,
+                                                  style: TextStyle(
+                                                    fontSize: 38,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontFeatures: const [
+                                                      FontFeature
+                                                          .tabularFigures(),
+                                                    ],
+                                                    height: 1,
+                                                    color: accent,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 7),
+                                              Text(
+                                                'N',
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: accent,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Gauge
+                                        Align(
+                                          alignment: Alignment.bottomCenter,
+                                          child: ConstrainedBox(
+                                            constraints: const BoxConstraints(
+                                              maxWidth: 260,
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                SizedBox(
+                                                  height: 28,
+                                                  child: LayoutBuilder(
+                                                    builder: (_, trackBox) {
+                                                      final w =
+                                                          trackBox.maxWidth;
+                                                      final dotFrac =
+                                                          ((position + 1) / 2)
+                                                              .clamp(0.0, 1.0);
+                                                      final centerX = w / 2;
+                                                      final dotCenter =
+                                                          dotFrac * w;
+                                                      final fillLeft =
+                                                          dotCenter < centerX
+                                                              ? dotCenter
+                                                              : centerX;
+                                                      final fillWidth =
+                                                          (dotCenter - centerX)
+                                                              .abs();
+                                                      return Stack(
+                                                        clipBehavior: Clip.none,
+                                                        children: [
+                                                          ClipRRect(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        14),
+                                                            child: Container(
+                                                              color: onSurface
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.08),
+                                                            ),
+                                                          ),
+                                                          Positioned(
+                                                            left: centerX - 1,
+                                                            top: 0,
+                                                            bottom: 0,
+                                                            child: Container(
+                                                              width: 2,
+                                                              color: onSurface
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.15),
+                                                            ),
+                                                          ),
+                                                          if (fillWidth > 0)
+                                                            Positioned(
+                                                              left: fillLeft,
+                                                              top: 0,
+                                                              bottom: 0,
+                                                              width: fillWidth,
+                                                              child: ClipRRect(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            14),
+                                                                child:
+                                                                    Container(
+                                                                  color: accent
+                                                                      .withValues(
+                                                                          alpha:
+                                                                              0.50),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          Positioned(
+                                                            left:
+                                                                dotCenter - 14,
+                                                            top: 0,
+                                                            child: Container(
+                                                              width: 28,
+                                                              height: 28,
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                                color: accent,
+                                                                border: Border.all(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    width: 3),
+                                                                boxShadow: [
+                                                                  BoxShadow(
+                                                                    color: accent
+                                                                        .withValues(
+                                                                            alpha:
+                                                                                0.35),
+                                                                    blurRadius:
+                                                                        6,
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      'Tighter',
+                                                      style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: onSurface
+                                                              .withValues(
+                                                                  alpha: 0.3)),
+                                                    ),
+                                                    Text(
+                                                      'Looser',
+                                                      style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: onSurface
+                                                              .withValues(
+                                                                  alpha: 0.3)),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -2691,6 +2762,72 @@ class _AdjustmentFeedbackScreenState
       ],
     );
   }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Equilateral Screw Triangle
+// ────────────────────────────────────────────────────────────────
+
+class _TrianglePainter extends CustomPainter {
+  _TrianglePainter({
+    required this.accent,
+    required this.onSurface,
+    required this.fillBack,
+    required this.fillFl,
+    required this.fillFr,
+    this.pulse = 0.0,
+  });
+
+  final Color accent;
+  final Color onSurface;
+  final bool fillBack;
+  final bool fillFl;
+  final bool fillFr;
+  final double pulse;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // Equilateral triangle arrangement (just the dots, no lines).
+    const spacing = 62.0;
+    final triH = spacing * 0.866; // spacing * sqrt(3)/2
+
+    final backX = cx;
+    final backY = cy - triH / 2;
+    final flX = cx - spacing / 2;
+    final flY = cy + triH / 2;
+    final frX = cx + spacing / 2;
+    final frY = cy + triH / 2;
+
+    const r = 13.0;
+    _drawDot(canvas, backX, backY, r, fillBack);
+    _drawDot(canvas, flX, flY, r, fillFl);
+    _drawDot(canvas, frX, frY, r, fillFr);
+  }
+
+  void _drawDot(Canvas canvas, double cx, double cy, double r, bool filled) {
+    final paint = Paint()
+      ..style = filled ? PaintingStyle.fill : PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    if (filled) {
+      // Pulse opacity: 0.5 → 1.0 → 0.5
+      paint.color = accent.withValues(alpha: 0.5 + pulse * 0.5);
+      // Bump radius so filled dot visually matches the outlined one
+      canvas.drawCircle(Offset(cx, cy), r + 1.5, paint);
+    } else {
+      paint.color = accent;
+      canvas.drawCircle(Offset(cx, cy), r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TrianglePainter oldDelegate) =>
+      oldDelegate.fillBack != fillBack ||
+      oldDelegate.fillFl != fillFl ||
+      oldDelegate.fillFr != fillFr ||
+      oldDelegate.pulse != pulse;
 }
 
 // ────────────────────────────────────────────────────────────────

@@ -201,4 +201,32 @@ class LevelingWorkflowEngine extends ChangeNotifier {
     if (response.error.trim().isNotEmpty) return response.error;
     return 'levelingWorkflow.errorGeneric';
   }
+
+  /// Force-complete the current step with fabricated success data.
+  /// Used for dev testing with simulated backends.
+  void forceCompleteStep({ForceProbeMeasurements? measurements}) {
+    if (isRunning) return;
+    final step = currentStep;
+    if (step == null) return;
+
+    _lastResponse = ForceLevelingWorkflowResponse(
+      result: true,
+      error: '',
+      machineHomed: true,
+      measurements: measurements ??
+          ForceProbeMeasurements(
+            firstStageTriggerZ: 10.0,
+            firstStageTriggerForce: -15.0,
+            firstStagePeakForce: -18.0,
+            secondStageTriggerZ: 5.0,
+            secondStageTriggerForce: -20.0,
+            secondStagePeakForce: -22.0,
+          ),
+      zOffsetApplied: step.kind.name == 'finalOffset' ? 0.5 : null,
+      parkHeightMm: 150.0,
+    );
+    _log.info('Force-completing step: id=${step.id} endpoint=${step.endpoint}');
+    _status = LevelingWorkflowStatus.stepComplete;
+    notifyListeners();
+  }
 }
