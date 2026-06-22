@@ -582,7 +582,12 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
             : Theme.of(context).colorScheme.surface,
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.only(
+              left: OrionSpacing.screenHorizontal,
+              right: OrionSpacing.screenHorizontal,
+              top: 24,
+              bottom: 24,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -618,12 +623,11 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
           key: const ValueKey('variant-phase'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(PhosphorIcons.swap(), size: 24, color: primary),
-                const SizedBox(width: 10),
+                const SizedBox(width: OrionSpacing.listGap),
                 Text(
                   FlutterI18n.translate(context, 'leveling.selectBuildArm'),
                   style: TextStyle(
@@ -634,7 +638,7 @@ class _AssistedLevelingWizardState extends State<_AssistedLevelingWizard> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: OrionSpacing.controlGap),
             Expanded(child: _buildPhaseBody(context)),
           ],
         );
@@ -1730,7 +1734,7 @@ class _VariantSelectionPane extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (int i = 0; i < config.variants.length; i++) ...[
-                if (i > 0) const SizedBox(width: 16),
+                if (i > 0) const SizedBox(width: OrionSpacing.controlGap),
                 Expanded(
                   child: _VariantCard(
                     variant: config.variants[i],
@@ -1761,16 +1765,17 @@ class _VariantCard extends StatelessWidget {
 
     return GlassCard(
       outlined: true,
+      margin: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(glassCornerRadius),
         onTap: onPressed,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: OrionSpacing.cardPadding,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(child: _VariantAsset(variant: variant)),
-              const SizedBox(height: 12),
+              const SizedBox(height: OrionSpacing.listGap),
               Text(
                 variant.label,
                 textAlign: TextAlign.center,
@@ -1780,7 +1785,7 @@ class _VariantCard extends StatelessWidget {
                   color: theme.colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: OrionSpacing.compactListGap),
               Text(
                 variant.description,
                 textAlign: TextAlign.center,
