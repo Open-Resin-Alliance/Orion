@@ -2553,7 +2553,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                 MainAxisAlignment.center,
                                             children: [
                                               SizedBox(
-                                                width: 128,
+                                                width: 160,
                                                 child: Text(
                                                   currentForce != null
                                                       ? currentForce
