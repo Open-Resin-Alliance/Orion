@@ -15,6 +15,8 @@
 * limitations under the License.
 */
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -2288,8 +2290,9 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
 }
 
 class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _pulseController;
+  late final AnimationController _rotationController;
   AnalyticsProvider? _analytics;
   VoidCallback? _analyticsListener;
   bool _listenerRegistered = false;
@@ -2323,6 +2326,10 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
   }
 
   @override
@@ -2369,6 +2376,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   @override
   void dispose() {
     _pulseController.dispose();
+    _rotationController.dispose();
     _analyticsDisposed = true;
     if (_analytics != null && _analyticsListener != null) {
       _analytics!.removeListener(_analyticsListener!);
@@ -2415,6 +2423,12 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
         : position > deadzone
             ? const Color(0xFFFFC16D)
             : const Color(0xFF57F0A4);
+    // Rotation direction: 1 = CW (tighten), -1 = CCW (loosen), 0 = at target
+    final rotationDirection = position < -deadzone
+        ? 1
+        : position > deadzone
+            ? -1
+            : 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -2491,7 +2505,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                               width: 150,
                                               height: 105,
                                               child: AnimatedBuilder(
-                                                animation: _pulseController,
+                                                animation: _rotationController,
                                                 builder: (context, _) =>
                                                     CustomPaint(
                                                   size: const Size(150, 105),
@@ -2506,6 +2520,11 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                         widget.cornerIndex == 1,
                                                     pulse:
                                                         _pulseController.value,
+                                                    rotationValue:
+                                                        _rotationController
+                                                            .value,
+                                                    rotationDirection:
+                                                        rotationDirection,
                                                   ),
                                                 ),
                                               ),
@@ -2790,6 +2809,8 @@ class _TrianglePainter extends CustomPainter {
     required this.fillFl,
     required this.fillFr,
     this.pulse = 0.0,
+    this.rotationValue = 0.0,
+    this.rotationDirection = 0,
   });
 
   final Color accent;
@@ -2798,6 +2819,8 @@ class _TrianglePainter extends CustomPainter {
   final bool fillFl;
   final bool fillFr;
   final double pulse;
+  final double rotationValue;
+  final int rotationDirection;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2819,6 +2842,46 @@ class _TrianglePainter extends CustomPainter {
     _drawDot(canvas, backX, backY, r, fillBack);
     _drawDot(canvas, flX, flY, r, fillFl);
     _drawDot(canvas, frX, frY, r, fillFr);
+
+    // Rotating arc around the highlighted dot
+    if (fillFl || fillFr || fillBack) {
+      final dotX = fillBack ? backX : (fillFl ? flX : frX);
+      final dotY = fillBack ? backY : (fillFl ? flY : frY);
+      _drawRotatingArc(canvas, dotX, dotY, r + 10);
+    }
+  }
+
+  void _drawRotatingArc(Canvas canvas, double cx, double cy, double radius) {
+    final arcPaint = Paint()
+      ..color = accent.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    // Continuously rotate: CW for tighten (direction=1), CCW for loosen (direction=-1)
+    final angle = rotationValue * 2 * 3.14159265 * rotationDirection;
+    const arcSpan = 3.0;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cx, cy), radius: radius),
+      angle - arcSpan / 2,
+      arcSpan,
+      false,
+      arcPaint,
+    );
+
+    // Bold dot at the leading tip (opposite end for CCW)
+    final tipAngle =
+        angle + (rotationDirection >= 0 ? arcSpan / 2 : -arcSpan / 2);
+    final tipX = cx + radius * cos(tipAngle);
+    final tipY = cy + radius * sin(tipAngle);
+
+    canvas.drawCircle(
+        Offset(tipX, tipY),
+        4.0,
+        Paint()
+          ..color = accent.withValues(alpha: 0.9)
+          ..style = PaintingStyle.fill);
   }
 
   void _drawDot(Canvas canvas, double cx, double cy, double r, bool filled) {
@@ -2826,7 +2889,7 @@ class _TrianglePainter extends CustomPainter {
       ..style = filled ? PaintingStyle.fill : PaintingStyle.stroke
       ..strokeWidth = 2.5;
     if (filled) {
-      // Pulse opacity: 0.5 â†’ 1.0 â†’ 0.5
+      // Pulse opacity: 0.5 \u2192 1.0 \u2192 0.5
       paint.color = accent.withValues(alpha: 0.5 + pulse * 0.5);
       // Bump radius so filled dot visually matches the outlined one
       canvas.drawCircle(Offset(cx, cy), r + 1.5, paint);
@@ -2841,7 +2904,9 @@ class _TrianglePainter extends CustomPainter {
       oldDelegate.fillBack != fillBack ||
       oldDelegate.fillFl != fillFl ||
       oldDelegate.fillFr != fillFr ||
-      oldDelegate.pulse != pulse;
+      oldDelegate.pulse != pulse ||
+      oldDelegate.rotationValue != rotationValue ||
+      oldDelegate.rotationDirection != rotationDirection;
 }
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
