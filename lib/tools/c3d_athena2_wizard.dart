@@ -1254,18 +1254,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         final avgTargetForce = allForces.isNotEmpty
             ? allForces.reduce((a, b) => a + b) / allForces.length
             : null;
-        final allZ = _cornerResults
-            .map((r) => r?.measurements?.secondStageTriggerZ)
-            .whereType<double>()
-            .toList();
         final adjMeasurements =
             _cornerResults[_adjustingCornerIndex!]?.measurements;
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
-          zValue: adjMeasurements?.secondStageTriggerZ,
+          cornerForce: adjMeasurements?.secondStageTriggerForce,
           targetForce: avgTargetForce,
-          allCornerZ: allZ,
           allCornerForces: allForces,
         );
     }
@@ -2272,16 +2267,14 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
   const _AdjustmentFeedbackScreen({
     super.key,
     required this.cornerIndex,
-    this.zValue,
+    this.cornerForce,
     this.targetForce,
-    this.allCornerZ = const [],
     this.allCornerForces = const [],
   });
 
   final int cornerIndex;
-  final double? zValue;
+  final double? cornerForce;
   final double? targetForce;
-  final List<double> allCornerZ;
   final List<double> allCornerForces;
 
   @override
@@ -2398,24 +2391,24 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
-    // Compute Z deviation: how far this corner is from the average.
-    // Positive = corner is higher (too close to screen) → loosen screw
-    // Negative = corner is lower (too far from screen) → tighten screw
-    final validZ = widget.allCornerZ.whereType<double>().toList();
-    final avgZ = validZ.isNotEmpty
-        ? validZ.reduce((a, b) => a + b) / validZ.length
+    // Compute delta force: how far this corner's force is from the average.
+    // Positive = corner has higher force (screw too tight) → loosen
+    // Negative = corner has lower force (screw too loose) → tighten
+    final validForces = widget.allCornerForces.whereType<double>().toList();
+    final avgForce = validForces.isNotEmpty
+        ? validForces.reduce((a, b) => a + b) / validForces.length
         : null;
-    final double? zDeviation;
-    if (widget.zValue != null && avgZ != null) {
-      zDeviation = widget.zValue! - avgZ;
+    final double? forceDelta;
+    if (widget.cornerForce != null && avgForce != null) {
+      forceDelta = widget.cornerForce! - avgForce;
     } else {
-      zDeviation = null;
+      forceDelta = null;
     }
 
-    // Gauge scale: ±0.050 mm maps to the full range
-    const zScale = 0.050;
+    // Gauge scale: ±1.0 N maps to the full range
+    const forceScale = 1.0;
     final position =
-        zDeviation != null ? (zDeviation / zScale).clamp(-1.0, 1.0) : 0.0;
+        forceDelta != null ? (forceDelta / forceScale).clamp(-1.0, 1.0) : 0.0;
     // 10% deadzone so small fluctuations don't flip labels
     const deadzone = 0.10;
     final directionLabel = position < -deadzone
@@ -2606,8 +2599,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                               SizedBox(
                                                 width: 160,
                                                 child: Text(
-                                                  zDeviation != null
-                                                      ? zDeviation
+                                                  forceDelta != null
+                                                      ? forceDelta
                                                           .toStringAsFixed(3)
                                                       : '--',
                                                   textAlign: TextAlign.right,
@@ -2625,7 +2618,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                               ),
                                               const SizedBox(width: 7),
                                               Text(
-                                                'mm',
+                                                'N',
                                                 style: TextStyle(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.w600,

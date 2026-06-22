@@ -496,7 +496,7 @@
         "wizardAtTarget": "AT TARGET",
         "wizardAdjustScrew": "ADJUST THIS SCREW",
         "wizardLiveForce": "LIVE FORCE",
-        "wizardZDeviation": "Z DEVIATION",
+        "wizardZDeviation": "FORCE Δ",
         "wizardTighter": "Tighter",
         "wizardLooser": "Looser",
         "wizardProbeFailed": "Probe failed. Please try again.",
