@@ -162,20 +162,6 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             }
           }
         }
-
-        // Tighten-screws completed: auto-advance to calibrating offset and run it
-        if (step.intermediateScreen == 'tighten') {
-          final nextIndex = _engine.currentStepIndex + 1;
-          if (nextIndex < _engine.steps.length) {
-            _engine.jumpToStep(nextIndex);
-            _autoAdvancing = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && _engine.canRunCurrentStep) {
-                _engine.runCurrentStep();
-              }
-            });
-          }
-        }
       }
     }
 
@@ -821,8 +807,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     // Tighten-screws prompt: Cancel | Done â†’ auto-run offset
     if (status == LevelingWorkflowStatus.stepComplete &&
-        _engine.currentStep?.intermediateScreen ==
-            FlutterI18n.translate(context, 'leveling.wizardTighten')) {
+        _engine.currentStep?.intermediateScreen == 'tighten') {
       return Row(
         children: [
           Expanded(
