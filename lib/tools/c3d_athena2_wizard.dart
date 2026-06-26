@@ -1143,25 +1143,21 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   Widget _buildAdjustmentActions(BuildContext context) {
     final isPuckStep = _adjustmentStep == _AdjustmentStep.puckPlacement;
 
-    // Busy (preparing / probing): single disabled spinner
+    // Busy (preparing / probing): emergency stop with status label
     if (_adjustmentBusy) {
       return Center(
         child: SizedBox(
           width: 320,
           child: GlassButton(
             tint: GlassButtonTint.negative,
-            onPressed: null,
+            onPressed: _busyStop ? null : _emergencyStop,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 65),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 3),
-                ),
+                const Icon(PhosphorIconsFill.stop, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   _adjustmentStep == _AdjustmentStep.probing
