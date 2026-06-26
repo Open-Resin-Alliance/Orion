@@ -2362,8 +2362,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     final onSurface = theme.colorScheme.onSurface;
 
     // Compute delta force: how far this corner's force is from the average.
-    // Positive = corner has higher force (screw too tight) → loosen
-    // Negative = corner has lower force (screw too loose) → tighten
+    // Negative = corner has lower force (screw too tight) → loosen
+    // Positive = corner has higher force (screw too loose) → tighten
     final validForces = widget.allCornerForces.whereType<double>().toList();
     final avgForce = validForces.isNotEmpty
         ? validForces.reduce((a, b) => a + b) / validForces.length
@@ -2375,27 +2375,27 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
       forceDelta = null;
     }
 
-    // Gauge scale: ±1.0 N maps to the full range
-    const forceScale = 1.0;
+    // Gauge scale: ±5.0 N maps to the full range
+    const forceScale = 5.0;
     final position =
         forceDelta != null ? (forceDelta / forceScale).clamp(-1.0, 1.0) : 0.0;
-    // 10% deadzone so small fluctuations don't flip labels
-    const deadzone = 0.10;
+    // ±3 N deadzone so small fluctuations don't flip labels
+    const deadzone = 0.60;
     final directionLabel = position < -deadzone
-        ? FlutterI18n.translate(context, 'leveling.wizardTighten')
+        ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
         : position > deadzone
-            ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
+            ? FlutterI18n.translate(context, 'leveling.wizardTighten')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
     final accent = position < -deadzone
         ? const Color(0xFFFFC16D)
         : position > deadzone
             ? const Color(0xFFFFC16D)
             : const Color(0xFF57F0A4);
-    // Rotation direction: 1 = CW (tighten), -1 = CCW (loosen), 0 = at target
+    // Rotation direction: -1 = CCW (loosen), 1 = CW (tighten), 0 = at target
     final rotationDirection = position < -deadzone
-        ? 1
+        ? -1
         : position > deadzone
-            ? -1
+            ? 1
             : 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2567,7 +2567,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                 MainAxisAlignment.center,
                                             children: [
                                               SizedBox(
-                                                width: 160,
+                                                width: 220,
                                                 child: Text(
                                                   forceDelta != null
                                                       ? forceDelta
