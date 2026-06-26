@@ -233,12 +233,39 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     }
   }
 
-  /// Compute deviation from corner measurements.
+  /// Compute deviation from corner measurements, compensated for
+  /// the cantilever-arm flexibility gradient (front corners flex more).
+  ///
+  /// Geometry: plate 234×134mm, corners at (±117,±67) from center.
+  /// Cantilever attaches at rear linear rail 160mm behind center → Y=−160.
+  /// A simple cantilever beam model gives stiffness ∝ 1/d² at each corner,
+  /// so Z (probe deflection at trigger) ∝ d².  Back corners serve as the
+  /// stiff reference row.
+  ///
+  ///   FL/FR d² = 117² + (67+160)² = 65218
+  ///   BL/BR d² = 117² + (160−67)² = 22338
+  ///   front compensation factor = 22338 / 65218 ≈ 0.34244
+  static const _kCantileverD2Front = 65218.0;
+  static const _kCantileverD2Back = 22338.0;
+  static const _kCantileverFrontComp = _kCantileverD2Back / _kCantileverD2Front;
+
+  /// Return the 4 raw Z values compensated for the cantilever flex gradient.
+  /// Corner order: 0=FL, 1=FR, 2=BR, 3=BL.
+  List<double> _compensatedCorners(List<double?> rawZ) {
+    if (rawZ.length < 4) return [];
+    return [
+      if (rawZ[0] != null) (rawZ[0]! * _kCantileverFrontComp),
+      if (rawZ[1] != null) (rawZ[1]! * _kCantileverFrontComp),
+      if (rawZ[2] != null) rawZ[2]!,
+      if (rawZ[3] != null) rawZ[3]!,
+    ];
+  }
+
   double get _cornerDeviation {
-    final zValues = _cornerResults
+    final rawZ = _cornerResults
         .map((r) => r?.measurements?.secondStageTriggerZ)
-        .whereType<double>()
         .toList();
+    final zValues = _compensatedCorners(rawZ);
     if (zValues.isEmpty) return 0.0;
     final min = zValues.reduce((a, b) => a < b ? a : b);
     final max = zValues.reduce((a, b) => a > b ? a : b);
@@ -259,16 +286,16 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
     // Screw mapping:   corners 0-1 â†’ respective front screw
     //                  corners 2-3 â†’ center back screw
-    final zValues = _cornerResults
+    final rawZ = _cornerResults
         .map((r) => r?.measurements?.secondStageTriggerZ)
         .toList();
-    final validZ = zValues.whereType<double>().toList();
-    if (validZ.length < 4) return;
+    final zValues = _compensatedCorners(rawZ);
+    if (zValues.length < 4) return;
 
-    final z0 = zValues[0]!; // FL
-    final z1 = zValues[1]!; // FR
-    final z2 = zValues[2]!; // BR
-    final z3 = zValues[3]!; // BL
+    final z0 = zValues[0]; // FL (compensated)
+    final z1 = zValues[1]; // FR (compensated)
+    final z2 = zValues[2]; // BR
+    final z3 = zValues[3]; // BL
 
     // Analyze both axes to find the dominant imbalance
     final frontAvg = (z0 + z1) / 2;
