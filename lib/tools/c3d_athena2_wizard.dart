@@ -152,6 +152,16 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           }
         }
 
+        // While showing the remove-puck prompt, run the prepare endpoint
+        // in the background so the plate moves up for easy puck removal.
+        if (step.intermediateScreen == 'removePuck') {
+          BackendService()
+              .runForceLevelingWorkflow('probe_corner_prepare',
+                  requestTimeout: const Duration(seconds: 90))
+              .then((_) {})
+              .catchError((_) {});
+        }
+
         // Auto-advance through steps that don't need user interaction
         if (step.autoAdvance) {
           _engine.advanceAfterSuccessfulStep();
