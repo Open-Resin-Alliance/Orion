@@ -1753,6 +1753,24 @@ class _WorkflowPane extends StatelessWidget {
     'Back Left',
   ];
 
+  /// Compensate front-corner Z values for the cantilever flex gradient,
+  /// matching the logic in [_Athena2LevelingWizardState._compensatedCorners].
+  static List<double?> _compensatedZ(List<double?> raw) {
+    if (raw.length < 4) return raw;
+    return [
+      if (raw[0] != null)
+        (raw[0]! * _Athena2LevelingWizardState._kCantileverFrontComp)
+      else
+        null,
+      if (raw[1] != null)
+        (raw[1]! * _Athena2LevelingWizardState._kCantileverFrontComp)
+      else
+        null,
+      if (raw[2] != null) raw[2]! else null,
+      if (raw[3] != null) raw[3]! else null,
+    ];
+  }
+
   const _WorkflowPane({
     super.key,
     required this.engine,
@@ -2008,16 +2026,22 @@ class _WorkflowPane extends StatelessWidget {
 
   Widget _buildAllCornersMeasuredView(BuildContext context, Color primary) {
     final theme = Theme.of(context);
-    final zValues = cornerResults.map((r) {
+    final rawZ = cornerResults.map((r) {
       return r?.measurements?.secondStageTriggerZ;
     }).toList();
 
-    final validZ = zValues.whereType<double>().toList();
+    // Compensate front corners for cantilever flex so the displayed values
+    // and the pass/fail decision reflect the true plate levelness.
+    final compZ = _compensatedZ(rawZ);
+    final validZ = compZ.whereType<double>().toList();
     final minZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a < b ? a : b);
     final maxZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a > b ? a : b);
     final deviation = maxZ - minZ;
     final withinTolerance = deviation < 0.100;
     final statusColor = withinTolerance ? Colors.greenAccent : Colors.redAccent;
+
+    // Use compensated values for display too — raw front Z is misleading.
+    final dispZ = compZ;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2075,7 +2099,7 @@ class _WorkflowPane extends StatelessWidget {
                   child: _cornerValueCard(
                     theme,
                     _cornerLabels[3],
-                    zValues[3],
+                    dispZ[3],
                     validZ,
                     minZ,
                     maxZ,
@@ -2088,7 +2112,7 @@ class _WorkflowPane extends StatelessWidget {
                   child: _cornerValueCard(
                     theme,
                     _cornerLabels[2],
-                    zValues[2],
+                    dispZ[2],
                     validZ,
                     minZ,
                     maxZ,
@@ -2101,7 +2125,7 @@ class _WorkflowPane extends StatelessWidget {
                   child: _cornerValueCard(
                     theme,
                     _cornerLabels[1],
-                    zValues[1],
+                    dispZ[1],
                     validZ,
                     minZ,
                     maxZ,
@@ -2114,7 +2138,7 @@ class _WorkflowPane extends StatelessWidget {
                   child: _cornerValueCard(
                     theme,
                     _cornerLabels[0],
-                    zValues[0],
+                    dispZ[0],
                     validZ,
                     minZ,
                     maxZ,
