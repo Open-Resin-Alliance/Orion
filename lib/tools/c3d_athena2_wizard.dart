@@ -96,6 +96,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   void initState() {
     super.initState();
     _engine = LevelingWorkflowEngine()..addListener(_handleEngineUpdate);
+
+    // Prevent standby from activating while the leveling wizard is open
+    Provider.of<StatusProvider>(context, listen: false)
+        .setLevelingWorkflowActive(true);
   }
 
   @override
@@ -103,6 +107,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _wizardDisposed = true;
     _engine.removeListener(_handleEngineUpdate);
     _engine.dispose();
+    // Re-allow standby now that the wizard is closed
+    if (context.mounted) {
+      Provider.of<StatusProvider>(context, listen: false)
+          .setLevelingWorkflowActive(false);
+    }
     super.dispose();
   }
 
