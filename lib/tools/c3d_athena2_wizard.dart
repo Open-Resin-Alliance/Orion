@@ -1268,15 +1268,35 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       case _AdjustmentStep.puckPlacement:
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.feedback:
-        // Compute average force across all corners as the target.
-        // All four corners should converge to the same force when level.
+        // Compute a screw-aware target force so the live delta drives
+        // the correct corner toward the right reference plane.
+        //
+        // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
+        // Center-back screw (corners 2-3): target = average of front
+        // corners (0-1). Front screws (0-1): target = average of the
+        // other three corners.
         final allForces = _cornerResults
             .map((r) => r?.measurements?.secondStageTriggerForce)
-            .whereType<double>()
             .toList();
-        final avgTargetForce = allForces.isNotEmpty
-            ? allForces.reduce((a, b) => a + b) / allForces.length
-            : null;
+        final validForces = allForces.whereType<double>().toList();
+        double? avgTargetForce;
+        if (validForces.length == 4) {
+          final idx = _adjustingCornerIndex!;
+          if (idx >= 2) {
+            // Center-back screw: target = average of FL + FR
+            avgTargetForce = (allForces[0]! + allForces[1]!) / 2;
+          } else {
+            // Front screw: target = average of the other three corners
+            var otherSum = 0.0;
+            for (int i = 0; i < validForces.length; i++) {
+              if (i != idx) otherSum += validForces[i];
+            }
+            avgTargetForce = otherSum / 3;
+          }
+        } else if (validForces.isNotEmpty) {
+          avgTargetForce =
+              validForces.reduce((a, b) => a + b) / validForces.length;
+        }
         final adjMeasurements =
             _cornerResults[_adjustingCornerIndex!]?.measurements;
         return _AdjustmentFeedbackScreen(
@@ -1284,7 +1304,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           cornerIndex: _adjustingCornerIndex!,
           cornerForce: adjMeasurements?.secondStageTriggerForce,
           targetForce: avgTargetForce,
-          allCornerForces: allForces,
+          allCornerForces: validForces,
         );
     }
   }
