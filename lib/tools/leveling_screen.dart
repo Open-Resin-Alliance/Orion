@@ -40,6 +40,7 @@ class LevelingScreen extends StatelessWidget {
     final backend = BackendService();
     final assistedEnabled = levelingConfig != null &&
         config.hasForceSensor() &&
+        config.getLevelingMode() == 'athena2' &&
         backend.supportsCapability(BackendCapabilities.supportsForceLeveling);
 
     return SafeArea(

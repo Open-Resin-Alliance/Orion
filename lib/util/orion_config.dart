@@ -697,6 +697,21 @@ class OrionConfig {
   /// Convenience boolean: true when configured 'up'
   bool isHomePositionUp() => getHomePosition() == 'up';
 
+  /// Read the vendor `levelingMode` setting (e.g. "athena2", "manual", "").
+  /// Checks top-level `levelingMode` first, then `vendor.levelingMode`.
+  /// Returns empty string when absent (meaning no assisted leveling available).
+  String getLevelingMode() {
+    final vendor = _getVendorConfig();
+    if (vendor['levelingMode'] is String) {
+      return (vendor['levelingMode'] as String).trim().toLowerCase();
+    }
+    if (vendor['vendor'] is Map) {
+      final v = vendor['vendor']['levelingMode'];
+      if (v is String) return v.trim().toLowerCase();
+    }
+    return '';
+  }
+
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.
   bool getFeatureFlag(String key, {bool defaultValue = false}) {
