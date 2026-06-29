@@ -75,6 +75,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   // Intermediate screen flags
   bool _loosenScrewsDone = false;
 
+  // Prevents the home-after-leveling command from firing more than once
+  bool _homeAfterCompleteFired = false;
+
   // Corner measurements from probe steps
   final List<ForceLevelingWorkflowResponse?> _cornerResults =
       List.filled(4, null);
@@ -184,6 +187,16 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       }
     }
 
+    // Home the machine once when the leveling workflow completes
+    if (_engine.status == LevelingWorkflowStatus.complete &&
+        !_homeAfterCompleteFired) {
+      _homeAfterCompleteFired = true;
+      Provider.of<ManualProvider>(context, listen: false)
+          .moveToTop()
+          .then((_) {})
+          .catchError((_) {});
+    }
+
     // Minimum running duration â€” always checked, independent of status
     if (!_engine.isRunning && _runningSince != null && !_holdingRunning) {
       final elapsed = DateTime.now().difference(_runningSince!);
@@ -238,6 +251,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     for (int i = 0; i < _cornerResults.length; i++) {
       _cornerResults[i] = null;
     }
+    _homeAfterCompleteFired = false;
   }
 
   /// Compute deviation from corner measurements, compensated for
