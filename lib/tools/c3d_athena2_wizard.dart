@@ -1558,7 +1558,7 @@ class _PreLevelingPane extends StatelessWidget {
               FlutterI18n.translate(context, 'leveling.wizardIntroMsg'),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: primary,
               ),
@@ -1571,7 +1571,7 @@ class _PreLevelingPane extends StatelessWidget {
               FlutterI18n.translate(context, 'leveling.wizardIntroDetail'),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 20,
                 height: 1.4,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
               ),
@@ -1630,9 +1630,9 @@ class _PreFlightGuidePane extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
+                color: primary,
               ),
             ),
           ),
@@ -1891,7 +1891,7 @@ class _WorkflowPane extends StatelessWidget {
           FlutterI18n.translate(context, 'leveling.loosenTitle'),
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.primary,
           ),
@@ -1903,7 +1903,7 @@ class _WorkflowPane extends StatelessWidget {
             FlutterI18n.translate(context, 'leveling.loosenInstruction'),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 20,
               height: 1.4,
               color: onSurface.withValues(alpha: 0.72),
             ),
@@ -1951,7 +1951,7 @@ class _WorkflowPane extends StatelessWidget {
           title,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: primary,
           ),
@@ -1963,7 +1963,7 @@ class _WorkflowPane extends StatelessWidget {
             FlutterI18n.translate(context, 'leveling.wizardDoNotTouch'),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 20,
               height: 1.4,
               color: onSurface,
             ),
@@ -1996,7 +1996,7 @@ class _WorkflowPane extends StatelessWidget {
           FlutterI18n.translate(context, 'leveling.tightenTitle'),
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.primary,
           ),
@@ -2012,7 +2012,7 @@ class _WorkflowPane extends StatelessWidget {
                     context, 'leveling.tightenInstructionStandard'),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 20,
               height: 1.4,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
             ),
@@ -2046,7 +2046,7 @@ class _WorkflowPane extends StatelessWidget {
           FlutterI18n.translate(context, 'leveling.wizardRemovePuck'),
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.primary,
           ),
@@ -2058,7 +2058,7 @@ class _WorkflowPane extends StatelessWidget {
             FlutterI18n.translate(context, 'leveling.wizardRemovePuckInstr'),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 20,
               height: 1.4,
               color: onSurface.withValues(alpha: 0.72),
             ),
@@ -2365,7 +2365,7 @@ class _WorkflowPane extends StatelessWidget {
           title,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: primary,
           ),
@@ -2378,7 +2378,7 @@ class _WorkflowPane extends StatelessWidget {
             instruction,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 20,
               height: 1.4,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
             ),
