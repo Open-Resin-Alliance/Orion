@@ -370,6 +370,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       }
     } catch (e) {
       _adjustmentError = e.toString();
+      _adjustmentBusy = false;
       if (mounted) setState(() {});
       return;
     }
@@ -396,6 +397,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         _adjustmentError = response.error.isNotEmpty
             ? response.error
             : FlutterI18n.translate(context, 'leveling.wizardProbeFailed');
+        _adjustmentBusy = false;
         if (mounted) setState(() {});
         return;
       }
@@ -403,6 +405,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       _cornerResults[_adjustingCornerIndex!] = response;
     } catch (e) {
       _adjustmentError = e.toString();
+      _adjustmentBusy = false;
       if (mounted) setState(() {});
       return;
     }
