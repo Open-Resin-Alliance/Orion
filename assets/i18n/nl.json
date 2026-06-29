@@ -470,6 +470,8 @@
         "wizardCancelMsg": "Weet u het zeker?\\n\\nVoortgang gaat verloren.",
         "wizardIntroMsg": "Waterpas stellen met assistentie.",
         "wizardIntroDetail": "Uw printer gebruikt de krachtsensor.",
+        "wizardAlignTitle": "Plaat uitlijnen",
+        "wizardAlignInstr": "Zorg dat de bouwplaat is uitgelijnd met het scherm en tik op Gereed.",
         "loosenTitle": "Waterpasschroeven losdraaien",
         "loosenInstruction": "Draai alle drie gelijkmatig los — net genoeg zodat de plaat kan kantelen.",
         "tightenTitle": "Waterpasschroeven vastdraaien",

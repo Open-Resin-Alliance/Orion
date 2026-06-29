@@ -470,6 +470,8 @@
         "wizardCancelMsg": "Sicuro?\\n\\nIl progresso andrà perso.",
         "wizardIntroMsg": "Livellamento assistito.",
         "wizardIntroDetail": "La stampante usa il sensore di forza per livellare.",
+        "wizardAlignTitle": "Allineare la piastra",
+        "wizardAlignInstr": "Assicurarsi che la piastra sia allineata allo schermo, quindi toccare Fine.",
         "loosenTitle": "Allenta viti livellamento",
         "loosenInstruction": "Allentare tutti e tre in modo uniforme — quanto basta per inclinare la piastra.",
         "tightenTitle": "Stringi viti livellamento",

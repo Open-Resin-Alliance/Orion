@@ -470,6 +470,8 @@
         "wizardCancelMsg": "¿Está seguro?\\n\\nSe perderá el progreso.",
         "wizardIntroMsg": "Nivelación asistida.",
         "wizardIntroDetail": "Su impresora usará el sensor de fuerza para nivelar.",
+        "wizardAlignTitle": "Alinear placa",
+        "wizardAlignInstr": "Asegúrese de que la placa esté alineada con la pantalla, luego pulse Listo.",
         "loosenTitle": "Aflojar tornillos",
         "loosenInstruction": "Afloje los tres uniformemente — solo lo justo para que la placa se incline.",
         "tightenTitle": "Apretar tornillos",

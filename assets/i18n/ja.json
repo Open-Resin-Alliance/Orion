@@ -470,6 +470,8 @@
         "wizardCancelMsg": "本当に中止しますか？\\n\\n進捗は失われます。",
         "wizardIntroMsg": "アシストレベル調整。",
         "wizardIntroDetail": "プリンターは力センサーでレベル調整します。",
+        "wizardAlignTitle": "プレートを調整",
+        "wizardAlignInstr": "プレートがスクリーンに平行であることを確認し、完了を押します。",
         "loosenTitle": "レベリングネジをゆるめる",
         "loosenInstruction": "3つを均等に少しだけゆるめます——プレートが傾く程度に。",
         "tightenTitle": "レベリングネジを締める",

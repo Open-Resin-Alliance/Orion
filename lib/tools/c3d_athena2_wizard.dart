@@ -74,6 +74,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
   // Intermediate screen flags
   bool _loosenScrewsDone = false;
+  bool _alignDone = false;
 
   // Prevents the home-after-leveling command from firing more than once
   bool _homeAfterCompleteFired = false;
@@ -125,6 +126,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       _runningSince ??= DateTime.now();
       _holdingRunning = false;
       _loosenScrewsDone = false;
+      _alignDone = false;
     } else if (_engine.status == LevelingWorkflowStatus.stepComplete) {
       final step = _engine.currentStep;
       if (step != null) {
@@ -874,9 +876,63 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       );
     }
 
-    // Tighten-screws prompt: Cancel | Done â†’ auto-run offset
+    // Align-plate prompt (shown before tighten): Cancel | Done
     if (status == LevelingWorkflowStatus.stepComplete &&
-        _engine.currentStep?.intermediateScreen == 'tighten') {
+        _engine.currentStep?.intermediateScreen == 'tighten' &&
+        !_alignDone) {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () => setState(() => _alignDone = true),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.check(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.done'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Tighten-screws prompt (after alignment): Cancel | Done â†’ auto-run offset
+    if (status == LevelingWorkflowStatus.stepComplete &&
+        _engine.currentStep?.intermediateScreen == 'tighten' &&
+        _alignDone) {
       return Row(
         children: [
           Expanded(
@@ -1820,12 +1876,14 @@ class _WorkflowPane extends StatelessWidget {
     required this.engine,
     required this.effectivelyRunning,
     required this.loosenScrewsDone,
+    required this.alignDone,
     required this.cornerResults,
   });
 
   final LevelingWorkflowEngine engine;
   final bool effectivelyRunning;
   final bool loosenScrewsDone;
+  final bool alignDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
 
   @override
@@ -1845,7 +1903,9 @@ class _WorkflowPane extends StatelessWidget {
     final String? intermediate = step.intermediateScreen;
     final isLoosenScrews =
         isComplete && intermediate == 'loosen' && !loosenScrewsDone;
-    final isTightenScrews = isComplete && intermediate == 'tighten';
+    final isAlignPlate = isComplete && intermediate == 'tighten' && !alignDone;
+    final isTightenScrews =
+        isComplete && intermediate == 'tighten' && alignDone;
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
     final isRemovePuck = isComplete && intermediate == 'removePuck';
 
@@ -1857,13 +1917,15 @@ class _WorkflowPane extends StatelessWidget {
           ? _buildRunningView(context, primary, step)
           : isLoosenScrews
               ? _buildLoosenScrewsView(context, primary)
-              : isTightenScrews
-                  ? _buildTightenScrewsView(context, primary)
-                  : isAllCornersMeasured
-                      ? _buildAllCornersMeasuredView(context, primary)
-                      : isRemovePuck
-                          ? _buildRemovePuckView(context, primary)
-                          : _buildStepView(context, theme, primary, step),
+              : isAlignPlate
+                  ? _buildAlignPlateView(context, primary)
+                  : isTightenScrews
+                      ? _buildTightenScrewsView(context, primary)
+                      : isAllCornersMeasured
+                          ? _buildAllCornersMeasuredView(context, primary)
+                          : isRemovePuck
+                              ? _buildRemovePuckView(context, primary)
+                              : _buildStepView(context, theme, primary, step),
     );
   }
 
@@ -1966,6 +2028,51 @@ class _WorkflowPane extends StatelessWidget {
               fontSize: 20,
               height: 1.4,
               color: onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAlignPlateView(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: primary.withValues(alpha: 0.12),
+          ),
+          child: Icon(
+            PhosphorIcons.compass(),
+            size: 52,
+            color: primary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          FlutterI18n.translate(context, 'leveling.wizardAlignTitle'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            FlutterI18n.translate(context, 'leveling.wizardAlignInstr'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              height: 1.4,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
             ),
           ),
         ),

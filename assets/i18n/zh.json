@@ -470,6 +470,8 @@
         "wizardCancelMsg": "确定取消？\\n\\n进度将丢失。",
         "wizardIntroMsg": "辅助调平。",
         "wizardIntroDetail": "您的打印机将使用力传感器进行调平。",
+        "wizardAlignTitle": "对齐平台",
+        "wizardAlignInstr": "确保平台与屏幕对齐，然后点击完成。",
         "loosenTitle": "松开调平螺丝",
         "loosenInstruction": "均匀地稍微松开所有三个螺丝——只需让平台能够倾斜即可。",
         "tightenTitle": "紧固调平螺丝",

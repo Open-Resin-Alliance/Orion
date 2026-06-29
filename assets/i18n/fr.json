@@ -470,6 +470,8 @@
         "wizardCancelMsg": "Êtes-vous sûr ?\\n\\nLa progression sera perdue.",
         "wizardIntroMsg": "Nivellement assisté.",
         "wizardIntroDetail": "Votre imprimante utilise le capteur de force.",
+        "wizardAlignTitle": "Aligner le plateau",
+        "wizardAlignInstr": "Assurez-vous que le plateau est aligné avec l'écran, puis appuyez sur Terminé.",
         "loosenTitle": "Desserrer les vis",
         "loosenInstruction": "Desserrez les trois uniformément — juste assez pour que la plaque s'incline.",
         "tightenTitle": "Serrer les vis",
