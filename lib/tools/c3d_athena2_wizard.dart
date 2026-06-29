@@ -2203,7 +2203,7 @@ class _WorkflowPane extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            deviation.toStringAsFixed(3),
+                            deviation.toStringAsFixed(2),
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -2312,7 +2312,7 @@ class _WorkflowPane extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            z != null ? '${z.toStringAsFixed(3)} mm' : '--',
+            z != null ? '${z.toStringAsFixed(2)} mm' : '--',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
