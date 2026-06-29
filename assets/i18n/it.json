@@ -463,6 +463,8 @@
         "wizardRecheckAll": "Ricontrolla tutto",
         "wizardProbingCorner": "Misuro angolo",
         "wizardPositioning": "Posiziono…",
+        "wizardKeepHandsClear": "Piastra in movimento",
+        "wizardMovingToProbe": "La piastra si sta posizionando. Tenersi a distanza.",
         "wizardPlacePuck": "Posiziona puck",
         "wizardPuckInstruction": "Posiziona il puck nell’angolo {corner}{hint}.",
         "wizardAdjustFailed": "Regolazione fallita",

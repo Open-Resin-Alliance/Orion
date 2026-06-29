@@ -463,6 +463,8 @@
         "wizardRecheckAll": "Alles controleren",
         "wizardProbingCorner": "Hoek meten",
         "wizardPositioning": "Positioneren…",
+        "wizardKeepHandsClear": "Bouwplaat in beweging",
+        "wizardMovingToProbe": "De bouwplaat beweegt naar positie. Afstand houden.",
         "wizardPlacePuck": "Puck plaatsen",
         "wizardPuckInstruction": "Plaats de puck in de {corner} hoek{hint}.",
         "wizardAdjustFailed": "Bijstellen mislukt",

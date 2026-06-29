@@ -463,6 +463,8 @@
         "wizardRecheckAll": "Alle prüfen",
         "wizardProbingCorner": "Messe Ecke",
         "wizardPositioning": "Positioniere…",
+        "wizardKeepHandsClear": "Vorsicht — Plattform bewegt sich",
+        "wizardMovingToProbe": "Die Bauplatte fährt in Position. Bitte Abstand halten.",
         "wizardPlacePuck": "Puck platzieren",
         "wizardPuckInstruction": "Bitte legen Sie den Puck in die {corner} Ecke{hint}.",
         "wizardAdjustFailed": "Anpassung fehlgeschlagen",

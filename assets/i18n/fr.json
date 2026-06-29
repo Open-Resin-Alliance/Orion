@@ -463,6 +463,8 @@
         "wizardRecheckAll": "Tout vérifier",
         "wizardProbingCorner": "Mesure coin",
         "wizardPositioning": "Positionnement…",
+        "wizardKeepHandsClear": "Plateau en mouvement",
+        "wizardMovingToProbe": "Le plateau se déplace en position. Veuillez vous tenir à l'écart.",
         "wizardPlacePuck": "Placer le puck",
         "wizardPuckInstruction": "Placez le puck dans le coin {corner}{hint}.",
         "wizardAdjustFailed": "Échec d’ajustement",

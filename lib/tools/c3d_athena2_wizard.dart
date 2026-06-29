@@ -591,6 +591,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           engine: _engine,
           effectivelyRunning: _effectivelyRunning,
           loosenScrewsDone: _loosenScrewsDone,
+          alignDone: _alignDone,
           cornerResults: _cornerResults,
         );
       case _WizardPhase.adjustment:
@@ -1387,7 +1388,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     switch (_adjustmentStep) {
       case _AdjustmentStep.preparing:
       case _AdjustmentStep.probing:
-        return _buildAdjustmentRunning(context, primary);
+        return _buildAdjustmentWarning(context, primary);
       case _AdjustmentStep.puckPlacement:
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.feedback:
@@ -1432,45 +1433,65 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     }
   }
 
-  Widget _buildAdjustmentRunning(BuildContext context, Color primary) {
-    final idx = _adjustingCornerIndex ?? 0;
-    final isProbing = _adjustmentStep == _AdjustmentStep.probing;
-    final labels = ['Front Left', 'Front Right', 'Back Right', 'Back Left'];
-    final screwHints = ['', '', ' (center screw)', ' (center screw)'];
+  Widget _buildAdjustmentWarning(BuildContext context, Color primary) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
+          SizedBox(
             width: 100,
             height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: primary.withValues(alpha: 0.10),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(strokeWidth: 4),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.redAccent.withValues(alpha: 0.20),
+                  ),
+                ),
+                const Icon(
+                  PhosphorIconsFill.hand,
+                  size: 56,
+                  color: Colors.redAccent,
+                ),
+                SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 4,
+                    color: Colors.redAccent.withValues(alpha: 0.50),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            isProbing
-                ? FlutterI18n.translate(context, 'leveling.wizardProbingBtn')
-                : FlutterI18n.translate(context, 'leveling.wizardPositioning'),
-            style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.bold, color: primary),
+            FlutterI18n.translate(context, 'leveling.wizardKeepHandsClear'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.redAccent,
+            ),
           ),
           const SizedBox(height: 8),
-          Text(
-            isProbing
-                ? 'Measuring at ${labels[idx]}${screwHints[idx]}'
-                : 'Moving to ${labels[idx]}${screwHints[idx]}',
-            style: TextStyle(
-              fontSize: 16,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.72),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              FlutterI18n.translate(context, 'leveling.wizardMovingToProbe'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.4,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.72),
+              ),
             ),
           ),
         ],
@@ -1980,8 +2001,6 @@ class _WorkflowPane extends StatelessWidget {
     Color primary,
     LevelingWorkflowStep step,
   ) {
-    final onSurface =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72);
     final title = step.runningTitle ??
         switch (step.kind) {
           LevelingWorkflowStepKind.prepare =>
@@ -1993,41 +2012,60 @@ class _WorkflowPane extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
+        SizedBox(
           width: 100,
           height: 100,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: primary.withValues(alpha: 0.10),
-          ),
-          child: const SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: CircularProgressIndicator(strokeWidth: 4),
-            ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.redAccent.withValues(alpha: 0.20),
+                ),
+              ),
+              const Icon(
+                PhosphorIconsFill.hand,
+                size: 56,
+                color: Colors.redAccent,
+              ),
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  color: Colors.redAccent.withValues(alpha: 0.50),
+                  backgroundColor: Colors.redAccent.withValues(alpha: 0.20),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 20),
         Text(
-          title,
+          FlutterI18n.translate(context, 'leveling.wizardKeepHandsClear'),
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: primary,
+            color: Colors.redAccent,
           ),
         ),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
-            FlutterI18n.translate(context, 'leveling.wizardDoNotTouch'),
+            title,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 20,
               height: 1.4,
-              color: onSurface,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.72),
             ),
           ),
         ),

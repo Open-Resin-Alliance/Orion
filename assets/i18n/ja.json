@@ -463,6 +463,8 @@
         "wizardRecheckAll": "すべて再チェック",
         "wizardProbingCorner": "コーナーを測定",
         "wizardPositioning": "位置付け中…",
+        "wizardKeepHandsClear": "ビルドプレート移動中",
+        "wizardMovingToProbe": "ビルドプレートが位置決め中です。近づかないでください。",
         "wizardPlacePuck": "パックを配置",
         "wizardPuckInstruction": "{corner}コーナーにパックを配置してください{hint}",
         "wizardAdjustFailed": "調整失敗",

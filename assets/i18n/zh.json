@@ -463,6 +463,8 @@
         "wizardRecheckAll": "全部重检",
         "wizardProbingCorner": "测量角落",
         "wizardPositioning": "定位中…",
+        "wizardKeepHandsClear": "平台移动中",
+        "wizardMovingToProbe": "平台正在移动到位。请远离。",
         "wizardPlacePuck": "放置定位零件",
         "wizardPuckInstruction": "请将定位零件放在{corner}角{hint}。",
         "wizardAdjustFailed": "调整失败",

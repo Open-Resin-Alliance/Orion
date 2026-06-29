@@ -463,6 +463,8 @@
         "wizardRecheckAll": "Verificar todo",
         "wizardProbingCorner": "Midiendo esquina",
         "wizardPositioning": "Posicionando…",
+        "wizardKeepHandsClear": "Placa en movimiento",
+        "wizardMovingToProbe": "La placa se está moviendo a su posición. Manténgase alejado.",
         "wizardPlacePuck": "Colocar puck",
         "wizardPuckInstruction": "Coloque el puck en la esquina {corner}{hint}.",
         "wizardAdjustFailed": "Ajuste fallido",

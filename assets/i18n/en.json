@@ -463,6 +463,8 @@
         "wizardRecheckAll": "Re-check All",
         "wizardProbingCorner": "Probing Corner",
         "wizardPositioning": "Positioning…",
+        "wizardKeepHandsClear": "Build Plate Moving",
+        "wizardMovingToProbe": "The build plate is moving into position. Please keep clear.",
         "wizardPlacePuck": "Place Calibration Puck",
         "wizardPuckInstruction": "Please place the Leveling Puck in the {corner} corner{hint}.",
         "wizardAdjustFailed": "Adjustment Failed",
