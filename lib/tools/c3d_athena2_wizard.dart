@@ -951,13 +951,19 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             child: GlassButton(
               tint: GlassButtonTint.positive,
               onPressed: () {
-                _engine.advanceAfterSuccessfulStep();
-                // Auto-run the final prepare step
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted && _engine.canRunCurrentStep) {
-                    _engine.runCurrentStep();
-                  }
-                });
+                // Arm is already up from background probe_corner_prepare.
+                // Skip final_prepare — jump straight to final calibration.
+                final finalIdx = _engine.steps.lastIndexWhere(
+                  (s) => s.kind == LevelingWorkflowStepKind.finalOffset,
+                );
+                if (finalIdx >= 0) {
+                  _engine.jumpToStep(finalIdx);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted && _engine.canRunCurrentStep) {
+                      _engine.runCurrentStep();
+                    }
+                  });
+                }
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
@@ -1030,8 +1036,18 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         LevelingWorkflowStatus.failed => () => _engine.runCurrentStep(),
         LevelingWorkflowStatus.stepComplete => () {
             _engine.advanceAfterSuccessfulStep();
-            // If advancing from a corner prepare, auto-run the probe
+            // Auto-run the next step if advancing from a corner prepare,
+            // or if it's a skipBackend intermediate screen (e.g. remove
+            // puck) so the user sees the real view immediately.
             if (isCornerPrepare) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _engine.canRunCurrentStep) {
+                  _engine.runCurrentStep();
+                }
+              });
+            }
+            final next = _engine.currentStep;
+            if (next?.skipBackend == true && next?.intermediateScreen != null) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted && _engine.canRunCurrentStep) {
                   _engine.runCurrentStep();
