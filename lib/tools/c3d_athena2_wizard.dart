@@ -224,12 +224,19 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _phase = _WizardPhase.introAndChecklist;
             _preFlightIndex = -1;
           });
+          _resetCornerResults();
         }
         return;
       case _WizardPhase.adjustment:
         // Back from adjustment â†’ cancel
         _cancelLeveling();
         return;
+    }
+  }
+
+  void _resetCornerResults() {
+    for (int i = 0; i < _cornerResults.length; i++) {
+      _cornerResults[i] = null;
     }
   }
 
@@ -406,9 +413,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   }
 
   void _runRecheckCorners() {
-    for (int i = 0; i < _cornerResults.length; i++) {
-      _cornerResults[i] = null;
-    }
+    _resetCornerResults();
     _engine.jumpToStep(3);
     setState(() => _phase = _WizardPhase.workflow);
     // Auto-run the corner prepare step so the probe positions itself before
@@ -554,6 +559,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           config: widget.config,
           onVariantSelected: (variant) {
             _engine.selectVariant(variant);
+            _resetCornerResults();
             setState(() {
               _phase = _WizardPhase.introAndChecklist;
               _preFlightIndex = -1;
