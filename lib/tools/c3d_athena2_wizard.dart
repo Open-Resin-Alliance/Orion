@@ -1175,6 +1175,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     );
 
     if (confirmed == true && mounted) {
+      // Move to top before cancelling so the arm is in a safe position
+      Provider.of<ManualProvider>(context, listen: false)
+          .moveToTop()
+          .then((_) {})
+          .catchError((_) {});
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
