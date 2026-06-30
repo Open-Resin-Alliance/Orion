@@ -2870,8 +2870,11 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                     builder: (_, trackBox) {
                                                       final w =
                                                           trackBox.maxWidth;
+                                                      // Invert position so the dot moves toward the
+                                                      // direction to turn: right → tighten (CW),
+                                                      // left → loosen (CCW).
                                                       final dotFrac =
-                                                          ((position + 1) / 2)
+                                                          ((1.0 - position) / 2.0)
                                                               .clamp(0.0, 1.0);
                                                       final centerX = w / 2;
                                                       final dotCenter =
@@ -2973,7 +2976,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                     Text(
                                                       FlutterI18n.translate(
                                                           context,
-                                                          'leveling.wizardTighter'),
+                                                          'leveling.wizardLooser'),
                                                       style: TextStyle(
                                                           fontSize: 11,
                                                           fontWeight:
@@ -2985,7 +2988,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                     Text(
                                                       FlutterI18n.translate(
                                                           context,
-                                                          'leveling.wizardLooser'),
+                                                          'leveling.wizardTighter'),
                                                       style: TextStyle(
                                                           fontSize: 11,
                                                           fontWeight:
