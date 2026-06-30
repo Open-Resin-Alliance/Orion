@@ -2620,16 +2620,13 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
-    // Compute delta force: how far this corner's force is from the average.
+    // Compute delta against the corner-specific target force
+    // (excludes this corner's own force so the gauge is unbiased).
     // Negative = corner has lower force (screw too loose) → tighten
     // Positive = corner has higher force (screw too tight) → loosen
-    final validForces = widget.allCornerForces.whereType<double>().toList();
-    final avgForce = validForces.isNotEmpty
-        ? validForces.reduce((a, b) => a + b) / validForces.length
-        : null;
     final double? forceDelta;
-    if (_smoothedForce != null && avgForce != null) {
-      forceDelta = _smoothedForce! - avgForce;
+    if (_smoothedForce != null && widget.targetForce != null) {
+      forceDelta = _smoothedForce! - widget.targetForce!;
     } else {
       forceDelta = null;
     }
