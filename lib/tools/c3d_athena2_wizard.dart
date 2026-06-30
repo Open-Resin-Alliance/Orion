@@ -2210,7 +2210,7 @@ class _WorkflowPane extends StatelessWidget {
     final minZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a < b ? a : b);
     final maxZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a > b ? a : b);
     final deviation = maxZ - minZ;
-    final withinTolerance = deviation < 0.100;
+    final withinTolerance = deviation <= 0.100;
     final statusColor = withinTolerance ? Colors.greenAccent : Colors.redAccent;
 
     // Use compensated values for display too — raw front Z is misleading.
