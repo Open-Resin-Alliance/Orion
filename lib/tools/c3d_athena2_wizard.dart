@@ -320,36 +320,20 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     final z2 = zValues[2]; // BR
     final z3 = zValues[3]; // BL
 
-    // Analyze both axes to find the dominant imbalance
-    final frontAvg = (z0 + z1) / 2;
-    final backAvg = (z2 + z3) / 2;
-    final fbDelta = frontAvg - backAvg; // + = front higher
-
-    final leftAvg = (z0 + z3) / 2;
-    final rightAvg = (z1 + z2) / 2;
-    final lrDelta = leftAvg - rightAvg; // + = left higher
+    // Diagonal-pair analysis: tightening a front corner raises it
+    // and lowers its diagonal opposite (FL↔BR, FR↔BL).  Pick the
+    // pair with the greatest height difference and tighten the
+    // lower corner — this addresses both sides simultaneously.
+    final diagFLBR = (z0 - z2).abs();
+    final diagFRBL = (z1 - z3).abs();
 
     int probeCorner;
-    if (fbDelta.abs() >= lrDelta.abs()) {
-      // ====== Front-to-back is the dominant axis ======
-      if (fbDelta > 0) {
-        // Front is higher â†’ tighten center back screw
-        // Probe at whichever back corner has the larger gap (lower Z)
-        probeCorner = z2 < z3 ? 2 : 3; // lower of BR, BL
-      } else {
-        // Back is higher â†’ tighten front screws
-        // Probe at whichever front corner has the larger gap (lower Z)
-        probeCorner = z0 < z1 ? 0 : 1; // lower of FL, FR
-      }
+    if (diagFLBR >= diagFRBL) {
+      // FL-BR diagonal has the larger imbalance
+      probeCorner = z0 < z2 ? 0 : 2; // tighten the lower corner
     } else {
-      // ====== Left-to-right is the dominant axis ======
-      if (lrDelta > 0) {
-        // Left is higher â†’ tighten FR screw
-        probeCorner = 1; // FR
-      } else {
-        // Right is higher â†’ tighten FL screw
-        probeCorner = 0; // FL
-      }
+      // FR-BL diagonal has the larger imbalance
+      probeCorner = z1 < z3 ? 1 : 3; // tighten the lower corner
     }
 
     _adjustingCornerIndex = probeCorner;
@@ -2637,8 +2621,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     final onSurface = theme.colorScheme.onSurface;
 
     // Compute delta force: how far this corner's force is from the average.
-    // Negative = corner has lower force (screw too tight) → loosen
-    // Positive = corner has higher force (screw too loose) → tighten
+    // Negative = corner has lower force (screw too loose) → tighten
+    // Positive = corner has higher force (screw too tight) → loosen
     final validForces = widget.allCornerForces.whereType<double>().toList();
     final avgForce = validForces.isNotEmpty
         ? validForces.reduce((a, b) => a + b) / validForces.length
@@ -2657,9 +2641,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     // ±3 N deadzone so small fluctuations don't flip labels
     const deadzone = 0.60;
     final directionLabel = position < -deadzone
-        ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
+        ? FlutterI18n.translate(context, 'leveling.wizardTighten')
         : position > deadzone
-            ? FlutterI18n.translate(context, 'leveling.wizardTighten')
+            ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
     final accent = position < -deadzone
         ? const Color(0xFFFFC16D)
@@ -2668,9 +2652,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
             : const Color(0xFF57F0A4);
     // Rotation direction: -1 = CCW (loosen), 1 = CW (tighten), 0 = at target
     final rotationDirection = position < -deadzone
-        ? -1
+        ? 1
         : position > deadzone
-            ? 1
+            ? -1
             : 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
