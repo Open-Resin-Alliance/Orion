@@ -175,7 +175,16 @@ class LevelingWorkflowEngine extends ChangeNotifier {
 
     if (response.result) {
       if (response.zOffsetApplied != null) {
-        _zOffsetApplied = response.zOffsetApplied;
+        // Only update the stored offset when the backend reports a
+        // meaningful correction.  A second call (e.g. final recalibration
+        // after corner leveling on the Pro variant) often returns 0.0
+        // because the offset was already applied on the first pass —
+        // blindly overwriting would lose the real offset.  A genuine
+        // recalibration that returns a non-zero value will still update.
+        final value = response.zOffsetApplied!;
+        if (value > 0.001 || _zOffsetApplied == null) {
+          _zOffsetApplied = value;
+        }
       }
       _status = LevelingWorkflowStatus.stepComplete;
       _errorMessage = null;
@@ -217,6 +226,7 @@ class LevelingWorkflowEngine extends ChangeNotifier {
     final step = currentStep;
     if (step == null) return;
 
+    final fabZOffset = step.kind.name == 'finalOffset' ? 0.5 : null;
     _lastResponse = ForceLevelingWorkflowResponse(
       result: true,
       error: '',
@@ -230,9 +240,14 @@ class LevelingWorkflowEngine extends ChangeNotifier {
             secondStageTriggerForce: -20.0,
             secondStagePeakForce: -22.0,
           ),
-      zOffsetApplied: step.kind.name == 'finalOffset' ? 0.5 : null,
+      zOffsetApplied: fabZOffset,
       parkHeightMm: 150.0,
     );
+    // Apply the fabricated offset the same way runCurrentStep does so the
+    // completion screen actually displays it.
+    if (fabZOffset != null && (fabZOffset > 0.001 || _zOffsetApplied == null)) {
+      _zOffsetApplied = fabZOffset;
+    }
     _log.info('Force-completing step: id=${step.id} endpoint=${step.endpoint}');
     _status = LevelingWorkflowStatus.stepComplete;
     notifyListeners();
