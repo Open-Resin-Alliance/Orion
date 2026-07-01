@@ -1376,10 +1376,28 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       case _AdjustmentStep.puckPlacement:
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.feedback:
-        // Jacobian-based target: use the four (Z, F) data points from
-        // the corner check to estimate the local stiffness at the
-        // adjusting corner, then interpolate the force that corresponds
-        // to the geometrically-level target Z.
+        // ── 3-screw Jacobian ────────────────────────────────────
+        // The Pro arm has three screws forming a triangle.  The
+        // Jacobian J maps screw adjustments (Z-space) to the four
+        // corner heights, including cross-coupling through the
+        // rigid-plate pivot:
+        //
+        //   Tighten FL  → FL↑+1  FR=0   BR=0   BL↓−r
+        //   Tighten FR  → FL=0   FR↑+1  BR↓−r  BL=0
+        //   Tighten Back→ FL↓−r  FR↓−r  BR↑+1  BL↑+1
+        //
+        // where r ≈ 0.8 is the pivot ratio — how much the diagonal
+        // opposite moves relative to the adjusted corner.
+        //
+        // For a single-screw adjustment, solving for the Δs that
+        // levels the plate:
+        //
+        //   Front screw (FL/FR):  Δs = (ΣZ − 4·Z_adj) / (3 + r)
+        //   Back screw:           Δs = (ΣZ − 4·Z_adj) / (2(1+r))
+        //
+        // This Δs is SMALLER than the naive 1D correction because
+        // the cross-coupling helps — tightening also drops the
+        // opposite diagonal, so you need less turn to level.
         //
         // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
         final allZ = _cornerResults
@@ -1389,46 +1407,42 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             .map((r) => r?.measurements?.secondStagePeakForce)
             .toList();
 
-        final validZ = allZ.whereType<double>().toList();
         final validForces = allForces.whereType<double>().toList();
         final idx = _adjustingCornerIndex!;
 
-        // Target Z — the geometric height we want this corner to reach.
-        double? targetZ;
-        if (validZ.length == 4) {
-          if (idx >= 2) {
-            targetZ = (allZ[0]! + allZ[1]!) / 2; // back: avg of front corners
-          } else {
-            var otherSum = 0.0;
-            for (int i = 0; i < validZ.length; i++) {
-              if (i != idx) otherSum += validZ[i];
-            }
-            targetZ = otherSum / 3; // front: avg of other three
-          }
-        } else if (validZ.isNotEmpty) {
-          targetZ = validZ.reduce((a, b) => a + b) / validZ.length;
-        }
+        // Pivot ratio — fraction of adjustment that couples to the
+        // diagonal opposite corner via the rigid-plate pivot.
+        const double rPivot = 0.8;
 
         // Local stiffness k = ΔF / ΔZ (N/mm) from the two corners
-        // at the same arm position (front pair or back pair).
+        // at the same arm position.
         double k;
         if (idx <= 1) {
           final other = idx == 0 ? 1 : 0;
           final dz = (allZ[idx]! - allZ[other]!).abs();
           final dF = (allForces[idx]! - allForces[other]!).abs();
-          k = dz > 0.01 ? dF / dz : 5.0; // default ~5 N/mm for front
+          k = dz > 0.01 ? dF / dz : 5.0;
         } else {
           final other = idx == 2 ? 3 : 2;
           final dz = (allZ[idx]! - allZ[other]!).abs();
           final dF = (allForces[idx]! - allForces[other]!).abs();
-          k = dz > 0.01 ? dF / dz : 15.0; // default ~15 N/mm for back
+          k = dz > 0.01 ? dF / dz : 15.0;
         }
 
-        // Interpolated target force: current_F + k × (target_Z − current_Z).
+        // Required Z change at the adjusting corner.
+        final sumZ = allZ[0]! + allZ[1]! + allZ[2]! + allZ[3]!;
         final currentZ = allZ[idx]!;
         final currentF = allForces[idx]!;
-        final double avgTargetForce =
-            currentF + k * (targetZ! - currentZ);
+        final double deltaS;
+        if (idx <= 1) {
+          // Front screw: tightens its own corner, drops diagonal.
+          deltaS = (sumZ - 4 * currentZ) / (3 + rPivot);
+        } else {
+          // Back screw: tightens rear edge, drops front edge.
+          deltaS = (sumZ - 4 * currentZ) / (2 * (1 + rPivot));
+        }
+
+        final double avgTargetForce = currentF + k * deltaS;
 
         final adjMeasurements =
             _cornerResults[_adjustingCornerIndex!]?.measurements;
