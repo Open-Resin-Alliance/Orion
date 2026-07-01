@@ -1375,9 +1375,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.feedback:
         // ── 3-screw Jacobian ────────────────────────────────────
-        // The Pro arm plate flexes as a whole: tightening one front
-        // screw raises both front corners and drops the diagonal
-        // opposite rear corner.  We model this as:
+        // The Pro arm plate pivots on the ball joint.  Tightening
+        // a front screw lifts that corner and drops the diagonal
+        // opposite (FL↔BR, FR↔BL).  We model this as:
         //
         //   Tighten FL  → FL↑+1  FR=0   BR↓−r  BL=0
         //   Tighten FR  → FL=0   FR↑+1  BR=0   BL↓−r
@@ -1390,13 +1390,21 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         //   Front screw (FL/FR):  Δs = (ΣZ − 4·Z_adj) / (3 + r)
         //   Back screw:           Δs = (ΣZ − 4·Z_adj) / (2(1+r))
         //
-        // Cross-coupling means you need LESS turn than the naive 1D
-        // correction — tightening also helps the opposite corner.
+        // Z values are compensated for cantilever flex so the
+        // Jacobian and corner selection use the same reference.
         //
         // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
-        final allZ = _cornerResults
+        final rawZ = _cornerResults
             .map((r) => r?.measurements?.secondStageTriggerZ)
             .toList();
+        final allZ = _compensatedCorners(rawZ);
+        if (allZ.length < 4) {
+          // Not enough data — fall back to the raw values.
+          allZ.clear();
+          for (final z in rawZ) {
+            if (z != null) allZ.add(z);
+          }
+        }
         final allForces = _cornerResults
             .map((r) => r?.measurements?.secondStagePeakForce)
             .toList();
