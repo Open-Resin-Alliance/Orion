@@ -2550,13 +2550,14 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   bool _listenerRegistered = false;
   bool _analyticsDisposed = false;
 
-  final List<double> _forceHistory = [];
-  static const int _smoothingWindow = 30; // ~2 seconds at 15Hz
+  // Exponential moving average for live force smoothing.
+  // Alpha = 0.25 gives an effective window of ~7–8 samples (~0.5 s at
+  // 15 Hz) — responsive enough to feel the screw turning while still
+  // filtering ±10 N sensor jitter down to a usable range.
+  double? _emaForce;
+  static const double _emaAlpha = 0.25;
 
-  double? get _smoothedForce {
-    if (_forceHistory.isEmpty) return null;
-    return _forceHistory.reduce((a, b) => a + b) / _forceHistory.length;
-  }
+  double? get _smoothedForce => _emaForce;
 
   @override
   void initState() {
@@ -2582,9 +2583,11 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
         if (series.isNotEmpty) {
           final raw = (series.last['v'] as num?)?.toDouble();
           if (raw != null) {
-            _forceHistory.add(raw);
-            if (_forceHistory.length > _smoothingWindow) {
-              _forceHistory.removeAt(0);
+            if (_emaForce == null) {
+              _emaForce = raw;
+            } else {
+              _emaForce =
+                  _emaAlpha * raw + (1.0 - _emaAlpha) * _emaForce!;
             }
           }
         }
