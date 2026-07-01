@@ -2578,11 +2578,15 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   // ── Force signal pipeline ──────────────────────────────────────
   // Adaptive EMA — alpha drops to 5 % of normal when the signal is
   // volatile (user pushing on the arm during screw adjustment),
-  // then ramps back up naturally as the force settles.  No binary
-  // freeze/thaw, no extra buffers, no state machine.
+  // then ramps back up naturally as the force settles.
   double? _emaForce;
   static const double _emaAlpha = 0.25;
-  static const double _shockThreshold = 50.0; // N — above this we slow way down
+  static const double _shockThreshold = 50.0;
+
+  // Offset that converts the Jacobian target from probe-force space
+  // into live-analytics-force space.  Captured once when the first
+  // analytics reading arrives after probe completion.
+  double? _liveOffset;
 
   double? get _smoothedForce => _emaForce;
 
@@ -2610,6 +2614,13 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
         if (series.isNotEmpty) {
           final raw = (series.last['v'] as num?)?.toDouble();
           if (raw != null) {
+            // Capture the live-vs-probe offset once so we can shift
+            // the Jacobian target into the live-force reference frame.
+            if (_liveOffset == null &&
+                _emaForce != null &&
+                widget.cornerForce != null) {
+              _liveOffset = _emaForce! - widget.cornerForce!;
+            }
             if (_emaForce == null) {
               _emaForce = raw;
             } else {
@@ -2654,29 +2665,27 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
-    // Compute delta: live − target.
-    // Live more negative than target → corner is lower (more compressed)
-    //   → TIGHTEN to lift it, reducing compression toward target.
-    // Live less negative than target → corner is higher (less compressed)
-    //   → LOOSEN to drop it, increasing compression toward target.
-    // Over-tightening naturally flips the sign so the gauge guides the
-    // user back to centre.
+    // Live force vs target, both in the live-analytics reference frame.
+    // The Jacobian target is shifted by the probe→live offset captured
+    // when the first analytics reading arrives after probing.
+    //
+    // live − target: negative → corner lower than target → TIGHTEN.
+    // live − target: positive → corner higher than target → LOOSEN.
     final double? forceDelta;
     if (_smoothedForce != null && widget.targetForce != null) {
-      forceDelta = _smoothedForce! - widget.targetForce!;
+      final liveTarget =
+          widget.targetForce! + (_liveOffset ?? 0.0);
+      forceDelta = _smoothedForce! - liveTarget;
     } else {
       forceDelta = null;
     }
 
-    // Gauge scale: ±20 N maps to the full range.  Peak-force
-    // differences between corners are on the order of 2–10 N for
-    // typical deviations — this scale makes them visible.
+    // Gauge scale: ±20 N maps to the full range.
     const forceScale = 20.0;
     final position =
         forceDelta != null ? (forceDelta / forceScale).clamp(-1.0, 1.0) : 0.0;
-    // ±1 N deadzone — the adaptive EMA handles sensor noise, so we
-    // can keep this tight.
-    const deadzone = 1.0 / forceScale; // 0.05
+    // ±1 N deadzone.
+    const deadzone = 1.0 / forceScale;
     final directionLabel = position < -deadzone
         ? FlutterI18n.translate(context, 'leveling.wizardTighten')
         : position > deadzone
