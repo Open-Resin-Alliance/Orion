@@ -1376,41 +1376,66 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       case _AdjustmentStep.puckPlacement:
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.feedback:
-        // Compute a screw-aware target force so the live delta drives
-        // the correct corner toward the right reference plane.
+        // Jacobian-based target: use the four (Z, F) data points from
+        // the corner check to estimate the local stiffness at the
+        // adjusting corner, then interpolate the force that corresponds
+        // to the geometrically-level target Z.
         //
         // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
-        // Center-back screw (corners 2-3): target = average of front
-        // corners (0-1). Front screws (0-1): target = average of the
-        // other three corners.
-        final allForces = _cornerResults
-            .map((r) => r?.measurements?.secondStageTriggerForce)
+        final allZ = _cornerResults
+            .map((r) => r?.measurements?.secondStageTriggerZ)
             .toList();
+        final allForces = _cornerResults
+            .map((r) => r?.measurements?.secondStagePeakForce)
+            .toList();
+
+        final validZ = allZ.whereType<double>().toList();
         final validForces = allForces.whereType<double>().toList();
-        double? avgTargetForce;
-        if (validForces.length == 4) {
-          final idx = _adjustingCornerIndex!;
+        final idx = _adjustingCornerIndex!;
+
+        // Target Z — the geometric height we want this corner to reach.
+        double? targetZ;
+        if (validZ.length == 4) {
           if (idx >= 2) {
-            // Center-back screw: target = average of FL + FR
-            avgTargetForce = (allForces[0]! + allForces[1]!) / 2;
+            targetZ = (allZ[0]! + allZ[1]!) / 2; // back: avg of front corners
           } else {
-            // Front screw: target = average of the other three corners
             var otherSum = 0.0;
-            for (int i = 0; i < validForces.length; i++) {
-              if (i != idx) otherSum += validForces[i];
+            for (int i = 0; i < validZ.length; i++) {
+              if (i != idx) otherSum += validZ[i];
             }
-            avgTargetForce = otherSum / 3;
+            targetZ = otherSum / 3; // front: avg of other three
           }
-        } else if (validForces.isNotEmpty) {
-          avgTargetForce =
-              validForces.reduce((a, b) => a + b) / validForces.length;
+        } else if (validZ.isNotEmpty) {
+          targetZ = validZ.reduce((a, b) => a + b) / validZ.length;
         }
+
+        // Local stiffness k = ΔF / ΔZ (N/mm) from the two corners
+        // at the same arm position (front pair or back pair).
+        double k;
+        if (idx <= 1) {
+          final other = idx == 0 ? 1 : 0;
+          final dz = (allZ[idx]! - allZ[other]!).abs();
+          final dF = (allForces[idx]! - allForces[other]!).abs();
+          k = dz > 0.01 ? dF / dz : 5.0; // default ~5 N/mm for front
+        } else {
+          final other = idx == 2 ? 3 : 2;
+          final dz = (allZ[idx]! - allZ[other]!).abs();
+          final dF = (allForces[idx]! - allForces[other]!).abs();
+          k = dz > 0.01 ? dF / dz : 15.0; // default ~15 N/mm for back
+        }
+
+        // Interpolated target force: current_F + k × (target_Z − current_Z).
+        final currentZ = allZ[idx]!;
+        final currentF = allForces[idx]!;
+        final double avgTargetForce =
+            currentF + k * (targetZ! - currentZ);
+
         final adjMeasurements =
             _cornerResults[_adjustingCornerIndex!]?.measurements;
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
-          cornerForce: adjMeasurements?.secondStageTriggerForce,
+          cornerForce: adjMeasurements?.secondStagePeakForce,
           targetForce: avgTargetForce,
           allCornerForces: validForces,
         );
@@ -2643,14 +2668,15 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
       forceDelta = null;
     }
 
-    // Gauge scale: ±100 N maps to the full range so the dot slides
-    // smoothly toward centre as the user dials in the screw, rather
-    // than jumping from "far off" to "correct".
-    const forceScale = 100.0;
+    // Gauge scale: ±20 N maps to the full range.  Peak-force
+    // differences between corners are on the order of 2–10 N for
+    // typical deviations — this scale makes them visible.
+    const forceScale = 20.0;
     final position =
         forceDelta != null ? (forceDelta / forceScale).clamp(-1.0, 1.0) : 0.0;
-    // ±10 N deadzone — close enough for a well-levelled plate.
-    const deadzone = 10.0 / forceScale; // 0.10
+    // ±1 N deadzone — the adaptive EMA handles sensor noise, so we
+    // can keep this tight.
+    const deadzone = 1.0 / forceScale; // 0.05
     final directionLabel = position < -deadzone
         ? FlutterI18n.translate(context, 'leveling.wizardTighten')
         : position > deadzone
