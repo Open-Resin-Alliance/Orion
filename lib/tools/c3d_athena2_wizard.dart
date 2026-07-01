@@ -2629,20 +2629,16 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
-    // Compute delta against the corner-specific target force
-    // (excludes this corner's own force so the gauge is unbiased).
-    // Force values are negative for compression (e.g. −1 000 g ≈ −9.8 N).
-    // Tightening a screw lifts that corner → less compression → force
-    // becomes LESS negative (closer to zero).  Loosening drops the
-    // corner → more compression → force becomes MORE negative.
-    //
-    // target − live: positive → live is more negative than target
-    //   → live corner is lower (more compressed) → TIGHTEN to raise it
-    // target − live: negative → live is less negative than target
-    //   → live corner is higher (less compressed) → LOOSEN to lower it
+    // Compute delta: live − target.
+    // Live more negative than target → corner is lower (more compressed)
+    //   → TIGHTEN to lift it, reducing compression toward target.
+    // Live less negative than target → corner is higher (less compressed)
+    //   → LOOSEN to drop it, increasing compression toward target.
+    // Over-tightening naturally flips the sign so the gauge guides the
+    // user back to centre.
     final double? forceDelta;
     if (_smoothedForce != null && widget.targetForce != null) {
-      forceDelta = widget.targetForce! - _smoothedForce!;
+      forceDelta = _smoothedForce! - widget.targetForce!;
     } else {
       forceDelta = null;
     }
@@ -2653,12 +2649,12 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     const forceScale = 100.0;
     final position =
         forceDelta != null ? (forceDelta / forceScale).clamp(-1.0, 1.0) : 0.0;
-    // ±20 N deadzone — precise enough for a good level.
-    const deadzone = 20.0 / forceScale; // 0.20
+    // ±10 N deadzone — close enough for a well-levelled plate.
+    const deadzone = 10.0 / forceScale; // 0.10
     final directionLabel = position < -deadzone
-        ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
+        ? FlutterI18n.translate(context, 'leveling.wizardTighten')
         : position > deadzone
-            ? FlutterI18n.translate(context, 'leveling.wizardTighten')
+            ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
     final accent = position < -deadzone
         ? const Color(0xFFFFC16D)
@@ -2667,9 +2663,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
             : const Color(0xFF57F0A4);
     // Rotation direction: -1 = CCW (loosen), 1 = CW (tighten), 0 = at target
     final rotationDirection = position < -deadzone
-        ? -1
+        ? 1
         : position > deadzone
-            ? 1
+            ? -1
             : 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2890,10 +2886,10 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                           trackBox.maxWidth;
                                                       // Dot moves toward the direction to turn:
                                                       // right → tighten (CW), left → loosen (CCW).
-                                                      // position < 0 → loosen → dot goes left
-                                                      // position > 0 → tighten → dot goes right
+                                                      // position < 0 → tighten → dot goes right
+                                                      // position > 0 → loosen → dot goes left
                                                       final dotFrac =
-                                                          ((1.0 + position) / 2.0)
+                                                          ((1.0 - position) / 2.0)
                                                               .clamp(0.0, 1.0);
                                                       final centerX = w / 2;
                                                       final dotCenter =
