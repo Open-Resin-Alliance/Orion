@@ -1407,32 +1407,39 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             .map((r) => r?.measurements?.secondStagePeakForce)
             .toList();
 
-        final validForces = allForces.whereType<double>().toList();
         final idx = _adjustingCornerIndex!;
 
         // Pivot ratio — fraction of adjustment that couples to the
         // diagonal opposite corner via the rigid-plate pivot.
         const double rPivot = 0.8;
 
+        // Probe forces are in gram-force; convert to Newtons.
+        const double gfPerN = 101.97;
+        final allForcesN = allForces
+            .map((f) => f != null ? f / gfPerN : null)
+            .toList();
+
         // Local stiffness k = ΔF / ΔZ (N/mm) from the two corners
-        // at the same arm position.
+        // at the same arm position.  Require ≥ 0.05 mm spread so the
+        // estimate doesn't blow up when corners are nearly level.
+        const double minDz = 0.05;
         double k;
         if (idx <= 1) {
           final other = idx == 0 ? 1 : 0;
           final dz = (allZ[idx]! - allZ[other]!).abs();
-          final dF = (allForces[idx]! - allForces[other]!).abs();
-          k = dz > 0.01 ? dF / dz : 5.0;
+          final dF = (allForcesN[idx]! - allForcesN[other]!).abs();
+          k = dz >= minDz ? dF / dz : 5.0;
         } else {
           final other = idx == 2 ? 3 : 2;
           final dz = (allZ[idx]! - allZ[other]!).abs();
-          final dF = (allForces[idx]! - allForces[other]!).abs();
-          k = dz > 0.01 ? dF / dz : 15.0;
+          final dF = (allForcesN[idx]! - allForcesN[other]!).abs();
+          k = dz >= minDz ? dF / dz : 15.0;
         }
 
         // Required Z change at the adjusting corner.
         final sumZ = allZ[0]! + allZ[1]! + allZ[2]! + allZ[3]!;
         final currentZ = allZ[idx]!;
-        final currentF = allForces[idx]!;
+        final currentF = allForcesN[idx]!;
         final double deltaS;
         if (idx <= 1) {
           // Front screw: tightens its own corner, drops diagonal.
@@ -1449,9 +1456,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
-          cornerForce: adjMeasurements?.secondStagePeakForce,
+          cornerForce: adjMeasurements?.secondStagePeakForce != null
+              ? adjMeasurements!.secondStagePeakForce! / gfPerN
+              : null,
           targetForce: avgTargetForce,
-          allCornerForces: validForces,
+          allCornerForces: allForcesN.whereType<double>().toList(),
         );
     }
   }
@@ -2593,9 +2602,11 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   // Adaptive EMA — alpha drops to 5 % of normal when the signal is
   // volatile (user pushing on the arm during screw adjustment),
   // then ramps back up naturally as the force settles.
+  // Analytics returns gram-force; convert to Newtons.
+  static const double _gfPerN = 101.97;
   double? _emaForce;
   static const double _emaAlpha = 0.25;
-  static const double _shockThreshold = 50.0;
+  static const double _shockThreshold = 5.0; // N — above this we slow way down
 
   // Offset that converts the Jacobian target from probe-force space
   // into live-analytics-force space.  Captured once when the first
@@ -2628,6 +2639,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
         if (series.isNotEmpty) {
           final raw = (series.last['v'] as num?)?.toDouble();
           if (raw != null) {
+            final forceN = raw / _gfPerN; // grams → Newtons
             // Capture the live-vs-probe offset once so we can shift
             // the Jacobian target into the live-force reference frame.
             if (_liveOffset == null &&
@@ -2636,14 +2648,14 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
               _liveOffset = _emaForce! - widget.cornerForce!;
             }
             if (_emaForce == null) {
-              _emaForce = raw;
+              _emaForce = forceN;
             } else {
-              final rawDelta = (raw - _emaForce!).abs();
+              final rawDelta = (forceN - _emaForce!).abs();
               final effectiveAlpha = rawDelta > _shockThreshold
                   ? _emaAlpha * 0.05 // glacially slow during pushes
                   : _emaAlpha; // normal responsiveness
               _emaForce =
-                  effectiveAlpha * raw + (1.0 - effectiveAlpha) * _emaForce!;
+                  effectiveAlpha * forceN + (1.0 - effectiveAlpha) * _emaForce!;
             }
           }
         }
