@@ -1421,21 +1421,48 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             .map((f) => f != null ? f / gfPerN : null)
             .toList();
 
-        // Local stiffness k = ΔF / ΔZ (N/mm) from the two corners
-        // at the same arm position.  Require ≥ 0.05 mm spread so the
-        // estimate doesn't blow up when corners are nearly level.
+        // Local stiffness k = ΔF / ΔZ (N/mm).  Use the two corners
+        // at the same arm position first.  If they have no spread,
+        // fall back to the opposite pair scaled by the cantilever
+        // factor (front is ~3× softer than back).
         const double minDz = 0.05;
+        final double kFrontDefault = 5.0;
+        final double kBackDefault = 15.0;
         double k;
         if (idx <= 1) {
           final other = idx == 0 ? 1 : 0;
           final dz = (allZ[idx]! - allZ[other]!).abs();
-          final dF = (allForcesN[idx]! - allForcesN[other]!).abs();
-          k = dz >= minDz ? dF / dz : 5.0;
+          if (dz >= minDz) {
+            final dF = (allForcesN[idx]! - allForcesN[other]!).abs();
+            k = dF / dz;
+          } else {
+            // Front pair has no spread — estimate from the back pair.
+            final dzBack = (allZ[2]! - allZ[3]!).abs();
+            if (dzBack >= minDz) {
+              final dFBack =
+                  (allForcesN[2]! - allForcesN[3]!).abs();
+              k = (dFBack / dzBack) * _kCantileverFrontComp;
+            } else {
+              k = kFrontDefault;
+            }
+          }
         } else {
           final other = idx == 2 ? 3 : 2;
           final dz = (allZ[idx]! - allZ[other]!).abs();
-          final dF = (allForcesN[idx]! - allForcesN[other]!).abs();
-          k = dz >= minDz ? dF / dz : 15.0;
+          if (dz >= minDz) {
+            final dF = (allForcesN[idx]! - allForcesN[other]!).abs();
+            k = dF / dz;
+          } else {
+            // Back pair has no spread — estimate from the front pair.
+            final dzFront = (allZ[0]! - allZ[1]!).abs();
+            if (dzFront >= minDz) {
+              final dFFront =
+                  (allForcesN[0]! - allForcesN[1]!).abs();
+              k = (dFFront / dzFront) / _kCantileverFrontComp;
+            } else {
+              k = kBackDefault;
+            }
+          }
         }
 
         // Required Z change at the adjusting corner.
