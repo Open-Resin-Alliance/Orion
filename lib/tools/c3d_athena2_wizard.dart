@@ -2623,10 +2623,14 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     // Compute delta against the corner-specific target force
     // (excludes this corner's own force so the gauge is unbiased).
     // Force values are negative for compression (e.g. −1 000 g ≈ −9.8 N).
-    // target − live: negative → live is less negative than target
-    //   → less compression → screw too loose → tighten
+    // Tightening a screw lifts that corner → less compression → force
+    // becomes LESS negative (closer to zero).  Loosening drops the
+    // corner → more compression → force becomes MORE negative.
+    //
     // target − live: positive → live is more negative than target
-    //   → more compression → screw too tight → loosen
+    //   → live corner is lower (more compressed) → TIGHTEN to raise it
+    // target − live: negative → live is less negative than target
+    //   → live corner is higher (less compressed) → LOOSEN to lower it
     final double? forceDelta;
     if (_smoothedForce != null && widget.targetForce != null) {
       forceDelta = widget.targetForce! - _smoothedForce!;
@@ -2641,9 +2645,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     // ±3 N deadzone so small fluctuations don't flip labels
     const deadzone = 0.60;
     final directionLabel = position < -deadzone
-        ? FlutterI18n.translate(context, 'leveling.wizardTighten')
+        ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
         : position > deadzone
-            ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
+            ? FlutterI18n.translate(context, 'leveling.wizardTighten')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
     final accent = position < -deadzone
         ? const Color(0xFFFFC16D)
@@ -2652,9 +2656,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
             : const Color(0xFF57F0A4);
     // Rotation direction: -1 = CCW (loosen), 1 = CW (tighten), 0 = at target
     final rotationDirection = position < -deadzone
-        ? 1
+        ? -1
         : position > deadzone
-            ? -1
+            ? 1
             : 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2873,11 +2877,12 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                     builder: (_, trackBox) {
                                                       final w =
                                                           trackBox.maxWidth;
-                                                      // Invert position so the dot moves toward the
-                                                      // direction to turn: right → tighten (CW),
-                                                      // left → loosen (CCW).
+                                                      // Dot moves toward the direction to turn:
+                                                      // right → tighten (CW), left → loosen (CCW).
+                                                      // position < 0 → loosen → dot goes left
+                                                      // position > 0 → tighten → dot goes right
                                                       final dotFrac =
-                                                          ((1.0 - position) / 2.0)
+                                                          ((1.0 + position) / 2.0)
                                                               .clamp(0.0, 1.0);
                                                       final centerX = w / 2;
                                                       final dotCenter =
