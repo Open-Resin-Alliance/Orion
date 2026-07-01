@@ -2622,11 +2622,14 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
 
     // Compute delta against the corner-specific target force
     // (excludes this corner's own force so the gauge is unbiased).
-    // Negative = corner has lower force (screw too loose) → tighten
-    // Positive = corner has higher force (screw too tight) → loosen
+    // Force values are negative for compression (e.g. −1 000 g ≈ −9.8 N).
+    // target − live: negative → live is less negative than target
+    //   → less compression → screw too loose → tighten
+    // target − live: positive → live is more negative than target
+    //   → more compression → screw too tight → loosen
     final double? forceDelta;
     if (_smoothedForce != null && widget.targetForce != null) {
-      forceDelta = _smoothedForce! - widget.targetForce!;
+      forceDelta = widget.targetForce! - _smoothedForce!;
     } else {
       forceDelta = null;
     }
