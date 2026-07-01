@@ -2647,12 +2647,14 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
       forceDelta = null;
     }
 
-    // Gauge scale: ±5.0 N maps to the full range
-    const forceScale = 5.0;
+    // Gauge scale: ±100 N maps to the full range so the dot slides
+    // smoothly toward centre as the user dials in the screw, rather
+    // than jumping from "far off" to "correct".
+    const forceScale = 100.0;
     final position =
         forceDelta != null ? (forceDelta / forceScale).clamp(-1.0, 1.0) : 0.0;
-    // ±3 N deadzone so small fluctuations don't flip labels
-    const deadzone = 0.60;
+    // ±20 N deadzone — precise enough for a good level.
+    const deadzone = 20.0 / forceScale; // 0.20
     final directionLabel = position < -deadzone
         ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
         : position > deadzone
