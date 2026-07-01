@@ -270,6 +270,64 @@ class ThumbnailCache {
     return dir.path;
   }
 
+  /// Persist a post-processed (trimmed/cropped) thumbnail to disk so it
+  /// survives reboots without needing to re-run expensive post-processing.
+  /// The [key] should be the same cache key used for the raw thumbnail,
+  /// and the stored bytes are the already-processed result.
+  Future<void> storeProcessedBytes(String key, Uint8List bytes) async {
+    try {
+      await _writeToDiskSafe('$key|p', bytes);
+    } catch (_) {
+      // best-effort; ignore disk write failures
+    }
+  }
+
+  /// Bulk-load all processed thumbnails for a given [location] from disk.
+  /// Returns a map of original cache keys to their processed bytes.
+  /// Call this at startup to repopulate the in-memory processed cache so
+  /// the grid can display thumbnails instantly without re-processing.
+  Future<Map<String, Uint8List>> preloadProcessedThumbnails(
+      String location) async {
+    final result = <String, Uint8List>{};
+    try {
+      final dir = await _ensureDiskCacheDir();
+      final prefix = Uri.encodeComponent('$location|');
+      const suffix = '|p';
+      final entities = await dir.list().toList();
+      for (final entity in entities) {
+        if (entity is! File) continue;
+        final name = p.basename(entity.path);
+        if (!name.startsWith(prefix) || !name.endsWith(suffix)) continue;
+        final decoded = Uri.decodeComponent(name);
+        final originalKey =
+            decoded.substring(0, decoded.length - suffix.length);
+        // Honour disk TTL for processed entries too.
+        if (_diskEntryTtl != null) {
+          try {
+            final mtime = entity.lastModifiedSync();
+            if (DateTime.now().difference(mtime) > _diskEntryTtl!) {
+              try {
+                await entity.delete();
+              } catch (_) {}
+              continue;
+            }
+          } catch (_) {
+            continue;
+          }
+        }
+        try {
+          final bytes = await entity.readAsBytes();
+          result[originalKey] = bytes;
+        } catch (_) {
+          // skip unreadable files
+        }
+      }
+    } catch (_) {
+      // best-effort; ignore directory listing errors
+    }
+    return result;
+  }
+
   void clear() {
     _cache.clear();
     _inFlight.clear();
