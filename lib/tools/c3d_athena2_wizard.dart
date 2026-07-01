@@ -320,19 +320,17 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     final z2 = zValues[2]; // BR
     final z3 = zValues[3]; // BL
 
-    // Diagonal-pair analysis: tightening a front corner raises it
-    // and lowers its diagonal opposite (FL↔BR, FR↔BL).  Pick the
-    // pair with the greatest height difference and tighten the
-    // lower corner — this addresses both sides simultaneously.
-    final diagFLBR = (z0 - z2).abs();
-    final diagFRBL = (z1 - z3).abs();
+    // Diagonal-pair analysis: tightening a front corner raises both
+    // front corners (plate flexes as a whole) and lowers the diagonal
+    // opposite rear corner via the cantilever pivot.  Pick the pair
+    // with the greatest height difference and tighten the lower corner.
+    final diagFLBR = (z0 - z2).abs(); // FL <-> BR
+    final diagFRBL = (z1 - z3).abs(); // FR <-> BL
 
     int probeCorner;
     if (diagFLBR >= diagFRBL) {
-      // FL-BR diagonal has the larger imbalance
       probeCorner = z0 < z2 ? 0 : 2; // tighten the lower corner
     } else {
-      // FR-BL diagonal has the larger imbalance
       probeCorner = z1 < z3 ? 1 : 3; // tighten the lower corner
     }
 
@@ -1377,27 +1375,23 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.feedback:
         // ── 3-screw Jacobian ────────────────────────────────────
-        // The Pro arm has three screws forming a triangle.  The
-        // Jacobian J maps screw adjustments (Z-space) to the four
-        // corner heights, including cross-coupling through the
-        // rigid-plate pivot:
+        // The Pro arm plate flexes as a whole: tightening one front
+        // screw raises both front corners and drops the diagonal
+        // opposite rear corner.  We model this as:
         //
-        //   Tighten FL  → FL↑+1  FR=0   BR=0   BL↓−r
-        //   Tighten FR  → FL=0   FR↑+1  BR↓−r  BL=0
+        //   Tighten FL  → FL↑+1  FR=0   BR↓−r  BL=0
+        //   Tighten FR  → FL=0   FR↑+1  BR=0   BL↓−r
         //   Tighten Back→ FL↓−r  FR↓−r  BR↑+1  BL↑+1
         //
-        // where r ≈ 0.8 is the pivot ratio — how much the diagonal
-        // opposite moves relative to the adjusted corner.
+        // where r ≈ 0.8 is the pivot ratio.
         //
-        // For a single-screw adjustment, solving for the Δs that
-        // levels the plate:
+        // For a single-screw adjustment, solving for Δs:
         //
         //   Front screw (FL/FR):  Δs = (ΣZ − 4·Z_adj) / (3 + r)
         //   Back screw:           Δs = (ΣZ − 4·Z_adj) / (2(1+r))
         //
-        // This Δs is SMALLER than the naive 1D correction because
-        // the cross-coupling helps — tightening also drops the
-        // opposite diagonal, so you need less turn to level.
+        // Cross-coupling means you need LESS turn than the naive 1D
+        // correction — tightening also helps the opposite corner.
         //
         // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
         final allZ = _cornerResults
