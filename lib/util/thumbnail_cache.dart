@@ -291,16 +291,19 @@ class ThumbnailCache {
     final result = <String, Uint8List>{};
     try {
       final dir = await _ensureDiskCacheDir();
-      final prefix = Uri.encodeComponent('$location|');
-      const suffix = '|p';
+      final rawPrefix = '$location|';
+      const rawSuffix = '|p';
       final entities = await dir.list().toList();
       for (final entity in entities) {
         if (entity is! File) continue;
-        final name = p.basename(entity.path);
-        if (!name.startsWith(prefix) || !name.endsWith(suffix)) continue;
-        final decoded = Uri.decodeComponent(name);
+        // Disk filenames are URI-encoded — decode before comparing so
+        // literal '|' in the key matches encoded '%7C' on disk.
+        final decoded = Uri.decodeComponent(p.basename(entity.path));
+        if (!decoded.startsWith(rawPrefix) || !decoded.endsWith(rawSuffix)) {
+          continue;
+        }
         final originalKey =
-            decoded.substring(0, decoded.length - suffix.length);
+            decoded.substring(0, decoded.length - rawSuffix.length);
         // Honour disk TTL for processed entries too.
         if (_diskEntryTtl != null) {
           try {
