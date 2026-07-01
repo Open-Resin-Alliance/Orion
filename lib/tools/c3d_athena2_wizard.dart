@@ -2550,12 +2550,14 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   bool _listenerRegistered = false;
   bool _analyticsDisposed = false;
 
-  // Exponential moving average for live force smoothing.
-  // Alpha = 0.25 gives an effective window of ~7–8 samples (~0.5 s at
-  // 15 Hz) — responsive enough to feel the screw turning while still
-  // filtering ±10 N sensor jitter down to a usable range.
+  // ── Force signal pipeline ──────────────────────────────────────
+  // Adaptive EMA — alpha drops to 5 % of normal when the signal is
+  // volatile (user pushing on the arm during screw adjustment),
+  // then ramps back up naturally as the force settles.  No binary
+  // freeze/thaw, no extra buffers, no state machine.
   double? _emaForce;
   static const double _emaAlpha = 0.25;
+  static const double _shockThreshold = 50.0; // N — above this we slow way down
 
   double? get _smoothedForce => _emaForce;
 
@@ -2586,8 +2588,12 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
             if (_emaForce == null) {
               _emaForce = raw;
             } else {
+              final rawDelta = (raw - _emaForce!).abs();
+              final effectiveAlpha = rawDelta > _shockThreshold
+                  ? _emaAlpha * 0.05 // glacially slow during pushes
+                  : _emaAlpha; // normal responsiveness
               _emaForce =
-                  _emaAlpha * raw + (1.0 - _emaAlpha) * _emaForce!;
+                  effectiveAlpha * raw + (1.0 - effectiveAlpha) * _emaForce!;
             }
           }
         }
