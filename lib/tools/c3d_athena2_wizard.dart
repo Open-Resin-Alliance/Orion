@@ -22,7 +22,7 @@ import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:orion/backend_service/athena_iot/models/force_leveling_workflow.dart';
 import 'package:orion/backend_service/backend_service.dart';
-
+import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -2559,10 +2559,21 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     with TickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final AnimationController _rotationController;
+  AnalyticsProvider? _analytics;
+  VoidCallback? _analyticsListener;
+  bool _analyticsDisposed = false;
+
+  // Live force EMA — everything in gram-force.
+  double? _emaForce;
+  static const double _emaAlpha = 0.25;
+  double? _liveOffset;
+
+  double? get _smoothedForce => _emaForce;
 
   @override
   void initState() {
     super.initState();
+    _emaForce = widget.cornerForce;
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -2574,9 +2585,38 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_analytics != null) return;
+    _analytics = Provider.of<AnalyticsProvider>(context, listen: false);
+    _analyticsListener = () {
+      if (_analyticsDisposed) return;
+      final series = _analytics!.pressureSeries;
+      if (series.isEmpty) return;
+      final raw = (series.last['v'] as num?)?.toDouble();
+      if (raw == null) return;
+      // Capture live-vs-probe offset once.
+      if (_liveOffset == null && _emaForce != null && widget.cornerForce != null) {
+        _liveOffset = _emaForce! - widget.cornerForce!;
+      }
+      if (_emaForce == null) {
+        _emaForce = raw;
+      } else {
+        _emaForce = _emaAlpha * raw + (1.0 - _emaAlpha) * _emaForce!;
+      }
+      setState(() {});
+    };
+    _analytics!.addListener(_analyticsListener!);
+  }
+
+  @override
   void dispose() {
     _pulseController.dispose();
     _rotationController.dispose();
+    _analyticsDisposed = true;
+    if (_analytics != null && _analyticsListener != null) {
+      _analytics!.removeListener(_analyticsListener!);
+    }
     super.dispose();
   }
 
@@ -2600,9 +2640,15 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     //
     // live − target: negative → corner lower than target → TIGHTEN.
     // live − target: positive → corner higher than target → LOOSEN.
-    // Use pre-computed delta from the diagonal-average target.
-    // Both values are in gf, same reference frame.
-    final forceDelta = widget.forceDelta;
+    // Live delta: anchor the diagonal-average target into the live
+    // force reference frame via the probe→live offset.
+    final double? forceDelta;
+    if (_smoothedForce != null && widget.targetForce != null) {
+      final liveTarget = widget.targetForce! + (_liveOffset ?? 0.0);
+      forceDelta = _smoothedForce! - liveTarget;
+    } else {
+      forceDelta = widget.forceDelta; // fallback to static value
+    }
 
     // Gauge scale: ±2000 gf maps to the full range (~ ±20 N).
     const forceScale = 2000.0;
