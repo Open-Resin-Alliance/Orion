@@ -1374,122 +1374,53 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       case _AdjustmentStep.puckPlacement:
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.feedback:
-        // ── 3-screw Jacobian ────────────────────────────────────
-        // The Pro arm plate pivots on the ball joint.  Tightening
-        // a front screw lifts that corner and drops the diagonal
-        // opposite (FL↔BR, FR↔BL).  We model this as:
-        //
-        //   Tighten FL  → FL↑+1  FR=0   BR↓−r  BL=0
-        //   Tighten FR  → FL=0   FR↑+1  BR=0   BL↓−r
-        //   Tighten Back→ FL↓−r  FR↓−r  BR↑+1  BL↑+1
-        //
-        // where r ≈ 0.8 is the pivot ratio.
-        //
-        // For a single-screw adjustment, solving for Δs:
-        //
-        //   Front screw (FL/FR):  Δs = (ΣZ − 4·Z_adj) / (3 + r)
-        //   Back screw:           Δs = (ΣZ − 4·Z_adj) / (2(1+r))
-        //
-        // Z values are compensated for cantilever flex so the
-        // Jacobian and corner selection use the same reference.
+        // Diagonal-average force target.
+        // The two corners NOT on the adjusting corner's diagonal
+        // sit on the pivot axis and define the reference plane.
+        // Target = average of those two reference corners' forces.
+        // Uses first-stage peak force — varies with corner height,
+        // unlike the constant second-stage trigger force.
         //
         // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
-        final rawZ = _cornerResults
-            .map((r) => r?.measurements?.secondStageTriggerZ)
-            .toList();
-        final allZ = _compensatedCorners(rawZ);
-        if (allZ.length < 4) {
-          // Not enough data — fall back to the raw values.
-          allZ.clear();
-          for (final z in rawZ) {
-            if (z != null) allZ.add(z);
-          }
-        }
+        //   FL screw → diagonal FL↔BR, reference = FR + BL
+        //   FR screw → diagonal FR↔BL, reference = FL + BR
+        //   Back screw → reference = FL + FR (front edge)
         final allForces = _cornerResults
-            .map((r) => r?.measurements?.secondStagePeakForce)
+            .map((r) => r?.measurements?.firstStagePeakForce)
             .toList();
-
         final idx = _adjustingCornerIndex!;
 
-        // Pivot ratio — fraction of adjustment that couples to the
-        // diagonal opposite corner via the rigid-plate pivot.
-        const double rPivot = 0.8;
-
-        // Probe forces are in gram-force; convert to Newtons.
-        const double gfPerN = 101.97;
-        final allForcesN = allForces
-            .map((f) => f != null ? f / gfPerN : null)
-            .toList();
-
-        // Local stiffness k = ΔF / ΔZ (N/mm).  Use the two corners
-        // at the same arm position first.  If they have no spread,
-        // fall back to the opposite pair scaled by the cantilever
-        // factor (front is ~3× softer than back).
-        const double minDz = 0.05;
-        final double kFrontDefault = 5.0;
-        final double kBackDefault = 15.0;
-        double k;
-        if (idx <= 1) {
-          final other = idx == 0 ? 1 : 0;
-          final dz = (allZ[idx]! - allZ[other]!).abs();
-          if (dz >= minDz) {
-            final dF = (allForcesN[idx]! - allForcesN[other]!).abs();
-            k = dF / dz;
-          } else {
-            // Front pair has no spread — estimate from the back pair.
-            final dzBack = (allZ[2]! - allZ[3]!).abs();
-            if (dzBack >= minDz) {
-              final dFBack =
-                  (allForcesN[2]! - allForcesN[3]!).abs();
-              k = (dFBack / dzBack) * _kCantileverFrontComp;
-            } else {
-              k = kFrontDefault;
-            }
-          }
-        } else {
-          final other = idx == 2 ? 3 : 2;
-          final dz = (allZ[idx]! - allZ[other]!).abs();
-          if (dz >= minDz) {
-            final dF = (allForcesN[idx]! - allForcesN[other]!).abs();
-            k = dF / dz;
-          } else {
-            // Back pair has no spread — estimate from the front pair.
-            final dzFront = (allZ[0]! - allZ[1]!).abs();
-            if (dzFront >= minDz) {
-              final dFFront =
-                  (allForcesN[0]! - allForcesN[1]!).abs();
-              k = (dFFront / dzFront) / _kCantileverFrontComp;
-            } else {
-              k = kBackDefault;
-            }
-          }
+        if (allForces.length < 4 ||
+            allForces[0] == null || allForces[1] == null ||
+            allForces[2] == null || allForces[3] == null) {
+          return const SizedBox.shrink();
         }
 
-        // Required Z change at the adjusting corner.
-        final sumZ = allZ[0]! + allZ[1]! + allZ[2]! + allZ[3]!;
-        final currentZ = allZ[idx]!;
-        final currentF = allForcesN[idx]!;
-        final double deltaS;
-        if (idx <= 1) {
-          // Front screw: tightens its own corner, drops diagonal.
-          deltaS = (sumZ - 4 * currentZ) / (3 + rPivot);
+        final double targetForce;
+        if (idx == 0) {
+          targetForce = (allForces[1]! + allForces[3]!) / 2; // FR + BL
+        } else if (idx == 1) {
+          targetForce = (allForces[0]! + allForces[2]!) / 2; // FL + BR
         } else {
-          // Back screw: tightens rear edge, drops front edge.
-          deltaS = (sumZ - 4 * currentZ) / (2 * (1 + rPivot));
+          targetForce = (allForces[0]! + allForces[1]!) / 2; // FL + FR
         }
 
-        final double avgTargetForce = currentF + k * deltaS;
+        final double cornerForce = allForces[idx]!;
+        final double forceDeltaGf = cornerForce - targetForce;
+        // Negative → corner more compressed than reference → TIGHTEN.
+        // Positive → corner less compressed than reference → LOOSEN.
+        final bool needsTighten = forceDeltaGf < -5;  // 5 gf deadzone
+        final bool needsLoosen = forceDeltaGf > 5;
 
-        final adjMeasurements =
-            _cornerResults[_adjustingCornerIndex!]?.measurements;
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
-          cornerForce: adjMeasurements?.secondStagePeakForce != null
-              ? adjMeasurements!.secondStagePeakForce! / gfPerN
-              : null,
-          targetForce: avgTargetForce,
-          allCornerForces: allForcesN.whereType<double>().toList(),
+          cornerForce: cornerForce,
+          targetForce: targetForce,
+          allCornerForces: allForces.whereType<double>().toList(),
+          forceDelta: forceDeltaGf,
+          needsTighten: needsTighten,
+          needsLoosen: needsLoosen,
         );
     }
   }
@@ -2606,12 +2537,18 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
     this.cornerForce,
     this.targetForce,
     this.allCornerForces = const [],
+    this.forceDelta,
+    this.needsTighten = false,
+    this.needsLoosen = false,
   });
 
   final int cornerIndex;
   final double? cornerForce;
   final double? targetForce;
   final List<double> allCornerForces;
+  final double? forceDelta;
+  final bool needsTighten;
+  final bool needsLoosen;
 
   @override
   State<_AdjustmentFeedbackScreen> createState() =>
