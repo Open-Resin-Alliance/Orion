@@ -22,7 +22,7 @@ import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:orion/backend_service/athena_iot/models/force_leveling_workflow.dart';
 import 'package:orion/backend_service/backend_service.dart';
-import 'package:orion/backend_service/providers/analytics_provider.dart';
+
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
@@ -2559,27 +2559,6 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     with TickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final AnimationController _rotationController;
-  AnalyticsProvider? _analytics;
-  VoidCallback? _analyticsListener;
-  bool _listenerRegistered = false;
-  bool _analyticsDisposed = false;
-
-  // ── Force signal pipeline ──────────────────────────────────────
-  // Adaptive EMA — alpha drops to 5 % of normal when the signal is
-  // volatile (user pushing on the arm during screw adjustment),
-  // then ramps back up naturally as the force settles.
-  // Analytics returns gram-force; convert to Newtons.
-  static const double _gfPerN = 101.97;
-  double? _emaForce;
-  static const double _emaAlpha = 0.25;
-  static const double _shockThreshold = 5.0; // N — above this we slow way down
-
-  // Offset that converts the Jacobian target from probe-force space
-  // into live-analytics-force space.  Captured once when the first
-  // analytics reading arrives after probe completion.
-  double? _liveOffset;
-
-  double? get _smoothedForce => _emaForce;
 
   @override
   void initState() {
@@ -2595,51 +2574,9 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_listenerRegistered) return;
-    _analytics = Provider.of<AnalyticsProvider>(context, listen: false);
-    _analyticsListener = () {
-      if (!_analyticsDisposed) {
-        final series = _analytics!.pressureSeries;
-        if (series.isNotEmpty) {
-          final raw = (series.last['v'] as num?)?.toDouble();
-          if (raw != null) {
-            final forceN = raw / _gfPerN; // grams → Newtons
-            // Capture the live-vs-probe offset once so we can shift
-            // the Jacobian target into the live-force reference frame.
-            if (_liveOffset == null &&
-                _emaForce != null &&
-                widget.cornerForce != null) {
-              _liveOffset = _emaForce! - widget.cornerForce!;
-            }
-            if (_emaForce == null) {
-              _emaForce = forceN;
-            } else {
-              final rawDelta = (forceN - _emaForce!).abs();
-              final effectiveAlpha = rawDelta > _shockThreshold
-                  ? _emaAlpha * 0.05 // glacially slow during pushes
-                  : _emaAlpha; // normal responsiveness
-              _emaForce =
-                  effectiveAlpha * forceN + (1.0 - effectiveAlpha) * _emaForce!;
-            }
-          }
-        }
-        setState(() {});
-      }
-    };
-    _analytics!.addListener(_analyticsListener!);
-    _listenerRegistered = true;
-  }
-
-  @override
   void dispose() {
     _pulseController.dispose();
     _rotationController.dispose();
-    _analyticsDisposed = true;
-    if (_analytics != null && _analyticsListener != null) {
-      _analytics!.removeListener(_analyticsListener!);
-    }
     super.dispose();
   }
 
@@ -2663,35 +2600,28 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     //
     // live − target: negative → corner lower than target → TIGHTEN.
     // live − target: positive → corner higher than target → LOOSEN.
-    final double? forceDelta;
-    if (_smoothedForce != null && widget.targetForce != null) {
-      final liveTarget =
-          widget.targetForce! + (_liveOffset ?? 0.0);
-      forceDelta = _smoothedForce! - liveTarget;
-    } else {
-      forceDelta = null;
-    }
+    // Use pre-computed delta from the diagonal-average target.
+    // Both values are in gf, same reference frame.
+    final forceDelta = widget.forceDelta;
 
-    // Gauge scale: ±20 N maps to the full range.
-    const forceScale = 20.0;
+    // Gauge scale: ±2000 gf maps to the full range (~ ±20 N).
+    const forceScale = 2000.0;
     final position =
         forceDelta != null ? (forceDelta / forceScale).clamp(-1.0, 1.0) : 0.0;
-    // ±1 N deadzone.
-    const deadzone = 1.0 / forceScale;
-    final directionLabel = position < -deadzone
+    // Use Z-based direction from the pre-computed flags.
+    final directionLabel = widget.needsTighten
         ? FlutterI18n.translate(context, 'leveling.wizardTighten')
-        : position > deadzone
+        : widget.needsLoosen
             ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
-    final accent = position < -deadzone
+    final bool anyDirection = widget.needsTighten || widget.needsLoosen;
+    final accent = anyDirection
         ? const Color(0xFFFFC16D)
-        : position > deadzone
-            ? const Color(0xFFFFC16D)
-            : const Color(0xFF57F0A4);
+        : const Color(0xFF57F0A4);
     // Rotation direction: -1 = CCW (loosen), 1 = CW (tighten), 0 = at target
-    final rotationDirection = position < -deadzone
+    final rotationDirection = widget.needsTighten
         ? 1
-        : position > deadzone
+        : widget.needsLoosen
             ? -1
             : 0;
     return Column(
@@ -2885,7 +2815,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                               ),
                                               const SizedBox(width: 7),
                                               Text(
-                                                'N',
+                                                'gf',
                                                 style: TextStyle(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.w600,
