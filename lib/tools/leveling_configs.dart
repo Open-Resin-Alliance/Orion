@@ -130,7 +130,9 @@ class LevelingVariant {
   });
 
   List<LevelingWorkflowStep> buildSteps() {
-    // Stage 1 (initial seating + offset) — common to all variants
+    // Stage 1 (initial seating) — common to all variants.
+    // The initial offset calibration is only included for non-pro;
+    // pro redoes it as the final step after corner leveling anyway.
     final stage1 = <LevelingWorkflowStep>[
       // 0: Prepare — shows loosen intermediate
       athena2BaseWorkflowSteps[0].copyWith(
@@ -142,25 +144,28 @@ class LevelingVariant {
         stepInstruction: 'The plate will move towards the build plate.',
         intermediateScreen: 'tighten',
       ),
-      // 2: Calibrating Offset
-      LevelingWorkflowStep(
-        id: finalEndpoint,
-        endpoint: finalEndpoint,
-        titleKey: 'levelingWorkflow.finalOffsetTitle',
-        instructionKey: finalEndpoint == 'probe_standardarm'
-            ? 'levelingWorkflow.standardArmInstruction'
-            : 'levelingWorkflow.offsetInstruction',
-        icon: PhosphorIcons.crosshair(),
-        kind: LevelingWorkflowStepKind.finalOffset,
-        stepTitle: 'Calibrating Offset',
-        stepInstruction: 'Saving the calibrated Z offset.',
-        runningTitle: 'Calibrating Offset',
-        autoAdvance: true,
-      ),
     ];
 
-    // Regular build arm: done after stage 1 (no adjustable corner screws)
-    if (id != 'pro') return stage1;
+    // Regular build arm: add offset calibration and finish.
+    if (id != 'pro') {
+      return <LevelingWorkflowStep>[
+        ...stage1,
+        LevelingWorkflowStep(
+          id: finalEndpoint,
+          endpoint: finalEndpoint,
+          titleKey: 'levelingWorkflow.finalOffsetTitle',
+          instructionKey: finalEndpoint == 'probe_standardarm'
+              ? 'levelingWorkflow.standardArmInstruction'
+              : 'levelingWorkflow.offsetInstruction',
+          icon: PhosphorIcons.crosshair(),
+          kind: LevelingWorkflowStepKind.finalOffset,
+          stepTitle: 'Calibrating Offset',
+          stepInstruction: 'Saving the calibrated Z offset.',
+          runningTitle: 'Calibrating Offset',
+          autoAdvance: true,
+        ),
+      ];
+    }
 
     // Pro build arm: Stage 2 adds 4-corner fine leveling
     final cornerDefs = [
@@ -169,7 +174,7 @@ class LevelingVariant {
       ('Back Right', 'back-right'),
       ('Back Left', 'back-left'),
     ];
-    final result = <LevelingWorkflowStep>[
+    return <LevelingWorkflowStep>[
       ...stage1,
       // ── Stage 2: 4-corner fine leveling ──
       for (int i = 0; i < 4; i++) ...[
@@ -247,7 +252,6 @@ class LevelingVariant {
         autoAdvance: true,
       ),
     ];
-    return result;
   }
 }
 

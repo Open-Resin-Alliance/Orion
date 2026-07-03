@@ -191,25 +191,19 @@ void main() {
       expect(engine.currentStepIndex, 0);
     });
 
-    test('preserves initial offset when final recalibration returns zero',
-        () async {
-      // The Pro variant calls probe_offset twice: once before corner
-      // leveling (initial calibration) and once after (final recalibration).
-      // When the second call returns 0.0 (because the offset was already
-      // applied), the engine must preserve the initial value so the
-      // completion screen shows the real applied offset.
+    test('records offset from the single final recalibration', () async {
+      // The Pro variant only calls probe_offset once — as the final
+      // recalibration after corner leveling. The initial calibration
+      // was removed because it is always redone after corners.
       int probeOffsetCalls = 0;
       final engine = LevelingWorkflowEngine(
         runner: (endpoint) async {
           if (endpoint == 'probe_offset') {
             probeOffsetCalls++;
-            // First call: backend measures raw gap → 2.45 mm
-            // Second call: offset already applied → returns 0.0
-            final zOffset = probeOffsetCalls == 1 ? 2.45 : 0.0;
             return ForceLevelingWorkflowResponse.fromJson({
               'result': true,
               'error': '',
-              'z_offset_applied': zOffset,
+              'z_offset_applied': 2.45,
             });
           }
           return ForceLevelingWorkflowResponse.fromJson({
@@ -224,7 +218,6 @@ void main() {
 
       engine.selectVariant(variant);
 
-      // Walk through the full Pro workflow (15 steps).
       while (!engine.isComplete) {
         await engine.runCurrentStep();
         if (engine.isFailed) {
@@ -233,9 +226,8 @@ void main() {
         engine.advanceAfterSuccessfulStep();
       }
 
-      // probe_offset was called twice (step index 2 and 14).
-      expect(probeOffsetCalls, 2);
-      // The engine should keep the first meaningful offset, not the zero.
+      // probe_offset is called exactly once (the final step).
+      expect(probeOffsetCalls, 1);
       expect(engine.zOffsetApplied, 2.45);
     });
   });
