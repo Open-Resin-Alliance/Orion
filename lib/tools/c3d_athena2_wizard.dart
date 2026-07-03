@@ -1407,10 +1407,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
         final double cornerForce = allForces[idx]!;
         final double forceDeltaGf = cornerForce - targetForce;
-        // Negative → corner more compressed than reference → TIGHTEN.
-        // Positive → corner less compressed than reference → LOOSEN.
-        final bool needsTighten = forceDeltaGf < -20;  // 20 gf green zone
-        final bool needsLoosen = forceDeltaGf > 20;
+        // Positive → corner more compressed than reference → TIGHTEN.
+        // Negative → corner less compressed than reference → LOOSEN.
+        final bool needsTighten = forceDeltaGf > 20;
+        final bool needsLoosen = forceDeltaGf < -20;
 
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
@@ -2638,8 +2638,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     // The Jacobian target is shifted by the probe→live offset captured
     // when the first analytics reading arrives after probing.
     //
-    // live − target: negative → corner lower than target → TIGHTEN.
-    // live − target: positive → corner higher than target → LOOSEN.
+    // live − target: positive → corner lower than target → TIGHTEN.
+    // live − target: negative → corner higher than target → LOOSEN.
     // Live delta: anchor the diagonal-average target into the live
     // force reference frame via the probe→live offset.
     final double? forceDelta;
@@ -2657,8 +2657,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     // Live direction from actual force delta with ±20 gf green zone.
     // Uses the live force delta so the label, accent, and rotation
     // update in real time as the user tightens or loosens the screw.
-    final liveNeedsTighten = forceDelta != null && forceDelta < -20;
-    final liveNeedsLoosen = forceDelta != null && forceDelta > 20;
+    final liveNeedsTighten = forceDelta != null && forceDelta > 20;
+    final liveNeedsLoosen = forceDelta != null && forceDelta < -20;
     final directionLabel = liveNeedsTighten
         ? FlutterI18n.translate(context, 'leveling.wizardTighten')
         : liveNeedsLoosen
@@ -2893,10 +2893,10 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                           trackBox.maxWidth;
                                                       // Dot moves toward the direction to turn:
                                                       // right → tighten (CW), left → loosen (CCW).
-                                                      // position < 0 → tighten → dot goes right
-                                                      // position > 0 → loosen → dot goes left
+                                                      // position > 0 → tighten → dot goes right
+                                                      // position < 0 → loosen → dot goes left
                                                       final dotFrac =
-                                                          ((1.0 - position) / 2.0)
+                                                          ((1.0 + position) / 2.0)
                                                               .clamp(0.0, 1.0);
                                                       final centerX = w / 2;
                                                       final dotCenter =
