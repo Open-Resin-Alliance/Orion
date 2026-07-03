@@ -1409,8 +1409,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         final double forceDeltaGf = cornerForce - targetForce;
         // Negative → corner more compressed than reference → TIGHTEN.
         // Positive → corner less compressed than reference → LOOSEN.
-        final bool needsTighten = forceDeltaGf < -5;  // 5 gf deadzone
-        final bool needsLoosen = forceDeltaGf > 5;
+        final bool needsTighten = forceDeltaGf < -20;  // 20 gf green zone
+        final bool needsLoosen = forceDeltaGf > 20;
 
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
@@ -2654,20 +2654,24 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     const forceScale = 2000.0;
     final position =
         forceDelta != null ? (forceDelta / forceScale).clamp(-1.0, 1.0) : 0.0;
-    // Use Z-based direction from the pre-computed flags.
-    final directionLabel = widget.needsTighten
+    // Live direction from actual force delta with ±20 gf green zone.
+    // Uses the live force delta so the label, accent, and rotation
+    // update in real time as the user tightens or loosens the screw.
+    final liveNeedsTighten = forceDelta != null && forceDelta < -20;
+    final liveNeedsLoosen = forceDelta != null && forceDelta > 20;
+    final directionLabel = liveNeedsTighten
         ? FlutterI18n.translate(context, 'leveling.wizardTighten')
-        : widget.needsLoosen
+        : liveNeedsLoosen
             ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
-    final bool anyDirection = widget.needsTighten || widget.needsLoosen;
+    final bool anyDirection = liveNeedsTighten || liveNeedsLoosen;
     final accent = anyDirection
         ? const Color(0xFFFFC16D)
         : const Color(0xFF57F0A4);
     // Rotation direction: -1 = CCW (loosen), 1 = CW (tighten), 0 = at target
-    final rotationDirection = widget.needsTighten
+    final rotationDirection = liveNeedsTighten
         ? 1
-        : widget.needsLoosen
+        : liveNeedsLoosen
             ? -1
             : 0;
     return Column(
