@@ -256,29 +256,27 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _homeAfterCompleteFired = false;
   }
 
-  /// Compute deviation from corner measurements, compensated for
-  /// the cantilever-arm flexibility gradient (front corners flex more).
-  ///
-  /// Geometry: plate 234×134mm, corners at (±117,±67) from center.
-  /// Cantilever attaches at rear linear rail 160mm behind center → Y=−160.
-  /// A simple cantilever beam model gives stiffness ∝ 1/d² at each corner,
-  /// so Z (probe deflection at trigger) ∝ d².  Back corners serve as the
-  /// stiff reference row.
-  ///
-  ///   FL/FR d² = 117² + (67+160)² = 65218
-  ///   BL/BR d² = 117² + (160−67)² = 22338
-  ///   front compensation factor = 22338 / 65218 ≈ 0.34244
-  static const _kCantileverD2Front = 65218.0;
-  static const _kCantileverD2Back = 22338.0;
-  static const _kCantileverFrontComp = _kCantileverD2Back / _kCantileverD2Front;
+  // Cantilever compensation constants (currently disabled).
+  // Geometry: plate 234×134mm, corners at (±117,±67) from center.
+  // Cantilever attaches at rear linear rail 160mm behind center → Y=−160.
+  // A simple cantilever beam model gives stiffness ∝ 1/d² at each corner,
+  // so Z (probe deflection at trigger) ∝ d².  Back corners serve as the
+  // stiff reference row.
+  //
+  //   FL/FR d² = 117² + (67+160)² = 65218
+  //   BL/BR d² = 117² + (160−67)² = 22338
+  //   front compensation factor = 22338 / 65218 ≈ 0.34244
+  // static const _kCantileverD2Front = 65218.0;
+  // static const _kCantileverD2Back = 22338.0;
+  // static const _kCantileverFrontComp = _kCantileverD2Back / _kCantileverD2Front;
 
-  /// Return the 4 raw Z values compensated for the cantilever flex gradient.
+  /// Return the 4 raw Z values (cantilever compensation disabled).
   /// Corner order: 0=FL, 1=FR, 2=BR, 3=BL.
   List<double> _compensatedCorners(List<double?> rawZ) {
     if (rawZ.length < 4) return [];
     return [
-      if (rawZ[0] != null) (rawZ[0]! * _kCantileverFrontComp),
-      if (rawZ[1] != null) (rawZ[1]! * _kCantileverFrontComp),
+      if (rawZ[0] != null) rawZ[0]!,
+      if (rawZ[1] != null) rawZ[1]!,
       if (rawZ[2] != null) rawZ[2]!,
       if (rawZ[3] != null) rawZ[3]!,
     ];
@@ -1866,22 +1864,9 @@ class _WorkflowPane extends StatelessWidget {
     'Back Left',
   ];
 
-  /// Compensate front-corner Z values for the cantilever flex gradient,
-  /// matching the logic in [_Athena2LevelingWizardState._compensatedCorners].
+  /// Pass through raw corner Z values (cantilever compensation disabled).
   static List<double?> _compensatedZ(List<double?> raw) {
-    if (raw.length < 4) return raw;
-    return [
-      if (raw[0] != null)
-        (raw[0]! * _Athena2LevelingWizardState._kCantileverFrontComp)
-      else
-        null,
-      if (raw[1] != null)
-        (raw[1]! * _Athena2LevelingWizardState._kCantileverFrontComp)
-      else
-        null,
-      if (raw[2] != null) raw[2]! else null,
-      if (raw[3] != null) raw[3]! else null,
-    ];
+    return raw;
   }
 
   const _WorkflowPane({
@@ -2211,8 +2196,7 @@ class _WorkflowPane extends StatelessWidget {
       return r?.measurements?.secondStageTriggerZ;
     }).toList();
 
-    // Compensate front corners for cantilever flex so the displayed values
-    // and the pass/fail decision reflect the true plate levelness.
+    // Front-corner Z values are displayed raw (cantilever compensation disabled).
     final compZ = _compensatedZ(rawZ);
     final validZ = compZ.whereType<double>().toList();
     final minZ = validZ.isEmpty ? 0.0 : validZ.reduce((a, b) => a < b ? a : b);
@@ -2221,7 +2205,7 @@ class _WorkflowPane extends StatelessWidget {
     final withinTolerance = deviation <= 0.100;
     final statusColor = withinTolerance ? Colors.greenAccent : Colors.redAccent;
 
-    // Use compensated values for display too — raw front Z is misleading.
+    // Use raw values for display (cantilever compensation disabled).
     final dispZ = compZ;
 
     return Column(
