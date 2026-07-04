@@ -79,9 +79,18 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   // Prevents the home-after-leveling command from firing more than once
   bool _homeAfterCompleteFired = false;
 
-  // Corner measurements from probe steps
+  // Corner measurements from probe steps.
+  // Indexed by cornerLabel, not probe order — slots are:
+  // 0=Front Left, 1=Front Right, 2=Back Right, 3=Back Left.
   final List<ForceLevelingWorkflowResponse?> _cornerResults =
       List.filled(4, null);
+
+  static const _cornerLabelToIndex = {
+    'Front Left': 0,
+    'Front Right': 1,
+    'Back Right': 2,
+    'Back Left': 3,
+  };
 
   // Adjustment mode state
   int? _adjustingCornerIndex;
@@ -130,10 +139,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     } else if (_engine.status == LevelingWorkflowStatus.stepComplete) {
       final step = _engine.currentStep;
       if (step != null) {
-        // Save measurements from probe steps (any step with a cornerLabel)
+        // Save measurements from probe steps, keyed by cornerLabel so
+        // retries and back-navigation can't misalign the slot mapping.
         if (step.cornerLabel != null && _engine.lastResponse != null) {
-          final idx = _cornerResults.indexWhere((r) => r == null);
-          if (idx >= 0 && idx < 4) {
+          final idx = _cornerLabelToIndex[step.cornerLabel!];
+          if (idx != null && idx >= 0 && idx < 4) {
             _cornerResults[idx] = _engine.lastResponse;
           }
         }
@@ -305,31 +315,48 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     //   Left-to-right: FL screw vs FR screw
     //
     // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
-    // Screw mapping:   corners 0-1 â†’ respective front screw
-    //                  corners 2-3 â†’ center back screw
+    // Screw mapping:   corners 0-1 → respective front screw
+    //                  corners 2-3 → center back screw
     final rawZ = _cornerResults
         .map((r) => r?.measurements?.secondStageTriggerZ)
         .toList();
     final zValues = _compensatedCorners(rawZ);
     if (zValues.length < 4) return;
 
-    final z0 = zValues[0]; // FL (compensated)
-    final z1 = zValues[1]; // FR (compensated)
+    final z0 = zValues[0]; // FL
+    final z1 = zValues[1]; // FR
     final z2 = zValues[2]; // BR
     final z3 = zValues[3]; // BL
 
-    // Diagonal-pair analysis: tightening a front corner raises both
-    // front corners (plate flexes as a whole) and lowers the diagonal
-    // opposite rear corner via the cantilever pivot.  Pick the pair
-    // with the greatest height difference and tighten the lower corner.
-    final diagFLBR = (z0 - z2).abs(); // FL <-> BR
-    final diagFRBL = (z1 - z3).abs(); // FR <-> BL
-
     int probeCorner;
-    if (diagFLBR >= diagFRBL) {
-      probeCorner = z0 < z2 ? 0 : 2; // tighten the lower corner
+
+    // Detect front-to-back tilt: both front corners are on one side of
+    // both back corners.  In that case the back screw (which controls
+    // BR and BL together) is the right target — tightening or loosening
+    // it pivots the plate around the front edge.  The target force
+    // will be (FL+FR)/2, a clean front-only reference, instead of a
+    // contaminated cross-average from the diagonal analysis.
+    final frontAvg = (z0 + z1) / 2;
+    final bool allFrontHigher = z0 > z2 && z0 > z3 && z1 > z2 && z1 > z3;
+    final bool allBackHigher = z2 > z0 && z2 > z1 && z3 > z0 && z3 > z1;
+
+    if (allFrontHigher || allBackHigher) {
+      // Front-to-back tilt: pick the back corner furthest from the
+      // front-plane average so the feedback shows the worst outlier.
+      probeCorner = (z2 - frontAvg).abs() >= (z3 - frontAvg).abs() ? 2 : 3;
     } else {
-      probeCorner = z1 < z3 ? 1 : 3; // tighten the lower corner
+      // Diagonal-pair analysis: tightening a front corner raises both
+      // front corners (plate flexes as a whole) and lowers the diagonal
+      // opposite rear corner via the cantilever pivot.  Pick the pair
+      // with the greatest height difference and tighten the lower corner.
+      final diagFLBR = (z0 - z2).abs(); // FL ↔ BR
+      final diagFRBL = (z1 - z3).abs(); // FR ↔ BL
+
+      if (diagFLBR >= diagFRBL) {
+        probeCorner = z0 < z2 ? 0 : 2; // tighten the lower corner
+      } else {
+        probeCorner = z1 < z3 ? 1 : 3; // tighten the lower corner
+      }
     }
 
     _adjustingCornerIndex = probeCorner;
