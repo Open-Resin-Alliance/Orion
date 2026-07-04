@@ -415,7 +415,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
   void _runRecheckCorners() {
     _resetCornerResults();
-    _engine.jumpToStep(3);
+    _engine.jumpToFirstStepId('fine_prepare_');
     setState(() => _phase = _WizardPhase.workflow);
     // Auto-run the corner prepare step so the probe positions itself before
     // showing the puck placement screen.

@@ -137,6 +137,19 @@ class LevelingWorkflowEngine extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Jump to the first step whose [id] starts with [prefix].
+  /// Does nothing if no matching step is found.
+  void jumpToFirstStepId(String prefix) {
+    if (isRunning) return;
+    final idx = _steps.indexWhere((s) => s.id.startsWith(prefix));
+    if (idx < 0) return;
+    _currentStepIndex = idx;
+    _status = LevelingWorkflowStatus.idle;
+    _errorMessage = null;
+    _lastResponse = null;
+    notifyListeners();
+  }
+
   Future<void> runCurrentStep() async {
     final step = currentStep;
     if (step == null || isRunning) return;
