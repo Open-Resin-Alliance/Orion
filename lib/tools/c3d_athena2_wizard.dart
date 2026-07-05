@@ -1427,7 +1427,26 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         } else if (idx == 1) {
           targetForce = (allForces[0]! + allForces[2]!) / 2; // FL + BR
         } else {
-          targetForce = (allForces[0]! + allForces[1]!) / 2; // FL + FR
+          // Back screw (shared between BR and BL, idx 2 or 3).
+          // The back screw moves both back corners together.  When the
+          // two back corners are asymmetric (e.g. one low, one near
+          // target), using the front-edge cross-average alone undershoots:
+          // the delta falls inside the ±20 gf deadband and the user gets
+          // no clear feedback, forcing multiple re-check iterations.
+          //
+          // Instead, target the probed corner so that the back-edge
+          // average reaches the front-edge average in one adjustment.
+          //   frontAvg = (FL + FR) / 2
+          //   backAvg  = (BL + BR) / 2
+          //   target   = probedForce + (frontAvg − backAvg)
+          //   delta    = probedForce − target = backAvg − frontAvg
+          //
+          // For a single low back corner this produces a proportionally
+          // larger delta: the full edge-to-edge gap, not just the
+          // individual corner's offset from the front reference.
+          final frontAvg = (allForces[0]! + allForces[1]!) / 2;
+          final backAvg = (allForces[2]! + allForces[3]!) / 2;
+          targetForce = allForces[idx]! + (frontAvg - backAvg);
         }
 
         final double cornerForce = allForces[idx]!;
