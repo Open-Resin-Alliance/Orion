@@ -1434,19 +1434,28 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           // the delta falls inside the ±20 gf deadband and the user gets
           // no clear feedback, forcing multiple re-check iterations.
           //
-          // Instead, target the probed corner so that the back-edge
-          // average reaches the front-edge average in one adjustment.
-          //   frontAvg = (FL + FR) / 2
-          //   backAvg  = (BL + BR) / 2
-          //   target   = probedForce + (frontAvg − backAvg)
-          //   delta    = probedForce − target = backAvg − frontAvg
+          // Strategy: drive the back screw until the lower back corner
+          // reaches the higher front corner.  This guarantees every back
+          // corner is ≥ every front corner after the adjustment, which is
+          // the correct precondition for the front-screw phase: front
+          // screws can only RAISE front corners (via compression) and
+          // LOWER back corners (via the diagonal cantilever pivot).  If a
+          // back corner were still below a front corner after the back
+          // screw adjustment, no front-screw action could lift it — only
+          // another round of back-screw tightening could.
           //
-          // For a single low back corner this produces a proportionally
-          // larger delta: the full edge-to-edge gap, not just the
-          // individual corner's offset from the front reference.
-          final frontAvg = (allForces[0]! + allForces[1]!) / 2;
-          final backAvg = (allForces[2]! + allForces[3]!) / 2;
-          targetForce = allForces[idx]! + (frontAvg - backAvg);
+          //   adjustment = max(FL, FR) − min(BL, BR)
+          //   target     = probedForce + adjustment
+          //   delta      = probedForce − target = −adjustment
+          //
+          // For a single low back corner with an otherwise level plate
+          // this produces a large, unambiguous delta instead of the tiny
+          // one the cross-average would give.
+          final frontMax =
+              (allForces[0]! > allForces[1]! ? allForces[0]! : allForces[1]!);
+          final backMin =
+              (allForces[2]! < allForces[3]! ? allForces[2]! : allForces[3]!);
+          targetForce = allForces[idx]! + (frontMax - backMin);
         }
 
         final double cornerForce = allForces[idx]!;
