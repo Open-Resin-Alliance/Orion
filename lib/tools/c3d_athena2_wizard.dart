@@ -27,6 +27,8 @@ import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/leveling_configs.dart';
+import 'package:orion/tools/leveling_log_entry.dart';
+import 'package:orion/tools/leveling_log_service.dart';
 import 'package:orion/tools/leveling_workflow_engine.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
@@ -78,6 +80,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
   // Prevents the home-after-leveling command from firing more than once
   bool _homeAfterCompleteFired = false;
+
+  // Leveling log session tracking
+  String? _levelingSessionId;
+  int _recheckNumber = 0;
+  bool _probeConfigCaptured = false;
 
   // Corner measurements from probe steps.
   // Indexed by cornerLabel, not probe order — slots are:
@@ -145,6 +152,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           final idx = _cornerLabelToIndex[step.cornerLabel!];
           if (idx != null && idx >= 0 && idx < 4) {
             _cornerResults[idx] = _engine.lastResponse;
+            // Capture probe config from the first corner response that has it
+            if (!_probeConfigCaptured &&
+                _engine.lastResponse!.measurements != null) {
+              _probeConfigCaptured = true;
+            }
           }
         }
 
@@ -175,6 +187,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   requestTimeout: const Duration(seconds: 90))
               .then((_) {})
               .catchError((_) {});
+        }
+
+        // Log corner check results when all 4 corners are measured.
+        if (step.intermediateScreen == 'allCorners' &&
+            _levelingSessionId != null) {
+          _logCornerCheck();
         }
 
         // Auto-advance through steps that don't need user interaction
@@ -257,6 +275,16 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         _cancelLeveling();
         return;
     }
+  }
+
+  /// Generate a simple UUID v4 string without depending on the `uuid` package.
+  static String _uuid4() {
+    final r = Random();
+    final hex = List.generate(32, (_) => r.nextInt(16).toRadixString(16));
+    // Insert dashes at positions 8, 13, 18, 23 and set version/variant bits
+    hex[12] = '4'; // version 4
+    hex[16] = (8 + r.nextInt(4)).toRadixString(16); // variant 8–b
+    return '${hex.sublist(0, 8).join()}-${hex.sublist(8, 12).join()}-${hex.sublist(12, 16).join()}-${hex.sublist(16, 20).join()}-${hex.sublist(20).join()}';
   }
 
   void _resetCornerResults() {
@@ -438,8 +466,51 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     if (mounted) setState(() {});
   }
 
+  void _logCornerCheck() {
+    if (_levelingSessionId == null) return;
+    final variant = _engine.variant?.id ?? 'unknown';
+    final cornerLabels = ['FL', 'FR', 'BR', 'BL'];
+    final corners = <String, CornerLogData>{};
+    for (int i = 0; i < 4; i++) {
+      corners[cornerLabels[i]] =
+          CornerLogData.fromMeasurements(_cornerResults[i]?.measurements);
+    }
+    // Snapshot probe config from the first corner that has it
+    ProbeConfigSnapshot? probeConfig;
+    for (final r in _cornerResults) {
+      if (r?.measurements != null) {
+        final c = ProbeConfigSnapshot.fromMeasurements(r!.measurements);
+        // Only include if at least one config field is present
+        if (c.firstStageSpeed != null ||
+            c.secondStageSpeed != null ||
+            c.firstStageLiftHeight != null ||
+            c.secondStageLiftHeight != null ||
+            c.firstStageThreshold != null ||
+            c.secondStageThreshold != null ||
+            c.probeStartDistance != null ||
+            c.probeRetractDistance != null) {
+          probeConfig = c;
+          break;
+        }
+      }
+    }
+    final entry = LevelingLogEntry(
+      sessionId: _levelingSessionId!,
+      timestamp: DateTime.now().toUtc().toIso8601String(),
+      variant: variant,
+      recheckNumber: _recheckNumber,
+      corners: corners,
+      totalDeviationMm: _cornerDeviation,
+      passed: _isCornerCheckPassed,
+      probeConfig: probeConfig,
+    );
+    LevelingLogService.logCornerCheck(entry);
+  }
+
   void _runRecheckCorners() {
+    _recheckNumber++;
     _resetCornerResults();
+    _probeConfigCaptured = false;
     _engine.jumpToFirstStepId('fine_prepare_');
     setState(() => _phase = _WizardPhase.workflow);
     // Auto-run the corner prepare step so the probe positions itself before
@@ -586,6 +657,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           onVariantSelected: (variant) {
             _engine.selectVariant(variant);
             _resetCornerResults();
+            // Generate a new session ID for each leveling attempt
+            _levelingSessionId = _uuid4();
+            _recheckNumber = 0;
+            _probeConfigCaptured = false;
             setState(() {
               _phase = _WizardPhase.introAndChecklist;
               _preFlightIndex = -1;

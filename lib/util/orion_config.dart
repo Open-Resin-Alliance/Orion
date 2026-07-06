@@ -38,6 +38,10 @@ class OrionConfig {
   // lightweight and avoid throwing.
   static final List<VoidCallback> _changeListeners = [];
 
+  /// The directory containing `orion.cfg`, or null if not yet resolved.
+  /// Resolved on first [OrionConfig] instantiation (happens early in startup).
+  static String? get configDirectory => _cachedConfigPath;
+
   /// Register a callback to be invoked after `orion.cfg` is written.
   static void addChangeListener(VoidCallback cb) {
     if (!_changeListeners.contains(cb)) _changeListeners.add(cb);

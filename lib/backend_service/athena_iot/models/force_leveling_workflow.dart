@@ -25,6 +25,14 @@ class ForceProbeMeasurements {
     this.secondStagePeakForce,
     this.firstStageOvershoot,
     this.secondStageOvershoot,
+    this.firstStageSpeed,
+    this.secondStageSpeed,
+    this.firstStageLiftHeight,
+    this.secondStageLiftHeight,
+    this.firstStageThreshold,
+    this.secondStageThreshold,
+    this.probeStartDistance,
+    this.probeRetractDistance,
   });
 
   final double? firstStageTriggerZ;
@@ -35,6 +43,16 @@ class ForceProbeMeasurements {
   final double? secondStagePeakForce;
   final double? firstStageOvershoot;
   final double? secondStageOvershoot;
+
+  /// Probe configuration fields (optional — backend may not send these yet).
+  final double? firstStageSpeed;
+  final double? secondStageSpeed;
+  final double? firstStageLiftHeight;
+  final double? secondStageLiftHeight;
+  final double? firstStageThreshold;
+  final double? secondStageThreshold;
+  final double? probeStartDistance;
+  final double? probeRetractDistance;
 
   factory ForceProbeMeasurements.fromJson(Map<String, dynamic>? json) {
     double? toDouble(dynamic value) {
@@ -53,6 +71,14 @@ class ForceProbeMeasurements {
       secondStagePeakForce: toDouble(data['second_stage_peak_force']),
       firstStageOvershoot: toDouble(data['first_stage_overshoot']),
       secondStageOvershoot: toDouble(data['second_stage_overshoot']),
+      firstStageSpeed: toDouble(data['first_stage_speed']),
+      secondStageSpeed: toDouble(data['second_stage_speed']),
+      firstStageLiftHeight: toDouble(data['first_stage_lift_height']),
+      secondStageLiftHeight: toDouble(data['second_stage_lift_height']),
+      firstStageThreshold: toDouble(data['first_stage_threshold']),
+      secondStageThreshold: toDouble(data['second_stage_threshold']),
+      probeStartDistance: toDouble(data['probe_start_distance']),
+      probeRetractDistance: toDouble(data['probe_retract_distance']),
     );
   }
 
@@ -65,6 +91,14 @@ class ForceProbeMeasurements {
         'second_stage_peak_force': secondStagePeakForce,
         'first_stage_overshoot': firstStageOvershoot,
         'second_stage_overshoot': secondStageOvershoot,
+        'first_stage_speed': firstStageSpeed,
+        'second_stage_speed': secondStageSpeed,
+        'first_stage_lift_height': firstStageLiftHeight,
+        'second_stage_lift_height': secondStageLiftHeight,
+        'first_stage_threshold': firstStageThreshold,
+        'second_stage_threshold': secondStageThreshold,
+        'probe_start_distance': probeStartDistance,
+        'probe_retract_distance': probeRetractDistance,
       };
 }
 
