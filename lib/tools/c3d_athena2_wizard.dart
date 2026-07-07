@@ -86,6 +86,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   int _recheckNumber = 0;
   bool _probeConfigCaptured = false;
 
+  // Adaptive force→Z coupling for back-screw adjustments.
+  // Stored before the user turns the screw so we can measure what was
+  // actually achieved when the recheck comes back.
+  int? _lastAdjustedCorner;
+  double? _lastBackForce; // probed force at the corner before adjustment (gf)
+  double? _lastBackZ; // probed Z at the corner before adjustment (mm)
+  double? _lastTargetForce; // what the gauge told the user to reach (gf)
+  double? _estimatedCoupling; // mm / gf, computed from previous cycle
+
   // Corner measurements from probe steps.
   // Indexed by cornerLabel, not probe order — slots are:
   // 0=Front Left, 1=Front Right, 2=Back Right, 3=Back Left.
@@ -391,6 +400,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _adjustmentError = null;
     _adjustmentBusy = true;
 
+    // Snapshot pre-adjustment state for back-screw coupling estimation.
+    if (probeCorner >= 2) {
+      _lastAdjustedCorner = probeCorner;
+      _lastBackForce = _cornerResults[probeCorner]
+          ?.measurements?.firstStagePeakForce;
+      _lastBackZ = _cornerResults[probeCorner]
+          ?.measurements?.secondStageTriggerZ;
+    }
+
     setState(() {
       _phase = _WizardPhase.adjustment;
       _adjustmentStep = _AdjustmentStep.preparing;
@@ -468,6 +486,36 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
   void _logCornerCheck() {
     if (_levelingSessionId == null) return;
+
+    // ── Update adaptive coupling estimate from the recheck results ──
+    if (_lastAdjustedCorner != null &&
+        _lastBackForce != null &&
+        _lastBackZ != null &&
+        _lastTargetForce != null) {
+      final newBackZ = _cornerResults[_lastAdjustedCorner!]
+          ?.measurements?.secondStageTriggerZ;
+      if (newBackZ != null) {
+        final actualZMm = newBackZ - _lastBackZ!;
+        final appliedForceGf = _lastTargetForce! - _lastBackForce!;
+        if (appliedForceGf.abs() > 10 && actualZMm.abs() > 0.001) {
+          final newCoupling = actualZMm / appliedForceGf; // mm / gf
+          // EMA-smooth the estimate so noise from a single cycle
+          // doesn't cause wild swings.
+          if (_estimatedCoupling != null) {
+            _estimatedCoupling =
+                _estimatedCoupling! * 0.5 + newCoupling * 0.5;
+          } else {
+            _estimatedCoupling = newCoupling;
+          }
+        }
+      }
+      // Clear the snapshot so stale values don't feed the next estimate
+      _lastAdjustedCorner = null;
+      _lastBackForce = null;
+      _lastBackZ = null;
+      _lastTargetForce = null;
+    }
+
     final variant = _engine.variant?.id ?? 'unknown';
     final cornerLabels = ['FL', 'FR', 'BR', 'BL'];
     final corners = <String, CornerLogData>{};
@@ -1502,35 +1550,42 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         } else if (idx == 1) {
           targetForce = (allForces[0]! + allForces[2]!) / 2; // FL + BR
         } else {
-          // Back screw (shared between BR and BL, idx 2 or 3).
-          // The back screw moves both back corners together.  When the
-          // two back corners are asymmetric (e.g. one low, one near
-          // target), using the front-edge cross-average alone undershoots:
-          // the delta falls inside the ±20 gf deadband and the user gets
-          // no clear feedback, forcing multiple re-check iterations.
+          // ── Back screw (shared between BR and BL, idx 2 or 3) ──
           //
-          // Strategy: drive the back screw until the lower back corner
-          // reaches the higher front corner.  This guarantees every back
-          // corner is ≥ every front corner after the adjustment, which is
-          // the correct precondition for the front-screw phase: front
-          // screws can only RAISE front corners (via compression) and
-          // LOWER back corners (via the diagonal cantilever pivot).  If a
-          // back corner were still below a front corner after the back
-          // screw adjustment, no front-screw action could lift it — only
-          // another round of back-screw tightening could.
-          //
-          //   adjustment = max(FL, FR) − min(BL, BR)
-          //   target     = probedForce + adjustment
-          //   delta      = probedForce − target = −adjustment
-          //
-          // For a single low back corner with an otherwise level plate
-          // this produces a large, unambiguous delta instead of the tiny
-          // one the cross-average would give.
-          final frontMax =
-              (allForces[0]! > allForces[1]! ? allForces[0]! : allForces[1]!);
-          final backMin =
-              (allForces[2]! < allForces[3]! ? allForces[2]! : allForces[3]!);
-          targetForce = allForces[idx]! + (frontMax - backMin);
+          // Goal: raise the back edge until it is 0.1 mm *above* the
+          // front-plane average in a single adjustment cycle.  The
+          // force→Z coupling is estimated from the previous cycle (if
+          // available) so the target adapts to the actual machine.
+          final rawZ = _cornerResults
+              .map((r) => r?.measurements?.secondStageTriggerZ)
+              .toList();
+          final zValues = _compensatedCorners(rawZ);
+          final frontAvgZ = zValues.length >= 4
+              ? (zValues[0] + zValues[1]) / 2
+              : 0.0;
+          final backZ = zValues.length >= 4 ? zValues[idx] : 0.0;
+          final zGapMm = frontAvgZ - backZ; // positive → back too low
+          const targetOvershootMm = 0.1;
+          final neededZMm = zGapMm + targetOvershootMm;
+
+          final double forceDelta;
+          if (_estimatedCoupling != null && _estimatedCoupling! > 0) {
+            // Adaptive: use the coupling measured from the last cycle.
+            // Clamp to ±3000 gf — the sensor can handle it.
+            forceDelta = (neededZMm / _estimatedCoupling!)
+                .clamp(-3000.0, 3000.0);
+          } else {
+            // First cycle — no coupling estimate yet.  Use a force-based
+            // heuristic: drive the lower back corner to match the higher
+            // front corner, with a 2× gain because the coupling is weak.
+            final frontMax =
+                (allForces[0]! > allForces[1]! ? allForces[0]! : allForces[1]!);
+            final backMin =
+                (allForces[2]! < allForces[3]! ? allForces[2]! : allForces[3]!);
+            forceDelta = (frontMax - backMin) * 2.0;
+          }
+          targetForce = allForces[idx]! + forceDelta;
+          _lastTargetForce = targetForce;
         }
 
         final double cornerForce = allForces[idx]!;
