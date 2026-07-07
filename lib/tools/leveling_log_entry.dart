@@ -112,6 +112,7 @@ class LevelingLogEntry {
     required this.totalDeviationMm,
     required this.passed,
     this.probeConfig,
+    this.estimatedCoupling,
   });
 
   final String sessionId;
@@ -122,6 +123,10 @@ class LevelingLogEntry {
   final double totalDeviationMm;
   final bool passed;
   final ProbeConfigSnapshot? probeConfig;
+
+  /// Force→Z coupling estimate from the previous adjustment cycle (mm/gf),
+  /// or null on the first cycle.
+  final double? estimatedCoupling;
 
   Map<String, dynamic> toJson() => {
         'session_id': sessionId,

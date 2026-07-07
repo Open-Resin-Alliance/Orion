@@ -551,6 +551,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       totalDeviationMm: _cornerDeviation,
       passed: _isCornerCheckPassed,
       probeConfig: probeConfig,
+      estimatedCoupling: _estimatedCoupling,
     );
     LevelingLogService.logCornerCheck(entry);
   }
