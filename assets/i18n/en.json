@@ -502,6 +502,7 @@
         "wizardPredictZChange": "Expected Z change: ~{{mm}} mm",
         "wizardPredictRechecks": "• ~{{n}} more recheck(s) to level",
         "wizardPredictLastCheck": "• Should pass on next recheck",
+        "wizardBackScrewAlt": "If the back screw can't turn further, loosen both front screws slightly instead — this tilts the plate the same way.",
         "wizardTighten": "TIGHTEN",
         "wizardLoosen": "LOOSEN",
         "wizardAtTarget": "AT TARGET",

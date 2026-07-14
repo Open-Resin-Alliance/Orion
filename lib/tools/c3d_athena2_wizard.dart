@@ -95,6 +95,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   double? _lastTargetForce; // what the gauge told the user to reach (gf)
   double? _estimatedCoupling; // mm / gf, computed from previous cycle
   double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
+  int _consecutiveBackAdjustments = 0; // detect maxed-out back screw
 
   // Prediction summary — shown to the user before they turn the screw
   String? _predictionDirection; // e.g. "Tighten"
@@ -407,6 +408,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _adjustmentError = null;
     _adjustmentBusy = true;
     _preAdjustmentDeviation = _cornerDeviation;
+
+    // Track consecutive back-screw picks to detect mechanical limits.
+    // If the wizard asks for the back screw twice in a row, the user
+    // may be running out of thread — suggest the front-screw alternative.
+    if (probeCorner >= 2) {
+      _consecutiveBackAdjustments++;
+    } else {
+      _consecutiveBackAdjustments = 0;
+    }
 
     // Snapshot pre-adjustment state for back-screw coupling estimation.
     if (probeCorner >= 2) {
@@ -1585,14 +1595,18 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           final backZ = zValues.length >= 4 ? zValues[idx] : 0.0;
           final zGapMm = frontAvgZ - backZ; // positive → back too low
 
-          // ── Damped correction target ──
-          // Only correct ~60 % of the remaining gap per cycle.  This
-          // prevents overshoot when the coupling estimate is stale or
-          // the user overshoots the gauge.  A small fixed bias (0.03
-          // mm) nudges past the target so we converge rather than
-          // asymptotically approach.
-          const double dampingRatio = 0.60;
-          const double biasMm = 0.03;
+          // ── Correction target ──
+          // First cycle (no coupling estimate yet): go for the FULL gap
+          // plus a small overshoot.  There is no stale model to protect
+          // against, and leaving work on the table forces a second turn
+          // of the same screw — which may hit its mechanical limit.
+          //
+          // Subsequent cycles (coupling available): damp to 60 % so a
+          // single noisy estimate doesn't cause overshoot oscillation.
+          final bool hasEstimate = _estimatedCoupling != null &&
+              _estimatedCoupling!.abs() > 1e-9;
+          final double dampingRatio = hasEstimate ? 0.60 : 1.0;
+          final double biasMm = hasEstimate ? 0.03 : 0.05;
           final double targetZMm = zGapMm * dampingRatio +
               (zGapMm > 0 ? biasMm : -biasMm);
 
@@ -1663,8 +1677,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 : 0.0;
             final backZ = zValues.length >= 4 ? zValues[idx] : 0.0;
             final zGapMm = frontAvgZ - backZ;
-            _predictionZMm = (zGapMm * 0.60 +
-                    (zGapMm > 0 ? 0.03 : -0.03))
+            final bool hasEstimate = _estimatedCoupling != null &&
+                _estimatedCoupling!.abs() > 1e-9;
+            final double predDamping = hasEstimate ? 0.60 : 1.0;
+            final double predBias = hasEstimate ? 0.03 : 0.05;
+            _predictionZMm = (zGapMm * predDamping +
+                    (zGapMm > 0 ? predBias : -predBias))
                 .abs();
           } else {
             // Front screw — rough estimate from force delta magnitude
@@ -1682,8 +1700,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           {
             double remaining = _cornerDeviation;
             int cycles = 0;
+            // Use the same damping as the correction target: full
+            // correction on first cycle, damped on subsequent ones.
+            final bool hasEstimate = _estimatedCoupling != null &&
+                _estimatedCoupling!.abs() > 1e-9;
+            final double damping = hasEstimate ? 0.60 : 1.0;
             while (remaining > 0.100 && cycles < 20) {
-              remaining *= (1.0 - 0.60); // damping ratio
+              remaining *= (1.0 - damping);
               cycles++;
             }
             _predictionRechecks = cycles;
@@ -1703,6 +1726,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           predictionScrew: _predictionScrew,
           predictionZMm: _predictionZMm,
           predictionRechecks: _predictionRechecks,
+          consecutiveBackAdjustments: _consecutiveBackAdjustments,
         );
     }
   }
@@ -2848,6 +2872,7 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
     this.predictionScrew,
     this.predictionZMm,
     this.predictionRechecks,
+    this.consecutiveBackAdjustments = 0,
   });
 
   final int cornerIndex;
@@ -2861,6 +2886,7 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
   final String? predictionScrew;
   final double? predictionZMm;
   final int? predictionRechecks;
+  final int consecutiveBackAdjustments;
 
   @override
   State<_AdjustmentFeedbackScreen> createState() =>
@@ -3066,6 +3092,36 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                               fontWeight: FontWeight.w500,
                               color: onSurface.withValues(alpha: 0.55),
                               height: 1.3,
+                            ),
+                          ),
+                        ],
+                        // ── Mechanical-limit hint ──
+                        // If the back screw has been targeted repeatedly,
+                        // it may be nearing its thread limit.  Suggest
+                        // the equivalent opposite adjustment.
+                        if (widget.cornerIndex >= 2 &&
+                            widget.consecutiveBackAdjustments >= 2) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(6),
+                              color: Colors.orangeAccent
+                                  .withValues(alpha: 0.10),
+                            ),
+                            child: Text(
+                              FlutterI18n.translate(
+                                context,
+                                'leveling.wizardBackScrewAlt',
+                              ),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.orangeAccent
+                                    .withValues(alpha: 0.9),
+                                height: 1.3,
+                              ),
                             ),
                           ),
                         ],
