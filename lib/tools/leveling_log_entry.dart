@@ -113,6 +113,7 @@ class LevelingLogEntry {
     required this.passed,
     this.probeConfig,
     this.estimatedCoupling,
+    this.preAdjustmentDeviation,
   });
 
   final String sessionId;
@@ -127,6 +128,10 @@ class LevelingLogEntry {
   /// Force→Z coupling estimate from the previous adjustment cycle (mm/gf),
   /// or null on the first cycle.
   final double? estimatedCoupling;
+
+  /// Deviation snapshot from *before* the adjustment that preceded this
+  /// recheck.  Used to detect divergence (adjustment going the wrong way).
+  final double? preAdjustmentDeviation;
 
   Map<String, dynamic> toJson() => {
         'session_id': sessionId,

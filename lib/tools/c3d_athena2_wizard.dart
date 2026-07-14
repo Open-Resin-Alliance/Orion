@@ -94,6 +94,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   double? _lastBackZ; // probed Z at the corner before adjustment (mm)
   double? _lastTargetForce; // what the gauge told the user to reach (gf)
   double? _estimatedCoupling; // mm / gf, computed from previous cycle
+  double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
+
+  // Prediction summary — shown to the user before they turn the screw
+  String? _predictionDirection; // e.g. "Tighten"
+  String? _predictionScrew; // e.g. "Back Screw"
+  double? _predictionZMm; // expected Z change magnitude
+  int? _predictionRechecks; // estimated rechecks remaining to pass
 
   // Corner measurements from probe steps.
   // Indexed by cornerLabel, not probe order — slots are:
@@ -399,6 +406,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _adjustingCornerIndex = probeCorner;
     _adjustmentError = null;
     _adjustmentBusy = true;
+    _preAdjustmentDeviation = _cornerDeviation;
 
     // Snapshot pre-adjustment state for back-screw coupling estimation.
     if (probeCorner >= 2) {
@@ -552,6 +560,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       passed: _isCornerCheckPassed,
       probeConfig: probeConfig,
       estimatedCoupling: _estimatedCoupling,
+      preAdjustmentDeviation: _preAdjustmentDeviation,
     );
     LevelingLogService.logCornerCheck(entry);
   }
@@ -724,6 +733,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           loosenScrewsDone: _loosenScrewsDone,
           alignDone: _alignDone,
           cornerResults: _cornerResults,
+          preAdjustmentDeviation: _preAdjustmentDeviation,
         );
       case _WizardPhase.adjustment:
         // Handled in _buildPhaseContent
@@ -1553,10 +1563,18 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         } else {
           // ── Back screw (shared between BR and BL, idx 2 or 3) ──
           //
-          // Goal: raise the back edge until it is 0.1 mm *above* the
-          // front-plane average in a single adjustment cycle.  The
-          // force→Z coupling is estimated from the previous cycle (if
-          // available) so the target adapts to the actual machine.
+          // Tightening the back screw pushes the back edge of the plate
+          // UP (Z becomes less negative / more positive).  Loosening
+          // lowers it.  The front corners act as a hinge.
+          //
+          // PHYSICAL SIGN CONVENTION:
+          //   - Tighten → force more compressive (more negative) → Z↑
+          //   - Loosen  → force less compressive (less negative)  → Z↓
+          //   - Coupling is therefore NEGATIVE: ΔZ(+)/ΔForce(−) < 0
+          //
+          // We use Z-measurements to determine DIRECTION (tighten vs
+          // loosen) and force measurements only for MAGNITUDE, because
+          // the force→height relationship is noisy in practice.
           final rawZ = _cornerResults
               .map((r) => r?.measurements?.secondStageTriggerZ)
               .toList();
@@ -1566,24 +1584,44 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
               : 0.0;
           final backZ = zValues.length >= 4 ? zValues[idx] : 0.0;
           final zGapMm = frontAvgZ - backZ; // positive → back too low
-          const targetOvershootMm = 0.1;
-          final neededZMm = zGapMm + targetOvershootMm;
+
+          // ── Damped correction target ──
+          // Only correct ~60 % of the remaining gap per cycle.  This
+          // prevents overshoot when the coupling estimate is stale or
+          // the user overshoots the gauge.  A small fixed bias (0.03
+          // mm) nudges past the target so we converge rather than
+          // asymptotically approach.
+          const double dampingRatio = 0.60;
+          const double biasMm = 0.03;
+          final double targetZMm = zGapMm * dampingRatio +
+              (zGapMm > 0 ? biasMm : -biasMm);
 
           final double forceDelta;
-          if (_estimatedCoupling != null && _estimatedCoupling! > 0) {
+          if (_estimatedCoupling != null &&
+              _estimatedCoupling!.abs() > 1e-9) {
             // Adaptive: use the coupling measured from the last cycle.
-            // Clamp to ±3000 gf — the sensor can handle it.
-            forceDelta = (neededZMm / _estimatedCoupling!)
+            // Coupling is negative (tighten → Z↑), so targetZMm /
+            // coupling gives the correct sign automatically.
+            // Clamp to ±3000 gf — the sensor can handle it.
+            forceDelta = (targetZMm / _estimatedCoupling!)
                 .clamp(-3000.0, 3000.0);
           } else {
-            // First cycle — no coupling estimate yet.  Use a force-based
-            // heuristic: drive the lower back corner to match the higher
-            // front corner, with a 2× gain because the coupling is weak.
+            // No coupling estimate yet (first cycle) or estimate is
+            // zero — use a force-difference heuristic for MAGNITUDE
+            // but let the Z gap set the DIRECTION.  The old heuristic
+            // ((frontMax−backMin)·2) always produced a positive delta
+            // (tighten), which was wrong when the back was already
+            // too high.
             final frontMax =
                 (allForces[0]! > allForces[1]! ? allForces[0]! : allForces[1]!);
             final backMin =
                 (allForces[2]! < allForces[3]! ? allForces[2]! : allForces[3]!);
-            forceDelta = (frontMax - backMin) * 2.0;
+            final double forceDiffMag =
+                ((frontMax - backMin) * 2.0).abs().clamp(100.0, 3000.0);
+            // zGapMm > 0 → back too low → TIGHTEN → forceDelta negative
+            // zGapMm < 0 → back too high → LOOSEN → forceDelta positive
+            final bool needTightenBack = zGapMm > 0;
+            forceDelta = needTightenBack ? -forceDiffMag : forceDiffMag;
           }
           targetForce = allForces[idx]! + forceDelta;
           _lastTargetForce = targetForce;
@@ -1596,6 +1634,62 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         final bool needsTighten = forceDeltaGf > 20;
         final bool needsLoosen = forceDeltaGf < -20;
 
+        // ── Prediction summary ──
+        // Compute what the user should expect from this adjustment so
+        // they can see whether they're on track.
+        {
+          final screwNames = [
+            FlutterI18n.translate(context, 'leveling.wizardScrewFL'),
+            FlutterI18n.translate(context, 'leveling.wizardScrewFR'),
+            FlutterI18n.translate(context, 'leveling.wizardScrewBack'),
+            FlutterI18n.translate(context, 'leveling.wizardScrewBack'),
+          ];
+          _predictionScrew = screwNames[idx];
+          _predictionDirection = needsTighten
+              ? FlutterI18n.translate(context, 'leveling.wizardTighten')
+              : needsLoosen
+                  ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
+                  : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
+
+          // Expected Z change — for back screw we have a damped target
+          if (idx >= 2) {
+            // Re-derive targetZMm for the prediction (same damping calc)
+            final rawZ = _cornerResults
+                .map((r) => r?.measurements?.secondStageTriggerZ)
+                .toList();
+            final zValues = _compensatedCorners(rawZ);
+            final frontAvgZ = zValues.length >= 4
+                ? (zValues[0] + zValues[1]) / 2
+                : 0.0;
+            final backZ = zValues.length >= 4 ? zValues[idx] : 0.0;
+            final zGapMm = frontAvgZ - backZ;
+            _predictionZMm = (zGapMm * 0.60 +
+                    (zGapMm > 0 ? 0.03 : -0.03))
+                .abs();
+          } else {
+            // Front screw — rough estimate from force delta magnitude
+            if (_estimatedCoupling != null &&
+                _estimatedCoupling!.abs() > 1e-9) {
+              _predictionZMm =
+                  (forceDeltaGf.abs() * _estimatedCoupling!.abs())
+                      .clamp(0.0, 0.5);
+            } else {
+              _predictionZMm = 0.1; // conservative default
+            }
+          }
+
+          // Estimated rechecks remaining to reach <= 0.100 mm
+          {
+            double remaining = _cornerDeviation;
+            int cycles = 0;
+            while (remaining > 0.100 && cycles < 20) {
+              remaining *= (1.0 - 0.60); // damping ratio
+              cycles++;
+            }
+            _predictionRechecks = cycles;
+          }
+        }
+
         return _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
@@ -1605,6 +1699,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           forceDelta: forceDeltaGf,
           needsTighten: needsTighten,
           needsLoosen: needsLoosen,
+          predictionDirection: _predictionDirection,
+          predictionScrew: _predictionScrew,
+          predictionZMm: _predictionZMm,
+          predictionRechecks: _predictionRechecks,
         );
     }
   }
@@ -2062,6 +2160,7 @@ class _WorkflowPane extends StatelessWidget {
     required this.loosenScrewsDone,
     required this.alignDone,
     required this.cornerResults,
+    this.preAdjustmentDeviation,
   });
 
   final LevelingWorkflowEngine engine;
@@ -2069,6 +2168,7 @@ class _WorkflowPane extends StatelessWidget {
   final bool loosenScrewsDone;
   final bool alignDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
+  final double? preAdjustmentDeviation;
 
   @override
   Widget build(BuildContext context) {
@@ -2435,7 +2535,41 @@ class _WorkflowPane extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
+        // Divergence warning: recheck is worse than the pre-adjustment check
+        if (preAdjustmentDeviation != null &&
+            deviation > preAdjustmentDeviation! + 0.02)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.orangeAccent.withValues(alpha: 0.15),
+              border: Border.all(
+                color: Colors.orangeAccent.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(PhosphorIcons.warningOctagon(),
+                    size: 20, color: Colors.orangeAccent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    FlutterI18n.translate(
+                        context, 'leveling.wizardDivergedWarning'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orangeAccent,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 8),
         // Corner measurements - fill remaining space
         Expanded(
           child: GlassCard(
@@ -2710,6 +2844,10 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
     this.forceDelta,
     this.needsTighten = false,
     this.needsLoosen = false,
+    this.predictionDirection,
+    this.predictionScrew,
+    this.predictionZMm,
+    this.predictionRechecks,
   });
 
   final int cornerIndex;
@@ -2719,6 +2857,10 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
   final double? forceDelta;
   final bool needsTighten;
   final bool needsLoosen;
+  final String? predictionDirection;
+  final String? predictionScrew;
+  final double? predictionZMm;
+  final int? predictionRechecks;
 
   @override
   State<_AdjustmentFeedbackScreen> createState() =>
@@ -2861,6 +3003,79 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
             ),
           ),
         ),
+        // ── Prediction summary card ──
+        if (widget.predictionDirection != null &&
+            widget.predictionScrew != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: onSurface.withValues(alpha: 0.04),
+                border: Border.all(
+                    color: onSurface.withValues(alpha: 0.10)),
+              ),
+              child: Row(
+                children: [
+                  Icon(PhosphorIcons.info(),
+                      size: 18,
+                      color: onSurface.withValues(alpha: 0.55)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${widget.predictionDirection} — ${widget.predictionScrew}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: accent,
+                          ),
+                        ),
+                        if (widget.predictionZMm != null &&
+                            widget.predictionRechecks != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            [
+                              FlutterI18n.translate(
+                                  context,
+                                  'leveling.wizardPredictZChange',
+                                  translationParams: {
+                                    'mm': widget.predictionZMm!
+                                        .toStringAsFixed(2),
+                                  }),
+                              if (widget.predictionRechecks! > 0)
+                                FlutterI18n.translate(
+                                  context,
+                                  'leveling.wizardPredictRechecks',
+                                  translationParams: {
+                                    'n': widget.predictionRechecks!
+                                        .toString(),
+                                  }),
+                              if (widget.predictionRechecks! == 0)
+                                FlutterI18n.translate(
+                                  context,
+                                  'leveling.wizardPredictLastCheck'),
+                            ].join('  '),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: onSurface.withValues(alpha: 0.55),
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {

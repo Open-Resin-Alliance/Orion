@@ -121,6 +121,23 @@ class LevelingLogService {
         buf.writeln('Coupling Est: -- (first cycle, no estimate yet)');
       }
 
+      // ── Divergence detection ──
+      if (entry.preAdjustmentDeviation != null) {
+        final prev = entry.preAdjustmentDeviation!;
+        final curr = entry.totalDeviationMm;
+        final delta = curr - prev;
+        if (delta > 0.02) {
+          buf.writeln('⚠ DIVERGENCE: deviation INCREASED by ${delta.toStringAsFixed(3)} mm (was ${prev.toStringAsFixed(3)}, now ${curr.toStringAsFixed(3)})');
+          buf.writeln('   The adjustment may have gone the wrong way.  Check that the');
+          buf.writeln('   screw was turned in the direction indicated by the gauge.');
+          buf.writeln('   Consider starting a fresh leveling session if this persists.');
+        } else if (delta < -0.02) {
+          buf.writeln('Convergence: deviation decreased by ${(-delta).toStringAsFixed(3)} mm');
+        } else {
+          buf.writeln('Deviation change: ${delta.toStringAsFixed(3)} mm (essentially unchanged)');
+        }
+      }
+
       // ── Probe config ──
       final cfg = entry.probeConfig;
       if (cfg != null &&
