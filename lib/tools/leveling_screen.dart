@@ -38,9 +38,14 @@ class LevelingScreen extends StatelessWidget {
       config.getMachineModelName(),
     );
     final backend = BackendService();
+    // Assisted leveling is available for Athena2-class machines that have a
+    // force sensor.  Older vendor.cfg files may not include the `levelingMode`
+    // key; when the machine model already matched the Athena2 prefix we treat
+    // a missing/empty key as "athena2".  An explicit "manual" still opts out.
+    final levelingMode = config.getLevelingMode();
     final assistedEnabled = levelingConfig != null &&
         config.hasForceSensor() &&
-        config.getLevelingMode() == 'athena2' &&
+        (levelingMode == 'athena2' || levelingMode.isEmpty) &&
         backend.supportsCapability(BackendCapabilities.supportsForceLeveling);
 
     return SafeArea(
