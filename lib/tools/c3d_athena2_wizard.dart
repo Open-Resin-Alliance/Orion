@@ -1596,10 +1596,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           final zGapMm = frontAvgZ - backZ; // positive → back too low
 
           // ── Correction target ──
-          // First cycle (no coupling estimate yet): go for the FULL gap
-          // plus a small overshoot.  There is no stale model to protect
-          // against, and leaving work on the table forces a second turn
-          // of the same screw — which may hit its mechanical limit.
+          // First cycle (no coupling estimate yet): go for the full gap
+          // plus a small overshoot.  The force heuristic is now scaled by
+          // the Z gap (see below), so small gaps get proportionally small
+          // force deltas — preventing the overshoot that used to happen
+          // when a tiny gap got the full heuristic force.
           //
           // Subsequent cycles (coupling available): damp to 60 % so a
           // single noisy estimate doesn't cause overshoot oscillation.
@@ -1630,8 +1631,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 (allForces[0]! > allForces[1]! ? allForces[0]! : allForces[1]!);
             final backMin =
                 (allForces[2]! < allForces[3]! ? allForces[2]! : allForces[3]!);
+            // No coupling estimate yet — use the raw force spread across
+            // corners as a rough magnitude hint.  The force sensor is
+            // noisy and the actual mm/gf coupling varies 50× across
+            // printers, so this is inherently a guess.  We keep the
+            // multiplier at 1× (no artificial gain) and let the
+            // subsequent cycle with real coupling data do the precise
+            // correction.
             final double forceDiffMag =
-                ((frontMax - backMin) * 2.0).abs().clamp(100.0, 3000.0);
+                ((frontMax - backMin)).abs().clamp(100.0, 2000.0);
             // zGapMm > 0 → back too low → TIGHTEN → forceDelta negative
             // zGapMm < 0 → back too high → LOOSEN → forceDelta positive
             final bool needTightenBack = zGapMm > 0;
