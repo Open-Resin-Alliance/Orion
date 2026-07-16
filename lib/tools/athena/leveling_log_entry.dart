@@ -113,7 +113,14 @@ class LevelingLogEntry {
     required this.passed,
     this.probeConfig,
     this.estimatedCoupling,
+    this.couplingIsSeed,
     this.preAdjustmentDeviation,
+    this.commandedDeltaGf,
+    this.gapAtCommandMm,
+    this.measuredGapMoveMm,
+    this.couplingSample,
+    this.sampleOutcome,
+    this.stictionEscalations,
   });
 
   final String sessionId;
@@ -125,13 +132,36 @@ class LevelingLogEntry {
   final bool passed;
   final ProbeConfigSnapshot? probeConfig;
 
-  /// Force→Z coupling estimate from the previous adjustment cycle (mm/gf),
-  /// or null on the first cycle.
+  /// Current force→Z coupling estimate (mm/gf, gap-space, negative).
   final double? estimatedCoupling;
+
+  /// True while [estimatedCoupling] is still the conservative seed
+  /// (possibly stiction-scaled) rather than a measured value.
+  final bool? couplingIsSeed;
 
   /// Deviation snapshot from *before* the adjustment that preceded this
   /// recheck.  Used to detect divergence (adjustment going the wrong way).
   final double? preAdjustmentDeviation;
+
+  // ── Adjustment-cycle telemetry (back-screw cycles only) ──
+
+  /// Force delta the gauge asked the user to reach (gf, negative = tighten).
+  final double? commandedDeltaGf;
+
+  /// Gap (frontAvgZ − backZ) the command was computed from (mm).
+  final double? gapAtCommandMm;
+
+  /// Relative back-vs-front movement achieved by the adjustment (mm).
+  final double? measuredGapMoveMm;
+
+  /// Raw coupling sample before clamping (mm/gf), when computable.
+  final double? couplingSample;
+
+  /// Name of the `CouplingUpdateOutcome` for this cycle.
+  final String? sampleOutcome;
+
+  /// Stiction escalations so far this session.
+  final int? stictionEscalations;
 
   Map<String, dynamic> toJson() => {
         'session_id': sessionId,
@@ -142,5 +172,14 @@ class LevelingLogEntry {
         'total_deviation_mm': totalDeviationMm,
         'passed': passed,
         'probe_config': probeConfig?.toJson(),
+        'estimated_coupling_mm_per_gf': estimatedCoupling,
+        'coupling_is_seed': couplingIsSeed,
+        'pre_adjustment_deviation_mm': preAdjustmentDeviation,
+        'commanded_delta_gf': commandedDeltaGf,
+        'gap_at_command_mm': gapAtCommandMm,
+        'measured_gap_move_mm': measuredGapMoveMm,
+        'coupling_sample_mm_per_gf': couplingSample,
+        'sample_outcome': sampleOutcome,
+        'stiction_escalations': stictionEscalations,
       };
 }

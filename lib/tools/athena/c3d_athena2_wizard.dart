@@ -26,6 +26,7 @@ import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/tools/athena/back_screw_controller.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
 import 'package:orion/tools/athena/leveling_log_entry.dart';
 import 'package:orion/tools/athena/leveling_log_service.dart';
@@ -47,6 +48,21 @@ enum _AdjustmentStep {
   puckPlacement,
   probing,
   feedback,
+}
+
+/// A back-screw command anchored into the gauge's force frame: the
+/// controller's command plus the re-probed corner force it was anchored
+/// to and the resulting absolute force target shown to the user.
+class _BackCommandView {
+  const _BackCommandView(
+    this.cmd, {
+    required this.anchorForceGf,
+    required this.targetForceGf,
+  });
+
+  final BackScrewCommand cmd;
+  final double anchorForceGf;
+  final double targetForceGf;
 }
 
 class Athena2LevelingWizard extends StatefulWidget {
@@ -86,14 +102,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   int _recheckNumber = 0;
   bool _probeConfigCaptured = false;
 
-  // Adaptive force→Z coupling for back-screw adjustments.
-  // Stored before the user turns the screw so we can measure what was
-  // actually achieved when the recheck comes back.
+  // Adaptive force→Z coupling for back-screw adjustments (gap-space).
+  // The controller snapshots each commanded force delta so the recheck
+  // can measure what was actually achieved.  See BackScrewController
+  // for the sign conventions and the estimator design.
+  BackScrewController _backScrew = BackScrewController();
   int? _lastAdjustedCorner;
-  double? _lastBackForce; // probed force at the corner before adjustment (gf)
-  double? _lastBackZ; // probed Z at the corner before adjustment (mm)
-  double? _lastTargetForce; // what the gauge told the user to reach (gf)
-  double? _estimatedCoupling; // mm / gf, computed from previous cycle
+  _BackCommandView? _pendingBackCommand;
   double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
   int _consecutiveBackAdjustments = 0; // detect maxed-out back screw
 
@@ -418,15 +433,6 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       _consecutiveBackAdjustments = 0;
     }
 
-    // Snapshot pre-adjustment state for back-screw coupling estimation.
-    if (probeCorner >= 2) {
-      _lastAdjustedCorner = probeCorner;
-      _lastBackForce = _cornerResults[probeCorner]
-          ?.measurements?.firstStagePeakForce;
-      _lastBackZ = _cornerResults[probeCorner]
-          ?.measurements?.secondStageTriggerZ;
-    }
-
     setState(() {
       _phase = _WizardPhase.adjustment;
       _adjustmentStep = _AdjustmentStep.preparing;
@@ -497,6 +503,35 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       return;
     }
 
+    // ── Compute the back-screw command once, anchored to this re-probe ──
+    // Done here (not in build) so the target is deterministic across
+    // rebuilds and the gauge, the command, and the coupling estimator
+    // all share the same force reference frame.
+    final idx = _adjustingCornerIndex!;
+    _pendingBackCommand = null;
+    if (idx >= 2) {
+      final z0 = _cornerResults[0]?.measurements?.secondStageTriggerZ;
+      final z1 = _cornerResults[1]?.measurements?.secondStageTriggerZ;
+      final backZ =
+          _cornerResults[idx]?.measurements?.secondStageTriggerZ;
+      final anchorForce =
+          _cornerResults[idx]?.measurements?.firstStagePeakForce;
+      if (z0 != null && z1 != null && backZ != null && anchorForce != null) {
+        // Positive gap → back too low.  Front values come from the
+        // corner check (untouched during adjustment), the back value
+        // from the fresh re-probe.
+        final zGapMm = (z0 + z1) / 2 - backZ;
+        final cmd = _backScrew.command(zGapMm: zGapMm);
+        _backScrew.recordCommand(cmd);
+        _lastAdjustedCorner = idx;
+        _pendingBackCommand = _BackCommandView(
+          cmd,
+          anchorForceGf: anchorForce,
+          targetForceGf: anchorForce + cmd.forceDeltaGf,
+        );
+      }
+    }
+
     _adjustmentBusy = false;
     _adjustmentStep = _AdjustmentStep.feedback;
     if (mounted) setState(() {});
@@ -505,34 +540,25 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   void _logCornerCheck() {
     if (_levelingSessionId == null) return;
 
-    // ── Update adaptive coupling estimate from the recheck results ──
-    if (_lastAdjustedCorner != null &&
-        _lastBackForce != null &&
-        _lastBackZ != null &&
-        _lastTargetForce != null) {
-      final newBackZ = _cornerResults[_lastAdjustedCorner!]
+    // ── Update the adaptive coupling estimate from the recheck ──
+    // Only back-screw adjustments record a pending command; front-screw
+    // cycles skip the update structurally.
+    CouplingUpdateResult? update;
+    if (_lastAdjustedCorner != null && _lastAdjustedCorner! >= 2) {
+      final z0 = _cornerResults[0]?.measurements?.secondStageTriggerZ;
+      final z1 = _cornerResults[1]?.measurements?.secondStageTriggerZ;
+      final backZ = _cornerResults[_lastAdjustedCorner!]
           ?.measurements?.secondStageTriggerZ;
-      if (newBackZ != null) {
-        final actualZMm = newBackZ - _lastBackZ!;
-        final appliedForceGf = _lastTargetForce! - _lastBackForce!;
-        if (appliedForceGf.abs() > 10 && actualZMm.abs() > 0.001) {
-          final newCoupling = actualZMm / appliedForceGf; // mm / gf
-          // EMA-smooth the estimate so noise from a single cycle
-          // doesn't cause wild swings.
-          if (_estimatedCoupling != null) {
-            _estimatedCoupling =
-                _estimatedCoupling! * 0.5 + newCoupling * 0.5;
-          } else {
-            _estimatedCoupling = newCoupling;
-          }
-        }
+      if (z0 != null && z1 != null && backZ != null) {
+        update = _backScrew.onRecheck(newGapMm: (z0 + z1) / 2 - backZ);
+      } else {
+        // Missing data — never let a stale command pair with a later,
+        // unrelated recheck.
+        _backScrew.abandonPending();
       }
-      // Clear the snapshot so stale values don't feed the next estimate
-      _lastAdjustedCorner = null;
-      _lastBackForce = null;
-      _lastBackZ = null;
-      _lastTargetForce = null;
     }
+    _lastAdjustedCorner = null;
+    _pendingBackCommand = null;
 
     final variant = _engine.variant?.id ?? 'unknown';
     final cornerLabels = ['FL', 'FR', 'BR', 'BL'];
@@ -569,8 +595,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       totalDeviationMm: _cornerDeviation,
       passed: _isCornerCheckPassed,
       probeConfig: probeConfig,
-      estimatedCoupling: _estimatedCoupling,
+      estimatedCoupling: _backScrew.coupling,
+      couplingIsSeed: !_backScrew.hasMeasuredSample,
       preAdjustmentDeviation: _preAdjustmentDeviation,
+      commandedDeltaGf: update?.commandedDeltaGf,
+      gapAtCommandMm: update?.gapAtCommandMm,
+      measuredGapMoveMm: update?.measuredGapMoveMm,
+      couplingSample: update?.sample,
+      sampleOutcome: update?.outcome.name,
+      stictionEscalations: _backScrew.stictionEscalations,
     );
     LevelingLogService.logCornerCheck(entry);
   }
@@ -729,6 +762,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _levelingSessionId = _uuid4();
             _recheckNumber = 0;
             _probeConfigCaptured = false;
+            // Fresh coupling state — the estimate is a per-printer
+            // property but must not leak across re-selected sessions.
+            _backScrew = BackScrewController();
+            _pendingBackCommand = null;
+            _lastAdjustedCorner = null;
             setState(() {
               _phase = _WizardPhase.introAndChecklist;
               _preFlightIndex = -1;
@@ -1572,81 +1610,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           targetForce = (allForces[0]! + allForces[2]!) / 2; // FL + BR
         } else {
           // ── Back screw (shared between BR and BL, idx 2 or 3) ──
-          //
-          // Tightening the back screw pushes the back edge of the plate
-          // UP (Z becomes less negative / more positive).  Loosening
-          // lowers it.  The front corners act as a hinge.
-          //
-          // PHYSICAL SIGN CONVENTION:
-          //   - Tighten → force more compressive (more negative) → Z↑
-          //   - Loosen  → force less compressive (less negative)  → Z↓
-          //   - Coupling is therefore NEGATIVE: ΔZ(+)/ΔForce(−) < 0
-          //
-          // We use Z-measurements to determine DIRECTION (tighten vs
-          // loosen) and force measurements only for MAGNITUDE, because
-          // the force→height relationship is noisy in practice.
-          final rawZ = _cornerResults
-              .map((r) => r?.measurements?.secondStageTriggerZ)
-              .toList();
-          final zValues = _compensatedCorners(rawZ);
-          final frontAvgZ = zValues.length >= 4
-              ? (zValues[0] + zValues[1]) / 2
-              : 0.0;
-          final backZ = zValues.length >= 4 ? zValues[idx] : 0.0;
-          final zGapMm = frontAvgZ - backZ; // positive → back too low
-
-          // ── Correction target ──
-          // First cycle (no coupling estimate yet): go for the full gap
-          // plus a small overshoot.  The force heuristic is now scaled by
-          // the Z gap (see below), so small gaps get proportionally small
-          // force deltas — preventing the overshoot that used to happen
-          // when a tiny gap got the full heuristic force.
-          //
-          // Subsequent cycles (coupling available): damp to 60 % so a
-          // single noisy estimate doesn't cause overshoot oscillation.
-          final bool hasEstimate = _estimatedCoupling != null &&
-              _estimatedCoupling!.abs() > 1e-9;
-          final double dampingRatio = hasEstimate ? 0.60 : 1.0;
-          final double biasMm = hasEstimate ? 0.03 : 0.05;
-          final double targetZMm = zGapMm * dampingRatio +
-              (zGapMm > 0 ? biasMm : -biasMm);
-
-          final double forceDelta;
-          if (_estimatedCoupling != null &&
-              _estimatedCoupling!.abs() > 1e-9) {
-            // Adaptive: use the coupling measured from the last cycle.
-            // Coupling is negative (tighten → Z↑), so targetZMm /
-            // coupling gives the correct sign automatically.
-            // Clamp to ±3000 gf — the sensor can handle it.
-            forceDelta = (targetZMm / _estimatedCoupling!)
-                .clamp(-3000.0, 3000.0);
-          } else {
-            // No coupling estimate yet (first cycle) or estimate is
-            // zero — use a force-difference heuristic for MAGNITUDE
-            // but let the Z gap set the DIRECTION.  The old heuristic
-            // ((frontMax−backMin)·2) always produced a positive delta
-            // (tighten), which was wrong when the back was already
-            // too high.
-            final frontMax =
-                (allForces[0]! > allForces[1]! ? allForces[0]! : allForces[1]!);
-            final backMin =
-                (allForces[2]! < allForces[3]! ? allForces[2]! : allForces[3]!);
-            // No coupling estimate yet — use the raw force spread across
-            // corners as a rough magnitude hint.  The force sensor is
-            // noisy and the actual mm/gf coupling varies 50× across
-            // printers, so this is inherently a guess.  We keep the
-            // multiplier at 1× (no artificial gain) and let the
-            // subsequent cycle with real coupling data do the precise
-            // correction.
-            final double forceDiffMag =
-                ((frontMax - backMin)).abs().clamp(100.0, 2000.0);
-            // zGapMm > 0 → back too low → TIGHTEN → forceDelta negative
-            // zGapMm < 0 → back too high → LOOSEN → forceDelta positive
-            final bool needTightenBack = zGapMm > 0;
-            forceDelta = needTightenBack ? -forceDiffMag : forceDiffMag;
+          // The command was computed once when the re-probe completed
+          // (see _runAdjustmentProbe) and is only rendered here, so
+          // rebuilds can't shift the target.  Sign conventions and the
+          // adaptive coupling estimator live in BackScrewController.
+          if (_pendingBackCommand == null) {
+            return const SizedBox.shrink();
           }
-          targetForce = allForces[idx]! + forceDelta;
-          _lastTargetForce = targetForce;
+          targetForce = _pendingBackCommand!.targetForceGf;
         }
 
         final double cornerForce = allForces[idx]!;
@@ -1673,48 +1644,26 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
                   : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
 
-          // Expected Z change — for back screw we have a damped target
           if (idx >= 2) {
-            // Re-derive targetZMm for the prediction (same damping calc)
-            final rawZ = _cornerResults
-                .map((r) => r?.measurements?.secondStageTriggerZ)
-                .toList();
-            final zValues = _compensatedCorners(rawZ);
-            final frontAvgZ = zValues.length >= 4
-                ? (zValues[0] + zValues[1]) / 2
-                : 0.0;
-            final backZ = zValues.length >= 4 ? zValues[idx] : 0.0;
-            final zGapMm = frontAvgZ - backZ;
-            final bool hasEstimate = _estimatedCoupling != null &&
-                _estimatedCoupling!.abs() > 1e-9;
-            final double predDamping = hasEstimate ? 0.60 : 1.0;
-            final double predBias = hasEstimate ? 0.03 : 0.05;
-            _predictionZMm = (zGapMm * predDamping +
-                    (zGapMm > 0 ? predBias : -predBias))
-                .abs();
+            // Back screw — the command carries its own damped target
+            // and a clamp-aware recheck estimate.
+            _predictionZMm = _pendingBackCommand!.cmd.targetZMm.abs();
+            _predictionRechecks = _pendingBackCommand!.cmd.predictedRechecks;
           } else {
             // Front screw — rough estimate from force delta magnitude
-            if (_estimatedCoupling != null &&
-                _estimatedCoupling!.abs() > 1e-9) {
+            if (_backScrew.hasMeasuredSample) {
               _predictionZMm =
-                  (forceDeltaGf.abs() * _estimatedCoupling!.abs())
+                  (forceDeltaGf.abs() * _backScrew.coupling.abs())
                       .clamp(0.0, 0.5);
             } else {
               _predictionZMm = 0.1; // conservative default
             }
-          }
 
-          // Estimated rechecks remaining to reach <= 0.100 mm
-          {
+            // Estimated rechecks remaining to reach <= 0.100 mm
             double remaining = _cornerDeviation;
             int cycles = 0;
-            // Use the same damping as the correction target: full
-            // correction on first cycle, damped on subsequent ones.
-            final bool hasEstimate = _estimatedCoupling != null &&
-                _estimatedCoupling!.abs() > 1e-9;
-            final double damping = hasEstimate ? 0.60 : 1.0;
             while (remaining > 0.100 && cycles < 20) {
-              remaining *= (1.0 - damping);
+              remaining *= (1.0 - BackScrewController.dampingRatio);
               cycles++;
             }
             _predictionRechecks = cycles;

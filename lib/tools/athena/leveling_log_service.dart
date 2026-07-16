@@ -116,9 +116,28 @@ class LevelingLogService {
       // ── Coupling estimate ──
       if (entry.estimatedCoupling != null) {
         final c = entry.estimatedCoupling!;
-        buf.writeln('Coupling Est: ${c.toStringAsFixed(6)} mm/gf  (≈${(1.0 / c).toStringAsFixed(0)} gf needed per 1 mm of Z movement)');
+        final seedTag = (entry.couplingIsSeed ?? false)
+            ? '  (seed — no measured sample yet)'
+            : '';
+        buf.writeln('Coupling Est: ${c.toStringAsFixed(6)} mm/gf  (≈${(1.0 / c).toStringAsFixed(0)} gf needed per 1 mm of gap movement)$seedTag');
       } else {
         buf.writeln('Coupling Est: -- (first cycle, no estimate yet)');
+      }
+
+      // ── Adjustment-cycle telemetry (back-screw cycles only) ──
+      if (entry.commandedDeltaGf != null) {
+        buf.write('  Command:   ${entry.commandedDeltaGf!.toStringAsFixed(0)} gf');
+        if (entry.gapAtCommandMm != null) {
+          buf.write(' at gap ${entry.gapAtCommandMm!.toStringAsFixed(3)} mm');
+        }
+        buf.writeln();
+        if (entry.measuredGapMoveMm != null) {
+          buf.write('  Measured:  gap moved ${entry.measuredGapMoveMm!.toStringAsFixed(3)} mm');
+          if (entry.couplingSample != null) {
+            buf.write(' → sample ${entry.couplingSample!.toStringAsFixed(6)} mm/gf');
+          }
+          buf.writeln('  ${_sampleOutcomeTag(entry)}');
+        }
       }
 
       // ── Divergence detection ──
@@ -179,6 +198,30 @@ class LevelingLogService {
   static String _fmt(double? v, int width) {
     if (v == null) return '--'.padRight(width);
     return v.toStringAsFixed(2).padRight(width);
+  }
+
+  /// Human-readable tag for the coupling-sample outcome of this cycle.
+  static String _sampleOutcomeTag(LevelingLogEntry entry) {
+    switch (entry.sampleOutcome) {
+      case 'accepted':
+        return '[ACCEPTED]';
+      case 'acceptedClamped':
+        return '[ACCEPTED, clamped into plausible band]';
+      case 'rejectedPositiveSample':
+        return '[REJECTED: positive sample — wrong-way turn or noise]';
+      case 'rejectedSmallDelta':
+        return '[REJECTED: commanded delta below 150 gf]';
+      case 'stictionEscalated':
+        final n = entry.stictionEscalations;
+        return '[STICTION: no measurable movement — force ×3 next cycle'
+            '${n != null ? " (n=$n)" : ""}]';
+      case 'noPendingCommand':
+        return '[no pending command]';
+      default:
+        return entry.sampleOutcome != null
+            ? '[${entry.sampleOutcome}]'
+            : '';
+    }
   }
 
   /// Convert ISO 8601 UTC timestamp to a friendlier local-time-ish format.
