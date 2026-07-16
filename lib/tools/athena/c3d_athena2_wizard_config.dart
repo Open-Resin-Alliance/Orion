@@ -16,7 +16,7 @@
 */
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:orion/tools/leveling_configs.dart';
+import 'package:orion/tools/athena/leveling_configs.dart';
 
 const athena2BaseWorkflowSteps = [
   LevelingWorkflowStep(

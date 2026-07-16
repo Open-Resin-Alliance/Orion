@@ -18,7 +18,7 @@
 import 'dart:io';
 
 import 'package:logging/logging.dart';
-import 'package:orion/tools/leveling_log_entry.dart';
+import 'package:orion/tools/athena/leveling_log_entry.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:path/path.dart' as path;
 

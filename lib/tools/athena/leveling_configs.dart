@@ -17,7 +17,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:orion/tools/c3d_athena2_wizard_config.dart';
+import 'package:orion/tools/athena/c3d_athena2_wizard_config.dart';
 
 enum LevelingWorkflowStepKind {
   prepare,

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orion/backend_service/athena_iot/models/force_leveling_workflow.dart';
-import 'package:orion/tools/leveling_configs.dart';
-import 'package:orion/tools/leveling_workflow_engine.dart';
+import 'package:orion/tools/athena/leveling_configs.dart';
+import 'package:orion/tools/athena/leveling_workflow_engine.dart';
 
 void main() {
   group('ForceLevelingWorkflowResponse', () {

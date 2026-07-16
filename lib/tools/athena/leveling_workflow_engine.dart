@@ -19,7 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/athena_iot/models/force_leveling_workflow.dart';
 import 'package:orion/backend_service/backend_service.dart';
-import 'package:orion/tools/leveling_configs.dart';
+import 'package:orion/tools/athena/leveling_configs.dart';
 
 typedef ForceLevelingRunner = Future<ForceLevelingWorkflowResponse> Function(
   String endpoint,
