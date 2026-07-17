@@ -349,6 +349,40 @@ void main() {
     });
   });
 
+  group('ScrewController cross-seeding', () {
+    test('an unmeasured controller adopts a sibling coupling', () {
+      final back = ScrewController();
+      _cycle(back, 0.4, -1.7e-4); // back learns the plate's coupling
+      expect(back.hasMeasuredSample, isTrue);
+
+      final fr = ScrewController();
+      fr.adoptSeed(back.coupling);
+      expect(fr.coupling, closeTo(-1.7e-4, 1e-9));
+      expect(fr.hasMeasuredSample, isFalse); // adopted, not measured
+      // First FR command is now plate-scaled instead of seed-scaled:
+      // session 27e976fe's FR first move was only 46% of target off
+      // the generic seed.
+      expect(fr.command(zGapMm: 0.3).forceDeltaGf,
+          closeTo(0.3 / -1.7e-4, 1.0));
+    });
+
+    test('adoptSeed never overwrites a measured coupling', () {
+      final ctrl = ScrewController();
+      _cycle(ctrl, 0.4, -2.4e-4);
+      expect(ctrl.coupling, closeTo(-2.4e-4, 1e-9));
+      ctrl.adoptSeed(-1.0e-4);
+      expect(ctrl.coupling, closeTo(-2.4e-4, 1e-9)); // unchanged
+    });
+
+    test('adopted seeds are clamped into the plausible band', () {
+      final ctrl = ScrewController();
+      ctrl.adoptSeed(-5e-3); // absurdly sensitive
+      expect(ctrl.coupling, ScrewController.couplingMostSensitive);
+      ctrl.adoptSeed(-1e-6); // absurdly stiff
+      expect(ctrl.coupling, ScrewController.couplingStiffest);
+    });
+  });
+
   group('ScrewController pending lifecycle', () {
     test('recheck without a pending command is a no-op', () {
       final ctrl = ScrewController();

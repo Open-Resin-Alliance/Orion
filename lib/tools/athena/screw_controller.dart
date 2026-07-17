@@ -211,6 +211,18 @@ class ScrewController {
 
   bool get hasPendingCommand => _pendingDeltaGf != null;
 
+  /// Adopt [coupling] from another screw's measured sample as a better
+  /// starting point than the generic seed — materially different from a
+  /// first-cycle blind guess because all screws on the same plate share
+  /// similar coupling geometry (within ~2× in the field).  No-op when a
+  /// measured sample already exists.
+  void adoptSeed(double couplingFromSibling) {
+    if (_hasMeasuredSample) return;
+    _coupling = couplingFromSibling
+        .clamp(couplingMostSensitive, couplingStiffest)
+        .toDouble();
+  }
+
   /// Compute the force command for the current gap.  Pure — does not
   /// change controller state; call [recordCommand] once the command is
   /// actually shown to the user.

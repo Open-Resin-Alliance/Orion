@@ -121,9 +121,25 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   int _consecutiveBackAdjustments = 0; // detect maxed-out back screw
 
   /// The controller for the screw that drives [cornerIndex]
-  /// (both back corners share one screw).
-  ScrewController _controllerForCorner(int cornerIndex) =>
-      _screwControllers[cornerIndex >= 2 ? 2 : cornerIndex]!;
+  /// (both back corners share one screw).  Cross-seeds an unmeasured
+  /// controller from a sibling with a measured coupling — the screws
+  /// on one plate share similar geometry, and this saves the
+  /// half-effective relearning cycle each screw otherwise pays on its
+  /// first adjustment (session 27e976fe: FR and FL first commands
+  /// moved only 46% / 35% of target from the generic seed while the
+  /// back screw already knew the plate's coupling).
+  ScrewController _controllerForCorner(int cornerIndex) {
+    final controller = _screwControllers[cornerIndex >= 2 ? 2 : cornerIndex]!;
+    if (!controller.hasMeasuredSample) {
+      for (final sibling in _screwControllers.values) {
+        if (sibling.hasMeasuredSample) {
+          controller.adoptSeed(sibling.coupling);
+          break;
+        }
+      }
+    }
+    return controller;
+  }
 
   // Prediction summary — shown to the user before they turn the screw
   String? _predictionDirection; // e.g. "Tighten"
@@ -2644,9 +2660,11 @@ class _WorkflowPane extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        // Divergence warning: recheck is worse than the pre-adjustment check
+        // Divergence warning: recheck is worse than the pre-adjustment check.
+        // Gate 0.15 mm — the leapfrog +0.1 bias deliberately creates overshoot
+        // that can exceed the old 0.02 mm noise gate.
         if (preAdjustmentDeviation != null &&
-            deviation > preAdjustmentDeviation! + 0.02)
+            deviation > preAdjustmentDeviation! + 0.15)
           Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
