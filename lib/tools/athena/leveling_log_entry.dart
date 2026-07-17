@@ -115,6 +115,7 @@ class LevelingLogEntry {
     this.estimatedCoupling,
     this.couplingIsSeed,
     this.preAdjustmentDeviation,
+    this.adjustedScrew,
     this.commandedDeltaGf,
     this.gapAtCommandMm,
     this.measuredGapMoveMm,
@@ -143,7 +144,11 @@ class LevelingLogEntry {
   /// recheck.  Used to detect divergence (adjustment going the wrong way).
   final double? preAdjustmentDeviation;
 
-  // ── Adjustment-cycle telemetry (back-screw cycles only) ──
+  // ── Adjustment-cycle telemetry ──
+
+  /// Which screw the preceding adjustment targeted ('FL', 'FR', 'BACK'),
+  /// null when no adjustment preceded this check.
+  final String? adjustedScrew;
 
   /// Force delta the gauge asked the user to reach (gf, negative = tighten).
   final double? commandedDeltaGf;
@@ -175,6 +180,7 @@ class LevelingLogEntry {
         'estimated_coupling_mm_per_gf': estimatedCoupling,
         'coupling_is_seed': couplingIsSeed,
         'pre_adjustment_deviation_mm': preAdjustmentDeviation,
+        'adjusted_screw': adjustedScrew,
         'commanded_delta_gf': commandedDeltaGf,
         'gap_at_command_mm': gapAtCommandMm,
         'measured_gap_move_mm': measuredGapMoveMm,

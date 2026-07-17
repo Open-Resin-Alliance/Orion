@@ -124,11 +124,14 @@ class LevelingLogService {
         buf.writeln('Coupling Est: -- (first cycle, no estimate yet)');
       }
 
-      // ── Adjustment-cycle telemetry (back-screw cycles only) ──
+      // ── Adjustment-cycle telemetry ──
       if (entry.commandedDeltaGf != null) {
         buf.write('  Command:   ${entry.commandedDeltaGf!.toStringAsFixed(0)} gf');
         if (entry.gapAtCommandMm != null) {
           buf.write(' at gap ${entry.gapAtCommandMm!.toStringAsFixed(3)} mm');
+        }
+        if (entry.adjustedScrew != null) {
+          buf.write(' (${entry.adjustedScrew} screw)');
         }
         buf.writeln();
         if (entry.measuredGapMoveMm != null) {

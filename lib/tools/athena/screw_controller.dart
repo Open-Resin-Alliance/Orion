@@ -1,5 +1,5 @@
 /*
-* Orion - Back Screw Controller
+* Orion - Leveling Screw Controller
 * Copyright (C) 2026 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,23 +17,90 @@
 
 import 'dart:math' as math;
 
-/// Adaptive force→Z coupling controller for the shared back leveling screw.
+/// Corner indexing used throughout leveling: 0=FL, 1=FR, 2=BR, 3=BL.
+/// Screw mapping: corners 0/1 → the respective front screw, corners
+/// 2/3 → the single shared back screw on the centerline.
+///
+/// Pick which corner (and therefore which screw) to adjust for the
+/// given corner Z values.
+///
+/// Pure front-to-back tilt (both front corners on one side of both
+/// back corners) → the shared back screw, represented by the back
+/// corner furthest from the front-plane average (for puck placement
+/// and gauge anchoring).
+///
+/// Anything else is a diagonal imbalance and is ALWAYS routed to the
+/// FRONT corner of the worst diagonal pair.  The back screw sits on
+/// the centerline and cannot twist the plate — it raises or lowers
+/// BOTH back corners, so "fixing" a low back corner with it converts
+/// the diagonal error into front-back tilt and the wizard ping-pongs
+/// between tighten and loosen forever.  The front screws are the only
+/// per-side actuators: tightening a front corner raises it and lowers
+/// its diagonal-opposite rear corner via the cantilever pivot (and
+/// vice versa), which is exactly the corrective motion a diagonal
+/// needs.
+int selectAdjustmentCorner(List<double> z) {
+  assert(z.length >= 4);
+  final frontAvg = (z[0] + z[1]) / 2;
+  final allFrontHigher =
+      z[0] > z[2] && z[0] > z[3] && z[1] > z[2] && z[1] > z[3];
+  final allBackHigher =
+      z[2] > z[0] && z[2] > z[1] && z[3] > z[0] && z[3] > z[1];
+
+  if (allFrontHigher || allBackHigher) {
+    // Front-to-back tilt → back screw; show the worst back outlier.
+    return (z[2] - frontAvg).abs() >= (z[3] - frontAvg).abs() ? 2 : 3;
+  }
+
+  // Diagonal imbalance → the front corner of the worst pair.
+  final diagFLBR = (z[0] - z[2]).abs(); // FL ↔ BR
+  final diagFRBL = (z[1] - z[3]).abs(); // FR ↔ BL
+  return diagFLBR >= diagFRBL ? 0 : 1;
+}
+
+/// Signed gap the screw for [cornerIndex] should close (mm).
+///
+/// Positive → the adjusted corner is LOW relative to its reference →
+/// tighten; negative → high → loosen.
+///
+/// * Back screw (2/3): front average minus BACK AVERAGE — the shared
+///   screw moves the whole back edge, so the edge average is the
+///   controlled variable, not one outlier corner.
+/// * Front screws: the two corners NOT on the adjusting corner's
+///   diagonal sit on the pivot axis and form the reference plane
+///   (FL ref = FR+BL, FR ref = FL+BR).
+double adjustmentGapMm(int cornerIndex, List<double> z) {
+  assert(z.length >= 4);
+  switch (cornerIndex) {
+    case 0:
+      return (z[1] + z[3]) / 2 - z[0];
+    case 1:
+      return (z[0] + z[2]) / 2 - z[1];
+    default:
+      return (z[0] + z[1]) / 2 - (z[2] + z[3]) / 2;
+  }
+}
+
+/// Adaptive force→Z coupling controller for ONE leveling screw.
+/// Instantiate one per screw (FL, FR, back) — coupling is a physical
+/// property of each screw's lever geometry and must not cross-mix.
 ///
 /// SIGN CONVENTIONS (fixed by the hardware, documented once here):
 ///   * Probe forces are compressive and NEGATIVE (gram-force).
-///   * Tightening the back screw makes the corner force MORE negative
-///     (ΔF < 0) and raises the back edge relative to the front.
-///   * The gap is defined as `frontAvgZ − backZ`: positive → back too low.
+///   * Tightening a screw makes its corner force MORE negative
+///     (ΔF < 0) and raises the corner relative to its reference plane.
+///   * The gap is defined as `referenceZ − cornerZ` (see
+///     [adjustmentGapMm]): positive → adjusted corner too low.
 ///   * Tightening therefore SHRINKS a positive gap, so the coupling
 ///     (relative Z movement per gram-force) is ALWAYS negative.
 ///
-/// The controller works entirely in GAP space, not raw back-corner Z.
-/// Tightening the back screw pivots the plate about the front screw
-/// line, so the probed front corners move down as the back moves up —
-/// the gap responds 2–3× more than the raw back Z.  Measuring coupling
-/// on raw Z (as earlier revisions did) systematically underestimates
-/// sensitivity and commands 2–3× too much force.  The gap also cancels
-/// the common-mode Z frame drift between rechecks (±0.05 mm and more).
+/// The controller works entirely in GAP space, not raw corner Z.
+/// Adjusting a screw pivots the plate, so the reference corners move
+/// opposite to the adjusted corner — the gap responds 2–3× more than
+/// the raw corner Z.  Measuring coupling on raw Z (as earlier
+/// revisions did) systematically underestimates sensitivity and
+/// commands 2–3× too much force.  The gap also cancels the
+/// common-mode Z frame drift between rechecks (±0.05 mm and more).
 ///
 /// The coupling sample denominator is the COMMANDED force delta: the
 /// live gauge is anchored to the same re-probe the command was computed
@@ -41,7 +108,7 @@ import 'dart:math' as math;
 /// commanded delta is exact by construction.  (Earlier revisions
 /// differenced two probe force readings, whose ±300–500 gf noise is the
 /// same order as the delta itself and could even flip its sign.)
-class BackScrewController {
+class ScrewController {
   /// Conservative first-cycle coupling (mm/gf).  Deliberately near the
   /// sensitive end of the observed field range so uncalibrated cycles
   /// undershoot: with [dampingRatio] 0.75 the loop tolerates the true
@@ -110,7 +177,7 @@ class BackScrewController {
   /// Compute the force command for the current gap.  Pure — does not
   /// change controller state; call [recordCommand] once the command is
   /// actually shown to the user.
-  BackScrewCommand command({required double zGapMm}) {
+  ScrewCommand command({required double zGapMm}) {
     final targetZMm = zGapMm * dampingRatio;
     final rawDelta = targetZMm / _coupling;
     final forceDeltaGf =
@@ -128,7 +195,7 @@ class BackScrewController {
       rechecks++;
     }
 
-    return BackScrewCommand(
+    return ScrewCommand(
       zGapMm: zGapMm,
       targetZMm: targetZMm,
       forceDeltaGf: forceDeltaGf,
@@ -142,7 +209,7 @@ class BackScrewController {
   /// Snapshot a command that was shown to the user, so the next
   /// [onRecheck] can measure what it achieved.  A repeated call
   /// overwrites the previous pending command.
-  void recordCommand(BackScrewCommand cmd) {
+  void recordCommand(ScrewCommand cmd) {
     _pendingGapMm = cmd.zGapMm;
     _pendingDeltaGf = cmd.forceDeltaGf;
   }
@@ -168,7 +235,7 @@ class BackScrewController {
       );
     }
 
-    // Relative movement of the back edge toward the front plane:
+    // Relative movement of the adjusted corner toward its reference:
     // positive when the gap shrank in the commanded sense.
     final gapMove = pendingGap - newGapMm;
 
@@ -249,10 +316,10 @@ class BackScrewController {
   }
 }
 
-/// A force command for the back screw, expressed both as the desired
+/// A force command for a leveling screw, expressed both as the desired
 /// relative Z correction and the gauge force delta that should achieve it.
-class BackScrewCommand {
-  const BackScrewCommand({
+class ScrewCommand {
+  const ScrewCommand({
     required this.zGapMm,
     required this.targetZMm,
     required this.forceDeltaGf,
@@ -262,7 +329,7 @@ class BackScrewCommand {
     required this.predictedRechecks,
   });
 
-  /// Gap (frontAvgZ − backZ) the command was computed from.
+  /// Gap (see [adjustmentGapMm]) the command was computed from.
   final double zGapMm;
 
   /// Damped correction target (signed, gap-mm).
@@ -271,7 +338,7 @@ class BackScrewCommand {
   /// Signed force delta for the gauge; negative = tighten.
   final double forceDeltaGf;
 
-  /// Whether [forceDeltaGf] hit the ±[BackScrewController.maxForceDeltaGf]
+  /// Whether [forceDeltaGf] hit the ±[ScrewController.maxForceDeltaGf]
   /// ceiling.
   final bool clamped;
 
@@ -282,7 +349,7 @@ class BackScrewCommand {
   final double predictedGapAfterMm;
 
   /// Estimated rechecks (including the upcoming one) until the gap is
-  /// within [BackScrewController.passGapMm].
+  /// within [ScrewController.passGapMm].
   final int predictedRechecks;
 }
 

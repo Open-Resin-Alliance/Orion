@@ -18,12 +18,12 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:orion/tools/athena/back_screw_controller.dart';
+import 'package:orion/tools/athena/screw_controller.dart';
 
 /// Drive one closed-loop cycle against a simulated printer with true
 /// coupling [trueC]: command → user reaches force target → plate moves
 /// by trueC · delta → recheck.  Returns the new gap.
-double _cycle(BackScrewController ctrl, double gap, double trueC,
+double _cycle(ScrewController ctrl, double gap, double trueC,
     {double noise = 0.0}) {
   final cmd = ctrl.command(zGapMm: gap);
   ctrl.recordCommand(cmd);
@@ -34,8 +34,8 @@ double _cycle(BackScrewController ctrl, double gap, double trueC,
 
 /// Build a controller escalated down to the stiffness floor via
 /// repeated zero-movement rechecks.
-BackScrewController _flooredController() {
-  final ctrl = BackScrewController();
+ScrewController _flooredController() {
+  final ctrl = ScrewController();
   for (int i = 0; i < 3; i++) {
     final cmd = ctrl.command(zGapMm: 0.25);
     ctrl.recordCommand(cmd);
@@ -45,9 +45,69 @@ BackScrewController _flooredController() {
 }
 
 void main() {
-  group('BackScrewController command', () {
+  group('corner selection and gap (session b9ef2b8f regression)', () {
+    // Z order: FL, FR, BR, BL.
+    test('recheck #0: pure front-back tilt → back screw, tighten', () {
+      const z = [0.88, 0.99, 0.47, 0.44]; // both fronts above both backs
+      final corner = selectAdjustmentCorner(z);
+      expect(corner, 3); // BL is the worst back outlier
+      expect(adjustmentGapMm(corner, z), closeTo(0.48, 1e-9));
+      // Positive gap → tighten: raises the whole back edge. Correct.
+    });
+
+    test('recheck #1: FR↔BL diagonal → FR screw, LOOSEN (not back-tighten)',
+        () {
+      // Front-back was essentially level (gap 0.073) but FR sat 0.19
+      // above BL.  The old logic picked BL → back screw → tighten,
+      // which raised BOTH back corners and converted the diagonal
+      // error into back-high tilt (recheck #2), ping-ponging forever.
+      const z = [0.63, 0.79, 0.68, 0.60];
+      final corner = selectAdjustmentCorner(z);
+      expect(corner, 1); // FR — the front corner of the worst diagonal
+      final gap = adjustmentGapMm(corner, z); // (FL+BR)/2 − FR
+      expect(gap, closeTo(-0.135, 1e-9));
+      expect(gap, lessThan(0)); // FR high → LOOSEN
+      // And the command must actually say loosen (positive delta):
+      expect(ScrewController().command(zGapMm: gap).forceDeltaGf,
+          greaterThan(0));
+    });
+
+    test('recheck #2: back higher everywhere → back screw, loosen', () {
+      const z = [0.51, 0.68, 0.83, 0.74];
+      final corner = selectAdjustmentCorner(z);
+      expect(corner, 2); // BR is the worst back outlier
+      final gap = adjustmentGapMm(corner, z); // frontAvg − backAvg
+      expect(gap, closeTo(-0.19, 1e-9));
+      expect(gap, lessThan(0)); // loosen brings the back edge down
+    });
+
+    test('a low back corner in a diagonal routes to the front screw', () {
+      // BL low but BR fine: not a front-back tilt, so the back screw
+      // (which would raise BR too) must not be chosen.
+      const z = [0.60, 0.80, 0.75, 0.58];
+      expect(selectAdjustmentCorner(z), 1); // FR↔BL pair → FR
+    });
+
+    test('FL↔BR diagonal routes to FL', () {
+      const z = [0.45, 0.68, 0.83, 0.60]; // FL low, BR high, BL below FR
+      final corner = selectAdjustmentCorner(z);
+      expect(corner, 0);
+      // (FR+BL)/2 − FL = 0.64 − 0.45 → FL low → tighten
+      expect(adjustmentGapMm(corner, z), closeTo(0.19, 1e-9));
+    });
+
+    test('back gap uses the back average, not one outlier corner', () {
+      const z = [0.50, 0.50, 0.20, 0.40]; // both backs low, BR much lower
+      final corner = selectAdjustmentCorner(z);
+      expect(corner, 2); // BR shown for puck placement
+      // Gap targets the edge average (0.30), not the BR outlier (0.20):
+      expect(adjustmentGapMm(corner, z), closeTo(0.20, 1e-9));
+    });
+  });
+
+  group('ScrewController command', () {
     test('seed command direction and magnitude', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       final cmd = ctrl.command(zGapMm: 0.18); // back too low → tighten
       expect(cmd.targetZMm, closeTo(0.135, 1e-9)); // 0.75 damping, no bias
       expect(cmd.forceDeltaGf, closeTo(-270.0, 1e-6)); // 0.135 / -5e-4
@@ -71,23 +131,23 @@ void main() {
     });
 
     test('predicted rechecks is 1 when the estimate covers the gap', () {
-      final cmd = BackScrewController().command(zGapMm: 0.25);
+      final cmd = ScrewController().command(zGapMm: 0.25);
       expect(cmd.predictedRechecks, 1); // 0.25 → 0.0625 ≤ 0.100
     });
   });
 
-  group('BackScrewController estimator', () {
+  group('ScrewController estimator', () {
     test('rejects physically-impossible positive samples', () {
       // Field-log regression: gap got WORSE by drift/noise after a
       // tighten command.  The old estimator fed this into the EMA and
       // reversed the gauge direction on the next cycle.
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       final cmd = ctrl.command(zGapMm: 0.18);
       ctrl.recordCommand(cmd);
       final r = ctrl.onRecheck(newGapMm: 0.21); // moved the wrong way
       expect(r.outcome, CouplingUpdateOutcome.rejectedPositiveSample);
       expect(r.sample, greaterThan(0));
-      expect(ctrl.coupling, BackScrewController.seedCouplingMmPerGf);
+      expect(ctrl.coupling, ScrewController.seedCouplingMmPerGf);
       expect(ctrl.hasMeasuredSample, isFalse);
     });
 
@@ -95,7 +155,7 @@ void main() {
         () {
       // Replay the field failure pattern: overshoots, drift reversals
       // and normal moves interleaved across 7 cycles.
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       const cycles = <(double, double)>[
         (0.154, -0.139), // overshoot past zero (session 347417ed #0→#1)
         (-0.139, -0.099), // partial correction
@@ -115,13 +175,13 @@ void main() {
         expect(ctrl.coupling, lessThan(0));
         expect(
             ctrl.coupling,
-            inInclusiveRange(BackScrewController.couplingMostSensitive,
-                BackScrewController.couplingStiffest));
+            inInclusiveRange(ScrewController.couplingMostSensitive,
+                ScrewController.couplingStiffest));
       }
     });
 
     test('overshoot self-corrects: first sample replaces the seed', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       const trueC = -7.5e-4; // most sensitive printer seen in the field
 
       final cmd = ctrl.command(zGapMm: 0.25);
@@ -141,7 +201,7 @@ void main() {
     });
 
     test('subsequent samples are EMA-smoothed', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       var gap = _cycle(ctrl, 0.25, -2.0e-4); // first sample replaces seed
       expect(ctrl.coupling, closeTo(-2.0e-4, 1e-9));
       _cycle(ctrl, gap, -1.0e-4); // second sample EMA 50/50
@@ -150,7 +210,7 @@ void main() {
 
     test('stiction escalation triples force until movement is measurable',
         () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       const trueC = -2.5e-5; // stiffest printer seen in the field
 
       // Cycle 1: seed command moves the plate < 0.02 mm → escalate.
@@ -174,7 +234,7 @@ void main() {
     });
 
     test('stiction escalation floors at the stiffness bound and caps', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       for (int i = 0; i < 8; i++) {
         final cmd = ctrl.command(zGapMm: 0.25);
         expect(cmd.forceDeltaGf.abs(), lessThanOrEqualTo(3000.0));
@@ -183,50 +243,50 @@ void main() {
       }
       expect(ctrl.coupling, closeTo(-2e-5, 1e-12));
       expect(ctrl.stictionEscalations,
-          BackScrewController.maxStictionEscalations);
+          ScrewController.maxStictionEscalations);
     });
 
     test('small commands are skipped without escalation', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       final cmd = ctrl.command(zGapMm: 0.09); // delta = 135 gf < 150
       expect(cmd.forceDeltaGf.abs(), lessThan(150));
       ctrl.recordCommand(cmd);
       final r = ctrl.onRecheck(newGapMm: 0.09); // no movement either
       expect(r.outcome, CouplingUpdateOutcome.rejectedSmallDelta);
       expect(ctrl.stictionEscalations, 0);
-      expect(ctrl.coupling, BackScrewController.seedCouplingMmPerGf);
+      expect(ctrl.coupling, ScrewController.seedCouplingMmPerGf);
     });
 
     test('out-of-band samples are clamped, not rejected', () {
       // Too sensitive: 0.35 mm move on a -375 gf command → -9.3e-4.
-      final soft = BackScrewController();
+      final soft = ScrewController();
       final cmdS = soft.command(zGapMm: 0.25);
       soft.recordCommand(cmdS);
       final rS = soft.onRecheck(newGapMm: 0.25 - 0.35);
       expect(rS.outcome, CouplingUpdateOutcome.acceptedClamped);
-      expect(soft.coupling, BackScrewController.couplingMostSensitive);
+      expect(soft.coupling, ScrewController.couplingMostSensitive);
 
       // Too stiff: 0.05 mm move on a -3000 gf command → -1.67e-5.
-      final stiff = BackScrewController();
+      final stiff = ScrewController();
       final cmdT = stiff.command(zGapMm: 2.0); // saturates at -3000 gf
       expect(cmdT.forceDeltaGf, -3000.0);
       stiff.recordCommand(cmdT);
       final rT = stiff.onRecheck(newGapMm: 2.0 - 0.05);
       expect(rT.outcome, CouplingUpdateOutcome.acceptedClamped);
-      expect(stiff.coupling, BackScrewController.couplingStiffest);
+      expect(stiff.coupling, ScrewController.couplingStiffest);
     });
   });
 
-  group('BackScrewController pending lifecycle', () {
+  group('ScrewController pending lifecycle', () {
     test('recheck without a pending command is a no-op', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       final r = ctrl.onRecheck(newGapMm: 0.1);
       expect(r.outcome, CouplingUpdateOutcome.noPendingCommand);
-      expect(ctrl.coupling, BackScrewController.seedCouplingMmPerGf);
+      expect(ctrl.coupling, ScrewController.seedCouplingMmPerGf);
     });
 
     test('recording a second command overwrites the first', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       ctrl.recordCommand(ctrl.command(zGapMm: 0.25));
       final cmd2 = ctrl.command(zGapMm: 0.30);
       ctrl.recordCommand(cmd2);
@@ -237,7 +297,7 @@ void main() {
     });
 
     test('abandonPending discards the snapshot', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       ctrl.recordCommand(ctrl.command(zGapMm: 0.25));
       expect(ctrl.hasPendingCommand, isTrue);
       ctrl.abandonPending();
@@ -247,7 +307,7 @@ void main() {
     });
 
     test('pending is consumed by a recheck', () {
-      final ctrl = BackScrewController();
+      final ctrl = ScrewController();
       ctrl.recordCommand(ctrl.command(zGapMm: 0.25));
       ctrl.onRecheck(newGapMm: 0.10);
       expect(ctrl.hasPendingCommand, isFalse);
@@ -256,15 +316,15 @@ void main() {
     });
   });
 
-  group('BackScrewController convergence', () {
+  group('ScrewController convergence', () {
     const fieldRange = [-2.5e-5, -5e-5, -1e-4, -2.5e-4, -5e-4, -7.5e-4];
 
     test('noise-free: passes within 4 rechecks across the field range', () {
       for (final trueC in fieldRange) {
-        final ctrl = BackScrewController();
+        final ctrl = ScrewController();
         var gap = 0.25;
         var rechecks = 0;
-        while (gap.abs() > BackScrewController.passGapMm && rechecks < 10) {
+        while (gap.abs() > ScrewController.passGapMm && rechecks < 10) {
           gap = _cycle(ctrl, gap, trueC);
           rechecks++;
         }
@@ -277,7 +337,7 @@ void main() {
         () {
       final rand = Random(42);
       for (final trueC in fieldRange) {
-        final ctrl = BackScrewController();
+        final ctrl = ScrewController();
         var gap = 0.25;
         for (int i = 0; i < 12; i++) {
           final noise = (rand.nextDouble() * 2 - 1) * 0.03;
@@ -286,8 +346,8 @@ void main() {
               reason: 'trueC=$trueC diverged to $gap at cycle $i');
           expect(
               ctrl.coupling,
-              inInclusiveRange(BackScrewController.couplingMostSensitive,
-                  BackScrewController.couplingStiffest));
+              inInclusiveRange(ScrewController.couplingMostSensitive,
+                  ScrewController.couplingStiffest));
         }
       }
     });
