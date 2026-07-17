@@ -137,8 +137,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       List.filled(4, null);
 
   // Per-corner Z samples keyed by the step id that produced them.
-  // Each corner is probed twice per check (noise averaging); keying by
-  // step id keeps retries idempotent.  [_cornerZ] averages the values.
+  // Keying by step id keeps retries idempotent, and [_cornerZ]
+  // averages the values — so a future multi-probe check is a
+  // config-only change.
   final List<Map<String, double>> _cornerZByStep =
       List.generate(4, (_) => <String, double>{});
 
@@ -211,10 +212,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           final idx = _cornerLabelToIndex[step.cornerLabel!];
           if (idx != null && idx >= 0 && idx < 4) {
             _cornerResults[idx] = _engine.lastResponse;
-            // Accumulate the corner's Z sample keyed by step id so the
-            // first and second probe of a corner are averaged (and a
-            // retried step overwrites its own sample instead of
-            // duplicating it).
+            // Record the corner's Z sample keyed by step id (a retried
+            // step overwrites its own sample instead of duplicating it).
             final z = _engine.lastResponse!.measurements?.secondStageTriggerZ;
             if (z != null) {
               _cornerZByStep[idx][step.id] = z;
@@ -266,17 +265,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         if (step.autoAdvance) {
           _engine.advanceAfterSuccessfulStep();
           // Also auto-run the next step if it's a prepare move, final offset,
-          // a skipBackend/intermediate step (e.g. corner results), or an
-          // explicitly auto-running follow-up probe (second corner probe
-          // for noise averaging).
+          // or a skipBackend/intermediate step (e.g. corner results).
           // (but only if the workflow isn't complete)
           if (!_engine.isComplete) {
             final nextStep = _engine.currentStep;
             if (nextStep != null &&
                 (nextStep.kind == LevelingWorkflowStepKind.finalOffset ||
                     nextStep.kind == LevelingWorkflowStepKind.prepare ||
-                    nextStep.skipBackend ||
-                    nextStep.autoRun)) {
+                    nextStep.skipBackend)) {
               _autoAdvancing = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) _engine.runCurrentStep();
@@ -518,53 +514,27 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     if (mounted) setState(() {});
 
     try {
-      // Probe the corner twice and average the Z, mirroring the
-      // corner-check flow: a single probe carries ±0.05 mm of noise —
-      // half the pass budget — and this Z anchors the command.
-      final first = await BackendService().runForceLevelingWorkflow(
+      final response = await BackendService().runForceLevelingWorkflow(
         'probe_corner',
         requestTimeout: const Duration(seconds: 90),
       );
       if (!mounted) return;
 
-      if (!first.result) {
-        _adjustmentError = first.error.isNotEmpty
-            ? first.error
+      if (!response.result) {
+        _adjustmentError = response.error.isNotEmpty
+            ? response.error
             : FlutterI18n.translate(context, 'leveling.wizardProbeFailed');
         _adjustmentBusy = false;
         if (mounted) setState(() {});
         return;
       }
 
-      final idx = _adjustingCornerIndex!;
-      // The re-probe supersedes this corner's check samples.
-      _cornerZByStep[idx].clear();
-      final z1 = first.measurements?.secondStageTriggerZ;
-      if (z1 != null) _cornerZByStep[idx]['adjust_probe_a'] = z1;
-      _cornerResults[idx] = first;
-
-      // Second probe (best effort — a single sample still works).
-      try {
-        await BackendService().runForceLevelingWorkflow(
-          'probe_corner_prepare',
-          requestTimeout: const Duration(seconds: 90),
-        );
-        if (!mounted) return;
-        final second = await BackendService().runForceLevelingWorkflow(
-          'probe_corner',
-          requestTimeout: const Duration(seconds: 90),
-        );
-        if (!mounted) return;
-        if (second.result) {
-          final z2 = second.measurements?.secondStageTriggerZ;
-          if (z2 != null) _cornerZByStep[idx]['adjust_probe_b'] = z2;
-          // Anchor the gauge to the LAST probe — the live force frame
-          // the user will see corresponds to the most recent contact.
-          _cornerResults[idx] = second;
-        }
-      } catch (_) {
-        // Keep the single-probe sample.
-      }
+      final probedIdx = _adjustingCornerIndex!;
+      // The re-probe supersedes this corner's check sample.
+      _cornerZByStep[probedIdx].clear();
+      final z = response.measurements?.secondStageTriggerZ;
+      if (z != null) _cornerZByStep[probedIdx]['adjust_probe'] = z;
+      _cornerResults[probedIdx] = response;
     } catch (e) {
       _adjustmentError = e.toString();
       _adjustmentBusy = false;
@@ -584,9 +554,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           _cornerResults[idx]?.measurements?.firstStagePeakForce;
       if (zValues.length >= 4 && anchorForce != null) {
         // Positive gap → adjusted corner too low → tighten.  The
-        // adjusted corner's Z comes from the fresh re-probes (its
-        // samples were just replaced); the reference corners keep
-        // their corner-check averages.
+        // adjusted corner's Z comes from the fresh re-probe (its
+        // sample was just replaced); the reference corners keep
+        // their corner-check values.
         final zGapMm = adjustmentGapMm(idx, zValues);
         final controller = _controllerForCorner(idx);
         final cmd = controller.command(zGapMm: zGapMm);
@@ -652,8 +622,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     final corners = <String, CornerLogData>{};
     for (int i = 0; i < 4; i++) {
       final m = _cornerResults[i]?.measurements;
-      // finalZ is the double-probe AVERAGE — the value the wizard
-      // actually leveled with; force fields come from the last probe.
+      // finalZ comes from the sample accumulator — the value the
+      // wizard actually leveled with.
       corners[cornerLabels[i]] = CornerLogData(
         finalZ: _cornerZ(i),
         firstStagePeakForce: m?.firstStagePeakForce,
@@ -2293,9 +2263,9 @@ class _WorkflowPane extends StatelessWidget {
   final bool alignDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
 
-  /// Averaged per-corner Z values (double-probe mean) — the values the
-  /// wizard actually levels with; the results view must display the
-  /// same numbers.
+  /// Averaged per-corner Z values from the sample accumulator — the
+  /// values the wizard actually levels with; the results view must
+  /// display the same numbers.
   final List<double?> cornerZs;
   final double? preAdjustmentDeviation;
 
