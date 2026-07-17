@@ -48,42 +48,77 @@ void main() {
   group('corner selection and gap (field-session regressions)', () {
     // Z order: FL, FR, BR, BL.
     // Selection decomposes into D1 = FL−BR (FL screw), D2 = FR−BL
-    // (FR screw), pitch (back screw) and picks the screw leaving the
-    // smallest residual diagonal error.
+    // (FR screw); the back screw reduces both equally.  Adjustments
+    // are TIGHTEN-ONLY (loosening bleeds off screw preload): a high
+    // corner is fixed by raising everything else.
+    test('fc965bd2 #1: never commands a loosen — tighten back instead',
+        () {
+      // FL and FR are both the HIGH ends of their diagonals
+      // (D1 = 0.40, D2 = 0.15).  The direction-agnostic ranking chose
+      // "loosen FL" (best single move); tighten-only must route to
+      // the back screw.
+      const z = [0.80, 0.71, 0.40, 0.56];
+      expect(rankAdjustmentCandidates(z), [2]); // back only, shown at BR
+      final gap = adjustmentGapMm(2, z);
+      expect(gap, closeTo(0.40, 1e-9)); // the worse diagonal, not pitch
+      expect(ScrewController().command(zGapMm: gap).forceDeltaGf,
+          lessThan(0)); // tighten
+    });
+
+    test('every ranked candidate is a tighten, for any plate state', () {
+      // Sweep a grid of corner states; no candidate may ever carry a
+      // non-positive gap (which would render as a loosen command).
+      const levels = [0.0, 0.1, 0.25, 0.4];
+      for (final fl in levels) {
+        for (final fr in levels) {
+          for (final br in levels) {
+            for (final bl in levels) {
+              final z = [fl, fr, br, bl];
+              for (final corner in rankAdjustmentCandidates(z)) {
+                expect(adjustmentGapMm(corner, z), greaterThan(0),
+                    reason: 'z=$z corner=$corner must be a tighten');
+              }
+            }
+          }
+        }
+      }
+    });
+
     test('b9ef2b8f #0: pure front-back tilt → back screw, tighten', () {
       const z = [0.88, 0.99, 0.47, 0.44]; // both fronts above both backs
       final corner = selectAdjustmentCorner(z);
       expect(corner, 3); // BL is the worst back outlier
-      expect(adjustmentGapMm(corner, z), closeTo(0.48, 1e-9));
-      // Positive gap → tighten: raises the whole back edge. Correct.
+      // Back targets the worse diagonal (D2 = 0.55), not the pitch avg.
+      expect(adjustmentGapMm(corner!, z), closeTo(0.55, 1e-9));
     });
 
-    test('b9ef2b8f #1: FR↔BL diagonal → FR screw, LOOSEN (not back-tighten)',
-        () {
-      // Front-back was essentially level (gap 0.073) but FR sat 0.19
-      // above BL.  The original logic picked BL → back screw →
-      // tighten, which raised BOTH back corners and converted the
-      // diagonal error into back-high tilt, ping-ponging forever.
+    test('b9ef2b8f #1: FR is high — no FR loosen; FL then back ranked', () {
+      // D1 = −0.05 (FL slightly low), D2 = +0.19 (FR high).  FR would
+      // need loosening → not a candidate.  FL (residual 0.19) ranks
+      // before back (residual 0.24); FL's 0.05 gap is below the
+      // execution floor at the seed coupling, so the wizard falls
+      // through to the back screw — a 285 gf tighten that raises BL.
       const z = [0.63, 0.79, 0.68, 0.60];
-      final corner = selectAdjustmentCorner(z);
-      expect(corner, 1); // FR — leaves only |D1| = 0.05 of residual
-      final gap = adjustmentGapMm(corner, z); // BL − FR
-      expect(gap, closeTo(-0.19, 1e-9));
-      expect(gap, lessThan(0)); // FR high → LOOSEN
-      // And the command must actually say loosen (positive delta):
-      expect(ScrewController().command(zGapMm: gap).forceDeltaGf,
-          greaterThan(0));
+      expect(rankAdjustmentCandidates(z), [0, 3]);
+      final flCmd = ScrewController()
+          .command(zGapMm: adjustmentGapMm(0, z)); // 0.05 gap
+      expect(flCmd.forceDeltaGf.abs(),
+          lessThan(ScrewController.minCommandDeltaGf)); // floor-gated
+      final backCmd = ScrewController()
+          .command(zGapMm: adjustmentGapMm(3, z)); // max(D1,D2) = 0.19
+      expect(backCmd.forceDeltaGf, lessThan(0)); // tighten
+      expect(backCmd.forceDeltaGf.abs(),
+          greaterThanOrEqualTo(ScrewController.minCommandDeltaGf));
     });
 
-    test('b9ef2b8f #2: FL↔BR dominates → FL screw (front comes up)', () {
-      // Back higher on average, but the error is almost entirely the
-      // FL↔BR diagonal (0.32) with D2 only 0.06.  Loosening the back
-      // (the old pick) would leave ±0.13 of twist; tightening FL
-      // leaves just 0.06.
+    test('b9ef2b8f #2: FL↔BR dominates → tighten FL (front comes up)', () {
+      // D1 = −0.32 (FL low), D2 = −0.06.  Tightening FL leaves only
+      // 0.06 of residual; the back screw is not even a candidate
+      // (both diagonals have their FRONT corner low).
       const z = [0.51, 0.68, 0.83, 0.74];
       final corner = selectAdjustmentCorner(z);
       expect(corner, 0);
-      final gap = adjustmentGapMm(corner, z); // BR − FL
+      final gap = adjustmentGapMm(corner!, z); // BR − FL
       expect(gap, closeTo(0.32, 1e-9));
       expect(gap, greaterThan(0)); // FL low → TIGHTEN (raises FL, lowers BR)
     });
@@ -91,11 +126,11 @@ void main() {
     test('f2c9f74d #1: noise-level corner ordering must not pick the back',
         () {
       // BR (0.62) sat 0.02 above FL (0.60) — pure probe noise — but
-      // the old "all back corners higher" gate routed this dominant
+      // an old "all back corners higher" gate routed this dominant
       // FR↔BL diagonal (0.12) to the back screw, commanding an
       // unexecutable 64 gf loosen.
       const z = [0.60, 0.58, 0.62, 0.70];
-      expect(rankAdjustmentCandidates(z), [1, 3, 0]);
+      expect(rankAdjustmentCandidates(z), [1, 0]); // back not a candidate
       final gap = adjustmentGapMm(1, z); // BL − FR
       expect(gap, closeTo(0.12, 1e-9)); // FR low on its diagonal → tighten
       // The full-diagonal gap makes the command executable (≥150 gf):
@@ -105,38 +140,37 @@ void main() {
           greaterThanOrEqualTo(ScrewController.minCommandDeltaGf));
     });
 
-    test('a low back corner in a diagonal routes to the front screw', () {
-      // BL low but BR fine: not a front-back tilt, so the back screw
-      // (which would raise BR too) must not be chosen.
-      const z = [0.60, 0.80, 0.75, 0.58];
-      expect(selectAdjustmentCorner(z), 1); // FR↔BL pair → FR
-    });
-
     test('FL↔BR diagonal routes to FL', () {
       const z = [0.45, 0.68, 0.83, 0.60]; // FL low, BR high, BL below FR
       final corner = selectAdjustmentCorner(z);
       expect(corner, 0);
       // BR − FL = 0.38 → FL low → tighten
-      expect(adjustmentGapMm(corner, z), closeTo(0.38, 1e-9));
+      expect(adjustmentGapMm(corner!, z), closeTo(0.38, 1e-9));
     });
 
-    test('back gap uses the back average, not one outlier corner', () {
-      // Similar diagonals (D1 0.30, D2 0.20) → common-mode pitch →
-      // back screw, shown at the worse corner.
+    test('back screw targets the worse diagonal, not one outlier corner',
+        () {
+      // Similar diagonals (D1 0.30, D2 0.20) → only the back screw is
+      // a tighten candidate; it targets max(D1, D2).
       const z = [0.50, 0.50, 0.20, 0.30];
       final corner = selectAdjustmentCorner(z);
       expect(corner, 2); // BR shown for puck placement
-      // Gap targets the edge average (0.25), not the BR outlier (0.30):
-      expect(adjustmentGapMm(corner, z), closeTo(0.25, 1e-9));
+      expect(adjustmentGapMm(corner!, z), closeTo(0.30, 1e-9));
     });
 
     test('pure roll is worked corner by corner, not via the back screw',
         () {
-      // Left side high, right side low: the centerline back screw can
-      // correct none of it (pitch is zero).
+      // Left side high, right side low: FR is the low front → tighten
+      // FR first; the back screw (residual 0.40) ranks last.
       const z = [0.60, 0.40, 0.40, 0.60];
       final ranked = rankAdjustmentCandidates(z);
-      expect(ranked.first, isNot(anyOf(2, 3)));
+      expect(ranked.first, 1);
+      expect(adjustmentGapMm(1, z), closeTo(0.20, 1e-9)); // tighten
+    });
+
+    test('perfectly level plate has no candidates', () {
+      expect(rankAdjustmentCandidates([0.5, 0.5, 0.5, 0.5]), isEmpty);
+      expect(selectAdjustmentCorner([0.5, 0.5, 0.5, 0.5]), isNull);
     });
   });
 

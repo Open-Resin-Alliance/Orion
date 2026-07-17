@@ -431,7 +431,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     for (final corner in rankAdjustmentCandidates(zValues)) {
       final cmd = _controllerForCorner(corner)
           .command(zGapMm: adjustmentGapMm(corner, zValues));
-      if (cmd.forceDeltaGf.abs() >= ScrewController.minCommandDeltaGf) {
+      // Tighten-only policy: candidates always carry positive gaps, so
+      // the command is negative (tighten); it must also clear the
+      // execution floor.
+      if (cmd.forceDeltaGf <= -ScrewController.minCommandDeltaGf) {
         probeCorner = corner;
         break;
       }
@@ -588,8 +591,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         final controller = _controllerForCorner(idx);
         final cmd = controller.command(zGapMm: zGapMm);
         // The re-probe may have shrunk the gap below the execution
-        // floor even though the corner-check estimate cleared it.
-        if (cmd.forceDeltaGf.abs() < ScrewController.minCommandDeltaGf) {
+        // floor — or flipped its sign, which under the tighten-only
+        // policy must never turn into a loosen command.
+        if (cmd.forceDeltaGf > -ScrewController.minCommandDeltaGf) {
           _adjustmentBusy = false;
           _adjustmentStep = _AdjustmentStep.belowResolution;
           // No adjustment will happen — see _enterAdjustmentMode.
