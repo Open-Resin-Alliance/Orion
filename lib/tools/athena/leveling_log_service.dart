@@ -134,6 +134,24 @@ class LevelingLogService {
           buf.write(' (${entry.adjustedScrew} screw)');
         }
         buf.writeln();
+        // Where the gauge asked the user to stop vs where they did —
+        // separates "user under/overshot the target" from "plate
+        // moved differently than expected" in the Measured line.
+        if (entry.targetForceGf != null) {
+          buf.write('  Gauge:     target ${entry.targetForceGf!.toStringAsFixed(0)} gf');
+          if (entry.achievedForceGf != null) {
+            buf.write(', user stopped at ${entry.achievedForceGf!.toStringAsFixed(0)} gf');
+            if (entry.anchorForceGf != null) {
+              final achievedDelta =
+                  entry.achievedForceGf! - entry.anchorForceGf!;
+              buf.write(
+                  ' (achieved ${achievedDelta.toStringAsFixed(0)} of ${entry.commandedDeltaGf?.toStringAsFixed(0) ?? "--"} gf)');
+            }
+          } else {
+            buf.write(' (no live gauge reading captured)');
+          }
+          buf.writeln();
+        }
         if (entry.measuredGapMoveMm != null) {
           buf.write('  Measured:  gap moved ${entry.measuredGapMoveMm!.toStringAsFixed(3)} mm');
           if (entry.couplingSample != null) {

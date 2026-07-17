@@ -116,6 +116,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   };
   int? _lastAdjustedCorner;
   _PendingScrewCommand? _pendingCommand;
+  double? _lastAchievedForceGf; // what the live gauge read when the user stopped
   double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
   int _consecutiveBackAdjustments = 0; // detect maxed-out back screw
 
@@ -546,6 +547,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     // all share the same force reference frame.
     final idx = _adjustingCornerIndex!;
     _pendingCommand = null;
+    _lastAchievedForceGf = null; // fresh adjustment → fresh gauge snapshot
     {
       final zValues = _compensatedCorners(_rawCornerZs);
       final anchorForce =
@@ -611,8 +613,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     final adjustedScrew = _lastAdjustedCorner != null
         ? screwLabels[_lastAdjustedCorner!]
         : null;
+    final targetForceGf = _pendingCommand?.targetForceGf;
+    final anchorForceGf = _pendingCommand?.anchorForceGf;
+    final achievedGf = _lastAchievedForceGf;
     final telemetrySource = adjusted ?? _controllerForCorner(2);
     _lastAdjustedCorner = null;
+    _lastAchievedForceGf = null;
     _pendingCommand = null;
 
     final variant = _engine.variant?.id ?? 'unknown';
@@ -668,6 +674,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       couplingSample: update?.sample,
       sampleOutcome: update?.outcome.name,
       stictionEscalations: telemetrySource.stictionEscalations,
+      anchorForceGf: anchorForceGf,
+      targetForceGf: targetForceGf,
+      achievedForceGf: achievedGf,
     );
     LevelingLogService.logCornerCheck(entry);
   }
@@ -834,6 +843,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
               2: ScrewController(targetBiasMm: ScrewController.backLeapfrogBiasMm),
             };
             _pendingCommand = null;
+            _lastAchievedForceGf = null;
             _lastAdjustedCorner = null;
             setState(() {
               _phase = _WizardPhase.introAndChecklist;
@@ -1730,6 +1740,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           predictionZMm: _predictionZMm,
           predictionRechecks: _predictionRechecks,
           consecutiveBackAdjustments: _consecutiveBackAdjustments,
+          // Track where the user actually leaves the gauge so the
+          // recheck log can compare it against the suggested target.
+          onAchievedForce: (force) => _lastAchievedForceGf = force,
         );
     }
   }
@@ -2944,6 +2957,7 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
     this.predictionZMm,
     this.predictionRechecks,
     this.consecutiveBackAdjustments = 0,
+    this.onAchievedForce,
   });
 
   final int cornerIndex;
@@ -2958,6 +2972,12 @@ class _AdjustmentFeedbackScreen extends StatefulWidget {
   final double? predictionZMm;
   final int? predictionRechecks;
   final int consecutiveBackAdjustments;
+
+  /// Reports the smoothed live force mapped back into the PROBE frame
+  /// (live EMA minus the probe→live offset) on every gauge tick.  The
+  /// wizard keeps the last value so the recheck log can record where
+  /// the user actually stopped relative to the suggested target.
+  final ValueChanged<double>? onAchievedForce;
 
   @override
   State<_AdjustmentFeedbackScreen> createState() =>
@@ -3028,6 +3048,11 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
         _emaForce = raw;
       } else {
         _emaForce = _emaAlpha * raw + (1.0 - _emaAlpha) * _emaForce!;
+      }
+      // Report the achieved force in the probe frame so the wizard can
+      // log where the user actually stopped vs the suggested target.
+      if (_liveOffset != null && _emaForce != null) {
+        widget.onAchievedForce?.call(_emaForce! - _liveOffset!);
       }
       setState(() {});
     };

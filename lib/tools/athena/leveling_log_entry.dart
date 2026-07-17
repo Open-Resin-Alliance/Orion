@@ -122,6 +122,9 @@ class LevelingLogEntry {
     this.couplingSample,
     this.sampleOutcome,
     this.stictionEscalations,
+    this.anchorForceGf,
+    this.targetForceGf,
+    this.achievedForceGf,
   });
 
   final String sessionId;
@@ -168,6 +171,18 @@ class LevelingLogEntry {
   /// Stiction escalations so far this session.
   final int? stictionEscalations;
 
+  /// Force the gauge was anchored to — the adjusted corner's re-probe
+  /// first-stage peak (gf).
+  final double? anchorForceGf;
+
+  /// Absolute force target shown on the gauge (gf) —
+  /// [anchorForceGf] + [commandedDeltaGf].
+  final double? targetForceGf;
+
+  /// Live gauge reading (mapped into the probe frame) when the user
+  /// left the adjustment screen — where they actually stopped turning.
+  final double? achievedForceGf;
+
   Map<String, dynamic> toJson() => {
         'session_id': sessionId,
         'timestamp': timestamp,
@@ -187,5 +202,8 @@ class LevelingLogEntry {
         'coupling_sample_mm_per_gf': couplingSample,
         'sample_outcome': sampleOutcome,
         'stiction_escalations': stictionEscalations,
+        'anchor_force_gf': anchorForceGf,
+        'target_force_gf': targetForceGf,
+        'achieved_force_gf': achievedForceGf,
       };
 }
