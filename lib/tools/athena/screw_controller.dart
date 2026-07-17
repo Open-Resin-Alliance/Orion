@@ -136,21 +136,27 @@ double adjustmentGapMm(int cornerIndex, List<double> z) {
 class ScrewController {
   /// Per-screw controller tuning:
   /// * [dampingRatio] — fraction of the gap corrected per cycle.
-  ///   Legacy default 1.0 (full correction, faster convergence); the
-  ///   correctly-measured gap-space coupling keeps full steps stable.
+  ///   Default 0.7: the fixed estimator measures coupling accurately
+  ///   enough that partial steps are safe, and full steps combining
+  ///   damping + leapfrog bias on soft-coupling plates produced gauge
+  ///   targets users felt were too aggressive (session 363b3a57 #2:
+  ///   -2838 gf absolute on a correction dominated by bias, not gap).
   /// * [targetBiasMm] — added to every correction target.  The back
-  ///   screw uses [backLeapfrogBiasMm] so the back edge deliberately
-  ///   overshoots the front plane, keeping every follow-up front
-  ///   correction a TIGHTEN (legacy leapfrog behavior).
-  ScrewController({this.dampingRatio = 1.0, this.targetBiasMm = 0.0});
+  ///   screw uses [backLeapfrogBiasMm], a small overshoot past the
+  ///   front plane, to keep follow-up front corrections tighten-only
+  ///   while avoiding bias-dominated gauge targets.
+  ScrewController({this.dampingRatio = 0.7, this.targetBiasMm = 0.0});
 
   final double dampingRatio;
   final double targetBiasMm;
 
   /// Leapfrog overshoot for the back screw (mm): tighten the back edge
   /// this far PAST the front plane so the fronts always catch up by
-  /// tightening.  Value carried over from the legacy wizard.
-  static const double backLeapfrogBiasMm = 0.1;
+  /// tightening.  Reduced from the legacy 0.1 mm after field session
+  /// 363b3a57 — the bias component dominated back commands on soft-
+  /// coupling plates and the tighten-only fallback now provides a
+  /// structural backstop that the original policy coded in this knob.
+  static const double backLeapfrogBiasMm = 0.02;
 
   /// Conservative first-cycle coupling (mm/gf).  Deliberately near the
   /// sensitive end of the observed field range so uncalibrated cycles

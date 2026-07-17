@@ -76,8 +76,8 @@ void main() {
       expect(rankAdjustmentCandidates(z), [2]);
       final pick = _wizardPick(z)!;
       expect(pick.$1, 2);
-      // gap = frontAvg − BR = 0.355, plus the 0.1 leapfrog bias.
-      expect(pick.$2.targetZMm, closeTo(0.455, 1e-9));
+      // gap = frontAvg − BR = 0.355, damped 0.7, plus the 0.02 leapfrog.
+      expect(pick.$2.targetZMm, closeTo(0.2685, 1e-9));
       expect(pick.$2.forceDeltaGf, lessThan(0)); // tighten
     });
 
@@ -115,13 +115,13 @@ void main() {
 
     test('b9ef2b8f #1: low BL in the worst diagonal → tighten back', () {
       // Mixed state (not a full tilt): worst diagonal FR↔BL (0.19),
-      // lower corner BL → the shared back screw raises it.  With the
-      // leapfrog bias the command targets 0.11 + 0.1 = 0.21.
+      // lower corner BL → the shared back screw raises it.  Target is
+      // 0.7·0.11 + 0.02 leapfrog = 0.097.
       const z = [0.63, 0.79, 0.68, 0.60];
       expect(rankAdjustmentCandidates(z), [3]);
       final pick = _wizardPick(z)!;
       expect(pick.$1, 3);
-      expect(pick.$2.targetZMm, closeTo(0.21, 1e-9));
+      expect(pick.$2.targetZMm, closeTo(0.097, 1e-9));
       expect(pick.$2.forceDeltaGf, lessThan(0)); // tighten
     });
 
@@ -177,22 +177,22 @@ void main() {
   });
 
   group('ScrewController command', () {
-    test('seed command with damping 1.0 and no bias', () {
+    test('seed command with damping 0.7 and no bias', () {
       final ctrl = ScrewController();
       final cmd = ctrl.command(zGapMm: 0.18);
-      expect(cmd.targetZMm, closeTo(0.18, 1e-9)); // damping 1.0, no bias
-      expect(cmd.forceDeltaGf, closeTo(-360.0, 1e-6)); // 0.18 / -5e-4
+      expect(cmd.targetZMm, closeTo(0.126, 1e-9)); // 0.7 damping, no bias
+      expect(cmd.forceDeltaGf, closeTo(-252.0, 1e-6)); // 0.126 / -5e-4
       expect(cmd.clamped, isFalse);
-      expect(cmd.predictedGapAfterMm, closeTo(0.0, 1e-9)); // full correction
+      expect(cmd.predictedGapAfterMm, closeTo(0.054, 1e-9)); // 30% left
     });
 
     test('command with leapfrog bias shifts the target', () {
       final ctrl = ScrewController(
           targetBiasMm: ScrewController.backLeapfrogBiasMm);
       final cmd = ctrl.command(zGapMm: 0.18);
-      expect(cmd.targetZMm, closeTo(0.28, 1e-9)); // 0.18 + 0.1 bias
-      expect(cmd.forceDeltaGf, closeTo(-560.0, 1e-6)); // 0.28 / -5e-4
-      expect(cmd.predictedGapAfterMm, closeTo(-0.1, 1e-9)); // overshoot
+      expect(cmd.targetZMm, closeTo(0.146, 1e-9)); // 0.7·0.18 + 0.02 bias
+      expect(cmd.forceDeltaGf, closeTo(-292.0, 1e-6)); // 0.146 / -5e-4
+      expect(cmd.predictedGapAfterMm, closeTo(0.034, 1e-9));
     });
 
     test('force delta clamps at ±3000 gf with clamp-aware prediction', () {
@@ -257,7 +257,7 @@ void main() {
       const trueC = -7.5e-4; // most sensitive printer seen in the field
 
       final cmd = ctrl.command(zGapMm: 0.25);
-      expect(cmd.forceDeltaGf, closeTo(-500.0, 1e-6));
+      expect(cmd.forceDeltaGf, closeTo(-350.0, 1e-6));
       ctrl.recordCommand(cmd);
       final newGap = 0.25 - trueC * cmd.forceDeltaGf; // -0.125 (flipped)
       final r = ctrl.onRecheck(newGapMm: newGap);
@@ -320,7 +320,7 @@ void main() {
 
     test('small commands are skipped without escalation', () {
       final ctrl = ScrewController();
-      final cmd = ctrl.command(zGapMm: 0.07); // delta = 140 gf < 150
+      final cmd = ctrl.command(zGapMm: 0.07); // delta = 98 gf < 150
       expect(cmd.forceDeltaGf.abs(), lessThan(150));
       ctrl.recordCommand(cmd);
       final r = ctrl.onRecheck(newGapMm: 0.07); // no movement either
@@ -340,10 +340,10 @@ void main() {
 
       // Too stiff: 0.05 mm move on a -3000 gf command → -1.67e-5.
       final stiff = ScrewController();
-      final cmdT = stiff.command(zGapMm: 2.0); // saturates at -3000 gf
+      final cmdT = stiff.command(zGapMm: 2.5); // saturates at -3000 gf
       expect(cmdT.forceDeltaGf, -3000.0);
       stiff.recordCommand(cmdT);
-      final rT = stiff.onRecheck(newGapMm: 2.0 - 0.05);
+      final rT = stiff.onRecheck(newGapMm: 2.5 - 0.05);
       expect(rT.outcome, CouplingUpdateOutcome.acceptedClamped);
       expect(stiff.coupling, ScrewController.couplingStiffest);
     });
@@ -363,7 +363,7 @@ void main() {
       // session 27e976fe's FR first move was only 46% of target off
       // the generic seed.
       expect(fr.command(zGapMm: 0.3).forceDeltaGf,
-          closeTo(0.3 / -1.7e-4, 1.0));
+          closeTo(0.7 * 0.3 / -1.7e-4, 1.0));
     });
 
     test('adoptSeed never overwrites a measured coupling', () {

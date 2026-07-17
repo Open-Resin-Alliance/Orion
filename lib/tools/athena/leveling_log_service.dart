@@ -166,11 +166,10 @@ class LevelingLogService {
         final prev = entry.preAdjustmentDeviation!;
         final curr = entry.totalDeviationMm;
         final delta = curr - prev;
-        // The leapfrog policy deliberately overshoots the back
-        // +0.1 mm past the front plane — this creates "deviation
-        // growth" in the range metric even though the plate is
-        // converging.  Gate set at 0.15 mm so overshoot from a
-        // full-step tighten with the +0.1 bias doesn't flag.
+        // The leapfrog policy deliberately overshoots the back past
+        // the front plane — this creates "deviation growth" in the
+        // range metric even though the plate is converging.  Gate at
+        // 0.15 mm so expected overshoot plus probe noise doesn't flag.
         if (delta > 0.15) {
           buf.writeln('⚠ DIVERGENCE: deviation INCREASED by ${delta.toStringAsFixed(3)} mm (was ${prev.toStringAsFixed(3)}, now ${curr.toStringAsFixed(3)})');
           buf.writeln('   The adjustment may have gone the wrong way.  Check that the');

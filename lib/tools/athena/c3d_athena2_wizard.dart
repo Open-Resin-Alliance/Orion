@@ -2661,8 +2661,8 @@ class _WorkflowPane extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         // Divergence warning: recheck is worse than the pre-adjustment check.
-        // Gate 0.15 mm — the leapfrog +0.1 bias deliberately creates overshoot
-        // that can exceed the old 0.02 mm noise gate.
+        // Gate 0.15 mm — leapfrog overshoot plus probe noise is expected
+        // growth, not divergence.
         if (preAdjustmentDeviation != null &&
             deviation > preAdjustmentDeviation! + 0.15)
           Container(
