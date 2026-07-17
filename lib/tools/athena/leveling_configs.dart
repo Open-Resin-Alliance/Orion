@@ -54,6 +54,12 @@ class LevelingWorkflowStep {
   /// If true, auto-advance to next step after completion
   final bool autoAdvance;
 
+  /// If true, the wizard runs this step automatically when it becomes
+  /// current after an auto-advanced predecessor (used for follow-up
+  /// probes that need no user interaction, e.g. the second probe of a
+  /// corner for noise averaging).
+  final bool autoRun;
+
   /// Display label for corner steps (e.g. 'Front Left')
   final String? cornerLabel;
 
@@ -75,6 +81,7 @@ class LevelingWorkflowStep {
     this.intermediateScreen,
     this.specialScreen,
     this.autoAdvance = false,
+    this.autoRun = false,
     this.cornerLabel,
     this.skipBackend = false,
   });
@@ -87,6 +94,7 @@ class LevelingWorkflowStep {
     String? intermediateScreen,
     String? specialScreen,
     bool? autoAdvance,
+    bool? autoRun,
     String? cornerLabel,
     bool? skipBackend,
   }) {
@@ -104,6 +112,7 @@ class LevelingWorkflowStep {
       intermediateScreen: intermediateScreen ?? this.intermediateScreen,
       specialScreen: specialScreen ?? this.specialScreen,
       autoAdvance: autoAdvance ?? this.autoAdvance,
+      autoRun: autoRun ?? this.autoRun,
       cornerLabel: cornerLabel ?? this.cornerLabel,
       skipBackend: skipBackend ?? this.skipBackend,
     );
@@ -208,6 +217,39 @@ class LevelingVariant {
             runningTitle: 'Probing ${cornerDefs[i].$1} Corner',
             cornerLabel: cornerDefs[i].$1,
             autoAdvance: true),
+        // Second probe of the same corner: the Z samples are averaged
+        // to halve per-corner measurement noise (±0.05 mm per probe is
+        // half the 0.100 mm pass budget).  Fully automatic — the puck
+        // stays in place; the prepare repositions between probes.
+        LevelingWorkflowStep(
+          id: 'fine_prepare_${i + 1}b',
+          endpoint: 'probe_corner_prepare',
+          titleKey: 'levelingWorkflow.cornerPrepareTitle',
+          instructionKey: 'levelingWorkflow.cornerPrepareInstruction',
+          icon: PhosphorIconsFill.crosshair,
+          kind: LevelingWorkflowStepKind.prepare,
+          stepTitle: 'Re-probing ${cornerDefs[i].$1}',
+          stepInstruction:
+              'Probing the ${cornerDefs[i].$1} corner a second time to '
+              'average out sensor noise.',
+          runningTitle: 'Re-probing ${cornerDefs[i].$1} Corner',
+          autoAdvance: true,
+        ),
+        LevelingWorkflowStep(
+            id: 'fine_corner_${i + 1}b',
+            endpoint: 'probe_corner',
+            titleKey: 'levelingWorkflow.cornerTitle',
+            instructionKey: 'levelingWorkflow.cornerInstruction',
+            icon: PhosphorIconsFill.crosshair,
+            kind: LevelingWorkflowStepKind.probe,
+            stepTitle: 'Corner: ${cornerDefs[i].$1}',
+            stepInstruction:
+                'Probing the ${cornerDefs[i].$1} corner a second time to '
+                'average out sensor noise.',
+            runningTitle: 'Re-probing ${cornerDefs[i].$1} Corner',
+            cornerLabel: cornerDefs[i].$1,
+            autoAdvance: true,
+            autoRun: true),
       ],
       // ── Stage 3: Corner results, remove puck, re-calibrate offset ──
       LevelingWorkflowStep(

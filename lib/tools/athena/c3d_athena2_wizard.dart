@@ -48,6 +48,7 @@ enum _AdjustmentStep {
   puckPlacement,
   probing,
   feedback,
+  belowResolution,
 }
 
 /// A screw command anchored into the gauge's force frame: the
@@ -135,6 +136,21 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   final List<ForceLevelingWorkflowResponse?> _cornerResults =
       List.filled(4, null);
 
+  // Per-corner Z samples keyed by the step id that produced them.
+  // Each corner is probed twice per check (noise averaging); keying by
+  // step id keeps retries idempotent.  [_cornerZ] averages the values.
+  final List<Map<String, double>> _cornerZByStep =
+      List.generate(4, (_) => <String, double>{});
+
+  /// Averaged probed Z for a corner (mm), or null if never probed.
+  double? _cornerZ(int i) {
+    final samples = _cornerZByStep[i].values;
+    if (samples.isEmpty) {
+      return _cornerResults[i]?.measurements?.secondStageTriggerZ;
+    }
+    return samples.reduce((a, b) => a + b) / samples.length;
+  }
+
   static const _cornerLabelToIndex = {
     'Front Left': 0,
     'Front Right': 1,
@@ -195,6 +211,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           final idx = _cornerLabelToIndex[step.cornerLabel!];
           if (idx != null && idx >= 0 && idx < 4) {
             _cornerResults[idx] = _engine.lastResponse;
+            // Accumulate the corner's Z sample keyed by step id so the
+            // first and second probe of a corner are averaged (and a
+            // retried step overwrites its own sample instead of
+            // duplicating it).
+            final z = _engine.lastResponse!.measurements?.secondStageTriggerZ;
+            if (z != null) {
+              _cornerZByStep[idx][step.id] = z;
+            }
             // Capture probe config from the first corner response that has it
             if (!_probeConfigCaptured &&
                 _engine.lastResponse!.measurements != null) {
@@ -242,14 +266,17 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         if (step.autoAdvance) {
           _engine.advanceAfterSuccessfulStep();
           // Also auto-run the next step if it's a prepare move, final offset,
-          // or a skipBackend/intermediate step (e.g. corner results).
+          // a skipBackend/intermediate step (e.g. corner results), or an
+          // explicitly auto-running follow-up probe (second corner probe
+          // for noise averaging).
           // (but only if the workflow isn't complete)
           if (!_engine.isComplete) {
             final nextStep = _engine.currentStep;
             if (nextStep != null &&
                 (nextStep.kind == LevelingWorkflowStepKind.finalOffset ||
                     nextStep.kind == LevelingWorkflowStepKind.prepare ||
-                    nextStep.skipBackend)) {
+                    nextStep.skipBackend ||
+                    nextStep.autoRun)) {
               _autoAdvancing = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) _engine.runCurrentStep();
@@ -333,6 +360,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   void _resetCornerResults() {
     for (int i = 0; i < _cornerResults.length; i++) {
       _cornerResults[i] = null;
+      _cornerZByStep[i].clear();
     }
     _homeAfterCompleteFired = false;
   }
@@ -363,11 +391,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     ];
   }
 
+  /// The four averaged corner Z values in corner order (0=FL, 1=FR,
+  /// 2=BR, 3=BL), for [_compensatedCorners].
+  List<double?> get _rawCornerZs =>
+      [_cornerZ(0), _cornerZ(1), _cornerZ(2), _cornerZ(3)];
+
   double get _cornerDeviation {
-    final rawZ = _cornerResults
-        .map((r) => r?.measurements?.secondStageTriggerZ)
-        .toList();
-    final zValues = _compensatedCorners(rawZ);
+    final zValues = _compensatedCorners(_rawCornerZs);
     if (zValues.isEmpty) return 0.0;
     final min = zValues.reduce((a, b) => a < b ? a : b);
     final max = zValues.reduce((a, b) => a > b ? a : b);
@@ -388,17 +418,41 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
     // Screw mapping:   corners 0-1 → respective front screw
     //                  corners 2-3 → center back screw
-    final rawZ = _cornerResults
-        .map((r) => r?.measurements?.secondStageTriggerZ)
-        .toList();
-    final zValues = _compensatedCorners(rawZ);
+    final zValues = _compensatedCorners(_rawCornerZs);
     if (zValues.length < 4) return;
 
-    // Back screw only for pure front-to-back tilt; diagonal imbalances
-    // are routed to the front corner of the worst pair — the shared
-    // back screw sits on the centerline and cannot twist the plate.
-    // See selectAdjustmentCorner for the full reasoning.
-    final probeCorner = selectAdjustmentCorner(zValues);
+    // Rank the screws by the residual error a perfect single
+    // adjustment would leave (see rankAdjustmentCandidates), then take
+    // the best one whose command clears the execution floor: below
+    // ~150 gf the green zone (±20 gf) plus live-force noise make the
+    // outcome of a human turn uncontrolled (field session f2c9f74d
+    // recheck #2: a 64 gf command produced a 0.131 mm wrong-way move).
+    int? probeCorner;
+    for (final corner in rankAdjustmentCandidates(zValues)) {
+      final cmd = _controllerForCorner(corner)
+          .command(zGapMm: adjustmentGapMm(corner, zValues));
+      if (cmd.forceDeltaGf.abs() >= ScrewController.minCommandDeltaGf) {
+        probeCorner = corner;
+        break;
+      }
+    }
+
+    if (probeCorner == null) {
+      // Every candidate is below the execution floor: the remaining
+      // deviation is within measurement/adjustment resolution.  Don't
+      // send the user to a screw — offer a recheck instead.
+      _adjustingCornerIndex = null;
+      _adjustmentError = null;
+      _adjustmentBusy = false;
+      // No adjustment will happen, so the next recheck must not run
+      // divergence detection against a stale baseline.
+      _preAdjustmentDeviation = null;
+      setState(() {
+        _phase = _WizardPhase.adjustment;
+        _adjustmentStep = _AdjustmentStep.belowResolution;
+      });
+      return;
+    }
 
     _adjustingCornerIndex = probeCorner;
     _adjustmentError = null;
@@ -461,22 +515,53 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     if (mounted) setState(() {});
 
     try {
-      final response = await BackendService().runForceLevelingWorkflow(
+      // Probe the corner twice and average the Z, mirroring the
+      // corner-check flow: a single probe carries ±0.05 mm of noise —
+      // half the pass budget — and this Z anchors the command.
+      final first = await BackendService().runForceLevelingWorkflow(
         'probe_corner',
         requestTimeout: const Duration(seconds: 90),
       );
       if (!mounted) return;
 
-      if (!response.result) {
-        _adjustmentError = response.error.isNotEmpty
-            ? response.error
+      if (!first.result) {
+        _adjustmentError = first.error.isNotEmpty
+            ? first.error
             : FlutterI18n.translate(context, 'leveling.wizardProbeFailed');
         _adjustmentBusy = false;
         if (mounted) setState(() {});
         return;
       }
 
-      _cornerResults[_adjustingCornerIndex!] = response;
+      final idx = _adjustingCornerIndex!;
+      // The re-probe supersedes this corner's check samples.
+      _cornerZByStep[idx].clear();
+      final z1 = first.measurements?.secondStageTriggerZ;
+      if (z1 != null) _cornerZByStep[idx]['adjust_probe_a'] = z1;
+      _cornerResults[idx] = first;
+
+      // Second probe (best effort — a single sample still works).
+      try {
+        await BackendService().runForceLevelingWorkflow(
+          'probe_corner_prepare',
+          requestTimeout: const Duration(seconds: 90),
+        );
+        if (!mounted) return;
+        final second = await BackendService().runForceLevelingWorkflow(
+          'probe_corner',
+          requestTimeout: const Duration(seconds: 90),
+        );
+        if (!mounted) return;
+        if (second.result) {
+          final z2 = second.measurements?.secondStageTriggerZ;
+          if (z2 != null) _cornerZByStep[idx]['adjust_probe_b'] = z2;
+          // Anchor the gauge to the LAST probe — the live force frame
+          // the user will see corresponds to the most recent contact.
+          _cornerResults[idx] = second;
+        }
+      } catch (_) {
+        // Keep the single-probe sample.
+      }
     } catch (e) {
       _adjustmentError = e.toString();
       _adjustmentBusy = false;
@@ -484,27 +569,34 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       return;
     }
 
-    // ── Compute the back-screw command once, anchored to this re-probe ──
+    // ── Compute the screw command once, anchored to this re-probe ──
     // Done here (not in build) so the target is deterministic across
     // rebuilds and the gauge, the command, and the coupling estimator
     // all share the same force reference frame.
     final idx = _adjustingCornerIndex!;
     _pendingCommand = null;
     {
-      final rawZ = _cornerResults
-          .map((r) => r?.measurements?.secondStageTriggerZ)
-          .toList();
-      final zValues = _compensatedCorners(rawZ);
+      final zValues = _compensatedCorners(_rawCornerZs);
       final anchorForce =
           _cornerResults[idx]?.measurements?.firstStagePeakForce;
       if (zValues.length >= 4 && anchorForce != null) {
         // Positive gap → adjusted corner too low → tighten.  The
-        // adjusted corner's Z comes from the fresh re-probe (its slot
-        // was just overwritten); the reference corners keep their
-        // corner-check values.
+        // adjusted corner's Z comes from the fresh re-probes (its
+        // samples were just replaced); the reference corners keep
+        // their corner-check averages.
         final zGapMm = adjustmentGapMm(idx, zValues);
         final controller = _controllerForCorner(idx);
         final cmd = controller.command(zGapMm: zGapMm);
+        // The re-probe may have shrunk the gap below the execution
+        // floor even though the corner-check estimate cleared it.
+        if (cmd.forceDeltaGf.abs() < ScrewController.minCommandDeltaGf) {
+          _adjustmentBusy = false;
+          _adjustmentStep = _AdjustmentStep.belowResolution;
+          // No adjustment will happen — see _enterAdjustmentMode.
+          _preAdjustmentDeviation = null;
+          if (mounted) setState(() {});
+          return;
+        }
         controller.recordCommand(cmd);
         _lastAdjustedCorner = idx;
         _pendingCommand = _PendingScrewCommand(
@@ -531,10 +623,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     ScrewController? adjusted;
     if (_lastAdjustedCorner != null) {
       adjusted = _controllerForCorner(_lastAdjustedCorner!);
-      final rawZ = _cornerResults
-          .map((r) => r?.measurements?.secondStageTriggerZ)
-          .toList();
-      final zValues = _compensatedCorners(rawZ);
+      final zValues = _compensatedCorners(_rawCornerZs);
       if (zValues.length >= 4) {
         update = adjusted.onRecheck(
             newGapMm: adjustmentGapMm(_lastAdjustedCorner!, zValues));
@@ -558,8 +647,16 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     final cornerLabels = ['FL', 'FR', 'BR', 'BL'];
     final corners = <String, CornerLogData>{};
     for (int i = 0; i < 4; i++) {
-      corners[cornerLabels[i]] =
-          CornerLogData.fromMeasurements(_cornerResults[i]?.measurements);
+      final m = _cornerResults[i]?.measurements;
+      // finalZ is the double-probe AVERAGE — the value the wizard
+      // actually leveled with; force fields come from the last probe.
+      corners[cornerLabels[i]] = CornerLogData(
+        finalZ: _cornerZ(i),
+        firstStagePeakForce: m?.firstStagePeakForce,
+        secondStagePeakForce: m?.secondStagePeakForce,
+        firstStageOvershoot: m?.firstStageOvershoot,
+        secondStageOvershoot: m?.secondStageOvershoot,
+      );
     }
     // Snapshot probe config from the first corner that has it
     ProbeConfigSnapshot? probeConfig;
@@ -780,6 +877,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           loosenScrewsDone: _loosenScrewsDone,
           alignDone: _alignDone,
           cornerResults: _cornerResults,
+          cornerZs: _rawCornerZs,
           preAdjustmentDeviation: _preAdjustmentDeviation,
         );
       case _WizardPhase.adjustment:
@@ -1569,6 +1667,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     if (_adjustmentError != null) {
       return _buildAdjustmentError(context, primary);
     }
+    // Below-resolution has no adjusting corner — handle it before the
+    // corner guard.
+    if (_adjustmentStep == _AdjustmentStep.belowResolution) {
+      return _buildBelowResolutionView(context, primary);
+    }
     if (_adjustingCornerIndex == null) {
       return const SizedBox.shrink();
     }
@@ -1579,6 +1682,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         return _buildAdjustmentWarning(context, primary);
       case _AdjustmentStep.puckPlacement:
         return _buildPuckPlacementView(context, primary);
+      case _AdjustmentStep.belowResolution:
+        return _buildBelowResolutionView(context, primary);
       case _AdjustmentStep.feedback:
         // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
         // The gauge target is anchored to the adjusted corner's
@@ -1707,6 +1812,70 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
               FlutterI18n.translate(context, 'leveling.wizardMovingToProbe'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.4,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.72),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Shown when the corner check failed but every screw's correction
+  /// would be below the execution floor — the remaining deviation is
+  /// within measurement/adjustment resolution, so turning a screw
+  /// against the gauge would be noise-driven.  Footer offers
+  /// Cancel | Re-check (same as feedback).
+  Widget _buildBelowResolutionView(BuildContext context, Color primary) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 100,
+            height: 100,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primary.withValues(alpha: 0.15),
+                  ),
+                ),
+                Icon(
+                  PhosphorIcons.equals(),
+                  size: 56,
+                  color: primary,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            FlutterI18n.translate(
+                context, 'leveling.wizardBelowResolutionTitle'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              FlutterI18n.translate(
+                  context, 'leveling.wizardBelowResolutionBody'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 20,
@@ -2110,6 +2279,7 @@ class _WorkflowPane extends StatelessWidget {
     required this.loosenScrewsDone,
     required this.alignDone,
     required this.cornerResults,
+    required this.cornerZs,
     this.preAdjustmentDeviation,
   });
 
@@ -2118,6 +2288,11 @@ class _WorkflowPane extends StatelessWidget {
   final bool loosenScrewsDone;
   final bool alignDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
+
+  /// Averaged per-corner Z values (double-probe mean) — the values the
+  /// wizard actually levels with; the results view must display the
+  /// same numbers.
+  final List<double?> cornerZs;
   final double? preAdjustmentDeviation;
 
   @override
@@ -2428,9 +2603,7 @@ class _WorkflowPane extends StatelessWidget {
 
   Widget _buildAllCornersMeasuredView(BuildContext context, Color primary) {
     final theme = Theme.of(context);
-    final rawZ = cornerResults.map((r) {
-      return r?.measurements?.secondStageTriggerZ;
-    }).toList();
+    final rawZ = cornerZs;
 
     // Front-corner Z values are displayed raw (cantilever compensation disabled).
     final compZ = _compensatedZ(rawZ);
@@ -2830,6 +3003,17 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   // Live force EMA — everything in gram-force.
   double? _emaForce;
   static const double _emaAlpha = 0.25;
+
+  // Probe→live frame anchor.  The gauge target is expressed in the
+  // probe's force frame (first-stage peak); live analytics readings sit
+  // in a different frame.  The offset is the mean of the first few RAW
+  // live samples minus the probe force, captured before the user starts
+  // turning.  (An earlier revision computed the offset from the EMA —
+  // which was still initialized to the probe force at that moment — so
+  // the offset was always 0 and the needle slowly drifted from the
+  // probe frame into the live frame while the user was chasing it.)
+  static const int _anchorSampleCount = 5;
+  final List<double> _anchorSamples = [];
   double? _liveOffset;
 
   double? get _smoothedForce => _emaForce;
@@ -2837,7 +3021,6 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
   @override
   void initState() {
     super.initState();
-    _emaForce = widget.cornerForce;
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -2859,10 +3042,16 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
       if (series.isEmpty) return;
       final raw = (series.last['v'] as num?)?.toDouble();
       if (raw == null) return;
-      // Capture live-vs-probe offset once.
-      if (_liveOffset == null && _emaForce != null && widget.cornerForce != null) {
-        _liveOffset = _emaForce! - widget.cornerForce!;
+      // Anchor the probe→live offset on the first few raw samples.
+      if (_anchorSamples.length < _anchorSampleCount &&
+          widget.cornerForce != null) {
+        _anchorSamples.add(raw);
+        final mean =
+            _anchorSamples.reduce((a, b) => a + b) / _anchorSamples.length;
+        _liveOffset = mean - widget.cornerForce!;
       }
+      // EMA runs purely in the live frame; until the first sample
+      // arrives the gauge falls back to the static probe-frame delta.
       if (_emaForce == null) {
         _emaForce = raw;
       } else {
@@ -2899,16 +3088,16 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
     final onSurface = theme.colorScheme.onSurface;
 
     // Live force vs target, both in the live-analytics reference frame.
-    // The Jacobian target is shifted by the probe→live offset captured
-    // when the first analytics reading arrives after probing.
+    // The controller's target is shifted into the live frame via the
+    // probe→live offset anchored on the first raw analytics samples.
     //
     // live − target: positive → corner lower than target → TIGHTEN.
     // live − target: negative → corner higher than target → LOOSEN.
-    // Live delta: anchor the diagonal-average target into the live
-    // force reference frame via the probe→live offset.
     final double? forceDelta;
-    if (_smoothedForce != null && widget.targetForce != null) {
-      final liveTarget = widget.targetForce! + (_liveOffset ?? 0.0);
+    if (_smoothedForce != null &&
+        widget.targetForce != null &&
+        _liveOffset != null) {
+      final liveTarget = widget.targetForce! + _liveOffset!;
       forceDelta = _smoothedForce! - liveTarget;
     } else {
       forceDelta = widget.forceDelta; // fallback to static value

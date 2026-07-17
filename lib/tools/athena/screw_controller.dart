@@ -21,63 +21,79 @@ import 'dart:math' as math;
 /// Screw mapping: corners 0/1 → the respective front screw, corners
 /// 2/3 → the single shared back screw on the centerline.
 ///
-/// Pick which corner (and therefore which screw) to adjust for the
-/// given corner Z values.
+/// The plate error is decomposed along the three actuator axes:
 ///
-/// Pure front-to-back tilt (both front corners on one side of both
-/// back corners) → the shared back screw, represented by the back
-/// corner furthest from the front-plane average (for puck placement
-/// and gauge anchoring).
+///   D1 = FL − BR   (FL screw: tightening raises FL and lowers BR)
+///   D2 = FR − BL   (FR screw: tightening raises FR and lowers BL)
+///   P  = (D1+D2)/2 (back screw: pure front-back pitch — it sits on
+///                   the centerline and can only correct the COMMON
+///                   component of the two diagonals, never twist)
 ///
-/// Anything else is a diagonal imbalance and is ALWAYS routed to the
-/// FRONT corner of the worst diagonal pair.  The back screw sits on
-/// the centerline and cannot twist the plate — it raises or lowers
-/// BOTH back corners, so "fixing" a low back corner with it converts
-/// the diagonal error into front-back tilt and the wizard ping-pongs
-/// between tighten and loosen forever.  The front screws are the only
-/// per-side actuators: tightening a front corner raises it and lowers
-/// its diagonal-opposite rear corner via the cantilever pivot (and
-/// vice versa), which is exactly the corrective motion a diagonal
-/// needs.
-int selectAdjustmentCorner(List<double> z) {
+/// Candidate screws are ranked by the total diagonal error remaining
+/// after a perfect single adjustment of that screw:
+///
+///   FL   → |D2|        (D1 zeroed, D2 untouched)
+///   FR   → |D1|
+///   back → |D1 − D2|   (both diagonals keep ±(D1−D2)/2 of twist)
+///
+/// This replaces an earlier "are all back corners above all front
+/// corners?" gate that had no noise margin: with ±0.05 mm probe noise
+/// a 0.02 mm corner ordering flipped a dominant diagonal error into
+/// the back-screw path (field session f2c9f74d recheck #1), where the
+/// centerline screw cannot fix it.
+///
+/// Returns the candidate corner indices best-first.  For the back
+/// screw the returned corner is the back corner furthest from the
+/// front-plane average (for puck placement and gauge anchoring).
+List<int> rankAdjustmentCandidates(List<double> z) {
   assert(z.length >= 4);
+  final d1 = z[0] - z[2];
+  final d2 = z[1] - z[3];
   final frontAvg = (z[0] + z[1]) / 2;
-  final allFrontHigher =
-      z[0] > z[2] && z[0] > z[3] && z[1] > z[2] && z[1] > z[3];
-  final allBackHigher =
-      z[2] > z[0] && z[2] > z[1] && z[3] > z[0] && z[3] > z[1];
+  final backCorner =
+      (z[2] - frontAvg).abs() >= (z[3] - frontAvg).abs() ? 2 : 3;
 
-  if (allFrontHigher || allBackHigher) {
-    // Front-to-back tilt → back screw; show the worst back outlier.
-    return (z[2] - frontAvg).abs() >= (z[3] - frontAvg).abs() ? 2 : 3;
-  }
-
-  // Diagonal imbalance → the front corner of the worst pair.
-  final diagFLBR = (z[0] - z[2]).abs(); // FL ↔ BR
-  final diagFRBL = (z[1] - z[3]).abs(); // FR ↔ BL
-  return diagFLBR >= diagFRBL ? 0 : 1;
+  final candidates = [
+    (corner: 0, residual: d2.abs()),
+    (corner: 1, residual: d1.abs()),
+    (corner: backCorner, residual: (d1 - d2).abs()),
+  ];
+  candidates.sort((a, b) {
+    final byResidual = a.residual.compareTo(b.residual);
+    if (byResidual != 0) return byResidual;
+    // Tie → prefer the larger (more actionable) gap.
+    return adjustmentGapMm(b.corner, z)
+        .abs()
+        .compareTo(adjustmentGapMm(a.corner, z).abs());
+  });
+  return candidates.map((c) => c.corner).toList();
 }
+
+/// The best single-screw pick for the given corner Z values.
+int selectAdjustmentCorner(List<double> z) => rankAdjustmentCandidates(z).first;
 
 /// Signed gap the screw for [cornerIndex] should close (mm).
 ///
 /// Positive → the adjusted corner is LOW relative to its reference →
 /// tighten; negative → high → loosen.
 ///
+/// * Front screws: the full diagonal spread (BR−FL for the FL screw,
+///   BL−FR for the FR screw).  Tightening moves BOTH ends of the
+///   diagonal (corner up, opposite rear corner down), and the
+///   two-corner spread doubles the signal relative to per-corner
+///   probe noise.
 /// * Back screw (2/3): front average minus BACK AVERAGE — the shared
 ///   screw moves the whole back edge, so the edge average is the
 ///   controlled variable, not one outlier corner.
-/// * Front screws: the two corners NOT on the adjusting corner's
-///   diagonal sit on the pivot axis and form the reference plane
-///   (FL ref = FR+BL, FR ref = FL+BR).
 double adjustmentGapMm(int cornerIndex, List<double> z) {
   assert(z.length >= 4);
   switch (cornerIndex) {
     case 0:
-      return (z[1] + z[3]) / 2 - z[0];
+      return z[2] - z[0]; // −D1
     case 1:
-      return (z[0] + z[2]) / 2 - z[1];
+      return z[3] - z[1]; // −D2
     default:
-      return (z[0] + z[1]) / 2 - (z[2] + z[3]) / 2;
+      return (z[0] + z[1]) / 2 - (z[2] + z[3]) / 2; // P
   }
 }
 

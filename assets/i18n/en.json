@@ -468,6 +468,8 @@
         "wizardPlacePuck": "Place Calibration Puck",
         "wizardPuckInstruction": "Please place the Leveling Puck in the {corner} corner{hint}.",
         "wizardAdjustFailed": "Adjustment Failed",
+        "wizardBelowResolutionTitle": "Within Adjustment Resolution",
+        "wizardBelowResolutionBody": "The remaining deviation is smaller than a screw adjustment can reliably change — this is usually probe measurement noise.\nRe-check the corners. If this message keeps appearing, the plate is as level as the probe can measure.",
         "wizardCancelTitle": "Cancel Leveling",
         "wizardCancelMsg": "Are you sure you want to cancel?\n\nProgress will be lost and you will return to the leveling menu.",
         "wizardIntroMsg": "Assisted Leveling.",
