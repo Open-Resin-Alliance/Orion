@@ -112,7 +112,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   Map<int, ScrewController> _screwControllers = {
     0: ScrewController(),
     1: ScrewController(),
-    2: ScrewController(),
+    2: ScrewController(targetBiasMm: ScrewController.backLeapfrogBiasMm),
   };
   int? _lastAdjustedCorner;
   _PendingScrewCommand? _pendingCommand;
@@ -417,19 +417,17 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     final zValues = _compensatedCorners(_rawCornerZs);
     if (zValues.length < 4) return;
 
-    // Rank the screws by the residual error a perfect single
-    // adjustment would leave (see rankAdjustmentCandidates), then take
-    // the best one whose command clears the execution floor: below
-    // ~150 gf the green zone (±20 gf) plus live-force noise make the
-    // outcome of a human turn uncontrolled (field session f2c9f74d
-    // recheck #2: a 64 gf command produced a 0.131 mm wrong-way move).
+    // Legacy leapfrog pick order (see rankAdjustmentCandidates):
+    // front-back tilt → back screw (worst outlier), else the lower
+    // corner of the worst diagonal.  Take the first candidate whose
+    // command is an executable TIGHTEN: at least the 150 gf execution
+    // floor (below it the ±20 gf green zone plus live-force noise make
+    // a human turn uncontrolled — field session f2c9f74d recheck #2),
+    // and never a loosen (preload policy).
     int? probeCorner;
     for (final corner in rankAdjustmentCandidates(zValues)) {
       final cmd = _controllerForCorner(corner)
           .command(zGapMm: adjustmentGapMm(corner, zValues));
-      // Tighten-only policy: candidates always carry positive gaps, so
-      // the command is negative (tighten); it must also clear the
-      // execution floor.
       if (cmd.forceDeltaGf <= -ScrewController.minCommandDeltaGf) {
         probeCorner = corner;
         break;
@@ -833,7 +831,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _screwControllers = {
               0: ScrewController(),
               1: ScrewController(),
-              2: ScrewController(),
+              2: ScrewController(targetBiasMm: ScrewController.backLeapfrogBiasMm),
             };
             _pendingCommand = null;
             _lastAdjustedCorner = null;

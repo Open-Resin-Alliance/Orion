@@ -21,95 +21,88 @@ import 'dart:math' as math;
 /// Screw mapping: corners 0/1 → the respective front screw, corners
 /// 2/3 → the single shared back screw on the centerline.
 ///
-/// The plate error is decomposed along the actuator axes:
+/// LEGACY LEAPFROG POLICY (restored from the pre-rework wizard, which
+/// converged faster and was more predictable in the field):
 ///
-///   D1 = FL − BR   (FL screw: tightening raises FL and lowers BR)
-///   D2 = FR − BL   (FR screw: tightening raises FR and lowers BL)
-///   back screw: tightening raises BR and BL together (reduces both
-///   D1 and D2 equally) — it sits on the centerline and cannot twist.
+///   1. Pure front-to-back tilt (all front corners on one side of all
+///      back corners) → BACK screw, shown at the back corner furthest
+///      from the front-plane average.  The back target deliberately
+///      overshoots the front plane by [ScrewController.backLeapfrogBiasMm]
+///      so the back edge LEADS...
+///   2. Otherwise → the worst diagonal pair (FL↔BR vs FR↔BL), and the
+///      LOWER corner of that pair is tightened — a front corner via
+///      its own screw, a back corner via the shared back screw.
 ///
-/// POLICY: adjustments are TIGHTEN-ONLY.  Loosening a screw bleeds off
-/// the baseline preload the screws were seated with, so a high corner
-/// is never lowered directly — everything else is raised instead, and
-/// the resulting absolute height drift is re-zeroed by the final
-/// Z-offset calibration at the end of the session.  Every error state
-/// has a tighten path:
+///   ...then the front screws catch up to the leading back edge on
+///   subsequent cycles.  The plate ratchets upward until level, which
+///   keeps every command a TIGHTEN (loosening bleeds off the baseline
+///   preload the screws were seated with; absolute height drift is
+///   re-zeroed by the final Z-offset calibration).
 ///
-///   FL   available iff D1 < 0 (FL low)   → residual |D2|
-///   FR   available iff D2 < 0 (FR low)   → residual |D1|
-///   back available iff max(D1, D2) > 0   → residual |D1 − D2|
+/// When the tilt branch fires but the back already leads (its command
+/// would be a loosen or below the execution floor), the list falls
+/// back to the diagonal pick so a low FRONT corner is tightened
+/// instead — the wizard filters the list to the first candidate whose
+/// command is an executable tighten.
 ///
-/// The back screw targets the WORSE diagonal (max, not the pitch
-/// average): the smaller diagonal is deliberately driven slightly
-/// negative, which is exactly the state a front-screw TIGHTEN can fix
-/// on the next cycle.  Only a perfectly level plate has no candidate.
-///
-/// Candidates are ranked by the total diagonal error remaining after a
-/// perfect single adjustment.  (An earlier direction-agnostic ranking
-/// picked "loosen FL" when that was the best single move — field
-/// session fc965bd2 recheck #1 — violating the preload policy.  Before
-/// that, an "all back corners higher?" gate with no noise margin
-/// routed dominant diagonals to the centerline screw — f2c9f74d #1.)
-///
-/// Returns the candidate corner indices best-first (empty only for a
-/// plate with no tighten candidate, i.e. D1 = D2 = 0).  For the back
-/// screw the returned corner is the back corner furthest from the
-/// front-plane average (for puck placement and gauge anchoring).
+/// Returns candidate corner indices in preference order.
 List<int> rankAdjustmentCandidates(List<double> z) {
   assert(z.length >= 4);
-  final d1 = z[0] - z[2];
-  final d2 = z[1] - z[3];
-  final frontAvg = (z[0] + z[1]) / 2;
-  final backCorner =
-      (z[2] - frontAvg).abs() >= (z[3] - frontAvg).abs() ? 2 : 3;
+  final z0 = z[0], z1 = z[1], z2 = z[2], z3 = z[3];
+  final frontAvg = (z0 + z1) / 2;
+  final allFrontHigher = z0 > z2 && z0 > z3 && z1 > z2 && z1 > z3;
+  final allBackHigher = z2 > z0 && z2 > z1 && z3 > z0 && z3 > z1;
 
-  final candidates = [
-    if (d1 < 0) (corner: 0, residual: d2.abs()),
-    if (d2 < 0) (corner: 1, residual: d1.abs()),
-    if (math.max(d1, d2) > 0)
-      (corner: backCorner, residual: (d1 - d2).abs()),
-  ];
-  candidates.sort((a, b) {
-    final byResidual = a.residual.compareTo(b.residual);
-    if (byResidual != 0) return byResidual;
-    // Tie → prefer the larger (more actionable) gap.
-    return adjustmentGapMm(b.corner, z)
-        .abs()
-        .compareTo(adjustmentGapMm(a.corner, z).abs());
-  });
-  return candidates.map((c) => c.corner).toList();
+  // Diagonal pick: the LOWER corner of the worst diagonal pair.
+  final diagFLBR = (z0 - z2).abs();
+  final diagFRBL = (z1 - z3).abs();
+  final int diagCorner;
+  if (diagFLBR >= diagFRBL) {
+    diagCorner = z0 < z2 ? 0 : 2;
+  } else {
+    diagCorner = z1 < z3 ? 1 : 3;
+  }
+
+  if (allFrontHigher || allBackHigher) {
+    final backOutlier =
+        (z2 - frontAvg).abs() >= (z3 - frontAvg).abs() ? 2 : 3;
+    return [
+      backOutlier,
+      // Fallback for when the back already leads: tighten the low
+      // front corner of the worst diagonal instead.
+      if (diagCorner <= 1) diagCorner,
+    ];
+  }
+  return [diagCorner];
 }
 
-/// The best single-screw pick for the given corner Z values, or null
-/// when the plate has no tighten candidate.
-int? selectAdjustmentCorner(List<double> z) {
-  final ranked = rankAdjustmentCandidates(z);
-  return ranked.isEmpty ? null : ranked.first;
-}
+/// The preferred single-screw pick for the given corner Z values.
+int selectAdjustmentCorner(List<double> z) =>
+    rankAdjustmentCandidates(z).first;
 
 /// Signed gap the screw for [cornerIndex] should close (mm).
-///
-/// Under the tighten-only policy every COMMANDED gap is positive; the
-/// sign is kept so the coupling estimator stays well-defined when a
-/// recheck lands past zero.
+/// Positive → the adjusted corner is LOW relative to its reference →
+/// tighten; negative → high.  (The wizard enforces tighten-only: a
+/// candidate whose command is not an executable tighten is skipped.)
 ///
 /// * Front screws: the full diagonal spread (BR−FL for the FL screw,
 ///   BL−FR for the FR screw).  Tightening moves BOTH ends of the
 ///   diagonal (corner up, opposite rear corner down), and the
 ///   two-corner spread doubles the signal relative to per-corner
 ///   probe noise.
-/// * Back screw (2/3): the WORSE of the two diagonals — see
-///   [rankAdjustmentCandidates] for why the back deliberately
-///   overshoots the smaller one.
+/// * Back screw (2/3): front-plane average minus the PICKED corner's Z
+///   (legacy behavior — for a tilt this is the worst outlier, for a
+///   low back corner in a diagonal it is that corner).  The back
+///   controller adds [ScrewController.backLeapfrogBiasMm] on top.
 double adjustmentGapMm(int cornerIndex, List<double> z) {
   assert(z.length >= 4);
   switch (cornerIndex) {
     case 0:
-      return z[2] - z[0]; // −D1
+      return z[2] - z[0]; // FL low → positive
     case 1:
-      return z[3] - z[1]; // −D2
+      return z[3] - z[1]; // FR low → positive
     default:
-      return math.max(z[0] - z[2], z[1] - z[3]); // max(D1, D2)
+      return (z[0] + z[1]) / 2 - z[cornerIndex];
   }
 }
 
@@ -141,17 +134,29 @@ double adjustmentGapMm(int cornerIndex, List<double> z) {
 /// differenced two probe force readings, whose ±300–500 gf noise is the
 /// same order as the delta itself and could even flip its sign.)
 class ScrewController {
+  /// Per-screw controller tuning:
+  /// * [dampingRatio] — fraction of the gap corrected per cycle.
+  ///   Legacy default 1.0 (full correction, faster convergence); the
+  ///   correctly-measured gap-space coupling keeps full steps stable.
+  /// * [targetBiasMm] — added to every correction target.  The back
+  ///   screw uses [backLeapfrogBiasMm] so the back edge deliberately
+  ///   overshoots the front plane, keeping every follow-up front
+  ///   correction a TIGHTEN (legacy leapfrog behavior).
+  ScrewController({this.dampingRatio = 1.0, this.targetBiasMm = 0.0});
+
+  final double dampingRatio;
+  final double targetBiasMm;
+
+  /// Leapfrog overshoot for the back screw (mm): tighten the back edge
+  /// this far PAST the front plane so the fronts always catch up by
+  /// tightening.  Value carried over from the legacy wizard.
+  static const double backLeapfrogBiasMm = 0.1;
+
   /// Conservative first-cycle coupling (mm/gf).  Deliberately near the
   /// sensitive end of the observed field range so uncalibrated cycles
-  /// undershoot: with [dampingRatio] 0.75 the loop tolerates the true
-  /// coupling being up to 2.67× more sensitive than the estimate, and
-  /// the most sensitive coupling seen in the field is −7.5e-4 (1.5×).
+  /// undershoot (the most sensitive coupling seen in the field is
+  /// −8.2e-4, 1.6× the seed — a benign first-cycle overshoot).
   static const double seedCouplingMmPerGf = -5e-4;
-
-  /// Fraction of the gap corrected per cycle.  A perfect estimate
-  /// leaves 25% of the gap; an estimate off by up to 2.67× in the
-  /// sensitive direction still converges (multiplier stays above −1).
-  static const double dampingRatio = 0.75;
 
   /// Absolute force delta ceiling shown on the gauge (gf).
   static const double maxForceDeltaGf = 3000.0;
@@ -210,7 +215,7 @@ class ScrewController {
   /// change controller state; call [recordCommand] once the command is
   /// actually shown to the user.
   ScrewCommand command({required double zGapMm}) {
-    final targetZMm = zGapMm * dampingRatio;
+    final targetZMm = zGapMm * dampingRatio + targetBiasMm;
     final rawDelta = targetZMm / _coupling;
     final forceDeltaGf =
         rawDelta.clamp(-maxForceDeltaGf, maxForceDeltaGf).toDouble();
@@ -218,7 +223,8 @@ class ScrewController {
 
     // Clamp-aware recheck prediction: per cycle the gap shrinks by the
     // damped target or by the most the force ceiling can move it,
-    // whichever is smaller.
+    // whichever is smaller.  (The leapfrog bias is intentionally left
+    // out — it shifts the resting point, not the convergence rate.)
     var g = zGapMm.abs();
     var rechecks = 0;
     final maxMovePerCycle = _coupling.abs() * maxForceDeltaGf;

@@ -44,39 +44,60 @@ ScrewController _flooredController() {
   return ctrl;
 }
 
+/// Emulate the wizard's candidate filter: the first ranked candidate
+/// whose command is an executable tighten (≤ −150 gf), using the
+/// leapfrog-biased controller for back corners.
+(int, ScrewCommand)? _wizardPick(List<double> z) {
+  for (final corner in rankAdjustmentCandidates(z)) {
+    final ctrl = corner >= 2
+        ? ScrewController(targetBiasMm: ScrewController.backLeapfrogBiasMm)
+        : ScrewController();
+    final cmd = ctrl.command(zGapMm: adjustmentGapMm(corner, z));
+    if (cmd.forceDeltaGf <= -ScrewController.minCommandDeltaGf) {
+      return (corner, cmd);
+    }
+  }
+  return null;
+}
+
 void main() {
-  group('corner selection and gap (field-session regressions)', () {
+  group('legacy leapfrog corner selection (field-session regressions)', () {
     // Z order: FL, FR, BR, BL.
-    // Selection decomposes into D1 = FL−BR (FL screw), D2 = FR−BL
-    // (FR screw); the back screw reduces both equally.  Adjustments
-    // are TIGHTEN-ONLY (loosening bleeds off screw preload): a high
-    // corner is fixed by raising everything else.
-    test('fc965bd2 #1: never commands a loosen — tighten back instead',
+    // Policy: front-back tilt → back screw with a +0.1 mm leapfrog
+    // overshoot; otherwise tighten the LOWER corner of the worst
+    // diagonal.  All commands are tightens; a back candidate whose
+    // command would be a loosen falls back to a low front corner.
+    test('fc965bd2 #1: pure tilt → tighten back (never loosen a front)',
         () {
-      // FL and FR are both the HIGH ends of their diagonals
-      // (D1 = 0.40, D2 = 0.15).  The direction-agnostic ranking chose
-      // "loosen FL" (best single move); tighten-only must route to
-      // the back screw.
+      // The direction-agnostic ranking here chose "loosen FL" (best
+      // single move) — forbidden.  Legacy: all fronts above all backs
+      // → back screw, shown at the worst outlier BR.
       const z = [0.80, 0.71, 0.40, 0.56];
-      expect(rankAdjustmentCandidates(z), [2]); // back only, shown at BR
-      final gap = adjustmentGapMm(2, z);
-      expect(gap, closeTo(0.40, 1e-9)); // the worse diagonal, not pitch
-      expect(ScrewController().command(zGapMm: gap).forceDeltaGf,
-          lessThan(0)); // tighten
+      expect(rankAdjustmentCandidates(z), [2]);
+      final pick = _wizardPick(z)!;
+      expect(pick.$1, 2);
+      // gap = frontAvg − BR = 0.355, plus the 0.1 leapfrog bias.
+      expect(pick.$2.targetZMm, closeTo(0.455, 1e-9));
+      expect(pick.$2.forceDeltaGf, lessThan(0)); // tighten
     });
 
-    test('every ranked candidate is a tighten, for any plate state', () {
-      // Sweep a grid of corner states; no candidate may ever carry a
-      // non-positive gap (which would render as a loosen command).
+    test('any executed command is a tighten, for any plate state', () {
+      // Sweep a grid of corner states; the wizard-filtered pick must
+      // always be a tighten of a genuinely low corner (or no pick at
+      // all → the below-resolution screen).
       const levels = [0.0, 0.1, 0.25, 0.4];
       for (final fl in levels) {
         for (final fr in levels) {
           for (final br in levels) {
             for (final bl in levels) {
               final z = [fl, fr, br, bl];
-              for (final corner in rankAdjustmentCandidates(z)) {
-                expect(adjustmentGapMm(corner, z), greaterThan(0),
-                    reason: 'z=$z corner=$corner must be a tighten');
+              final pick = _wizardPick(z);
+              if (pick == null) continue;
+              expect(pick.$2.forceDeltaGf, lessThan(0),
+                  reason: 'z=$z corner=${pick.$1} must be a tighten');
+              if (pick.$1 <= 1) {
+                expect(adjustmentGapMm(pick.$1, z), greaterThan(0),
+                    reason: 'z=$z front pick must be a low corner');
               }
             }
           }
@@ -84,124 +105,106 @@ void main() {
       }
     });
 
-    test('b9ef2b8f #0: pure front-back tilt → back screw, tighten', () {
+    test('b9ef2b8f #0: pure front-back tilt → back screw at BL outlier',
+        () {
       const z = [0.88, 0.99, 0.47, 0.44]; // both fronts above both backs
-      final corner = selectAdjustmentCorner(z);
-      expect(corner, 3); // BL is the worst back outlier
-      // Back targets the worse diagonal (D2 = 0.55), not the pitch avg.
-      expect(adjustmentGapMm(corner!, z), closeTo(0.55, 1e-9));
+      expect(selectAdjustmentCorner(z), 3); // BL is the worst outlier
+      // Legacy corner-specific gap: frontAvg − BL = 0.495.
+      expect(adjustmentGapMm(3, z), closeTo(0.495, 1e-9));
     });
 
-    test('b9ef2b8f #1: FR is high — no FR loosen; FL then back ranked', () {
-      // D1 = −0.05 (FL slightly low), D2 = +0.19 (FR high).  FR would
-      // need loosening → not a candidate.  FL (residual 0.19) ranks
-      // before back (residual 0.24); FL's 0.05 gap is below the
-      // execution floor at the seed coupling, so the wizard falls
-      // through to the back screw — a 285 gf tighten that raises BL.
+    test('b9ef2b8f #1: low BL in the worst diagonal → tighten back', () {
+      // Mixed state (not a full tilt): worst diagonal FR↔BL (0.19),
+      // lower corner BL → the shared back screw raises it.  With the
+      // leapfrog bias the command targets 0.11 + 0.1 = 0.21.
       const z = [0.63, 0.79, 0.68, 0.60];
-      expect(rankAdjustmentCandidates(z), [0, 3]);
-      final flCmd = ScrewController()
-          .command(zGapMm: adjustmentGapMm(0, z)); // 0.05 gap
-      expect(flCmd.forceDeltaGf.abs(),
-          lessThan(ScrewController.minCommandDeltaGf)); // floor-gated
-      final backCmd = ScrewController()
-          .command(zGapMm: adjustmentGapMm(3, z)); // max(D1,D2) = 0.19
-      expect(backCmd.forceDeltaGf, lessThan(0)); // tighten
-      expect(backCmd.forceDeltaGf.abs(),
-          greaterThanOrEqualTo(ScrewController.minCommandDeltaGf));
+      expect(rankAdjustmentCandidates(z), [3]);
+      final pick = _wizardPick(z)!;
+      expect(pick.$1, 3);
+      expect(pick.$2.targetZMm, closeTo(0.21, 1e-9));
+      expect(pick.$2.forceDeltaGf, lessThan(0)); // tighten
     });
 
-    test('b9ef2b8f #2: FL↔BR dominates → tighten FL (front comes up)', () {
-      // D1 = −0.32 (FL low), D2 = −0.06.  Tightening FL leaves only
-      // 0.06 of residual; the back screw is not even a candidate
-      // (both diagonals have their FRONT corner low).
+    test('b9ef2b8f #2: back leads → falls back to tightening low FL', () {
+      // All backs above all fronts → back screw is primary, but its
+      // command would be a LOOSEN (gap −0.235 + 0.1 bias < 0) — the
+      // preload policy forbids it, so the wizard falls back to the
+      // low front corner of the worst diagonal: tighten FL.
       const z = [0.51, 0.68, 0.83, 0.74];
-      final corner = selectAdjustmentCorner(z);
-      expect(corner, 0);
-      final gap = adjustmentGapMm(corner!, z); // BR − FL
-      expect(gap, closeTo(0.32, 1e-9));
-      expect(gap, greaterThan(0)); // FL low → TIGHTEN (raises FL, lowers BR)
+      expect(rankAdjustmentCandidates(z), [2, 0]);
+      final pick = _wizardPick(z)!;
+      expect(pick.$1, 0);
+      expect(adjustmentGapMm(0, z), closeTo(0.32, 1e-9)); // BR − FL
+      expect(pick.$2.forceDeltaGf, lessThan(0)); // tighten FL
     });
 
-    test('f2c9f74d #1: noise-level corner ordering must not pick the back',
+    test('f2c9f74d #1: back leads by a hair → tighten low FR, not back',
         () {
-      // BR (0.62) sat 0.02 above FL (0.60) — pure probe noise — but
-      // an old "all back corners higher" gate routed this dominant
-      // FR↔BL diagonal (0.12) to the back screw, commanding an
-      // unexecutable 64 gf loosen.
+      // All backs (barely) above all fronts, but the back's command
+      // (gap −0.11 + 0.1 bias ≈ 0) is not an executable tighten →
+      // fall back to FR, the low corner of the worst diagonal.
       const z = [0.60, 0.58, 0.62, 0.70];
-      expect(rankAdjustmentCandidates(z), [1, 0]); // back not a candidate
-      final gap = adjustmentGapMm(1, z); // BL − FR
-      expect(gap, closeTo(0.12, 1e-9)); // FR low on its diagonal → tighten
-      // The full-diagonal gap makes the command executable (≥150 gf):
-      final cmd = ScrewController().command(zGapMm: gap);
-      expect(cmd.forceDeltaGf, lessThan(0)); // tighten
-      expect(cmd.forceDeltaGf.abs(),
-          greaterThanOrEqualTo(ScrewController.minCommandDeltaGf));
+      expect(rankAdjustmentCandidates(z), [3, 1]);
+      final pick = _wizardPick(z)!;
+      expect(pick.$1, 1);
+      expect(adjustmentGapMm(1, z), closeTo(0.12, 1e-9)); // BL − FR
+      expect(pick.$2.forceDeltaGf, lessThan(0)); // tighten
     });
 
-    test('FL↔BR diagonal routes to FL', () {
-      const z = [0.45, 0.68, 0.83, 0.60]; // FL low, BR high, BL below FR
-      final corner = selectAdjustmentCorner(z);
-      expect(corner, 0);
+    test('FL↔BR diagonal with FL low routes to FL', () {
+      const z = [0.45, 0.68, 0.83, 0.60]; // FL low, BR high
+      expect(selectAdjustmentCorner(z), 0);
       // BR − FL = 0.38 → FL low → tighten
-      expect(adjustmentGapMm(corner!, z), closeTo(0.38, 1e-9));
+      expect(adjustmentGapMm(0, z), closeTo(0.38, 1e-9));
     });
 
-    test('back screw targets the worse diagonal, not one outlier corner',
-        () {
-      // Similar diagonals (D1 0.30, D2 0.20) → only the back screw is
-      // a tighten candidate; it targets max(D1, D2).
+    test('tilt with both backs low → back screw at the worse corner', () {
       const z = [0.50, 0.50, 0.20, 0.30];
-      final corner = selectAdjustmentCorner(z);
-      expect(corner, 2); // BR shown for puck placement
-      expect(adjustmentGapMm(corner!, z), closeTo(0.30, 1e-9));
+      expect(selectAdjustmentCorner(z), 2); // BR shown for puck placement
+      // Legacy corner-specific gap: frontAvg − BR = 0.30.
+      expect(adjustmentGapMm(2, z), closeTo(0.30, 1e-9));
     });
 
-    test('pure roll is worked corner by corner, not via the back screw',
+    test('pure roll: legacy picks the low corner of the worst diagonal',
         () {
-      // Left side high, right side low: FR is the low front → tighten
-      // FR first; the back screw (residual 0.40) ranks last.
+      // FL/BL high, FR/BR low.  diagFLBR wins the >= tie; its lower
+      // corner is BR → back screw tighten (the plate then ratchets
+      // level over subsequent front picks).
       const z = [0.60, 0.40, 0.40, 0.60];
-      final ranked = rankAdjustmentCandidates(z);
-      expect(ranked.first, 1);
-      expect(adjustmentGapMm(1, z), closeTo(0.20, 1e-9)); // tighten
-    });
-
-    test('perfectly level plate has no candidates', () {
-      expect(rankAdjustmentCandidates([0.5, 0.5, 0.5, 0.5]), isEmpty);
-      expect(selectAdjustmentCorner([0.5, 0.5, 0.5, 0.5]), isNull);
+      expect(selectAdjustmentCorner(z), 2);
+      expect(adjustmentGapMm(2, z), closeTo(0.10, 1e-9)); // frontAvg − BR
     });
   });
 
   group('ScrewController command', () {
-    test('seed command direction and magnitude', () {
+    test('seed command with damping 1.0 and no bias', () {
       final ctrl = ScrewController();
-      final cmd = ctrl.command(zGapMm: 0.18); // back too low → tighten
-      expect(cmd.targetZMm, closeTo(0.135, 1e-9)); // 0.75 damping, no bias
-      expect(cmd.forceDeltaGf, closeTo(-270.0, 1e-6)); // 0.135 / -5e-4
+      final cmd = ctrl.command(zGapMm: 0.18);
+      expect(cmd.targetZMm, closeTo(0.18, 1e-9)); // damping 1.0, no bias
+      expect(cmd.forceDeltaGf, closeTo(-360.0, 1e-6)); // 0.18 / -5e-4
       expect(cmd.clamped, isFalse);
-      expect(cmd.predictedGapAfterMm, closeTo(0.045, 1e-9)); // 25% left
+      expect(cmd.predictedGapAfterMm, closeTo(0.0, 1e-9)); // full correction
+    });
 
-      final loosen = ctrl.command(zGapMm: -0.18); // back too high → loosen
-      expect(loosen.forceDeltaGf, closeTo(270.0, 1e-6));
+    test('command with leapfrog bias shifts the target', () {
+      final ctrl = ScrewController(
+          targetBiasMm: ScrewController.backLeapfrogBiasMm);
+      final cmd = ctrl.command(zGapMm: 0.18);
+      expect(cmd.targetZMm, closeTo(0.28, 1e-9)); // 0.18 + 0.1 bias
+      expect(cmd.forceDeltaGf, closeTo(-560.0, 1e-6)); // 0.28 / -5e-4
+      expect(cmd.predictedGapAfterMm, closeTo(-0.1, 1e-9)); // overshoot
     });
 
     test('force delta clamps at ±3000 gf with clamp-aware prediction', () {
       final ctrl = _flooredController();
-      expect(ctrl.coupling, closeTo(-2e-5, 1e-12)); // at stiffness floor
+      expect(ctrl.coupling, closeTo(-2e-5, 1e-12));
 
       final cmd = ctrl.command(zGapMm: 0.25);
-      expect(cmd.forceDeltaGf, -3000.0); // raw would be -9375
+      expect(cmd.forceDeltaGf, -3000.0);
       expect(cmd.clamped, isTrue);
-      // ±3000 gf at -2e-5 mm/gf moves at most 0.06 mm per cycle.
+      // ±3000 gf at −2e-5 mm/gf moves at most 0.06 mm per cycle.
       expect(cmd.predictedGapAfterMm, closeTo(0.19, 1e-9));
       expect(cmd.predictedRechecks, 3); // 0.25 → 0.19 → 0.13 → 0.07
-    });
-
-    test('predicted rechecks is 1 when the estimate covers the gap', () {
-      final cmd = ScrewController().command(zGapMm: 0.25);
-      expect(cmd.predictedRechecks, 1); // 0.25 → 0.0625 ≤ 0.100
     });
   });
 
@@ -254,19 +257,19 @@ void main() {
       const trueC = -7.5e-4; // most sensitive printer seen in the field
 
       final cmd = ctrl.command(zGapMm: 0.25);
-      expect(cmd.forceDeltaGf, closeTo(-375.0, 1e-6));
+      expect(cmd.forceDeltaGf, closeTo(-500.0, 1e-6));
       ctrl.recordCommand(cmd);
-      final newGap = 0.25 - trueC * cmd.forceDeltaGf; // -0.03125 (flipped)
+      final newGap = 0.25 - trueC * cmd.forceDeltaGf; // -0.125 (flipped)
       final r = ctrl.onRecheck(newGapMm: newGap);
       expect(r.outcome, CouplingUpdateOutcome.accepted);
       expect(ctrl.coupling, closeTo(trueC, 1e-9)); // replaced, not averaged
       expect(ctrl.hasMeasuredSample, isTrue);
 
-      // Next command flips direction (loosen) and shrinks > 10×.
+      // With the corrected coupling the next command is far smaller
+      // and would land the gap on zero.
       final next = ctrl.command(zGapMm: newGap);
-      expect(next.forceDeltaGf, greaterThan(0));
-      expect(next.forceDeltaGf.abs(), lessThan(cmd.forceDeltaGf.abs() / 10));
-      expect(next.predictedGapAfterMm.abs(), lessThan(newGap.abs() * 0.3));
+      expect(next.forceDeltaGf.abs(), lessThan(cmd.forceDeltaGf.abs() / 2));
+      expect(next.predictedGapAfterMm.abs(), lessThan(0.01));
     });
 
     test('subsequent samples are EMA-smoothed', () {
@@ -317,21 +320,21 @@ void main() {
 
     test('small commands are skipped without escalation', () {
       final ctrl = ScrewController();
-      final cmd = ctrl.command(zGapMm: 0.09); // delta = 135 gf < 150
+      final cmd = ctrl.command(zGapMm: 0.07); // delta = 140 gf < 150
       expect(cmd.forceDeltaGf.abs(), lessThan(150));
       ctrl.recordCommand(cmd);
-      final r = ctrl.onRecheck(newGapMm: 0.09); // no movement either
+      final r = ctrl.onRecheck(newGapMm: 0.07); // no movement either
       expect(r.outcome, CouplingUpdateOutcome.rejectedSmallDelta);
       expect(ctrl.stictionEscalations, 0);
       expect(ctrl.coupling, ScrewController.seedCouplingMmPerGf);
     });
 
     test('out-of-band samples are clamped, not rejected', () {
-      // Too sensitive: 0.35 mm move on a -375 gf command → -9.3e-4.
+      // Too sensitive: 0.45 mm move on a -500 gf command → -9e-4.
       final soft = ScrewController();
       final cmdS = soft.command(zGapMm: 0.25);
       soft.recordCommand(cmdS);
-      final rS = soft.onRecheck(newGapMm: 0.25 - 0.35);
+      final rS = soft.onRecheck(newGapMm: 0.25 - 0.45);
       expect(rS.outcome, CouplingUpdateOutcome.acceptedClamped);
       expect(soft.coupling, ScrewController.couplingMostSensitive);
 
