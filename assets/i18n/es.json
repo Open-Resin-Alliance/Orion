@@ -433,6 +433,7 @@
         "manualDesc": "Ajuste Z manual para expertos.",
         "manualMode": "Modo manual",
         "manualAdvancedWarning": "Manual Leveling is intended for advanced users. We recommend using Assisted Leveling instead. Proceed only if you know what you're doing.",
+        "recheckLeveling": "Re-Check Leveling",
         "preparation": "Preparación",
         "cancel": "Cancelar",
         "next": "Siguiente",

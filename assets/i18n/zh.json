@@ -433,6 +433,7 @@
         "manualDesc": "适合有经验用户的手动Z调整。",
         "manualMode": "手动模式",
         "manualAdvancedWarning": "Manual Leveling is intended for advanced users. We recommend using Assisted Leveling instead. Proceed only if you know what you're doing.",
+        "recheckLeveling": "Re-Check Leveling",
         "preparation": "准备",
         "cancel": "取消",
         "next": "下一步",

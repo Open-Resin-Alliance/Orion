@@ -433,6 +433,7 @@
         "manualDesc": "Handmatige Z-aanpassing voor ervaren gebruikers.",
         "manualMode": "Handmatige modus",
         "manualAdvancedWarning": "Manual Leveling is intended for advanced users. We recommend using Assisted Leveling instead. Proceed only if you know what you're doing.",
+        "recheckLeveling": "Re-Check Leveling",
         "preparation": "Voorbereiding",
         "cancel": "Annuleren",
         "next": "Volgende",

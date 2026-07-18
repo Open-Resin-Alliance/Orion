@@ -68,9 +68,14 @@ class _PendingScrewCommand {
 }
 
 class Athena2LevelingWizard extends StatefulWidget {
-  const Athena2LevelingWizard({super.key, required this.config});
+  const Athena2LevelingWizard({
+    super.key,
+    required this.config,
+    this.recheck = false,
+  });
 
   final LevelingConfig config;
+  final bool recheck;
 
   @override
   State<Athena2LevelingWizard> createState() => _Athena2LevelingWizardState();
@@ -230,6 +235,39 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     // Prevent standby from activating while the leveling wizard is open
     Provider.of<StatusProvider>(context, listen: false)
         .setLevelingWorkflowActive(true);
+
+    if (widget.recheck) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startRecheckMode();
+      });
+    }
+  }
+
+  void _startRecheckMode() {
+    // Auto-select the Pro variant, skip loosen/tighten screens, but
+    // still show the pre-flight checklist before probing begins.
+    final proVariant = widget.config.variants.firstWhere(
+      (v) => v.id == 'pro',
+      orElse: () => widget.config.variants.first,
+    );
+    _engine.selectVariant(proVariant);
+    _loosenScrewsDone = true;
+    _alignDone = true;
+    _levelingSessionId = _uuid4();
+    _recheckNumber = 0;
+    _probeConfigCaptured = false;
+    _screwControllers = _freshControllers();
+    _pendingCommand = null;
+    _lastAchievedForceGf = null;
+    _lastAdjustedCorner = null;
+    _resetCornerResults();
+    _loadScrewCalibration();
+
+    // Start at pre-flight so the user sees the safety checklist first.
+    setState(() {
+      _phase = _WizardPhase.introAndChecklist;
+      _preFlightIndex = 0;
+    });
   }
 
   @override
@@ -776,12 +814,29 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     if (_preFlightIndex < keys.length - 1) {
       setState(() => _preFlightIndex += 1);
     } else {
-      // All pre-flight steps done â†’ start workflow (variant already selected)
+      // All pre-flight steps done → start workflow
       setState(() {
         _phase = _WizardPhase.workflow;
         _preFlightIndex = -1;
       });
-      // Auto-run the first workflow step (Prepare Printer)
+      // In recheck mode, skip the initial probe_prepare / probe_screen
+      // (Stage 1) and jump straight to corner probing.  Home first so
+      // the machine knows its position before moving to the corners.
+      if (widget.recheck) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted) return;
+          final manual =
+              Provider.of<ManualProvider>(context, listen: false);
+          await manual.manualHome();
+          if (!mounted) return;
+          _engine.jumpToFirstStepId('fine_prepare_');
+          if (_engine.canRunCurrentStep) {
+            _engine.runCurrentStep();
+          }
+        });
+        return; // skip the non-recheck auto-run below
+      }
+      // Auto-run the current step
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _engine.canRunCurrentStep) {
           _engine.runCurrentStep();
@@ -946,24 +1001,34 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     }
 
     if (_phase == _WizardPhase.introAndChecklist && _preFlightIndex >= 0) {
-      // Pre-flight step: Back | Done
+      // Pre-flight step: (Back or Cancel) | Next/Done
       final isLast = _preFlightIndex >= widget.config.checklistKeys.length - 1;
+      final isFirstRecheck = widget.recheck && _preFlightIndex == 0;
       return Row(
         children: [
           Expanded(
             child: GlassButton(
-              tint: GlassButtonTint.neutral,
-              onPressed: _goBack,
+              tint: isFirstRecheck
+                  ? GlassButtonTint.negative
+                  : GlassButtonTint.neutral,
+              onPressed: isFirstRecheck ? _cancelLeveling : _goBack,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(PhosphorIcons.arrowLeft(), size: 20),
+                  Icon(
+                    isFirstRecheck
+                        ? PhosphorIcons.x()
+                        : PhosphorIcons.arrowLeft(),
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Text(
-                    FlutterI18n.translate(context, 'common.back'),
+                    isFirstRecheck
+                        ? FlutterI18n.translate(context, 'leveling.cancel')
+                        : FlutterI18n.translate(context, 'common.back'),
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.w700),
                   ),
@@ -1093,8 +1158,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           width: 320,
           child: GlassButton(
             tint: GlassButtonTint.positive,
-            onPressed: () =>
-                Navigator.of(context).popUntil((route) => route.isFirst),
+            onPressed: () => widget.recheck
+                ? Navigator.of(context).pop()
+                : Navigator.of(context).popUntil((route) => route.isFirst),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 65),
             ),
@@ -2673,6 +2739,7 @@ class _WorkflowPane extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const SizedBox(height: 12),
         Row(
           children: [
             Icon(
@@ -3211,109 +3278,6 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
             ),
           ),
         ),
-        // ── Prediction summary card ──
-        if (widget.predictionDirection != null &&
-            widget.predictionScrew != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: onSurface.withValues(alpha: 0.04),
-                border: Border.all(
-                    color: onSurface.withValues(alpha: 0.10)),
-              ),
-              child: Row(
-                children: [
-                  Icon(PhosphorIcons.info(),
-                      size: 18,
-                      color: onSurface.withValues(alpha: 0.55)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${widget.predictionDirection} — ${widget.predictionScrew}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: accent,
-                          ),
-                        ),
-                        if (widget.predictionZMm != null &&
-                            widget.predictionRechecks != null) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            [
-                              FlutterI18n.translate(
-                                  context,
-                                  'leveling.wizardPredictZChange',
-                                  translationParams: {
-                                    'mm': widget.predictionZMm!
-                                        .toStringAsFixed(2),
-                                  }),
-                              if (widget.predictionRechecks! > 0)
-                                FlutterI18n.translate(
-                                  context,
-                                  'leveling.wizardPredictRechecks',
-                                  translationParams: {
-                                    'n': widget.predictionRechecks!
-                                        .toString(),
-                                  }),
-                              if (widget.predictionRechecks! == 0)
-                                FlutterI18n.translate(
-                                  context,
-                                  'leveling.wizardPredictLastCheck'),
-                            ].join('  '),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: onSurface.withValues(alpha: 0.55),
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
-                        // ── Mechanical-limit hint ──
-                        // If the back screw has been targeted repeatedly,
-                        // it may be nearing its thread limit.  Suggest
-                        // the equivalent opposite adjustment.
-                        if (widget.cornerIndex >= 2 &&
-                            widget.consecutiveBackAdjustments >= 2) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(6),
-                              color: Colors.orangeAccent
-                                  .withValues(alpha: 0.10),
-                            ),
-                            child: Text(
-                              FlutterI18n.translate(
-                                context,
-                                'leveling.wizardBackScrewAlt',
-                              ),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.orangeAccent
-                                    .withValues(alpha: 0.9),
-                                height: 1.3,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -3839,52 +3803,6 @@ class _CompletionPane extends StatelessWidget {
               ),
             ),
           ),
-          if (engine.zOffsetApplied != null) ...[
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 14,
-              ),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.green.withValues(alpha: 0.10),
-                border: Border.all(
-                  color: Colors.greenAccent.withValues(alpha: 0.35),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    PhosphorIcons.ruler(),
-                    size: 20,
-                    color: Colors.greenAccent,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    FlutterI18n.translate(
-                      context,
-                      'levelingWorkflow.appliedOffset',
-                    ),
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${engine.zOffsetApplied!.toStringAsFixed(2)} mm',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.greenAccent,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );

@@ -20,7 +20,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
+import 'package:orion/tools/athena/leveling_configs.dart';
 import 'package:orion/tools/athena/leveling_log_service.dart';
+import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
@@ -280,27 +283,43 @@ class VerifyLevelingScreen extends StatelessWidget {
     final compactTs =
         s.timestamp.length >= 16 ? s.timestamp.substring(0, 16) : s.timestamp;
 
-    return Center(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Deviation
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    s.deviationMm.toStringAsFixed(3),
-                    style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
+    return Column(
+      children: [
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: OrionSpacing.screenHorizontal),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Deviation
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Text(
+                            'Δ',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.45),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          s.deviationMm.toStringAsFixed(3),
+                          style: const TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 5),
                     child: Text(
@@ -379,6 +398,70 @@ class VerifyLevelingScreen extends StatelessWidget {
           ),
         ),
       ),
+    ),
+        ),
+        // Re-Check Leveling button — bottom-aligned
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              OrionSpacing.screenHorizontal, 4,
+              OrionSpacing.screenHorizontal, OrionSpacing.controlGap),
+          child: SizedBox(
+            width: double.infinity,
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () {
+                final config = OrionConfig();
+                final levelingConfig = getLevelingConfigForMachine(
+                  config.getMachineModelName(),
+                );
+                if (levelingConfig != null) {
+                  Navigator.of(context).push(
+                    PageRouteBuilder<void>(
+                      opaque: false,
+                      barrierDismissible: false,
+                      barrierColor:
+                          Colors.black.withValues(alpha: 0.35),
+                      transitionDuration:
+                          const Duration(milliseconds: 300),
+                      reverseTransitionDuration:
+                          const Duration(milliseconds: 250),
+                      pageBuilder: (_, __, ___) =>
+                          Athena2LevelingWizard(
+                        config: levelingConfig,
+                        recheck: true,
+                      ),
+                      transitionsBuilder: (_, animation, __, child) {
+                        return FadeTransition(
+                          opacity: CurvedAnimation(
+                              parent: animation, curve: Curves.easeOut),
+                          child: child,
+                        );
+                      },
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.arrowsCounterClockwise(),
+                      size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(
+                        context, 'leveling.recheckLeveling'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
