@@ -135,6 +135,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
   Map<int, ScrewController> _screwControllers = _freshControllers();
   int? _lastAdjustedCorner;
+  int? _puckPlacedCorner; // corner that still has the puck from adjustment
   _PendingScrewCommand? _pendingCommand;
   double? _lastAchievedForceGf; // what the live gauge read when the user stopped
   double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
@@ -367,6 +368,30 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
               });
             }
           }
+        }
+      }
+    }
+
+    // ── Puck-location skip ──
+    // If the puck is already at this corner from a prior adjustment,
+    // auto-advance past the placement screen straight to probing.
+    if (_puckPlacedCorner != null &&
+        _engine.status == LevelingWorkflowStatus.stepComplete) {
+      final step = _engine.currentStep;
+      if (step != null &&
+          step.kind == LevelingWorkflowStepKind.prepare &&
+          step.id.startsWith('fine_prepare_')) {
+        final cornerNum =
+            int.tryParse(step.id.replaceFirst('fine_prepare_', '')) ?? 0;
+        final cornerIndex = cornerNum - 1; // fine_prepare_1 → corner 0
+        if (cornerIndex == _puckPlacedCorner) {
+          _puckPlacedCorner = null; // only skip once
+          _engine.advanceAfterSuccessfulStep();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _engine.canRunCurrentStep) {
+              _engine.runCurrentStep();
+            }
+          });
         }
       }
     }
@@ -866,6 +891,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _recheckNumber++;
     _resetCornerResults();
     _probeConfigCaptured = false;
+    // If the user just adjusted a screw, the puck is still at that corner.
+    // Skip the "place puck" prompt for the first corner of the re-check.
+    _puckPlacedCorner = _lastAdjustedCorner;
     _engine.jumpToFirstStepId('fine_prepare_');
     setState(() => _phase = _WizardPhase.workflow);
     // Auto-run the corner prepare step so the probe positions itself before
