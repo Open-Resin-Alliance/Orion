@@ -26,6 +26,7 @@ import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/tools/athena/screw_calibration_store.dart';
 import 'package:orion/tools/athena/screw_controller.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
 import 'package:orion/tools/athena/leveling_log_entry.dart';
@@ -119,6 +120,24 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   double? _lastAchievedForceGf; // what the live gauge read when the user stopped
   double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
   int _consecutiveBackAdjustments = 0; // detect maxed-out back screw
+
+  // Persisted per-screw coupling calibration — coupling is a physical
+  // property of the plate, so sessions start from the previous
+  // session's measurements instead of the generic seed.
+  final ScrewCalibrationStore _calibrationStore = ScrewCalibrationStore();
+  static const _screwStoreKeys = {0: 'fl', 1: 'fr', 2: 'back'};
+
+  /// Seed the (fresh) controllers from the stored calibration.
+  Future<void> _loadScrewCalibration() async {
+    final stored = await _calibrationStore.load();
+    if (!mounted) return;
+    for (final entry in _screwStoreKeys.entries) {
+      final coupling = stored[entry.value];
+      if (coupling != null) {
+        _screwControllers[entry.key]!.adoptSeed(coupling);
+      }
+    }
+  }
 
   /// The controller for the screw that drives [cornerIndex]
   /// (both back corners share one screw).  Cross-seeds an unmeasured
@@ -623,12 +642,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         adjusted.abandonPending();
       }
     }
-    // Which screw the telemetry below refers to.  Fall back to the
-    // back controller for checks with no preceding adjustment.
-    final screwLabels = ['FL', 'FR', 'BACK', 'BACK'];
-    final adjustedScrew = _lastAdjustedCorner != null
-        ? screwLabels[_lastAdjustedCorner!]
-        : null;
+    // Snapshot before clearing the per-adjustment state.
+    final savedAdjustedCorner = _lastAdjustedCorner;
     final targetForceGf = _pendingCommand?.targetForceGf;
     final anchorForceGf = _pendingCommand?.anchorForceGf;
     final achievedGf = _lastAchievedForceGf;
@@ -636,6 +651,25 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _lastAdjustedCorner = null;
     _lastAchievedForceGf = null;
     _pendingCommand = null;
+
+    // Persist the updated coupling — a physical plate property that
+    // survives session restarts — so the next session starts
+    // calibrated instead of relearning from the seed.
+    if (update?.accepted == true && savedAdjustedCorner != null) {
+      final storeKey =
+          _screwStoreKeys[savedAdjustedCorner >= 2 ? 2 : savedAdjustedCorner];
+      if (storeKey != null) {
+        // Best-effort — the coupling is saved again on the next
+        // accepted sample.
+        _calibrationStore.save(storeKey, adjusted!.coupling);
+      }
+    }
+
+    // Which screw the telemetry below refers to.  Fall back to the
+    // back controller for checks with no preceding adjustment.
+    final screwLabels = ['FL', 'FR', 'BACK', 'BACK'];
+    final adjustedScrew =
+        savedAdjustedCorner != null ? screwLabels[savedAdjustedCorner] : null;
 
     final variant = _engine.variant?.id ?? 'unknown';
     final cornerLabels = ['FL', 'FR', 'BR', 'BL'];
@@ -861,6 +895,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _pendingCommand = null;
             _lastAchievedForceGf = null;
             _lastAdjustedCorner = null;
+            // Pre-seed the fresh controllers from the persisted
+            // per-screw calibration (fire-and-forget; adjustments
+            // happen much later in the flow).
+            _loadScrewCalibration();
             setState(() {
               _phase = _WizardPhase.introAndChecklist;
               _preFlightIndex = -1;
