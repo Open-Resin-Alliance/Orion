@@ -508,7 +508,7 @@
         "wizardLooser": "Losser",
         "wizardProbeFailed": "Meting mislukt. Probeer opnieuw.",
         "adjustmentIntroTitle": "Hoe afstellen werkt",
-        "adjustmentIntroBody": "Een live krachtmeter toont de druk door de bouwplaat.\nDraai de aangegeven schroef langzaam met het korte uiteinde van de inbussleutel.\nCentreer de stip — groen betekent doel bereikt.",
+        "adjustmentIntroBody": "Een live krachtmeter toont de druk op de bouwplaat.\nDraai de aangegeven schroef langzaam met het korte uiteinde van de inbussleutel.\nCentreer de stip — groen betekent doel bereikt.",
         "adjustmentIntroCaveat": "Belangrijk: Haal na elke draai uw hand en inbussleutel van de arm.\nLaat de meting tot rust komen — zelfs lichte druk kan de krachtsensor verstoren.",
         "wizardSkip": "Overslaan",
         "wizardSkipTitle": "Aanpassing overslaan",

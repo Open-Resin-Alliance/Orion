@@ -519,7 +519,7 @@
         "wizardLooser": "Looser",
         "wizardProbeFailed": "Probe failed. Please try again.",
         "adjustmentIntroTitle": "How Adjustment Works",
-        "adjustmentIntroBody": "A live force gauge shows pressure through the build plate.\nTurn the indicated screw slowly with the short end of the hex key.\nCenter the dot — green means you've hit the target.",
+        "adjustmentIntroBody": "A live force gauge shows pressure on the build plate.\nTurn the indicated screw slowly with the short end of the hex key.\nCenter the dot — green means you've hit the target.",
         "adjustmentIntroCaveat": "Important: After each turn, remove your hand and hex key from the arm.\nLet the reading settle — even light pressure can throw off the force sensor.",
         "wizardSkip": "Skip",
         "wizardSkipTitle": "Skip Adjustment",

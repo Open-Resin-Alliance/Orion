@@ -508,7 +508,7 @@
         "wizardLooser": "Lockerer",
         "wizardProbeFailed": "Messung fehlgeschlagen. Erneut versuchen.",
         "adjustmentIntroTitle": "So funktioniert die Justierung",
-        "adjustmentIntroBody": "Eine Live-Kraftanzeige zeigt den Druck durch die Bauplatte.\nDie markierte Schraube langsam mit dem kurzen Ende des Inbusschlüssels drehen.\nDen Punkt zentrieren — grün bedeutet Ziel erreicht.",
+        "adjustmentIntroBody": "Eine Live-Kraftanzeige zeigt den Druck auf die Bauplatte.\nDie markierte Schraube langsam mit dem kurzen Ende des Inbusschlüssels drehen.\nDen Punkt zentrieren — grün bedeutet Ziel erreicht.",
         "adjustmentIntroCaveat": "Wichtig: Nach jeder Drehung Hand und Inbusschlüssel vom Arm nehmen.\nMessung beruhigen lassen — selbst leichter Druck kann den Kraftsensor verfälschen.",
         "wizardSkip": "Überspringen",
         "wizardSkipTitle": "Anpassung überspringen",

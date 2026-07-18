@@ -508,7 +508,7 @@
         "wizardLooser": "Más flojo",
         "wizardProbeFailed": "Medición fallida. Reintentar.",
         "adjustmentIntroTitle": "Cómo funciona el ajuste",
-        "adjustmentIntroBody": "Un medidor de fuerza en vivo muestra la presión a través de la placa.\nGire lentamente el tornillo indicado con el extremo corto de la llave hexagonal.\nCentre el punto — verde significa valor alcanzado.",
+        "adjustmentIntroBody": "Un medidor de fuerza en vivo muestra la presión sobre la placa.\nGire lentamente el tornillo indicado con el extremo corto de la llave hexagonal.\nCentre el punto — verde significa valor alcanzado.",
         "adjustmentIntroCaveat": "Importante: Después de cada giro, retire mano y llave del brazo.\nDeje que la lectura se estabilice — incluso una ligera presión puede alterar el sensor.",
         "wizardSkip": "Saltar",
         "wizardSkipTitle": "Saltar ajuste",

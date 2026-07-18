@@ -508,7 +508,7 @@
         "wizardLooser": "更松",
         "wizardProbeFailed": "测量失败。请重试。",
         "adjustmentIntroTitle": "调整工作原理",
-        "adjustmentIntroBody": "实时力度计显示通过构建板的压力。\n用六角扳手短端缓慢转动指示的螺丝。\n将圆点居中——绿色表示已达到目标。",
+        "adjustmentIntroBody": "实时力度计显示构建板上的压力。\n用六角扳手短端缓慢转动指示的螺丝。\n将圆点居中——绿色表示已达到目标。",
         "adjustmentIntroCaveat": "重要：每次转动后，将手和六角扳手从臂上移开。\n等待读数稳定——轻微压力也可能干扰力传感器。",
         "wizardSkip": "跳过",
         "wizardSkipTitle": "跳过调整",

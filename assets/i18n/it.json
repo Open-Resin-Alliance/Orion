@@ -508,7 +508,7 @@
         "wizardLooser": "Più lento",
         "wizardProbeFailed": "Misura fallita. Riprova.",
         "adjustmentIntroTitle": "Come funziona la regolazione",
-        "adjustmentIntroBody": "Un indicatore di forza in tempo reale mostra la pressione attraverso la piastra.\nGira lentamente la vite indicata con l'estremità corta della chiave a brugola.\nCentra il punto — il verde significa valore raggiunto.",
+        "adjustmentIntroBody": "Un indicatore di forza in tempo reale mostra la pressione sulla piastra.\nGira lentamente la vite indicata con l'estremità corta della chiave a brugola.\nCentra il punto — il verde significa valore raggiunto.",
         "adjustmentIntroCaveat": "Importante: Dopo ogni giro, togliere mano e chiave dal braccio.\nLascia che la lettura si stabilizzi — anche una leggera pressione può falsare il sensore.",
         "wizardSkip": "Salta",
         "wizardSkipTitle": "Salta regolazione",
