@@ -638,12 +638,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     _adjustingCornerIndex = probeCorner;
     _adjustmentError = null;
-    _adjustmentBusy = true;
     _preAdjustmentDeviation = _cornerDeviation;
 
     // Track consecutive back-screw picks to detect mechanical limits.
-    // If the wizard asks for the back screw twice in a row, the user
-    // may be running out of thread — suggest the front-screw alternative.
     if (probeCorner >= 2) {
       _consecutiveBackAdjustments++;
     } else {
@@ -659,6 +656,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       return;
     }
 
+    _adjustmentBusy = true;
     setState(() {
       _phase = _WizardPhase.adjustment;
       _adjustmentStep = _AdjustmentStep.preparing;
@@ -986,11 +984,33 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
     final primary = Theme.of(context).colorScheme.primary;
 
+    final showAppBar = _phase == _WizardPhase.adjustment &&
+        _adjustmentStep == _AdjustmentStep.intro;
+
     return GlassApp(
       child: Scaffold(
         backgroundColor: isGlass
             ? Colors.transparent
             : Theme.of(context).colorScheme.surface,
+        appBar: showAppBar
+            ? AppBar(
+                backgroundColor: isGlass
+                    ? Colors.transparent
+                    : Theme.of(context).colorScheme.surface,
+                elevation: 0,
+                automaticallyImplyLeading: false,
+                centerTitle: true,
+                title: Text(
+                  FlutterI18n.translate(
+                      context, 'leveling.adjustmentIntroTitle'),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: primary,
+                  ),
+                ),
+              )
+            : null,
         body: SafeArea(
           child: Padding(
             padding: OrionSpacing.screenPaddingWithBottomNav,
@@ -2060,67 +2080,54 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   Widget _buildAdjustmentIntroView(BuildContext context, Color primary) {
     final theme = Theme.of(context);
     return Center(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                FlutterI18n.translate(
-                    context, 'leveling.adjustmentIntroTitle'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orangeAccent,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              FlutterI18n.translate(
+                  context, 'leveling.adjustmentIntroBody'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.4,
+                color: theme.colorScheme.onSurface
+                    .withValues(alpha: 0.75),
+              ),
+            ),
+            const SizedBox(height: 28),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.orangeAccent.withValues(alpha: 0.08),
+                border: Border.all(
+                  color: Colors.orangeAccent.withValues(alpha: 0.25),
                 ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                FlutterI18n.translate(
-                    context, 'leveling.adjustmentIntroBody'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  height: 1.4,
-                  color: theme.colorScheme.onSurface
-                      .withValues(alpha: 0.7),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: Colors.orangeAccent.withValues(alpha: 0.08),
-                  border: Border.all(
-                    color: Colors.orangeAccent.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(PhosphorIcons.warning(),
-                        size: 18, color: Colors.orangeAccent),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        FlutterI18n.translate(
-                            context, 'leveling.adjustmentIntroCaveat'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.35,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.65),
-                        ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(PhosphorIcons.warning(),
+                      size: 22, color: Colors.orangeAccent),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      FlutterI18n.translate(
+                          context, 'leveling.adjustmentIntroCaveat'),
+                      style: TextStyle(
+                        fontSize: 18,
+                        height: 1.4,
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.7),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
