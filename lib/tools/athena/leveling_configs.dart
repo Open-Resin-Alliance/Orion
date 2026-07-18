@@ -81,6 +81,7 @@ class LevelingWorkflowStep {
 
   /// Create a copy with selected fields overridden.
   LevelingWorkflowStep copyWith({
+    String? endpoint,
     String? runningTitle,
     String? stepTitle,
     String? stepInstruction,
@@ -92,7 +93,7 @@ class LevelingWorkflowStep {
   }) {
     return LevelingWorkflowStep(
       id: id,
-      endpoint: endpoint,
+      endpoint: endpoint ?? this.endpoint,
       titleKey: titleKey,
       instructionKey: instructionKey,
       icon: icon,
@@ -138,8 +139,10 @@ class LevelingVariant {
       athena2BaseWorkflowSteps[0].copyWith(
         intermediateScreen: 'loosen',
       ),
-      // 1: Initial leveling — shows tighten intermediate
+      // 1: Initial leveling — shows tighten intermediate.
+      // Standard arm uses its own probe endpoint.
       athena2BaseWorkflowSteps[1].copyWith(
+        endpoint: id != 'pro' ? 'probe_standardarm' : null,
         stepTitle: 'Initial Leveling',
         stepInstruction: 'The plate will move towards the build plate.',
         intermediateScreen: 'tighten',
