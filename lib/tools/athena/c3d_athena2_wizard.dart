@@ -648,8 +648,19 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       adjusted = _controllerForCorner(_lastAdjustedCorner!);
       final zValues = _compensatedCorners(_rawCornerZs);
       if (zValues.length >= 4) {
+        // Give the estimator the force delta the user ACTUALLY applied
+        // (live gauge reading minus the anchor) so a user who ignores
+        // the gauge cannot corrupt the learned coupling; null when no
+        // live reading was captured (falls back to the commanded
+        // delta).
+        final anchor = _pendingCommand?.anchorForceGf;
+        final achieved = _lastAchievedForceGf;
+        final achievedDelta =
+            (anchor != null && achieved != null) ? achieved - anchor : null;
         update = adjusted.onRecheck(
-            newGapMm: adjustmentGapMm(_lastAdjustedCorner!, zValues));
+          newGapMm: adjustmentGapMm(_lastAdjustedCorner!, zValues),
+          achievedDeltaGf: achievedDelta,
+        );
       } else {
         // Missing data — never let a stale command pair with a later,
         // unrelated recheck.

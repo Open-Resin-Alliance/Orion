@@ -279,7 +279,17 @@ class ScrewController {
   }
 
   /// Update the coupling estimate from a completed recheck.
-  CouplingUpdateResult onRecheck({required double newGapMm}) {
+  ///
+  /// [achievedDeltaGf] is the force delta the user ACTUALLY applied
+  /// (live gauge reading minus the anchor, in the probe frame).  When
+  /// available it is the sample denominator — physics responds to
+  /// what was applied, not what was asked — so a user who ignores the
+  /// gauge (stops early, overshoots) cannot corrupt the estimate.
+  /// Falls back to the commanded delta when no live reading exists.
+  CouplingUpdateResult onRecheck({
+    required double newGapMm,
+    double? achievedDeltaGf,
+  }) {
     final pendingGap = _pendingGapMm;
     final pendingDelta = _pendingDeltaGf;
     _pendingGapMm = null;
@@ -292,14 +302,18 @@ class ScrewController {
       );
     }
 
+    // The force delta that was actually applied to the screw.
+    final appliedDelta = achievedDeltaGf ?? pendingDelta;
+
     // Relative movement of the adjusted corner toward its reference:
     // positive when the gap shrank in the commanded sense.
     final gapMove = pendingGap - newGapMm;
 
-    if (pendingDelta.abs() < minCommandDeltaGf) {
-      // Command too small to yield a usable sample; not a stiction
-      // signal either — a small command was never expected to produce
-      // measurable movement.
+    if (appliedDelta.abs() < minCommandDeltaGf) {
+      // Too little force applied to yield a usable sample.  With a
+      // live gauge reading this also covers "the user skipped the
+      // turn" — which must NOT escalate as stiction (the plate was
+      // never pushed).
       return CouplingUpdateResult._(
         outcome: CouplingUpdateOutcome.rejectedSmallDelta,
         commandedDeltaGf: pendingDelta,
@@ -310,9 +324,9 @@ class ScrewController {
     }
 
     if (gapMove.abs() < minMeasurableMoveMm) {
-      // Substantial force commanded but the plate did not measurably
-      // move: stiction or thread backlash.  Assume the printer is
-      // stiffer than estimated and triple the next command.
+      // Substantial force genuinely applied but the plate did not
+      // measurably move: stiction or thread backlash.  Assume the
+      // printer is stiffer than estimated and triple the next command.
       if (_stictionEscalations < maxStictionEscalations) {
         _stictionEscalations++;
         final escalated = _coupling * stictionFactor;
@@ -329,7 +343,7 @@ class ScrewController {
       );
     }
 
-    final sample = gapMove / pendingDelta;
+    final sample = gapMove / appliedDelta;
     if (sample >= 0) {
       // Physically impossible sign (tighten must shrink the gap):
       // measurement noise or the screw was turned the wrong way.

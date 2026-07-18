@@ -400,6 +400,57 @@ void main() {
     });
   });
 
+  group('ScrewController gauge-compliance protection', () {
+    test('partial compliance learns the TRUE coupling via achieved delta',
+        () {
+      // User told to apply -700 gf but stops halfway at -350.  The
+      // plate responds to what was applied; dividing by the commanded
+      // delta would make the plate look 2x stiffer than it is.
+      final ctrl = ScrewController();
+      const trueC = -2.0e-4;
+      final cmd = ctrl.command(zGapMm: 0.5); // -700 gf commanded
+      ctrl.recordCommand(cmd);
+      const achieved = -350.0; // user stopped halfway
+      final newGap = 0.5 - trueC * achieved; // plate moved per achieved
+      final r = ctrl.onRecheck(newGapMm: newGap, achievedDeltaGf: achieved);
+      expect(r.accepted, isTrue);
+      expect(ctrl.coupling, closeTo(trueC, 1e-9)); // truth, not 2x-stiff
+    });
+
+    test('a skipped turn is rejected, not escalated as stiction', () {
+      // User never touches the screw: no movement AND no applied
+      // force.  Before achieved-delta gating this misfired as
+      // stiction and tripled the next command.
+      final ctrl = ScrewController();
+      final cmd = ctrl.command(zGapMm: 0.5);
+      ctrl.recordCommand(cmd);
+      final r = ctrl.onRecheck(newGapMm: 0.5, achievedDeltaGf: -10.0);
+      expect(r.outcome, CouplingUpdateOutcome.rejectedSmallDelta);
+      expect(ctrl.stictionEscalations, 0);
+      expect(ctrl.coupling, ctrl.seedCouplingMmPerGf);
+    });
+
+    test('genuine stiction (force applied, no movement) still escalates',
+        () {
+      final ctrl = ScrewController();
+      final cmd = ctrl.command(zGapMm: 0.5);
+      ctrl.recordCommand(cmd);
+      // Full commanded force applied, plate did not move.
+      final r = ctrl.onRecheck(
+          newGapMm: 0.5, achievedDeltaGf: cmd.forceDeltaGf);
+      expect(r.outcome, CouplingUpdateOutcome.stictionEscalated);
+      expect(ctrl.stictionEscalations, 1);
+    });
+
+    test('no live reading falls back to the commanded delta', () {
+      final ctrl = ScrewController();
+      const trueC = -2.0e-4;
+      final gap = _cycle(ctrl, 0.5, trueC); // helper passes no achieved
+      expect(ctrl.coupling, closeTo(trueC, 1e-9));
+      expect(gap, lessThan(0.5));
+    });
+  });
+
   group('ScrewController pending lifecycle', () {
     test('recheck without a pending command is a no-op', () {
       final ctrl = ScrewController();
