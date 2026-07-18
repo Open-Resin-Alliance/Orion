@@ -361,7 +361,7 @@ class VerifyLevelingScreen extends StatelessWidget {
               // Corner Z row
               Row(
                 children: [
-                  for (final label in const ['FL', 'FR', 'BL', 'BR']) ...[
+                  for (final label in const ['FL', 'FR', 'BR', 'BL']) ...[
                     if (label != 'FL')
                       Container(
                         width: 1,
