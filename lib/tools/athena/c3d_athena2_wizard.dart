@@ -45,6 +45,7 @@ enum _WizardPhase {
 }
 
 enum _AdjustmentStep {
+  intro,
   preparing,
   puckPlacement,
   probing,
@@ -136,6 +137,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   Map<int, ScrewController> _screwControllers = _freshControllers();
   int? _lastAdjustedCorner;
   int? _puckPlacedCorner; // corner that still has the puck from adjustment
+  bool _adjustmentIntroShown = false;
   _PendingScrewCommand? _pendingCommand;
   double? _lastAchievedForceGf; // what the live gauge read when the user stopped
   double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
@@ -644,6 +646,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       _consecutiveBackAdjustments++;
     } else {
       _consecutiveBackAdjustments = 0;
+    }
+
+    if (!_adjustmentIntroShown) {
+      _adjustmentIntroShown = true;
+      setState(() {
+        _phase = _WizardPhase.adjustment;
+        _adjustmentStep = _AdjustmentStep.intro;
+      });
+      return;
     }
 
     setState(() {
@@ -1799,6 +1810,37 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       );
     }
 
+    // Adjustment intro: single "Start" button
+    if (_adjustmentStep == _AdjustmentStep.intro) {
+      return Center(
+        child: SizedBox(
+          width: 320,
+          child: GlassButton(
+            tint: GlassButtonTint.positive,
+            onPressed: () {
+              setState(() => _adjustmentStep = _AdjustmentStep.preparing);
+              _runAdjustmentPrepare();
+            },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 65),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PhosphorIcons.arrowRight(), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  FlutterI18n.translate(context, 'leveling.startLeveling'),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     // Puck placement: Cancel | Proceed
     if (isPuckStep) {
       return Row(
@@ -1914,6 +1956,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     }
 
     switch (_adjustmentStep) {
+      case _AdjustmentStep.intro:
+        return _buildAdjustmentIntroView(context, primary);
       case _AdjustmentStep.preparing:
       case _AdjustmentStep.probing:
         return _buildAdjustmentWarning(context, primary);
@@ -2000,6 +2044,75 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           onAchievedForce: (force) => _lastAchievedForceGf = force,
         );
     }
+  }
+
+  Widget _buildAdjustmentIntroView(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                FlutterI18n.translate(
+                    context, 'leveling.adjustmentIntroTitle'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orangeAccent,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                FlutterI18n.translate(
+                    context, 'leveling.adjustmentIntroBody'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.4,
+                  color: theme.colorScheme.onSurface
+                      .withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.orangeAccent.withValues(alpha: 0.08),
+                  border: Border.all(
+                    color: Colors.orangeAccent.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(PhosphorIcons.warning(),
+                        size: 18, color: Colors.orangeAccent),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        FlutterI18n.translate(
+                            context, 'leveling.adjustmentIntroCaveat'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.35,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildAdjustmentWarning(BuildContext context, Color primary) {
