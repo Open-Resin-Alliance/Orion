@@ -350,6 +350,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         if (step.intermediateScreen == 'allCorners' &&
             _levelingSessionId != null) {
           _logCornerCheck();
+          // Puck is at the last probed corner (BL, index 3) after a full sweep.
+          _puckPlacedCorner = 3;
         }
 
         // Auto-advance through steps that don't need user interaction
@@ -693,6 +695,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     }
 
     _adjustmentBusy = false;
+    // If the puck is already at this corner from the last probe, skip the
+    // placement screen and go straight to probing.
+    if (_puckPlacedCorner == _adjustingCornerIndex) {
+      _puckPlacedCorner = null;
+      _adjustmentStep = _AdjustmentStep.probing;
+      if (mounted) setState(() {});
+      _runAdjustmentProbe();
+      return;
+    }
     _adjustmentStep = _AdjustmentStep.puckPlacement;
     if (mounted) setState(() {});
   }
@@ -3501,7 +3512,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
         Align(
           alignment: Alignment.center,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 18),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               _adjustmentTitle,
               style: TextStyle(
