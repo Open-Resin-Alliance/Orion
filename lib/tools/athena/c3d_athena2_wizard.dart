@@ -3547,7 +3547,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                         Expanded(
                           flex: 1,
                           child: Container(
-                            height: 240,
+                            height: 280,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 18,
@@ -3640,7 +3640,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                         Expanded(
                           flex: 1,
                           child: Container(
-                            height: 240,
+                            height: 280,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 18,
