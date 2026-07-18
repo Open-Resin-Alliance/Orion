@@ -3682,14 +3682,20 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
                                             children: [
-                                              SizedBox(
-                                                width: 220,
-                                                child: Text(
-                                                  forceDelta != null
-                                                      ? forceDelta
-                                                          .toStringAsFixed(3)
-                                                      : '--',
-                                                  textAlign: TextAlign.right,
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.only(
+                                                        left: 24),
+                                                child: SizedBox(
+                                                  width: 220,
+                                                  child: Text(
+                                                    forceDelta != null
+                                                        ? forceDelta
+                                                            .toStringAsFixed(
+                                                                1)
+                                                        : '--',
+                                                    textAlign:
+                                                        TextAlign.center,
                                                   style: TextStyle(
                                                     fontSize: 38,
                                                     fontWeight: FontWeight.w800,
@@ -3702,7 +3708,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(width: 7),
+                                            ),
+                                            const SizedBox(width: 7),
                                               Text(
                                                 'gf',
                                                 style: TextStyle(
