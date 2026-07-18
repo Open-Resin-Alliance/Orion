@@ -110,11 +110,25 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   // snapshots its commanded force delta so the recheck can measure
   // what was actually achieved.  See ScrewController for the sign
   // conventions and the estimator design.
-  Map<int, ScrewController> _screwControllers = {
-    0: ScrewController(),
-    1: ScrewController(),
-    2: ScrewController(targetBiasMm: ScrewController.backLeapfrogBiasMm),
-  };
+  //
+  // Baseline seeds are field-derived: the first instrumented printer
+  // measured back −1.37e-4 / fronts −2.0e-4, with ~1.5× sensitivity
+  // margin so a softer unit undershoots one cycle rather than
+  // oscillating.  The per-machine calibration file and/or the first
+  // measured sample replace these outright.
+  static const double _frontBaselineSeed = -3.0e-4;
+  static const double _backBaselineSeed = -2.0e-4;
+
+  static Map<int, ScrewController> _freshControllers() => {
+        0: ScrewController(seedCouplingMmPerGf: _frontBaselineSeed),
+        1: ScrewController(seedCouplingMmPerGf: _frontBaselineSeed),
+        2: ScrewController(
+          seedCouplingMmPerGf: _backBaselineSeed,
+          targetBiasMm: ScrewController.backLeapfrogBiasMm,
+        ),
+      };
+
+  Map<int, ScrewController> _screwControllers = _freshControllers();
   int? _lastAdjustedCorner;
   _PendingScrewCommand? _pendingCommand;
   double? _lastAchievedForceGf; // what the live gauge read when the user stopped
@@ -887,11 +901,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _probeConfigCaptured = false;
             // Fresh coupling state — the estimates are per-printer
             // properties but must not leak across re-selected sessions.
-            _screwControllers = {
-              0: ScrewController(),
-              1: ScrewController(),
-              2: ScrewController(targetBiasMm: ScrewController.backLeapfrogBiasMm),
-            };
+            _screwControllers = _freshControllers();
             _pendingCommand = null;
             _lastAchievedForceGf = null;
             _lastAdjustedCorner = null;

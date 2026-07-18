@@ -135,18 +135,25 @@ double adjustmentGapMm(int cornerIndex, List<double> z) {
 /// same order as the delta itself and could even flip its sign.)
 class ScrewController {
   /// Per-screw controller tuning:
+  /// * [seedCouplingMmPerGf] — first-cycle coupling before any measured
+  ///   sample arrives.  The class default (−5e-4) is a conservative
+  ///   generic guess; the wizard passes per-screw values derived from
+  ///   fleet telemetry (back −2e-4, fronts −3e-4 — 1.5× sensitivity
+  ///   margin from the first instrumented printer's measurements).
   /// * [dampingRatio] — fraction of the gap corrected per cycle.
-  ///   Default 0.7: the fixed estimator measures coupling accurately
-  ///   enough that partial steps are safe, and full steps combining
-  ///   damping + leapfrog bias on soft-coupling plates produced gauge
-  ///   targets users felt were too aggressive (session 363b3a57 #2:
-  ///   -2838 gf absolute on a correction dominated by bias, not gap).
+  ///   Default 0.7: partial steps are safe with the fixed estimator
+  ///   and keep gauge targets comfortable on moderate-to-soft plates.
   /// * [targetBiasMm] — added to every correction target.  The back
   ///   screw uses [backLeapfrogBiasMm], a small overshoot past the
   ///   front plane, to keep follow-up front corrections tighten-only
   ///   while avoiding bias-dominated gauge targets.
-  ScrewController({this.dampingRatio = 0.7, this.targetBiasMm = 0.0});
+  ScrewController({
+    this.seedCouplingMmPerGf = -5e-4,
+    this.dampingRatio = 0.7,
+    this.targetBiasMm = 0.0,
+  }) : _coupling = seedCouplingMmPerGf;
 
+  final double seedCouplingMmPerGf;
   final double dampingRatio;
   final double targetBiasMm;
 
@@ -157,12 +164,6 @@ class ScrewController {
   /// coupling plates and the tighten-only fallback now provides a
   /// structural backstop that the original policy coded in this knob.
   static const double backLeapfrogBiasMm = 0.02;
-
-  /// Conservative first-cycle coupling (mm/gf).  Deliberately near the
-  /// sensitive end of the observed field range so uncalibrated cycles
-  /// undershoot (the most sensitive coupling seen in the field is
-  /// −8.2e-4, 1.6× the seed — a benign first-cycle overshoot).
-  static const double seedCouplingMmPerGf = -5e-4;
 
   /// Absolute force delta ceiling shown on the gauge (gf).
   static const double maxForceDeltaGf = 3000.0;
@@ -200,7 +201,7 @@ class ScrewController {
   static const double passGapMm = 0.100;
   static const int maxPredictedRechecks = 20;
 
-  double _coupling = seedCouplingMmPerGf;
+  double _coupling;
   bool _hasMeasuredSample = false;
   int _stictionEscalations = 0;
   double? _pendingGapMm;

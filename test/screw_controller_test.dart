@@ -195,6 +195,23 @@ void main() {
       expect(cmd.predictedGapAfterMm, closeTo(0.034, 1e-9));
     });
 
+    test('per-screw baseline seed sizes the first command', () {
+      // Field-derived baselines shipped by the wizard: back −2e-4,
+      // fronts −3e-4.  On the reference printer (back true ≈ −1.4e-4)
+      // the first command moves ~68% of target instead of the ~26%
+      // the generic −5e-4 seed produced.
+      final back = ScrewController(
+        seedCouplingMmPerGf: -2.0e-4,
+        targetBiasMm: ScrewController.backLeapfrogBiasMm,
+      );
+      final cmd = back.command(zGapMm: 0.384); // session ca9df37b #0
+      expect(cmd.targetZMm, closeTo(0.7 * 0.384 + 0.02, 1e-9));
+      expect(cmd.forceDeltaGf, closeTo((0.7 * 0.384 + 0.02) / -2.0e-4, 1e-6));
+      // True coupling −1.32e-4 → moves 66% of target (vs 26% at −5e-4).
+      final moved = -1.32e-4 * cmd.forceDeltaGf;
+      expect(moved / cmd.targetZMm, closeTo(0.66, 0.01));
+    });
+
     test('force delta clamps at ±3000 gf with clamp-aware prediction', () {
       final ctrl = _flooredController();
       expect(ctrl.coupling, closeTo(-2e-5, 1e-12));
@@ -219,7 +236,7 @@ void main() {
       final r = ctrl.onRecheck(newGapMm: 0.21); // moved the wrong way
       expect(r.outcome, CouplingUpdateOutcome.rejectedPositiveSample);
       expect(r.sample, greaterThan(0));
-      expect(ctrl.coupling, ScrewController.seedCouplingMmPerGf);
+      expect(ctrl.coupling, ctrl.seedCouplingMmPerGf);
       expect(ctrl.hasMeasuredSample, isFalse);
     });
 
@@ -326,7 +343,7 @@ void main() {
       final r = ctrl.onRecheck(newGapMm: 0.07); // no movement either
       expect(r.outcome, CouplingUpdateOutcome.rejectedSmallDelta);
       expect(ctrl.stictionEscalations, 0);
-      expect(ctrl.coupling, ScrewController.seedCouplingMmPerGf);
+      expect(ctrl.coupling, ctrl.seedCouplingMmPerGf);
     });
 
     test('out-of-band samples are clamped, not rejected', () {
@@ -388,7 +405,7 @@ void main() {
       final ctrl = ScrewController();
       final r = ctrl.onRecheck(newGapMm: 0.1);
       expect(r.outcome, CouplingUpdateOutcome.noPendingCommand);
-      expect(ctrl.coupling, ScrewController.seedCouplingMmPerGf);
+      expect(ctrl.coupling, ctrl.seedCouplingMmPerGf);
     });
 
     test('recording a second command overwrites the first', () {
