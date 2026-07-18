@@ -507,6 +507,9 @@
         "wizardTighter": "Plus serré",
         "wizardLooser": "Plus lâche",
         "wizardProbeFailed": "Échec mesure. Réessayer.",
+        "wizardSkip": "Passer",
+        "wizardSkipTitle": "Passer l'ajustement",
+        "wizardSkipMsg": "L'écart dépasse le seuil de 0,100 mm. Passer l'ajustement peut entraîner un plateau mal nivelé.\n\nÊtes-vous sûr de vouloir continuer sans ajustement ?",
         "wizardUnknownError": "Erreur inconnue",
         "wizardZDeviation": "FORCE Δ"
     },

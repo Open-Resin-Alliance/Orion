@@ -507,6 +507,9 @@
         "wizardTighter": "Vaster",
         "wizardLooser": "Losser",
         "wizardProbeFailed": "Meting mislukt. Probeer opnieuw.",
+        "wizardSkip": "Overslaan",
+        "wizardSkipTitle": "Aanpassing overslaan",
+        "wizardSkipMsg": "De afwijking ligt boven de drempel van 0,100 mm. Het overslaan van de aanpassing kan leiden tot een onvoldoende genivelleerde plaat.\n\nWeet u zeker dat u zonder aanpassing verder wilt gaan?",
         "wizardUnknownError": "Onbekende fout",
         "wizardZDeviation": "KRACHT Δ"
     },

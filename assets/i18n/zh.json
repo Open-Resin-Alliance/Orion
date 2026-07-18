@@ -507,6 +507,9 @@
         "wizardTighter": "更紧",
         "wizardLooser": "更松",
         "wizardProbeFailed": "测量失败。请重试。",
+        "wizardSkip": "跳过",
+        "wizardSkipTitle": "跳过调整",
+        "wizardSkipMsg": "偏差超过了0.100毫米的阈值。跳过调整可能导致打印平台调平不足。\n\n确定要不调整继续吗？",
         "wizardUnknownError": "未知错误",
         "wizardZDeviation": "力 Δ"
     },

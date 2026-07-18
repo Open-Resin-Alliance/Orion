@@ -507,6 +507,9 @@
         "wizardTighter": "Più stretto",
         "wizardLooser": "Più lento",
         "wizardProbeFailed": "Misura fallita. Riprova.",
+        "wizardSkip": "Salta",
+        "wizardSkipTitle": "Salta regolazione",
+        "wizardSkipMsg": "La deviazione supera la soglia di 0,100 mm. Saltare la regolazione potrebbe causare un livellamento inadeguato della piastra.\n\nProcedere senza regolare?",
         "wizardUnknownError": "Errore sconosciuto",
         "wizardZDeviation": "FORZA Δ"
     },

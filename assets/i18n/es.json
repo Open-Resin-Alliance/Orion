@@ -507,6 +507,9 @@
         "wizardTighter": "Más apretado",
         "wizardLooser": "Más flojo",
         "wizardProbeFailed": "Medición fallida. Reintentar.",
+        "wizardSkip": "Saltar",
+        "wizardSkipTitle": "Saltar ajuste",
+        "wizardSkipMsg": "La desviación supera el umbral de 0,100 mm. Saltar el ajuste puede resultar en una placa mal nivelada.\n\n¿Está seguro de que desea continuar sin ajustar?",
         "wizardUnknownError": "Error desconocido",
         "wizardZDeviation": "FUERZA Δ"
     },

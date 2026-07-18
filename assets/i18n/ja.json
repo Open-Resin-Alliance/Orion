@@ -507,6 +507,9 @@
         "wizardTighter": "締める",
         "wizardLooser": "ゆるめる",
         "wizardProbeFailed": "測定失敗。もう一度お試しください。",
+        "wizardSkip": "スキップ",
+        "wizardSkipTitle": "調整をスキップ",
+        "wizardSkipMsg": "偏差が0.100 mmのしきい値を超えています。調整をスキップすると、プレートの水平が不十分になる可能性があります。\n\n調整せずに続行しますか？",
         "wizardUnknownError": "不明なエラー",
         "wizardZDeviation": "力 Δ"
     },

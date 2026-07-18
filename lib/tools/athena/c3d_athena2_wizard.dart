@@ -489,6 +489,74 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   }
 
   bool get _isCornerCheckPassed => _cornerDeviation <= 0.100;
+  bool get _isBorderline =>
+      _cornerDeviation > 0.100 && _cornerDeviation <= 0.200;
+
+  Future<void> _skipAdjustment() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => GlassAlertDialog(
+        title: Row(
+          children: [
+            Icon(PhosphorIcons.warning(),
+                size: 26, color: Colors.orangeAccent),
+            const SizedBox(width: 14),
+            Text(
+              FlutterI18n.translate(
+                  context, 'leveling.wizardSkipTitle'),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.orangeAccent,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          FlutterI18n.translate(
+              context, 'leveling.wizardSkipMsg'),
+          style: const TextStyle(
+              fontSize: 17, fontWeight: FontWeight.w500),
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 55),
+            ),
+            child: Text(FlutterI18n.translate(
+                context, 'leveling.cancel')),
+          ),
+          GlassButton(
+            tint: GlassButtonTint.warn,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 55),
+            ),
+            child: Text(FlutterI18n.translate(
+                context, 'leveling.wizardSkip')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    // Jump to final offset calibration, skipping remove-puck and
+    // final_prepare — same as the PASS flow.
+    final finalIdx = _engine.steps.lastIndexWhere(
+      (s) => s.kind == LevelingWorkflowStepKind.finalOffset,
+    );
+    if (finalIdx >= 0) {
+      _engine.jumpToStep(finalIdx);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _engine.canRunCurrentStep) {
+          _engine.runCurrentStep();
+        }
+      });
+    }
+  }
 
   void _enterAdjustmentMode() {
     // The build arm has 3 screws (2 front, 1 back) defining a plane.
@@ -1461,6 +1529,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     // Not running, not complete: Cancel + action button
     final bool needsAdjustment = isAllCornersMeasured && !_isCornerCheckPassed;
+    final bool canSkip = isAllCornersMeasured && _isBorderline;
     final bool isCornerPrepare =
         status == LevelingWorkflowStatus.stepComplete &&
             _engine.currentStep?.kind == LevelingWorkflowStepKind.prepare &&
@@ -1557,6 +1626,30 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             ),
           ),
         ),
+        if (canSkip) ...[
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.neutral,
+              onPressed: _skipAdjustment,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.fastForward(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.wizardSkip'),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(width: OrionSpacing.controlGap),
         Expanded(
           child: GlassButton(

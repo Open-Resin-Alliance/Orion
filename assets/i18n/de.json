@@ -507,6 +507,9 @@
         "wizardTighter": "Fester",
         "wizardLooser": "Lockerer",
         "wizardProbeFailed": "Messung fehlgeschlagen. Erneut versuchen.",
+        "wizardSkip": "Überspringen",
+        "wizardSkipTitle": "Anpassung überspringen",
+        "wizardSkipMsg": "Die Abweichung liegt über dem Grenzwert von 0,100 mm. Das Überspringen der Anpassung kann zu einer unzureichend nivellierten Platte führen.\n\nMöchten Sie wirklich ohne Anpassung fortfahren?",
         "wizardUnknownError": "Unbekannter Fehler",
         "wizardZDeviation": "KRAFT Δ"
     },

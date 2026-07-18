@@ -518,6 +518,9 @@
         "wizardTighter": "Tighter",
         "wizardLooser": "Looser",
         "wizardProbeFailed": "Probe failed. Please try again.",
+        "wizardSkip": "Skip",
+        "wizardSkipTitle": "Skip Adjustment",
+        "wizardSkipMsg": "The deviation is above the 0.100 mm threshold. Skipping adjustment may result in an inadequately leveled plate.\n\nAre you sure you want to proceed without adjusting?",
         "wizardUnknownError": "Unknown error"
     },
     "levelingWorkflow": {
