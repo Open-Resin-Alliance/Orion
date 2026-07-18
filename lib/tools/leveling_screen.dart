@@ -32,7 +32,6 @@ class LevelingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
     final config = OrionConfig();
     final levelingConfig = getLevelingConfigForMachine(
       config.getMachineModelName(),
@@ -51,148 +50,242 @@ class LevelingScreen extends StatelessWidget {
     return SafeArea(
       child: Padding(
         padding: OrionSpacing.screenPaddingWithBottomNav,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Column(
           children: [
             Expanded(
-              child: _buildModeCard(
-                context,
-                title: FlutterI18n.translate(context, 'leveling.assisted'),
-                description:
-                    FlutterI18n.translate(context, 'leveling.assistedDesc'),
-                icon: PhosphorIcons.magicWand(),
-                accentColor: accent,
-                accentCard: assistedEnabled,
-                heroTag: 'start-assisted',
-                actionLabel: assistedEnabled
-                    ? FlutterI18n.translate(context, 'leveling.startLeveling')
-                    : FlutterI18n.translate(context, 'leveling.notAvailable'),
-                actionTint: assistedEnabled
-                    ? GlassButtonTint.positive
-                    : GlassButtonTint.none,
-                actionEnabled: assistedEnabled,
-                actionIcon: assistedEnabled
-                    ? PhosphorIcon(PhosphorIcons.magicWand())
-                    : PhosphorIcon(PhosphorIcons.warning()),
-                onPressed: assistedEnabled
-                    ? () => Navigator.of(context).push(
-                          _buildOverlayRoute(
-                            Athena2LevelingWizard(config: levelingConfig),
-                          ),
-                        )
-                    : null,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildLargeButton(
+                      context,
+                      icon: PhosphorIcons.magicWand(),
+                      label:
+                          FlutterI18n.translate(context, 'leveling.assisted'),
+                      description: FlutterI18n.translate(
+                          context, 'leveling.assistedDesc'),
+                      enabled: assistedEnabled,
+                      tint: GlassButtonTint.neutral,
+                      badgeLabel: assistedEnabled
+                          ? null
+                          : FlutterI18n.translate(
+                              context, 'leveling.notAvailable'),
+                      onPressed: assistedEnabled
+                          ? () => Navigator.of(context).push(
+                                _buildOverlayRoute(
+                                  Athena2LevelingWizard(
+                                      config: levelingConfig),
+                                ),
+                              )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: OrionSpacing.controlGap),
+                  Expanded(
+                    child: _buildLargeButton(
+                      context,
+                      icon: PhosphorIcons.checkCircle(),
+                      label:
+                          FlutterI18n.translate(context, 'leveling.verify'),
+                      description: FlutterI18n.translate(
+                          context, 'leveling.verifyDesc'),
+                      enabled: false,
+                      badgeLabel:
+                          FlutterI18n.translate(context, 'leveling.comingSoon'),
+                      onPressed: null,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: OrionSpacing.controlGap),
-            Expanded(
-              child: _buildModeCard(
-                context,
-                title: FlutterI18n.translate(context, 'leveling.manual'),
-                description:
-                    FlutterI18n.translate(context, 'leveling.manualDesc'),
-                icon: PhosphorIconsFill.wrench,
-                accentColor: accent,
-                accentCard: true,
-                heroTag: 'start-manual',
-                actionLabel:
-                    FlutterI18n.translate(context, 'leveling.manualMode'),
-                actionTint: GlassButtonTint.positive,
-                actionEnabled: true,
-                actionIcon: const Icon(PhosphorIconsFill.wrench),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    _buildOverlayRoute(const ManualLevelingScreen()),
-                  );
-                },
-              ),
-            ),
+            const SizedBox(height: OrionSpacing.controlGap),
+            _buildManualButton(context, assistedEnabled),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildModeCard(
+  /// Large self-explaining button matching the home screen dashboard style.
+  Widget _buildLargeButton(
     BuildContext context, {
-    required String title,
-    required String description,
     required IconData icon,
-    required Color accentColor,
-    required bool accentCard,
-    required String heroTag,
-    required String actionLabel,
-    required GlassButtonTint actionTint,
-    required bool actionEnabled,
-    required Widget actionIcon,
+    required String label,
+    String? description,
+    bool enabled = true,
+    String? badgeLabel,
+    GlassButtonTint tint = GlassButtonTint.none,
     VoidCallback? onPressed,
   }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final theme = Theme.of(context).copyWith(
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStateProperty.resolveWith<OutlinedBorder?>(
+            (Set<WidgetState> states) {
+              return RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              );
+            },
+          ),
+          minimumSize: WidgetStateProperty.resolveWith<Size?>(
+            (Set<WidgetState> states) {
+              return const Size(double.infinity, double.infinity);
+            },
+          ),
+        ),
+      ),
+    );
 
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      accentColor: accentCard ? accentColor : null,
-      child: Padding(
-        padding: OrionSpacing.cardPadding.copyWith(top: 16, bottom: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+    return GlassButton(
+      tint: enabled ? tint : GlassButtonTint.none,
+      style: theme.elevatedButtonTheme.style,
+      onPressed: enabled ? onPressed : null,
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: accentColor.withValues(alpha: isDark ? 0.14 : 0.10),
-                    border: Border.all(
-                      color:
-                          accentColor.withValues(alpha: isDark ? 0.35 : 0.24),
-                    ),
-                  ),
-                  child: Icon(icon, color: accentColor, size: 24),
+                PhosphorIcon(icon, size: 48),
+                const SizedBox(height: 10),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 22),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 24,
-                      height: 1.15,
+                if (description != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.25,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.55),
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (badgeLabel != null)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Text(
+                  badgeLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManualButton(BuildContext context, bool assistedEnabled) {
+    return GlassButton(
+      tint: GlassButtonTint.negative,
+      onPressed: () async {
+        if (assistedEnabled) {
+          final proceed = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) => GlassAlertDialog(
+              title: Row(
+                children: [
+                  PhosphorIcon(PhosphorIcons.warning(),
+                      color: Colors.orangeAccent, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      FlutterI18n.translate(context, 'leveling.manual'),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orangeAccent,
+                      ),
                     ),
                   ),
+                ],
+              ),
+              content: Text(
+                FlutterI18n.translate(
+                    context, 'leveling.manualAdvancedWarning'),
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              actions: [
+                GlassButton(
+                  tint: GlassButtonTint.neutral,
+                  onPressed: () =>
+                      Navigator.of(dialogContext).pop(false),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 55),
+                  ),
+                  child: Text(FlutterI18n.translate(
+                      context, 'leveling.cancel')),
+                ),
+                GlassButton(
+                  tint: GlassButtonTint.warn,
+                  onPressed: () =>
+                      Navigator.of(dialogContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 55),
+                  ),
+                  child: Text(FlutterI18n.translate(
+                      context, 'leveling.manualMode')),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
-            Expanded(
-              child: Center(
-                child: Text(
-                  description,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    height: 1.35,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: GlassFloatingActionButton.extended(
-                heroTag: heroTag,
-                scale: 1.2,
-                icon: actionIcon,
-                label: actionLabel,
-                tint: actionTint,
-                onPressed: actionEnabled ? onPressed : null,
-              ),
-            ),
-          ],
-        ),
+          );
+          if (proceed != true) return;
+        }
+        if (!context.mounted) return;
+        Navigator.of(context).push(
+          _buildOverlayRoute(const ManualLevelingScreen()),
+        );
+      },
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 56),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(PhosphorIconsFill.wrench, size: 22),
+          const SizedBox(width: 10),
+          Text(
+            FlutterI18n.translate(context, 'leveling.manual'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
