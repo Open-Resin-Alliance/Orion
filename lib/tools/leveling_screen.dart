@@ -22,6 +22,7 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
+import 'package:orion/tools/athena/verify_leveling_screen.dart';
 import 'package:orion/tools/manual_leveling_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
@@ -89,10 +90,10 @@ class LevelingScreen extends StatelessWidget {
                           FlutterI18n.translate(context, 'leveling.verify'),
                       description: FlutterI18n.translate(
                           context, 'leveling.verifyDesc'),
-                      enabled: false,
-                      badgeLabel:
-                          FlutterI18n.translate(context, 'leveling.comingSoon'),
-                      onPressed: null,
+                      tint: GlassButtonTint.positive,
+                      onPressed: () => Navigator.of(context).push(
+                        _buildOverlayRoute(const VerifyLevelingScreen()),
+                      ),
                     ),
                   ),
                 ],

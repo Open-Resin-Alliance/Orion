@@ -820,16 +820,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             : Theme.of(context).colorScheme.surface,
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.only(
-              left: OrionSpacing.screenHorizontal,
-              right: OrionSpacing.screenHorizontal,
-              top: 24,
-              bottom: 24,
-            ),
+            padding: OrionSpacing.screenPaddingWithBottomNav,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ====== Phase content (header + body, animated) ======
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 350),
@@ -842,7 +836,6 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // ====== Actions ======
                 _buildActions(context),
               ],
             ),
@@ -853,37 +846,37 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   }
 
   Widget _buildPhaseContent(BuildContext context, Color primary) {
-    // Each phase returns its full layout (header + body) as one widget
-    // so AnimatedSwitcher can cross-fade the entire transition.
     switch (_phase) {
       case _WizardPhase.variant:
         return Column(
           key: const ValueKey('variant-phase'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(PhosphorIcons.swap(), size: 24, color: primary),
-                const SizedBox(width: OrionSpacing.listGap),
-                Text(
-                  FlutterI18n.translate(context, 'leveling.selectBuildArm'),
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: primary,
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  PhosphorIcon(PhosphorIcons.magicWand(), color: primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.assisted'),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: primary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: OrionSpacing.controlGap),
+            const SizedBox(height: OrionSpacing.listGap),
             Expanded(child: _buildPhaseBody(context)),
           ],
         );
       case _WizardPhase.adjustment:
         return _buildAdjustmentPhase(context, primary);
       default:
-        // introAndChecklist and workflow have no header
         return _buildPhaseBody(context);
     }
   }
@@ -1580,7 +1573,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           .moveToTop()
           .then((_) {})
           .catchError((_) {});
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.of(context).pop();
     }
   }
 
