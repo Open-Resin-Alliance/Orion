@@ -2096,14 +2096,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                     .withValues(alpha: 0.75),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 36),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: Colors.orangeAccent.withValues(alpha: 0.08),
+                color: Colors.orangeAccent.withValues(alpha: 0.10),
                 border: Border.all(
-                  color: Colors.orangeAccent.withValues(alpha: 0.25),
+                  color: Colors.orangeAccent.withValues(alpha: 0.30),
                 ),
               ),
               child: Row(
