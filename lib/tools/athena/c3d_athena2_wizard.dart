@@ -100,6 +100,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
   // Intermediate screen flags
   bool _loosenScrewsDone = false;
+  bool _tightenScrewsDone = false;
   bool _alignDone = false;
 
   // Prevents the home-after-leveling command from firing more than once
@@ -255,6 +256,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     );
     _engine.selectVariant(proVariant);
     _loosenScrewsDone = true;
+    _tightenScrewsDone = true;
     _alignDone = true;
     _levelingSessionId = _uuid4();
     _recheckNumber = 0;
@@ -293,6 +295,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       _runningSince ??= DateTime.now();
       _holdingRunning = false;
       _loosenScrewsDone = false;
+      _tightenScrewsDone = false;
       _alignDone = false;
     } else if (_engine.status == LevelingWorkflowStatus.stepComplete) {
       final step = _engine.currentStep;
@@ -373,6 +376,21 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             }
           }
         }
+      }
+
+      // In recheck mode, probe_screen just calibrated the sensor.
+      // Now jump to corner probing — skip loosen/tighten intermediates.
+      if (widget.recheck &&
+          step != null &&
+          step.id == 'probe_screen' &&
+          _engine.status == LevelingWorkflowStatus.stepComplete) {
+        _tightenScrewsDone = true; // suppress tighten screen on next rebuild
+        _engine.jumpToFirstStepId('fine_prepare_');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _engine.canRunCurrentStep) {
+            _engine.runCurrentStep();
+          }
+        });
       }
     }
 
@@ -935,9 +953,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         _phase = _WizardPhase.workflow;
         _preFlightIndex = -1;
       });
-      // In recheck mode, skip the initial probe_prepare / probe_screen
-      // (Stage 1) and jump straight to corner probing.  Home first so
-      // the machine knows its position before moving to the corners.
+      // In recheck mode, run probe_screen first to calibrate the force
+      // sensor, then jump to corner probing.  The loosen/tighten
+      // intermediate screens are skipped via flags.
       if (widget.recheck) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
@@ -945,7 +963,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
               Provider.of<ManualProvider>(context, listen: false);
           await manual.manualHome();
           if (!mounted) return;
-          _engine.jumpToFirstStepId('fine_prepare_');
+          // Jump to probe_screen (step 1) — calibrates screen position
+          // and force sensor limits before probing corners.
+          _engine.jumpToStep(1);
           if (_engine.canRunCurrentStep) {
             _engine.runCurrentStep();
           }
@@ -1118,6 +1138,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           engine: _engine,
           effectivelyRunning: _effectivelyRunning,
           loosenScrewsDone: _loosenScrewsDone,
+          tightenScrewsDone: _tightenScrewsDone,
           alignDone: _alignDone,
           cornerResults: _cornerResults,
           cornerZs: _rawCornerZs,
@@ -2648,6 +2669,7 @@ class _WorkflowPane extends StatelessWidget {
     required this.engine,
     required this.effectivelyRunning,
     required this.loosenScrewsDone,
+    required this.tightenScrewsDone,
     required this.alignDone,
     required this.cornerResults,
     required this.cornerZs,
@@ -2657,6 +2679,7 @@ class _WorkflowPane extends StatelessWidget {
   final LevelingWorkflowEngine engine;
   final bool effectivelyRunning;
   final bool loosenScrewsDone;
+  final bool tightenScrewsDone;
   final bool alignDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
 
@@ -2684,8 +2707,10 @@ class _WorkflowPane extends StatelessWidget {
     final isLoosenScrews =
         isComplete && intermediate == 'loosen' && !loosenScrewsDone;
     final isAlignPlate = isComplete && intermediate == 'tighten' && !alignDone;
-    final isTightenScrews =
-        isComplete && intermediate == 'tighten' && alignDone;
+    final isTightenScrews = isComplete &&
+        intermediate == 'tighten' &&
+        alignDone &&
+        !tightenScrewsDone;
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
     final isRemovePuck = isComplete && intermediate == 'removePuck';
 
