@@ -43,9 +43,12 @@ class LevelingScreen extends StatelessWidget {
     // key; when the machine model already matched the Athena2 prefix we treat
     // a missing/empty key as "athena2".  An explicit "manual" still opts out.
     final levelingMode = config.getLevelingMode();
+    // Explicit "athena2" in vendor.cfg is a deliberate opt-in — skip
+    // the hasForceSensor gate (older hardware may not have the flag).
+    final explicitAthena2 = levelingMode == 'athena2';
     final assistedEnabled = levelingConfig != null &&
-        config.hasForceSensor() &&
-        (levelingMode == 'athena2' || levelingMode.isEmpty) &&
+        (explicitAthena2 || config.hasForceSensor()) &&
+        (explicitAthena2 || levelingMode.isEmpty) &&
         backend.supportsCapability(BackendCapabilities.supportsForceLeveling);
 
     return SafeArea(
