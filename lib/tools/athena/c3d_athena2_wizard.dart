@@ -33,6 +33,7 @@ import 'package:orion/tools/athena/leveling_log_entry.dart';
 import 'package:orion/tools/athena/leveling_log_service.dart';
 import 'package:orion/tools/athena/leveling_workflow_engine.dart';
 import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/util/safe_home.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -94,6 +95,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   // Minimum running display duration
   DateTime? _runningSince;
   bool _holdingRunning = false;
+  bool _waitingForSettle = false;
 
   // Suppresses the brief idle-step flash between auto-advance and auto-run
   bool _autoAdvancing = false;
@@ -139,6 +141,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   int? _lastAdjustedCorner;
   int? _puckPlacedCorner; // corner that still has the puck from adjustment
   bool _adjustmentIntroShown = false;
+  Future<bool>? _recheckHomeFuture; // home started during preflight
   _PendingScrewCommand? _pendingCommand;
   double? _lastAchievedForceGf; // what the live gauge read when the user stopped
   double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
@@ -236,9 +239,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     super.initState();
     _engine = LevelingWorkflowEngine()..addListener(_handleEngineUpdate);
 
-    // Prevent standby from activating while the leveling wizard is open
-    Provider.of<StatusProvider>(context, listen: false)
-        .setLevelingWorkflowActive(true);
+    // Prevent standby from activating while the leveling wizard is open.
+    // Defer to avoid notifyListeners() during the build phase.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<StatusProvider>(context, listen: false)
+            .setLevelingWorkflowActive(true);
+      }
+    });
 
     if (widget.recheck) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -273,6 +281,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       _phase = _WizardPhase.introAndChecklist;
       _preFlightIndex = 0;
     });
+
+    // Home while the user reads the checklist — safe, non-destructive.
+    _recheckHomeFuture = safeHome(context);
   }
 
   @override
@@ -347,6 +358,16 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   requestTimeout: const Duration(seconds: 90))
               .then((_) {})
               .catchError((_) {});
+        }
+
+        // After a prepare step (home / move-to-position), wait for the
+        // axis to physically settle before showing any intermediate
+        // screen.  Klipper reports homed=true early.
+        if (step.kind == LevelingWorkflowStepKind.prepare) {
+          _waitingForSettle = true;
+          safeHomePoll(context).then((_) {
+            if (mounted) setState(() => _waitingForSettle = false);
+          });
         }
 
         // Log corner check results when all 4 corners are measured.
@@ -443,7 +464,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   }
 
   bool get _effectivelyRunning =>
-      _engine.isRunning || _holdingRunning || _autoAdvancing;
+      _engine.isRunning || _holdingRunning || _autoAdvancing || _waitingForSettle;
 
   void _goBack() {
     switch (_phase) {
@@ -959,9 +980,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       if (widget.recheck) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
-          final manual =
-              Provider.of<ManualProvider>(context, listen: false);
-          await manual.manualHome();
+          // Home was already started during the preflight — wait for it.
+          if (_recheckHomeFuture != null) {
+            await _recheckHomeFuture;
+            _recheckHomeFuture = null;
+          }
           if (!mounted) return;
           // Jump to probe_screen (step 1) — calibrates screen position
           // and force sensor limits before probing corners.

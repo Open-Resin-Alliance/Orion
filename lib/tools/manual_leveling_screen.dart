@@ -30,6 +30,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/util/safe_home.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 
 class ManualLevelingScreen extends StatefulWidget {
@@ -645,17 +646,11 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                               ? null
                               : () async {
                                   _logger.info('Moving to home position');
-                                  final ok = await manual.manualHome();
+                                  final ok = await safeHome(context);
                                   if (!ok) {
                                     if (!mounted) return;
                                     _safeShowError('GOLDEN-APE');
                                   }
-                                  if (!context.mounted) return;
-                                  final statusProvider =
-                                      Provider.of<StatusProvider>(context,
-                                          listen: false);
-                                  await statusProvider.refreshKinematicStatus(
-                                      maxAttempts: 10);
                                 },
                           style: ElevatedButton.styleFrom(
                             minimumSize:
