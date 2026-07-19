@@ -44,3 +44,22 @@ Future<bool> safeHomePoll(BuildContext context) async {
   await statusProvider.refreshKinematicStatus(maxAttempts: 10);
   return true;
 }
+
+/// Moves the Z axis to the floor and waits until the controller confirms
+/// the axis has physically stopped.  Like [safeHome], this polls kinematic
+/// status after the move command to cover the Klipper race.
+Future<bool> safeFloor(BuildContext context) async {
+  final manual = Provider.of<ManualProvider>(context, listen: false);
+  final ok = await manual.moveToFloor();
+  if (!ok || !context.mounted) return ok;
+  return safeHomePoll(context);
+}
+
+/// Moves the Z axis to the top and waits until the controller confirms
+/// the axis has physically stopped.
+Future<bool> safeTop(BuildContext context) async {
+  final manual = Provider.of<ManualProvider>(context, listen: false);
+  final ok = await manual.moveToTop();
+  if (!ok || !context.mounted) return ok;
+  return safeHomePoll(context);
+}

@@ -140,9 +140,11 @@ class LevelingVariant {
         intermediateScreen: 'loosen',
       ),
       // 1: Initial leveling — shows tighten intermediate.
-      // Standard arm uses its own probe endpoint.
+      // Standard arm floors the Z to seat the plate instead of probing,
+      // since the arm can shift when screws are loose.
       athena2BaseWorkflowSteps[1].copyWith(
         endpoint: id != 'pro' ? 'probe_standardarm' : null,
+        skipBackend: id != 'pro' ? true : null,
         stepTitle: 'Initial Leveling',
         stepInstruction: 'The plate will move towards the build plate.',
         intermediateScreen: 'tighten',

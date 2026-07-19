@@ -350,6 +350,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           }
         }
 
+        // Standard arm: floor the Z to seat the plate before tightening.
+        if (step.intermediateScreen == 'tighten' &&
+            step.skipBackend &&
+            _engine.variant?.id == 'regular') {
+          safeFloor(context).then((_) {}).catchError((_) {});
+        }
+
         // While showing the remove-puck prompt, run the prepare endpoint
         // in the background so the plate moves up for easy puck removal.
         if (step.intermediateScreen == 'removePuck') {
@@ -1140,6 +1147,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           onVariantSelected: (variant) {
             _engine.selectVariant(variant);
             _resetCornerResults();
+            // Standard arm is forcibly aligned — skip the align plate screen.
+            _alignDone = variant.id == 'regular';
             // Generate a new session ID for each leveling attempt
             _levelingSessionId = _uuid4();
             _recheckNumber = 0;

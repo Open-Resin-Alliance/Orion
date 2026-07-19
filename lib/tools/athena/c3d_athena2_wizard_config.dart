@@ -69,7 +69,7 @@ const athena2LevelingConfig = LevelingConfig(
   variants: [
     LevelingVariant(
       id: 'regular',
-      label: 'Regular Build Arm',
+      label: 'Standard Build Arm',
       description: 'Athena 2 standard build arm.',
       assetPath: 'assets/images/concepts_3d/a2_standard_arm.svg',
       icon: PhosphorIconsFill.wrench,
