@@ -428,13 +428,18 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             int.tryParse(step.id.replaceFirst('fine_prepare_', '')) ?? 0;
         final cornerIndex = cornerNum - 1; // fine_prepare_1 → corner 0
         if (cornerIndex == _puckPlacedCorner) {
-          _puckPlacedCorner = null; // only skip once
+          _puckPlacedCorner = null;
           _engine.advanceAfterSuccessfulStep();
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _engine.canRunCurrentStep) {
               _engine.runCurrentStep();
             }
           });
+        } else {
+          // Puck was at a different corner — the first prepare didn't
+          // match, so clear the stale location.  The optimization only
+          // fires once per sweep.
+          _puckPlacedCorner = null;
         }
       }
     }
