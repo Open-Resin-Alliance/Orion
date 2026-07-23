@@ -20,6 +20,7 @@ import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
@@ -634,34 +635,82 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     if (_selectedPieces.isEmpty) return;
     final nav = Navigator.of(context);
 
+    // Guard against unresolved profile ID — same as edit resin screen.
+    if (widget.profileId == 0) {
+      _logger.warning('Cannot save exposure: profileId is 0 (unresolved)');
+      widget.onComplete();
+      return;
+    }
+
     final pieceNumber = _selectedPieces.first;
     final optimalExposure =
         widget.startExposure + (widget.exposureIncrement * (pieceNumber - 1));
 
     // Fetch current profile to get the actual previous exposure time
+    // and build a full settings merge so we can use saveResinSettings
+    // (the same reliable path the edit resin screen uses).
     double previousExposure = widget.startExposure;
+    bool saved = false;
     try {
       final settings = await _backendService.getResinSettings(widget.profileId);
-      previousExposure = settings?.normalCureTime ?? widget.startExposure;
-    } catch (e) {
-      _logger.warning('Failed to fetch current profile for comparison: $e');
-      // Continue with widget.startExposure as fallback
-    }
-
-    try {
-      _logger.info(
-          'Saving optimal exposure ${optimalExposure}s to profile ${widget.profileId}');
-
-      await _backendService.saveResinExposure(
-          widget.profileId, optimalExposure);
-      _logger.info('Successfully saved optimal exposure to profile');
+      if (settings != null) {
+        previousExposure = settings.normalCureTime;
+        await _backendService.saveResinSettings(
+          widget.profileId,
+          ResinSettings(
+            burnInCureTime: settings.burnInCureTime,
+            normalCureTime: optimalExposure,
+            liftAfterPrint: settings.liftAfterPrint,
+            burnInCount: settings.burnInCount,
+            waitAfterCure: settings.waitAfterCure,
+            waitAfterLife: settings.waitAfterLife,
+          ),
+        );
+        saved = true;
+        _logger.info('Successfully saved optimal exposure to profile');
+      } else {
+        // Fallback: try the single-field convenience method.
+        await _backendService.saveResinExposure(
+            widget.profileId, optimalExposure);
+        saved = true;
+        _logger.info('Saved via saveResinExposure fallback');
+      }
     } catch (e) {
       _logger.warning('Failed to save optimal exposure to profile: $e');
-      // Continue to show success dialog even if save fails
-      // The user can manually adjust settings if needed
     }
+
     final navCtx = nav.context;
     if (!navCtx.mounted) return;
+
+    if (!saved) {
+      showDialog(
+        context: navCtx,
+        builder: (context) => GlassAlertDialog(
+          title: Text(FlutterI18n.translate(context, 'common.error'),
+              style:
+                  const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          content: Text(
+            'Could not save exposure to profile.\n'
+            'Please set it manually in Materials → Edit Resin.',
+            style: const TextStyle(fontSize: 16),
+          ),
+          actions: [
+            GlassButton(
+              tint: GlassButtonTint.positive,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(120, 65),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onComplete();
+              },
+              child: Text(FlutterI18n.translate(context, 'common.done')),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     showDialog(
       context: navCtx,
@@ -836,28 +885,77 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   final nav = Navigator.of(context);
                   nav.pop();
 
-                  // Fetch current profile to get the actual previous exposure time
+                  // Guard against unresolved profile ID.
+                  if (widget.profileId == 0) {
+                    _logger.warning(
+                        'Cannot save fine-tuned exposure: profileId is 0');
+                    widget.onComplete();
+                    return;
+                  }
+
+                  // Fetch current profile and save via saveResinSettings
+                  // (the same reliable path the edit resin screen uses).
                   double previousExposure = widget.startExposure;
+                  bool saved = false;
                   try {
                     final settings = await _backendService
                         .getResinSettings(widget.profileId);
-                    previousExposure =
-                        settings?.normalCureTime ?? widget.startExposure;
-                  } catch (e) {
-                    _logger.warning(
-                        'Failed to fetch current profile for comparison: $e');
-                    // Continue with widget.startExposure as fallback
-                  }
-
-                  // Save the chosen fine-tuned exposure
-                  try {
-                    await _backendService.saveResinExposure(
-                        widget.profileId, value);
+                    if (settings != null) {
+                      previousExposure = settings.normalCureTime;
+                      await _backendService.saveResinSettings(
+                        widget.profileId,
+                        ResinSettings(
+                          burnInCureTime: settings.burnInCureTime,
+                          normalCureTime: value,
+                          liftAfterPrint: settings.liftAfterPrint,
+                          burnInCount: settings.burnInCount,
+                          waitAfterCure: settings.waitAfterCure,
+                          waitAfterLife: settings.waitAfterLife,
+                        ),
+                      );
+                      saved = true;
+                    } else {
+                      await _backendService.saveResinExposure(
+                          widget.profileId, value);
+                      saved = true;
+                    }
                   } catch (e) {
                     _logger.warning('Failed to save fine-tuned exposure: $e');
                   }
                   final fineTuneCtx = nav.context;
                   if (!fineTuneCtx.mounted) return;
+
+                  if (!saved) {
+                    showDialog(
+                      context: fineTuneCtx,
+                      builder: (context) => GlassAlertDialog(
+                        title: Text(
+                            FlutterI18n.translate(context, 'common.error'),
+                            style: const TextStyle(
+                                fontSize: 24, fontWeight: FontWeight.bold)),
+                        content: const Text(
+                          'Could not save exposure to profile.\n'
+                          'Please set it manually in Materials → Edit Resin.',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        actions: [
+                          GlassButton(
+                            tint: GlassButtonTint.positive,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(120, 65),
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              widget.onComplete();
+                            },
+                            child: Text(FlutterI18n.translate(
+                                context, 'common.done')),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
 
                   showDialog(
                     context: fineTuneCtx,
