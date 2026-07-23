@@ -38,7 +38,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: |
-            gtk+-3.0
+            libgtk-3-dev
             mpv
             libasound2-dev
             libmpv-dev
