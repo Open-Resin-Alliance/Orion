@@ -165,7 +165,21 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             _defaultDirectory = provider.baseDirectory;
             _directory = _defaultDirectory;
           }
-          await _prewarmThumbnailCache(provider, 'Usb');
+
+          // Preload processed thumbnails from disk so the grid shows
+          // images instantly on cold start without re-processing.
+          final processedMap =
+              await ThumbnailCache.instance.preloadProcessedThumbnails('Usb');
+          for (final entry in processedMap.entries) {
+            _processedThumbnailCache[entry.key] = entry.value;
+          }
+
+          // Show grid immediately — thumbnails fill in as they load.
+          if (mounted) setState(() => _isLoading = false);
+
+          // Background prewarm: enqueue missing thumbnails through the
+          // concurrency-controlled queue so we don't saturate the device.
+          _prewarmMissingThumbnails(provider, 'Usb');
         } else {
           // Load from FilesProvider (API)
           final provider = Provider.of<FilesProvider>(context, listen: false);
@@ -189,9 +203,24 @@ class GridFilesScreenState extends State<GridFilesScreen> {
             _defaultDirectory = homeDir;
             _directory = _defaultDirectory;
           }
-          await _prewarmThumbnailCache(provider, _isUSB ? 'Usb' : 'Local');
+
+          final location = _isUSB ? 'Usb' : 'Local';
+
+          // Preload processed thumbnails from disk so the grid shows
+          // images instantly on cold start without re-processing.
+          final processedMap =
+              await ThumbnailCache.instance.preloadProcessedThumbnails(location);
+          for (final entry in processedMap.entries) {
+            _processedThumbnailCache[entry.key] = entry.value;
+          }
+
+          // Show grid immediately — thumbnails fill in as they load.
+          if (mounted) setState(() => _isLoading = false);
+
+          // Background prewarm: enqueue missing thumbnails through the
+          // concurrency-controlled queue so we don't saturate the device.
+          _prewarmMissingThumbnails(provider, location);
         }
-        if (mounted) setState(() => _isLoading = false);
       }
     });
   }
@@ -300,6 +329,9 @@ class GridFilesScreenState extends State<GridFilesScreen> {
           );
           if (bytes != null && bytes.isNotEmpty) {
             _touchProcessedCache(key, bytes);
+            // Persist processed bytes to disk so the thumbnail is
+            // instantly available after a reboot without re-processing.
+            ThumbnailCache.instance.storeProcessedBytes(key, bytes);
           }
           if (!completer.isCompleted) completer.complete(bytes);
         } catch (e, st) {
@@ -420,19 +452,16 @@ class GridFilesScreenState extends State<GridFilesScreen> {
     _processedThumbnailCache.removeWhere((key, _) => !allowed.contains(key));
   }
 
-  /// Pre-populate [_processedThumbnailCacheGlobal] from disk for all files in
-  /// the current view so the grid can show images without per-item spinners.
-  /// STL files are skipped (they require runtime rendering, not a simple disk
-  /// read).  Items already in the processed cache are also skipped.
-  /// A 2-second wall-clock timeout prevents this from blocking the UI
-  /// indefinitely when many files are uncached.
-  Future<void> _prewarmThumbnailCache(dynamic provider, String location) async {
+  /// Enqueue thumbnails that are missing from the processed cache through the
+  /// normal concurrency-controlled queue. This runs in the background after
+  /// the grid is already visible so the UI stays responsive.
+  ///
+  /// Files already present in [_processedThumbnailCache] are skipped, and
+  /// STL files are skipped (they require runtime rendering).
+  void _prewarmMissingThumbnails(dynamic provider, String location) {
     final List<OrionApiItem> items = List<OrionApiItem>.from(provider.items);
     final files = items.whereType<OrionApiFile>().toList();
     if (files.isEmpty) return;
-
-    const maxParallel = 4;
-    final tasks = <Future<void> Function()>[];
 
     for (final file in files) {
       final fileName = path.basename(file.path);
@@ -440,45 +469,22 @@ class GridFilesScreenState extends State<GridFilesScreen> {
       // STL thumbnails are rendered at runtime, not stored as simple image data.
       if (lower.endsWith('.stl')) continue;
 
+      final key = _thumbCacheKey(location, file, 'Small');
+      if (_processedThumbnailCache.containsKey(key)) continue;
+
       final subdirectory = provider is LocalFilesProvider
           ? _resolveLocalSubdirectoryForFile(file, provider)
           : _resolveSubdirectoryForFile(file);
 
-      final key = _thumbCacheKey(location, file, 'Small');
-      if (_processedThumbnailCache.containsKey(key)) continue;
-
-      tasks.add(() async {
-        try {
-          final rawBytes = await ThumbnailCache.instance.getThumbnail(
-            location: location,
-            subdirectory: subdirectory,
-            fileName: fileName,
-            file: file,
-            size: 'Small',
-          );
-          final bytes =
-              await _postProcessGridThumbnail(rawBytes, size: 'Small');
-          if (bytes != null && bytes.isNotEmpty) {
-            _touchProcessedCache(key, bytes);
-          }
-        } catch (_) {}
-      });
+      // Route through the normal queue so concurrency limits are respected.
+      _queuedGetThumbnail(
+        location: location,
+        subdirectory: subdirectory,
+        fileName: fileName,
+        file: file,
+        size: 'Small',
+      );
     }
-
-    if (tasks.isEmpty) return;
-
-    // Run in batches to avoid saturating I/O; cap total time at 2 s.
-    Future<void> runBatched() async {
-      for (int i = 0; i < tasks.length; i += maxParallel) {
-        final batch = tasks.skip(i).take(maxParallel).map((t) => t()).toList();
-        await Future.wait(batch);
-      }
-    }
-
-    await Future.any([
-      runBatched(),
-      Future.delayed(const Duration(seconds: 2)),
-    ]);
   }
 
   void _processThumbnailQueue() {
@@ -603,7 +609,15 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         final currentPaths = currentFiles.map((f) => f.path).toList();
         ThumbnailCache.instance.validateAndCleanup('Usb', currentPaths);
         _pruneThumbnailFutureCache('Usb', currentFiles);
-        await _prewarmThumbnailCache(provider, 'Usb');
+
+        // Preload processed thumbnails from disk, then show grid immediately.
+        final processedMap =
+            await ThumbnailCache.instance.preloadProcessedThumbnails('Usb');
+        for (final entry in processedMap.entries) {
+          _processedThumbnailCache[entry.key] = entry.value;
+        }
+        if (mounted) setState(() => _isLoading = false);
+        _prewarmMissingThumbnails(provider, 'Usb');
       } else {
         final provider = Provider.of<FilesProvider>(context, listen: false);
         await provider.loadItems(_isUSB ? 'Usb' : 'Local', _subdirectory);
@@ -615,11 +629,17 @@ class GridFilesScreenState extends State<GridFilesScreen> {
         ThumbnailCache.instance
             .validateAndCleanup(_isUSB ? 'Usb' : 'Local', currentPaths);
         _pruneThumbnailFutureCache(_isUSB ? 'Usb' : 'Local', currentFiles);
-        await _prewarmThumbnailCache(provider, _isUSB ? 'Usb' : 'Local');
+
+        final location = _isUSB ? 'Usb' : 'Local';
+        // Preload processed thumbnails from disk, then show grid immediately.
+        final processedMap =
+            await ThumbnailCache.instance.preloadProcessedThumbnails(location);
+        for (final entry in processedMap.entries) {
+          _processedThumbnailCache[entry.key] = entry.value;
+        }
+        if (mounted) setState(() => _isLoading = false);
+        _prewarmMissingThumbnails(provider, location);
       }
-      setState(() {
-        _isLoading = false;
-      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
