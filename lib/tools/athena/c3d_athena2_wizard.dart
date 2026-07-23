@@ -307,7 +307,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       _holdingRunning = false;
       _loosenScrewsDone = false;
       _tightenScrewsDone = false;
-      _alignDone = false;
+      // Standard arm is rigidly fixed — the plate can't be misaligned,
+      // so the align-plate intermediate screen is never needed for it.
+      _alignDone = _engine.variant?.id == 'regular';
     } else if (_engine.status == LevelingWorkflowStatus.stepComplete) {
       final step = _engine.currentStep;
       if (step != null) {
