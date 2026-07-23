@@ -19,14 +19,16 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/files/search_file_screen.dart';
+import 'package:orion/glasser/glasser.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 ScrollController _scrollController = ScrollController();
 
-Directory getInitialDir(platform) {
+Directory getInitialDir(TargetPlatform platform) {
   switch (platform) {
     case TargetPlatform.macOS:
       return Directory('/Users/${Platform.environment['USER']}/Documents');
@@ -57,7 +59,7 @@ class FilesScreenState extends State<FilesScreen> {
 
   @override
   void initState() {
-    _directory = getInitialDir(context);
+    _directory = getInitialDir(Theme.of(context).platform);
     _files = [];
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -181,7 +183,7 @@ class FilesScreenState extends State<FilesScreen> {
       appBar: AppBar(
         title: Text(
           path.basename(_directory.path) == 'gcodes'
-              ? 'Print Files'
+              ? FlutterI18n.translate(context, 'files.printFiles')
               : path.basename(_directory.path) == 'Download' ||
                       path.basename(_directory.path) == "Downloads"
                   ? path.basename(_directory.path)
@@ -247,9 +249,10 @@ class FilesScreenState extends State<FilesScreen> {
                 if (index == 0) {
                   return ListTile(
                     leading: const Icon(Icons.subdirectory_arrow_left_rounded),
-                    title: const Row(
+                    title: Row(
                       children: [
-                        Text('Leave Directory', style: TextStyle(fontSize: 24)),
+                        I18nText('files.leaveDirectory',
+                            child: Text('', style: TextStyle(fontSize: 24))),
                       ],
                     ),
                     onTap: () {
@@ -284,8 +287,9 @@ class FilesScreenState extends State<FilesScreen> {
                       } catch (e) {
                         if (e is FileSystemException) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Operation not permitted'),
+                            SnackBar(
+                              content: Text(FlutterI18n.translate(
+                                  context, 'print.notPermitted')),
                             ),
                           );
                         }
@@ -367,8 +371,9 @@ class FilesScreenState extends State<FilesScreen> {
                         } catch (e) {
                           if (e is FileSystemException) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Operation not permitted'),
+                              SnackBar(
+                                content: Text(FlutterI18n.translate(
+                                    context, 'print.notPermitted')),
                               ),
                             );
                           }
@@ -382,19 +387,62 @@ class FilesScreenState extends State<FilesScreen> {
                                 showDialog(
                                   context: context,
                                   builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Confirm Delete'),
-                                      content: const Text(
-                                          'Are you sure you want to delete this file?'),
-                                      actions: <Widget>[
-                                        TextButton(
-                                          child: const Text('Cancel'),
+                                    return GlassAlertDialog(
+                                      title: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.delete_forever_rounded,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                            size: 26,
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(FlutterI18n.translate(
+                                                    context,
+                                                    'files.deleteFile')),
+                                                Text(
+                                                  path.basename(file.path),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    color: Colors.grey.shade400,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      content: Text(
+                                        FlutterI18n.translate(
+                                            context, 'files.deleteConfirm'),
+                                        style: TextStyle(
+                                          height: 1.5,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                      actions: [
+                                        GlassButton(
+                                          tint: GlassButtonTint.neutral,
                                           onPressed: () {
                                             Navigator.of(context).pop();
                                           },
+                                          style: ElevatedButton.styleFrom(
+                                            minimumSize: const Size(0, 60),
+                                          ),
+                                          child: Text(FlutterI18n.translate(
+                                              context, 'common.cancel')),
                                         ),
-                                        TextButton(
-                                          child: const Text('Delete'),
+                                        GlassButton(
+                                          tint: GlassButtonTint.negative,
                                           onPressed: () {
                                             file.deleteSync();
                                             setState(() {
@@ -403,11 +451,19 @@ class FilesScreenState extends State<FilesScreen> {
                                             Navigator.of(context).pop();
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
-                                              const SnackBar(
-                                                  content: Text(
-                                                      'File deleted successfully.')),
+                                              SnackBar(
+                                                content: Text(
+                                                    FlutterI18n.translate(
+                                                        context,
+                                                        'files.fileDeleted')),
+                                              ),
                                             );
                                           },
+                                          style: ElevatedButton.styleFrom(
+                                            minimumSize: const Size(0, 60),
+                                          ),
+                                          child: Text(FlutterI18n.translate(
+                                              context, 'common.delete')),
                                         ),
                                       ],
                                     );

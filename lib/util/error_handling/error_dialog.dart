@@ -1,6 +1,6 @@
 /*
 * Orion - Error Dialog
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,34 +16,81 @@
 */
 
 import 'package:flutter/material.dart';
-import 'package:orion/util/error_handling/error_details.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
+
+import 'package:orion/glasser/glasser.dart';
 
 void showErrorDialog(BuildContext context, String errorCode) {
-  ErrorDetails? errorDetails =
-      errorLookupTable[errorCode] ?? errorLookupTable['default'];
-
   WidgetsBinding.instance.addPostFrameCallback((_) {
     showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text(errorDetails!.title),
-            content: Text(
-              errorDetails.message,
-              style: const TextStyle(color: Colors.grey),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text(
-                  'Close',
-                  style: TextStyle(fontSize: 20),
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return GlassAlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: Colors.red.shade400,
+                size: 26,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getErrorTitle(context, errorCode),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      FlutterI18n.translate(context, 'error.code')
+                          .replaceAll('%s', errorCode),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade400,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          );
-        });
+          ),
+          content: Text(
+            _getErrorMessage(context, errorCode),
+            style: const TextStyle(
+              fontSize: 18,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            GlassButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
+              child: Text(FlutterI18n.translate(context, 'common.close')),
+            ),
+          ],
+        );
+      },
+    );
   });
+}
+
+/// Look up the translated error title for the given error code.
+String _getErrorTitle(BuildContext context, String code) {
+  final key = code.toLowerCase().replaceAll('-', '');
+  return FlutterI18n.translate(context, 'error.${key}Title');
+}
+
+/// Look up the translated error message for the given error code.
+String _getErrorMessage(BuildContext context, String code) {
+  final key = code.toLowerCase().replaceAll('-', '');
+  return FlutterI18n.translate(context, 'error.${key}Msg');
 }

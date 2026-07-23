@@ -17,53 +17,109 @@
 
 import 'dart:io';
 import 'package:logging/logging.dart';
-import 'package:orion/api_services/api_services.dart';
+import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/backend_client.dart';
+import 'package:flutter/foundation.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:archive/archive.dart';
 
 class ThumbnailUtil {
   static final _logger = Logger('ThumbnailUtil');
-  static final ApiService _api = ApiService();
 
+  /// Extract a thumbnail for a remote file. You may inject a custom
+  /// [client] for testing; by default we use the [ApiServiceAdapter]
+  /// which forwards to the existing `ApiService` implementation.
   static Future<String> extractThumbnail(
       String location, String subdirectory, String filename,
-      {String size = "Small"}) async {
+      {String size = "Small", BackendClient? client}) async {
+    final BackendClient odysseyClient = client ?? BackendService();
     try {
+      // Build a safe relative path for the file on the server. Normalize
+      // separators and strip any leading slashes so we never request
+      // '/file' from the API — only 'file' or 'dir/file'. Some backend
+      // responses include leading slashes which caused thumbnail fetches to fail.
       String finalLocation = _isDefaultDir(subdirectory)
           ? filename
-          : [subdirectory, filename].join('/');
-      final bytes = await _api.getFileThumbnail(location, finalLocation, size);
+          : p.join(subdirectory, filename);
+      // Normalize separators to forward slash and remove leading slashes
+      finalLocation = finalLocation.replaceAll('\\', '/').trim();
+      finalLocation = finalLocation.replaceFirst(RegExp(r'^/+'), '');
 
+      // Request thumbnail bytes from the API
+      // Use the bytes-resizing path that runs decode/resize in an isolate so
+      // the written thumbnail is guaranteed to match the expected dimensions
+      // (especially important for the Large size used by DetailsScreen).
+      Uint8List bytes = await extractThumbnailBytes(
+          location, subdirectory, filename,
+          size: size, client: odysseyClient);
+
+      // Create a stable, filesystem-safe directory name under the temp dir
       final tempDir = await getTemporaryDirectory();
-      final orionTmpDir = Directory('${tempDir.path}/oriontmp/$finalLocation');
-      if (!await orionTmpDir.exists()) {
-        await orionTmpDir.create(recursive: true);
+      final baseTmp = Directory(p.join(tempDir.path, 'oriontmp'));
+      if (!await baseTmp.exists()) await baseTmp.create(recursive: true);
+
+      // Use a sanitized folder name for this file's thumbnails (replace path separators)
+      final safeName = finalLocation.replaceAll('/', '_').replaceAll('\\', '_');
+      final fileTmpDir = Directory(p.join(baseTmp.path, safeName));
+      if (!await fileTmpDir.exists()) await fileTmpDir.create(recursive: true);
+
+      late final String filePath;
+      switch (size) {
+        case 'Large':
+          filePath = p.join(fileTmpDir.path, 'thumbnail800x480.png');
+          break;
+        case 'Small':
+          filePath = p.join(fileTmpDir.path, 'thumbnail400x400.png');
+          break;
+        default:
+          filePath = p.join(fileTmpDir.path, 'thumbnail.png');
       }
 
-      final filePath = size == "Small"
-          ? '${orionTmpDir.path}/thumbnail400x400.png'
-          : '${orionTmpDir.path}/thumbnail840x400.png';
       final outputFile = File(filePath);
-      outputFile.writeAsBytesSync(bytes);
+      await outputFile.writeAsBytes(bytes, flush: true);
 
-      // Check the total size of the oriontmp directory
-      int totalSize = 0;
-      final files = orionTmpDir.listSync(recursive: true);
-      for (var file in files) {
-        if (file is File) {
-          totalSize += await file.length();
+      // Prune the cache under baseTmp if it exceeds threshold (100MB)
+      const int maxBytes = 100 * 1024 * 1024;
+      try {
+        final allEntities = await baseTmp.list(recursive: true).toList();
+        // Collect only files
+        final files = <File>[];
+        for (final e in allEntities) {
+          if (e is File) files.add(e);
         }
-      }
 
-      // If the total size exceeds 100MB, delete the oldest files
-      if (totalSize > 100 * 1024 * 1024) {
-        files.sort(
-            (a, b) => a.statSync().modified.compareTo(b.statSync().modified));
-        while (totalSize > 100 * 1024 * 1024 && files.isNotEmpty) {
-          int fileSize = await (files.first as File).length();
-          await files.first.delete();
-          totalSize -= fileSize;
-          files.removeAt(0);
+        int totalSize = 0;
+        final List<_FileStatPair> fileStats = [];
+        for (final f in files) {
+          try {
+            final stat = await f.stat();
+            totalSize += stat.size;
+            fileStats.add(_FileStatPair(file: f, stat: stat));
+          } catch (_) {
+            // ignore files we cannot stat
+          }
         }
+
+        if (totalSize > maxBytes) {
+          fileStats.sort((a, b) => a.stat.modified.compareTo(b.stat.modified));
+          int idx = 0;
+          while (totalSize > maxBytes && idx < fileStats.length) {
+            final candidate = fileStats[idx];
+            try {
+              final len = candidate.stat.size;
+              await candidate.file.delete();
+              totalSize -= len;
+            } catch (_) {
+              // ignore delete errors and continue
+            }
+            idx++;
+          }
+        }
+      } catch (e) {
+        // best-effort pruning; don't fail the thumbnail operation
+        _logger.warning('Thumbnail cache pruning failed', e);
       }
 
       return filePath;
@@ -76,5 +132,148 @@ class ThumbnailUtil {
 
   static bool _isDefaultDir(String subdirectory) {
     return subdirectory == '';
+  }
+
+  /// Extract thumbnail bytes from a local .nanodlp file (zip) containing 3d.png.
+  /// Uses the same resize mechanism as API thumbnails.
+  static Future<Uint8List> extractNanodlpThumbnailBytesFromFile(
+    String filePath, {
+    String size = "Small",
+  }) async {
+    File? tempCopy;
+    try {
+      File file = File(filePath);
+      if (Platform.isLinux && filePath.startsWith('/media/')) {
+        try {
+          final tempDir = await getTemporaryDirectory();
+          final tmpRoot = Directory(p.join(tempDir.path, 'orion_nanodlp_tmp'));
+          if (!await tmpRoot.exists()) {
+            await tmpRoot.create(recursive: true);
+          }
+          final tmpPath = p.join(
+            tmpRoot.path,
+            '${p.basename(filePath)}_${DateTime.now().millisecondsSinceEpoch}',
+          );
+          final staged = await file.copy(tmpPath);
+          tempCopy = staged;
+          file = staged;
+        } catch (e) {
+          _logger.fine('Failed to stage NanoDLP file in temp dir', e);
+        }
+      }
+      if (!await file.exists()) {
+        return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
+      }
+
+      final bytes = await file.readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes, verify: true);
+
+      ArchiveFile? pngEntry;
+      ArchiveFile? anyPngEntry;
+      for (final entry in archive) {
+        if (!entry.isFile) continue;
+        final name = entry.name.toLowerCase();
+        if (name.endsWith('.png')) {
+          anyPngEntry ??= entry;
+          if (name.endsWith('3d.png')) {
+            pngEntry = entry;
+            break;
+          }
+        }
+      }
+
+      pngEntry ??= anyPngEntry;
+      if (pngEntry == null) {
+        _logger.info('NanoDLP zip thumbnail missing PNG: $filePath');
+        return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
+      }
+
+      final pngBytes = pngEntry.content;
+
+      int width = 400, height = 400;
+      if (size == 'Large') {
+        width = NanoDlpThumbnailGenerator.largeWidth;
+        height = NanoDlpThumbnailGenerator.largeHeight;
+      }
+
+      final resized = await compute(_resizeBytesEntry, {
+        'bytes': pngBytes,
+        'width': width,
+        'height': height,
+      });
+
+      return resized as Uint8List;
+    } catch (e) {
+      _logger.warning('Failed to extract NanoDLP zip thumbnail', e);
+    } finally {
+      // Best-effort cleanup of temp copy if we created one.
+      try {
+        if (tempCopy != null && await tempCopy.exists()) {
+          await tempCopy.delete();
+        }
+      } catch (_) {}
+    }
+
+    return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
+  }
+
+  /// Returns thumbnail bytes (PNG) resized for the requested size.
+  /// Uses a background isolate to perform decode/resize work to avoid
+  /// janking the UI thread.
+  static Future<Uint8List> extractThumbnailBytes(
+      String location, String subdirectory, String filename,
+      {String size = "Small", BackendClient? client}) async {
+    final BackendClient odysseyClient = client ?? BackendService();
+    try {
+      String finalLocation = _isDefaultDir(subdirectory)
+          ? filename
+          : p.join(subdirectory, filename);
+      finalLocation = finalLocation.replaceAll('\\', '/').trim();
+      finalLocation = finalLocation.replaceFirst(RegExp(r'^/+'), '');
+
+      final bytes =
+          await odysseyClient.getFileThumbnail(location, finalLocation, size);
+
+      int width = 400, height = 400;
+      if (size == 'Large') {
+        width = NanoDlpThumbnailGenerator.largeWidth;
+        height = NanoDlpThumbnailGenerator.largeHeight;
+      }
+
+      // Use compute to run the resize on a background isolate.
+      final resized = await compute(_resizeBytesEntry, {
+        'bytes': bytes,
+        'width': width,
+        'height': height,
+      });
+
+      // Return resized bytes; callers may optionally write to disk.
+      return resized as Uint8List;
+    } catch (e) {
+      _logger.warning('Failed to fetch/resize thumbnail bytes', e);
+    }
+
+    // Fallback: return a generated placeholder using the canonical small size.
+    return NanoDlpThumbnailGenerator.generatePlaceholder(400, 400);
+  }
+}
+
+class _FileStatPair {
+  final File file;
+  final FileStat stat;
+  _FileStatPair({required this.file, required this.stat});
+}
+
+// Top-level entrypoint for compute() to resize image bytes off the main isolate.
+dynamic _resizeBytesEntry(Map<String, dynamic> msg) {
+  int width = 400;
+  int height = 400;
+  try {
+    final bytes = msg['bytes'] as Uint8List;
+    width = msg['width'] as int? ?? width;
+    height = msg['height'] as int? ?? height;
+    return NanoDlpThumbnailGenerator.resizeOrPlaceholder(bytes, width, height);
+  } catch (_) {
+    return NanoDlpThumbnailGenerator.generatePlaceholder(width, height);
   }
 }

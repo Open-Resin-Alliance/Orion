@@ -1,6 +1,6 @@
 /*
 * Orion - List Tile
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,7 +16,12 @@
 */
 
 import 'package:flutter/material.dart';
+
+import 'package:orion/glasser/glasser.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:provider/provider.dart';
+
+import 'providers/theme_provider.dart';
 
 class OrionListTile extends StatelessWidget {
   final String title;
@@ -36,24 +41,36 @@ class OrionListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    // In glass theme, always use white colors for text and icons
+    final textColor = themeProvider.isGlassTheme
+        ? Colors.white
+        : (ignoreColor ? Colors.white : null);
+    final iconColor = themeProvider.isGlassTheme
+        ? Colors.white
+        : (ignoreColor ? Colors.white : null);
+
     return ListTile(
       title: Text(
         title,
-        style:
-            TextStyle(fontSize: 24.0, color: ignoreColor ? Colors.white : null),
+        style: TextStyle(
+            fontFamily: 'AtkinsonHyperlegible',
+            fontSize: 24.0,
+            color: textColor),
       ),
       trailing: Transform.scale(
         scale: 1.2, // adjust this value to change the size of the Switch
-        child: Switch(
+        child: GlassSwitch(
           value: value,
           onChanged: onChanged,
         ),
       ),
       leading: icon is IconData
-          ? Icon(icon, size: 24.0, color: ignoreColor ? Colors.white : null)
+          ? Icon(icon, size: 24.0, color: iconColor)
           : icon is Function
               ? PhosphorIcon(icon(PhosphorIconsStyle.bold),
-                  size: 24.0, color: ignoreColor ? Colors.white : null)
+                  size: 24.0, color: iconColor)
               : null,
     );
   }

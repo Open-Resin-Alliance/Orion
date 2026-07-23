@@ -1,6 +1,6 @@
-/*
+﻿/*
 * Orion - Tools Screen
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,8 +16,17 @@
 */
 
 import 'package:flutter/material.dart';
-import 'package:orion/tools/exposure_screen.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:orion/widgets/orion_app_bar.dart';
+
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/move_z_screen.dart';
+import 'package:orion/tools/exposure_screen.dart';
+import 'package:orion/tools/force_screen.dart';
+import 'package:orion/tools/leveling_screen.dart';
+import 'package:orion/util/widgets/system_status_widget.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({super.key});
@@ -42,36 +51,68 @@ class ToolsScreenState extends State<ToolsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tools'),
-      ),
-      body: _selectedIndex == 0
-          ? const MoveZScreen()
-          : _selectedIndex == 1
-              ? const ExposureScreen()
-              : const MoveZScreen(),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.height),
-            label: 'Move Z',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.lightbulb),
-            label: 'Exposure',
-          ),
-          // TODO: Implement Self Test
-          /*BottomNavigationBarItem(
+    return GlassApp(
+      child: Scaffold(
+        appBar: OrionAppBar(
+          title: Text(FlutterI18n.translate(context, 'tools.title')),
+          toolbarHeight: Theme.of(context).appBarTheme.toolbarHeight,
+          actions: const [SystemStatusWidget()],
+        ),
+        body: _selectedIndex == 0
+            ? const MoveZScreen()
+            : _selectedIndex == 1
+                ? const LevelingScreen()
+                : _selectedIndex == 2
+                    ? const ExposureScreen()
+                    : _selectedIndex == 3
+                        ? const ForceSensorScreen()
+                        : const MoveZScreen(),
+        bottomNavigationBar: GlassBottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          items: <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.arrowsDownUp()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.arrowsDownUp,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              label: FlutterI18n.translate(context, 'tools.moveZ'),
+            ),
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.scales()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.scales,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              label: FlutterI18n.translate(context, 'tools.leveling'),
+            ),
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.lightbulbFilament()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.lightbulbFilament,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              label: FlutterI18n.translate(context, 'tools.exposure'),
+            ),
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.chartLineUp()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.chartLineUp,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              label: FlutterI18n.translate(context, 'tools.forceSensor'),
+            ),
+            // TODO: Implement Self Test
+            /*BottomNavigationBarItem(
             icon: Icon(Icons.check),
             label: 'Self Test',
           ),*/
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        onTap: _onItemTapped,
-        unselectedItemColor: Theme.of(context).colorScheme.secondary,
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: Theme.of(context).colorScheme.primary,
+          onTap: _onItemTapped,
+          unselectedItemColor: Theme.of(context).colorScheme.secondary,
+        ),
       ),
     );
   }
