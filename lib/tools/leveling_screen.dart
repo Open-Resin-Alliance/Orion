@@ -22,7 +22,8 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
-import 'package:orion/tools/athena/verify_leveling_screen.dart';
+import 'package:orion/tools/athena/verify_leveling_screen.dart'
+    show VerifyLevelingScreen, hasPassedLevelingSession;
 import 'package:orion/tools/manual_leveling_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
@@ -69,7 +70,7 @@ class LevelingScreen extends StatelessWidget {
                       description: FlutterI18n.translate(
                           context, 'leveling.assistedDesc'),
                       enabled: assistedEnabled,
-                      tint: GlassButtonTint.neutral,
+                      tint: GlassButtonTint.positive,
                       badgeLabel: assistedEnabled
                           ? null
                           : FlutterI18n.translate(
@@ -93,7 +94,8 @@ class LevelingScreen extends StatelessWidget {
                           FlutterI18n.translate(context, 'leveling.verify'),
                       description: FlutterI18n.translate(
                           context, 'leveling.verifyDesc'),
-                      tint: GlassButtonTint.positive,
+                      enabled: hasPassedLevelingSession(),
+                      tint: GlassButtonTint.neutral,
                       onPressed: () => Navigator.of(context).push(
                         _buildOverlayRoute(const VerifyLevelingScreen()),
                       ),
@@ -160,11 +162,11 @@ class LevelingScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 if (description != null) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   Text(
                     description,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 18,
                       height: 1.25,
                       color: Theme.of(context)
                           .colorScheme

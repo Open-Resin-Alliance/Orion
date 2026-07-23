@@ -209,6 +209,36 @@ _ParsedSession? _parseLastPassedSession() {
   );
 }
 
+/// Whether at least one session in the leveling log has passed — i.e. the
+/// user has successfully leveled at some point and has results to verify.
+bool hasPassedLevelingSession() {
+  final candidates = <String>[
+    LevelingLogService.logFilePath,
+    'orion_level.log',
+  ];
+  File? file;
+  for (final p in candidates) {
+    final f = File(p);
+    if (f.existsSync()) {
+      file = f;
+      break;
+    }
+  }
+  if (file == null) return false;
+
+  final lines = file.readAsStringSync().split('\n');
+
+  // Any PASSED result in the log is enough — a later failed re-check
+  // shouldn't lock the user out of viewing their earlier success.
+  for (int i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].contains('PASSED') &&
+        lines[i].contains('total deviation')) {
+      return true;
+    }
+  }
+  return false;
+}
+
 String _extractLine(String block, String label) {
   // Match a line starting with the label, then skip whitespace (and
   // optional colon), then capture the rest.  Use \s* (not \s+) after
@@ -549,7 +579,7 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No leveling data found',
+            FlutterI18n.translate(context, 'leveling.verifyNoData'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -558,7 +588,7 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Complete an assisted leveling session first.',
+            FlutterI18n.translate(context, 'leveling.verifyNoDataHint'),
             style: TextStyle(
               fontSize: 14,
               color: Theme.of(context)
