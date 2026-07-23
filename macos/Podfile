@@ -31,6 +31,10 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+  
+  # Override mdk with local podspec that uses working SourceForge URL
+  # (the official nightly URL is broken)
+  pod 'mdk', :podspec => 'LocalPods/mdk/mdk.podspec'
 end
 
 post_install do |installer|

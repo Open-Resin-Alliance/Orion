@@ -1,6 +1,6 @@
 /*
 * Orion - An open-source user interface for the Odyssey 3d-printing engine.
-* Copyright (C) 2024 Open Resin Alliance
+* Copyright (C) 2025 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -15,31 +15,112 @@
 * limitations under the License.
 */
 
-import 'dart:io';
+// ignore_for_file: avoid_print
+
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
+import 'package:orion/backend_service/providers/resins_provider.dart';
+import 'package:orion/util/update_notification_watcher.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:orion/util/install_locator.dart';
+import 'package:provider/provider.dart';
+import 'package:window_size/window_size.dart';
+import 'package:orion/backend_service/backend_registry.dart';
 
-import 'package:orion/home/home_screen.dart';
-import 'package:orion/status/status_screen.dart';
 import 'package:orion/files/files_screen.dart';
 import 'package:orion/files/grid_files_screen.dart';
-import 'package:orion/settings/settings_screen.dart';
+import 'package:orion/glasser/glasser.dart';
+import 'package:orion/home/home_screen.dart';
+import 'package:orion/home/startup_gate.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:flutter_i18n/loaders/decoders/json_decode_strategy.dart';
 import 'package:orion/settings/about_screen.dart';
-import 'package:orion/themes/themes.dart';
-import 'package:orion/util/error_handling/error_handler.dart';
-
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:orion/settings/settings_screen.dart';
+import 'package:orion/status/status_screen.dart';
+import 'package:orion/materials/materials_screen.dart';
+import 'package:orion/materials/calibration_context_provider.dart';
+import 'package:orion/backend_service/providers/status_provider.dart';
+import 'package:orion/backend_service/providers/files_provider.dart';
+import 'package:orion/backend_service/providers/local_files_provider.dart';
+import 'package:orion/backend_service/providers/config_provider.dart';
+import 'package:orion/backend_service/providers/print_provider.dart';
+import 'package:orion/backend_service/providers/notification_provider.dart';
+import 'package:orion/backend_service/providers/manual_provider.dart';
+import 'package:orion/backend_service/providers/lighting_provider.dart';
+import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/tools/tools_screen.dart';
+import 'package:orion/util/error_handling/error_handler.dart';
+import 'package:orion/util/providers/locale_provider.dart';
+import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/util/providers/wifi_provider.dart';
+import 'package:orion/util/error_handling/connection_error_watcher.dart';
+import 'package:orion/util/error_handling/notification_watcher.dart';
+import 'package:orion/util/providers/orion_update_provider.dart';
+import 'package:orion/util/providers/athena_update_provider.dart';
+import 'package:orion/util/update_manager.dart';
+import 'package:orion/util/standby_overlay.dart';
+import 'package:orion/backend_service/providers/standby_settings_provider.dart';
 import 'package:orion/util/orion_config.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:window_size/window_size.dart';
-import 'package:provider/provider.dart';
-import 'package:logging/logging.dart';
 
-void main() {
+/// Initialize all available backend modules at app startup.
+/// This is Phase 0 of the backend coupling refactor: centralizing all
+/// backend registration so backends are declared once and referenced
+/// via the registry throughout the app.
+///
+/// To add a new backend:
+///   1. Create a new module class implementing BackendModule
+///   2. Add an export in backend_registry.dart
+///   3. Add register() call in BackendRegistry.registerBuiltInModules()
+/// That's it—no other changes needed!
+void _initializeBackendModules() {
+  final registry = BackendRegistry();
+  registry.registerBuiltInModules();
+}
+
+/// Initialize all available service submodules (Athena IoT, file import, etc).
+/// Submodules are backend-agnostic services that multiple backends can use.
+///
+/// To add a new submodule:
+///   1. Create a new class implementing BackendSubmodule
+///   2. Add registerSubmodule() call below
+/// That's it—each backend declares which submodules it supports!
+void _initializeSubmodules() {
+  final registry = BackendRegistry();
+  registry.registerBuiltInSubmodules();
+  // Future: add registry.registerSubmodule(AthenaIotSubmodule()); here
+}
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize backend registry with all available modules.
+  // This must be done early so backends can be selected by configuration.
+  _initializeBackendModules();
+
+  // Initialize all service submodules (Athena IoT, file import, etc).
+  _initializeSubmodules();
+
+  // Restore screen brightness to full on startup (in case the app was
+  // closed while standby dimming was active)
+  if (Platform.isLinux) {
+    await _restoreFullBrightness();
+  }
+
+  if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+    setWindowTitle('Orion - Open Resin Alliance');
+    setWindowMinSize(const Size(480, 480 + 28)); // account for title bar
+    if (kDebugMode) {
+      setWindowMaxSize(const Size(800, 800));
+    }
+  }
+
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     ErrorHandler.onErrorDetails(details);
@@ -70,18 +151,21 @@ void main() {
   logStreamController.stream.listen((record) async {
     await writeMutex.acquire();
     try {
-      Directory logDir = await getApplicationSupportDirectory();
-      File logFile = File('${logDir.path}/app.log');
+      // Resolve the log file location once (prefer env override, then
+      // application support dir, then packaged engine locations, exec dir,
+      // and fallback to app support). This mirrors the discovery used by
+      // other parts of the app (Debug screen / OrionConfig).
+      File logFile = await _resolveLogFile();
 
       // Check if log file needs rotation
       if (await logFile.exists() && await logFile.length() > maxLogFileSize) {
         // Rotate the log file
-        final rotatedLogFile = File('${logDir.path}/app.log.1');
+        final rotatedLogFile = File(p.join(logFile.parent.path, 'app.log.1'));
         if (await rotatedLogFile.exists()) {
           await rotatedLogFile.delete();
         }
         await logFile.rename(rotatedLogFile.path);
-        logFile = File('${logDir.path}/app.log');
+        logFile = File(p.join(logFile.parent.path, 'app.log'));
       }
 
       final logMessage =
@@ -102,7 +186,509 @@ void main() {
     }
   });
 
-  runApp(const Orion());
+  runApp(const OrionRoot());
+}
+
+/// Restore screen brightness to 255 on startup.
+/// This ensures the screen is at full brightness even if the app was closed
+/// while standby dimming was active.
+Future<void> _restoreFullBrightness() async {
+  try {
+    // Try to read the backlight device from config
+    final config = OrionConfig();
+    final backlightDevice = config.getString('backlightDevice', category: 'ui');
+
+    if (backlightDevice.isEmpty) {
+      // No backlight device configured, try to auto-detect
+      final backlightDir = Directory('/sys/class/backlight');
+      if (!await backlightDir.exists()) return;
+
+      // Find first available device
+      await for (final entry in backlightDir.list()) {
+        if (entry is Directory) {
+          final brightnessFile = File('${entry.path}/brightness');
+          if (await brightnessFile.exists()) {
+            await _writeBrightness(brightnessFile.path, 255);
+            return;
+          }
+        }
+      }
+    } else {
+      // Use configured device
+      final brightnessPath = '/sys/class/backlight/$backlightDevice/brightness';
+      final file = File(brightnessPath);
+      if (await file.exists()) {
+        await _writeBrightness(brightnessPath, 255);
+      }
+    }
+  } catch (e) {
+    print('Could not restore full brightness on startup: $e');
+  }
+}
+
+/// Write brightness value to the specified path
+Future<void> _writeBrightness(String path, int level) async {
+  try {
+    // Try direct write first
+    try {
+      final file = File(path);
+      await file.writeAsString(level.toString());
+      return;
+    } catch (_) {
+      // Direct write failed, try with sudo
+    }
+
+    // Fall back to sudo method
+    try {
+      final process = await Process.start('sudo', ['tee', path]);
+      process.stdin.writeln(level.toString());
+      await process.stdin.close();
+      await process.exitCode;
+    } catch (e) {
+      print('Brightness write skipped: $e');
+    }
+  } catch (e) {
+    print('Error writing brightness: $e');
+  }
+}
+
+/// Resolve the most likely log file location for this runtime.
+/// Priority: ORION_LOG_FILE env override -> application support dir ->
+/// engine dir (and parent) -> exec dir -> CWD -> application support fallback
+Future<File> _resolveLogFile() async {
+  try {
+    final env = Platform.environment['ORION_LOG_FILE'];
+    if (env != null && env.isNotEmpty) return File(env);
+  } catch (_) {}
+
+  try {
+    final appSupport = await getApplicationSupportDirectory();
+    final f = File(p.join(appSupport.path, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  try {
+    final engineDir = findEngineDir();
+    if (engineDir != null && engineDir.isNotEmpty) {
+      final f = File(p.join(engineDir, 'app.log'));
+      if (await f.exists()) return f;
+      final parent = Directory(engineDir).parent.path;
+      final fp = File(p.join(parent, 'app.log'));
+      if (await fp.exists()) return fp;
+      final opt = File('/opt/app.log');
+      if (await opt.exists()) return opt;
+    }
+  } catch (_) {}
+
+  try {
+    final execDir = Directory(Platform.resolvedExecutable).parent.path;
+    final f = File(p.join(execDir, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  try {
+    final f = File(p.join(Directory.current.path, 'app.log'));
+    if (await f.exists()) return f;
+  } catch (_) {}
+
+  // Fallback to application support path even if file doesn't exist yet.
+  try {
+    final appSupport = await getApplicationSupportDirectory();
+    return File(p.join(appSupport.path, 'app.log'));
+  } catch (_) {}
+
+  // As a final fallback, return a file in CWD
+  return File(p.join(Directory.current.path, 'app.log'));
+}
+
+/// Handle missing translation keys by logging them.
+void missingTranslationHandler(String key, Locale? locale) {
+  debugPrint('flutter_i18n: Missing translation key "$key" for $locale');
+}
+
+class OrionRoot extends StatelessWidget {
+  const OrionRoot({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => LocaleProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => WiFiProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StatusProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => NotificationProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ConfigProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => FilesProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => LocalFilesProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PrintProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AnalyticsProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ManualProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => LightingProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => OrionUpdateProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AthenaUpdateProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProxyProvider2<OrionUpdateProvider, AthenaUpdateProvider,
+            UpdateManager>(
+          create: (context) => UpdateManager(
+            context.read<OrionUpdateProvider>(),
+            context.read<AthenaUpdateProvider>(),
+          ),
+          update: (context, orion, athena, previous) =>
+              previous ?? UpdateManager(orion, athena),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ResinsProvider(),
+          // Prefetch calibration models and images at app startup so
+          // opening the Calibration screen can show thumbnails immediately.
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CalibrationContextProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => StandbySettingsProvider(),
+          lazy: false,
+        )
+      ],
+      child: const OrionMainApp(),
+    );
+  }
+}
+
+class OrionMainApp extends StatefulWidget {
+  const OrionMainApp({super.key});
+
+  @override
+  OrionMainAppState createState() => OrionMainAppState();
+}
+
+class OrionMainAppState extends State<OrionMainApp> {
+  late final GoRouter _router;
+  late final FlutterI18nDelegate _i18nDelegate;
+  ConnectionErrorWatcher? _connWatcher;
+  NotificationWatcher? _notifWatcher;
+  UpdateNotificationWatcher? _updateWatcher;
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
+  bool _statusListenerAttached = false;
+  bool _wasPrinting = false;
+  bool _isStatusShown = false;
+  String _activeBackendId = BackendIds.odyssey;
+  // navigatorKey removed; using MaterialApp.router builder context instead
+
+  @override
+  void initState() {
+    super.initState();
+    _initRouter();
+    _i18nDelegate = FlutterI18nDelegate(
+      translationLoader: FileTranslationLoader(
+        useCountryCode: false,
+        fallbackFile: 'en',
+        basePath: 'assets/i18n',
+        decodeStrategies: [JsonDecodeStrategy()],
+      ),
+      missingTranslationHandler: missingTranslationHandler,
+    );
+    _activeBackendId = _resolveActiveBackendId();
+    _initializeActiveBackendSubmodules();
+  }
+
+  @override
+  void dispose() {
+    _disposeActiveBackendSubmodules();
+    _connWatcher?.dispose();
+    _updateWatcher?.dispose();
+    _notifWatcher?.dispose();
+    super.dispose();
+  }
+
+  String _resolveActiveBackendId() {
+    try {
+      final configured =
+          OrionConfig().getString('backend', category: 'advanced');
+      return configured.isEmpty ? BackendIds.odyssey : configured;
+    } catch (_) {
+      return BackendIds.odyssey;
+    }
+  }
+
+  void _initializeActiveBackendSubmodules() {
+    final registry = BackendRegistry();
+    Future.microtask(() async {
+      await registry.initializeSubmodulesForBackend(_activeBackendId);
+    });
+  }
+
+  void _disposeActiveBackendSubmodules() {
+    final registry = BackendRegistry();
+    Future.microtask(() async {
+      await registry.disposeSubmodulesForBackend(_activeBackendId);
+    });
+  }
+
+  void _initRouter() {
+    _router = GoRouter(
+      navigatorKey: _navKey,
+      routes: <RouteBase>[
+        GoRoute(
+          path: '/',
+          builder: (BuildContext context, GoRouterState state) {
+            // Let the StartupGate decide whether to show the startup overlay
+            // while the initial backend connection attempt completes. It will
+            // render the onboarding screen or the HomeScreen once connected.
+            return const StartupGate();
+          },
+          routes: <RouteBase>[
+            GoRoute(
+              path: 'home',
+              builder: (BuildContext context, GoRouterState state) {
+                return const HomeScreen();
+              },
+            ),
+            GoRoute(
+              path: 'files',
+              builder: (BuildContext context, GoRouterState state) {
+                return const FilesScreen();
+              },
+            ),
+            GoRoute(
+              path: 'gridfiles',
+              builder: (BuildContext context, GoRouterState state) {
+                return const GridFilesScreen();
+              },
+            ),
+            GoRoute(
+              path: 'materials',
+              builder: (BuildContext context, GoRouterState state) {
+                return const MaterialsScreen();
+              },
+            ),
+            GoRoute(
+              path: 'settings',
+              builder: (BuildContext context, GoRouterState state) {
+                return const SettingsScreen();
+              },
+              routes: <RouteBase>[
+                GoRoute(
+                  path: 'about',
+                  builder: (BuildContext context, GoRouterState state) {
+                    return const AboutScreen();
+                  },
+                ),
+              ],
+            ),
+            GoRoute(
+              path: 'updates',
+              builder: (BuildContext context, GoRouterState state) {
+                return const SettingsScreen(initialIndex: 3);
+              },
+            ),
+            GoRoute(
+              path: 'status',
+              builder: (BuildContext context, GoRouterState state) {
+                return const StatusScreen(
+                  newPrint: false,
+                );
+              },
+            ),
+            GoRoute(
+                path: 'tools',
+                builder: (BuildContext context, GoRouterState state) {
+                  return const ToolsScreen();
+                }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<LocaleProvider, ThemeProvider>(
+      builder: (context, localeProvider, themeProvider, child) {
+        return Provider<Function>.value(
+          value: themeProvider.setThemeMode,
+          child: _buildAppShell(localeProvider, themeProvider),
+        );
+      },
+    );
+  }
+
+  Widget _buildAppShell(
+      LocaleProvider localeProvider, ThemeProvider themeProvider) {
+    return GlassApp(
+      child: Builder(builder: (innerCtx) {
+        // Build the app shell and inject the StandbyOverlay from within
+        // MaterialApp.router's builder so Directionality/Theme are available
+        return MaterialApp.router(
+          title: 'Orion',
+          debugShowCheckedModeBanner: false,
+          routerConfig: _router,
+          theme: themeProvider.lightTheme,
+          builder: (ctx, child) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              try {
+                final navCtx = _navKey.currentContext;
+                // Startup gating is handled by the root route's StartupGate.
+                if (_connWatcher == null && navCtx != null) {
+                  _connWatcher =
+                      ConnectionErrorWatcher.install(navCtx, onReconnect: () {
+                    Logger('ConnErrorWatcher').info('Reconnected');
+                  }, onDisconnect: () {
+                    Logger('ConnErrorWatcher').info('Disconnected');
+                  });
+                }
+                if (_notifWatcher == null && navCtx != null) {
+                  _notifWatcher = NotificationWatcher.install(navCtx);
+                }
+                // Use ctx (builder context) for UpdateNotificationWatcher since it
+                // needs access to providers which aren't available in navCtx
+                _updateWatcher ??= UpdateNotificationWatcher.install(ctx);
+                // Attach a listener to StatusProvider so we can auto-open
+                // the StatusScreen when a print becomes active (remote start).
+                try {
+                  if (!_statusListenerAttached && navCtx != null) {
+                    final statusProv =
+                        Provider.of<StatusProvider>(navCtx, listen: false);
+                    statusProv.addListener(() {
+                      try {
+                        final s = statusProv.status;
+                        final active =
+                            (s?.isPrinting == true) || (s?.isPaused == true);
+                        if (active && !_wasPrinting) {
+                          // Only navigate if not already on /status. Navigate
+                          // to status on transition to active print.
+                          try {
+                            final navState = _navKey.currentState;
+                            final sModel = statusProv.status;
+                            final initialThumb = statusProv.thumbnailBytes;
+                            final initialPath =
+                                sModel?.printData?.fileData?.path;
+                            // Avoid pushing if we're already showing the
+                            // Status screen or we've already pushed it.
+                            try {
+                              if (_isStatusShown) {
+                                // nothing to do
+                              } else if (navState != null) {
+                                _isStatusShown = true;
+                                navState
+                                    .push(MaterialPageRoute(
+                                  builder: (ctx) => StatusScreen(
+                                    newPrint: false,
+                                    initialThumbnailBytes: initialThumb,
+                                    initialFilePath: initialPath,
+                                  ),
+                                ))
+                                    .then((_) {
+                                  // cleared when the pushed route is popped
+                                  _isStatusShown = false;
+                                });
+                              } else {
+                                _isStatusShown = true;
+                                _router.go('/status');
+                                // best-effort: we can't await router navigation
+                                // easily here, so keep the flag set briefly
+                                Future.delayed(const Duration(seconds: 1), () {
+                                  _isStatusShown = false;
+                                });
+                              }
+                            } catch (_) {
+                              // Fallback to router navigation if push fails
+                              if (!_isStatusShown) {
+                                _isStatusShown = true;
+                                _router.go('/status');
+                                Future.delayed(const Duration(seconds: 1), () {
+                                  _isStatusShown = false;
+                                });
+                              }
+                            }
+                          } catch (_) {
+                            // Fallback to router navigation if push fails
+                            _router.go('/status');
+                          }
+                        }
+                        _wasPrinting = active;
+                      } catch (_) {}
+                    });
+                    _statusListenerAttached = true;
+                  }
+                } catch (_) {}
+              } catch (_) {}
+            });
+            // Wrap the built subtree with the StandbyOverlay so it can
+            // access Theme/Directionality provided by MaterialApp.
+            // The StandbyOverlay will read actual settings from StandbySettingsProvider
+            return StandbyOverlay(
+              enabled: true,
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+          darkTheme: themeProvider.darkTheme,
+          themeMode: themeProvider.themeMode,
+          locale: localeProvider.locale,
+          localizationsDelegates: [
+            _i18nDelegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en', 'US'),
+            Locale('de', 'DE'),
+            Locale('nl', 'NL'),
+            Locale('fr', 'FR'),
+            Locale('es', 'ES'),
+            Locale('it', 'IT'),
+            Locale('ja', 'JP'),
+            Locale('zh', 'CN'),
+          ],
+        );
+      }),
+    );
+  }
 }
 
 class Mutex {
@@ -121,110 +707,9 @@ class Mutex {
   }
 }
 
-void macDebug() {
-  if (kDebugMode) {
-    setWindowTitle('Orion Debug - Open Resin Alliance');
-    setWindowMinSize(const Size(480, 480));
-    setWindowMaxSize(const Size(800, 800));
+bool initialSetupTrigger() {
+  if (config.getFlag('firstRun', category: 'machine')) {
+    return true;
   }
-}
-
-/// The route configuration.
-final GoRouter _router = GoRouter(
-  routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (BuildContext context, GoRouterState state) {
-        return const HomeScreen();
-      },
-      routes: <RouteBase>[
-        GoRoute(
-          path: 'files',
-          builder: (BuildContext context, GoRouterState state) {
-            return const FilesScreen();
-          },
-        ),
-        GoRoute(
-          path: 'gridfiles',
-          builder: (BuildContext context, GoRouterState state) {
-            return const GridFilesScreen();
-          },
-        ),
-        GoRoute(
-          path: 'settings',
-          builder: (BuildContext context, GoRouterState state) {
-            return const SettingsScreen();
-          },
-          routes: <RouteBase>[
-            GoRoute(
-              path: 'about',
-              builder: (BuildContext context, GoRouterState state) {
-                return const AboutScreen();
-              },
-            ),
-          ],
-        ),
-        GoRoute(
-          path: 'status',
-          builder: (BuildContext context, GoRouterState state) {
-            return const StatusScreen(
-              newPrint: false,
-            );
-          },
-        ),
-        GoRoute(
-            path: 'tools',
-            builder: (BuildContext context, GoRouterState state) {
-              return const ToolsScreen();
-            }),
-      ],
-    ),
-  ],
-);
-
-/// The main app.
-
-class Orion extends StatefulWidget {
-  const Orion({super.key});
-
-  @override
-  OrionState createState() => OrionState();
-}
-
-class OrionState extends State<Orion> {
-  late ThemeMode _themeMode;
-  late OrionConfig _config;
-
-  @override
-  void initState() {
-    super.initState();
-    _config = OrionConfig();
-    _themeMode = _config.getThemeMode();
-  }
-
-  void changeThemeMode(ThemeMode themeMode) {
-    setState(() {
-      _themeMode = themeMode;
-    });
-    _config.setThemeMode(themeMode);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (Theme.of(context).platform == TargetPlatform.macOS) {
-      macDebug();
-    }
-    return Provider<Function>.value(
-      value: changeThemeMode,
-      child: SizedBox(
-        child: MaterialApp.router(
-          debugShowCheckedModeBanner: true,
-          routerConfig: _router,
-          theme: themeLight,
-          darkTheme: themeDark,
-          themeMode: _themeMode,
-        ),
-      ),
-    );
-  }
+  return false;
 }
