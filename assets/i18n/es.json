@@ -484,7 +484,7 @@
         "loosenInstruction": "Afloje todos los tornillos de manera uniforme y ligera — no más de 1/2 vuelta cada uno.",
         "tightenTitle": "Apretar tornillos",
         "tightenInstructionPro": "Apriete cada tornillo solo a mano con el extremo largo de la llave hexagonal.",
-        "tightenInstructionStandard": "Apriete cada tornillo con el extremo largo de la llave hexagonal.",
+        "tightenInstructionStandard": "Presione firmemente la placa de construcción con una mano mientras aprieta cada tornillo con el extremo largo de la llave hexagonal. Apriete en patrón cruzado, no más de ¼ de vuelta a la vez.",
         "tightenConfirmTitle": "¿Tornillos apretados?",
         "tightenConfirmMsg": "Asegúrese de que todos los tornillos de nivelación estén completamente apretados.\n\nLos tornillos sueltos harán que la cama se desnivele.",
         "tightenConfirmYes": "Sí, están apretados",

@@ -484,7 +484,7 @@
         "loosenInstruction": "すべてのネジを均等に少しだけ緩めてください——各ネジは半回転までです。",
         "tightenTitle": "レベリングネジを締める",
         "tightenInstructionPro": "六角レンチの長い方で各ネジを手締めします。",
-        "tightenInstructionStandard": "六角レンチの長い方で各ネジを締めます。",
+        "tightenInstructionStandard": "片手でビルドプレートをしっかり押さえながら、六角レンチの長い方で各ネジを締めます。クロスパターンで、一度に¼回転以内ずつ締めてください。",
         "tightenConfirmTitle": "ネジは締まりましたか？",
         "tightenConfirmMsg": "続行する前に、すべてのレベリングネジが完全に締まっていることを確認してください。\n\nネジが緩んでいると、ベッドのレベルがずれます。",
         "tightenConfirmYes": "はい、締まっています",

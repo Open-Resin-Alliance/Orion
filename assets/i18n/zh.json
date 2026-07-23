@@ -484,7 +484,7 @@
         "loosenInstruction": "均匀且稍微松开所有螺丝——每颗不超过半圈。",
         "tightenTitle": "紧固调平螺丝",
         "tightenInstructionPro": "用六角扳手长端手紧每颗螺丝。",
-        "tightenInstructionStandard": "用六角扳手长端紧固每颗螺丝。",
+        "tightenInstructionStandard": "用一只手用力按住构建板，同时用六角扳手长端拧紧每颗螺丝。以十字交叉方式拧紧，每次不超过¼圈。",
         "tightenConfirmTitle": "螺丝已拧紧？",
         "tightenConfirmMsg": "请确保所有调平螺丝已完全拧紧。\n\n松动的螺丝会导致平台失去调平。",
         "tightenConfirmYes": "是的，已拧紧",

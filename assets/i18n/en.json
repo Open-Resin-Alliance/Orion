@@ -486,7 +486,7 @@
         "loosenInstruction": "Loosen all screws evenly and slightly — no more than 1/2 turn each.",
         "tightenTitle": "Tighten Leveling Screws",
         "tightenInstructionPro": "Snug-tighten each screw with the long end of the hex key.",
-        "tightenInstructionStandard": "Tighten each screw with the long end of the hex key.",
+        "tightenInstructionStandard": "Press down firmly on the build plate with one hand while tightening each screw with the long end of the hex key. Tighten in a cross pattern, no more than ¼ turn at a time.",
         "tightenConfirmTitle": "Screws tightened?",
         "tightenConfirmMsg": "Make sure all leveling screws are fully tightened before continuing.\n\nLoose screws will cause the bed to drift out of level.",
         "tightenConfirmYes": "Yes, they are tight",
