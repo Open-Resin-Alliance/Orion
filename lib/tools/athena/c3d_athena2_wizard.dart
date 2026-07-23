@@ -623,13 +623,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     );
     if (confirmed != true || !mounted) return;
 
-    // Jump to final offset calibration, skipping remove-puck and
-    // final_prepare — same as the PASS flow.
-    final finalIdx = _engine.steps.lastIndexWhere(
-      (s) => s.kind == LevelingWorkflowStepKind.finalOffset,
+    // Jump to the remove-puck step so the user still sees the prompt
+    // and the plate lifts for safe puck removal before final offset.
+    final removePuckIdx = _engine.steps.indexWhere(
+      (s) => s.intermediateScreen == 'removePuck',
     );
-    if (finalIdx >= 0) {
-      _engine.jumpToStep(finalIdx);
+    if (removePuckIdx >= 0) {
+      _engine.jumpToStep(removePuckIdx);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _engine.canRunCurrentStep) {
           _engine.runCurrentStep();
