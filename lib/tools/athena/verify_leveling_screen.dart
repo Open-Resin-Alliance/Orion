@@ -239,15 +239,33 @@ double? _extractCornerZ(String block, String label) {
   return null;
 }
 
-class VerifyLevelingScreen extends StatelessWidget {
+class VerifyLevelingScreen extends StatefulWidget {
   const VerifyLevelingScreen({super.key});
+
+  @override
+  State<VerifyLevelingScreen> createState() => _VerifyLevelingScreenState();
+}
+
+class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
+  _ParsedSession? _session;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshSession();
+  }
+
+  void _refreshSession() {
+    final session = _parseLastPassedSession();
+    if (mounted) setState(() => _session = session);
+  }
 
   @override
   Widget build(BuildContext context) {
     final isGlass =
         Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
     final primary = Theme.of(context).colorScheme.primary;
-    final session = _parseLastPassedSession();
+    final session = _session;
 
     return GlassApp(
       child: Scaffold(
@@ -409,13 +427,13 @@ class VerifyLevelingScreen extends StatelessWidget {
             width: double.infinity,
             child: GlassButton(
               tint: GlassButtonTint.positive,
-              onPressed: () {
+              onPressed: () async {
                 final config = OrionConfig();
                 final levelingConfig = getLevelingConfigForMachine(
                   config.getMachineModelName(),
                 );
                 if (levelingConfig != null) {
-                  Navigator.of(context).push(
+                  await Navigator.of(context).push(
                     PageRouteBuilder<void>(
                       opaque: false,
                       barrierDismissible: false,
@@ -439,6 +457,7 @@ class VerifyLevelingScreen extends StatelessWidget {
                       },
                     ),
                   );
+                  _refreshSession();
                 }
               },
               style: ElevatedButton.styleFrom(
