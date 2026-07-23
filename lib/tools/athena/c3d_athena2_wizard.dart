@@ -721,12 +721,37 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _adjustmentBusy = true;
     if (mounted) setState(() {});
 
+    final puckAlreadyPlaced =
+        _puckPlacedCorner == _adjustingCornerIndex;
+    if (puckAlreadyPlaced) {
+      _puckPlacedCorner = null;
+    }
+
     try {
-      await BackendService().runForceLevelingWorkflow(
-        'probe_corner_prepare',
-        requestTimeout: const Duration(seconds: 90),
-      );
-      if (!mounted) return;
+      if (puckAlreadyPlaced) {
+        // Puck is already at this corner from the last probe — just
+        // lift the plate a small amount for hand clearance instead of
+        // the full probe_corner_prepare cycle (park then lower).  The
+        // rapid up-then-down is a safety hazard when hands may be near
+        // the plate and a re-probe is about to start anyway.
+        final moved =
+            await Provider.of<ManualProvider>(context, listen: false)
+                .moveDelta(10.0);
+        if (!mounted) return;
+        if (!moved) {
+          _adjustmentError = FlutterI18n.translate(
+              context, 'leveling.wizardPrepareFailed');
+          _adjustmentBusy = false;
+          if (mounted) setState(() {});
+          return;
+        }
+      } else {
+        await BackendService().runForceLevelingWorkflow(
+          'probe_corner_prepare',
+          requestTimeout: const Duration(seconds: 90),
+        );
+        if (!mounted) return;
+      }
 
       // Fire the special screen for this corner so the projector shows the position
       final cornerIdx = _adjustingCornerIndex!;
@@ -744,10 +769,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     }
 
     _adjustmentBusy = false;
-    // If the puck is already at this corner from the last probe, skip the
-    // placement screen and go straight to probing.
-    if (_puckPlacedCorner == _adjustingCornerIndex) {
-      _puckPlacedCorner = null;
+    if (puckAlreadyPlaced) {
       _adjustmentStep = _AdjustmentStep.probing;
       if (mounted) setState(() {});
       _runAdjustmentProbe();
