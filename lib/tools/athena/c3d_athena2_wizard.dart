@@ -1583,7 +1583,66 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           Expanded(
             child: GlassButton(
               tint: GlassButtonTint.positive,
-              onPressed: () {
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (ctx) => GlassAlertDialog(
+                    title: Row(
+                      children: [
+                        Icon(PhosphorIcons.warning(),
+                            size: 26, color: Colors.orangeAccent),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            FlutterI18n.translate(context,
+                                'leveling.tightenConfirmTitle'),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orangeAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    content: Text(
+                      FlutterI18n.translate(
+                          context, 'leveling.tightenConfirmMsg'),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    actions: [
+                      GlassButton(
+                        tint: GlassButtonTint.neutral,
+                        onPressed: () =>
+                            Navigator.of(ctx).pop(false),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 55),
+                        ),
+                        child: Text(
+                          FlutterI18n.translate(context,
+                              'leveling.tightenConfirmNo'),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                      GlassButton(
+                        tint: GlassButtonTint.positive,
+                        onPressed: () =>
+                            Navigator.of(ctx).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 55),
+                        ),
+                        child: Text(
+                          FlutterI18n.translate(context,
+                              'leveling.tightenConfirmYes'),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !mounted) return;
                 _engine.advanceAfterSuccessfulStep();
                 // Auto-run the calibrating offset step
                 WidgetsBinding.instance.addPostFrameCallback((_) {
