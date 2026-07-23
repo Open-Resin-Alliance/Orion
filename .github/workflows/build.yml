@@ -28,10 +28,17 @@ jobs:
           flutter-version: ${{ steps.flutterpi_engine.outputs.latest }}
           cache: true
 
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/apt-archives
+          key: ${{ runner.os }}-apt-libgtk-3-dev-v1
+
       - name: Install Linux build dependencies
         run: |
+          mkdir -p ~/.cache/apt-archives/partial
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev
+          sudo apt-get -o dir::cache::archives="$HOME/.cache/apt-archives" install -y libgtk-3-dev
+          sudo chown -R "$USER:$USER" ~/.cache/apt-archives
 
       - run: flutter pub global activate flutterpi_tool
       - run: flutter build linux
