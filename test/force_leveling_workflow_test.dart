@@ -131,9 +131,11 @@ void main() {
         engine.advanceAfterSuccessfulStep();
       }
 
+      // The standard arm skips the probe_screen stage — its initial
+      // leveling step uses probe_standardarm directly (skipBackend), and
+      // the final offset re-probes it.
       expect(calls, [
         'probe_prepare',
-        'probe_screen',
         'probe_standardarm',
       ]);
       expect(engine.zOffsetApplied, 12.45);

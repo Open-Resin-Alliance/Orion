@@ -430,6 +430,8 @@
         "verifyDesc": "Verfügbar nach einer erfolgreichen Nivellierungssitzung.",
         "verifyNoData": "Keine Nivellierungsdaten gefunden",
         "verifyNoDataHint": "Führen Sie zuerst eine geführte Nivellierung durch.",
+        "verifyClearOffsetTitle": "Aktuellen Z-Offset löschen?",
+        "verifyClearOffsetMsg": "Beim Starten der Nivellierungsprüfung wird der aktuelle Z-Offset gelöscht. Er wird erst wieder gesetzt, nachdem die Überprüfung erfolgreich abgeschlossen wurde.\n\nMöchten Sie fortfahren?",
         "notAvailable": "Nicht verfügbar",
         "manual": "Manuelle Nivellierung",
         "manualDesc": "Manuelle Z-Justage für erfahrene Nutzer.",

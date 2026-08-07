@@ -430,6 +430,8 @@
         "verifyDesc": "正常にレベリングが完了すると利用可能になります。",
         "verifyNoData": "レベリングデータが見つかりません",
         "verifyNoDataHint": "最初にアシストレベリングを完了してください。",
+        "verifyClearOffsetTitle": "現在のZオフセットをクリアしますか？",
+        "verifyClearOffsetMsg": "レベリングの確認を開始すると、現在のZオフセットがクリアされます。確認が正常に完了した後にのみ再設定されます。\n\n続行しますか？",
         "notAvailable": "Not Available",
         "manual": "マニュアルレベリング",
         "manualDesc": "経験者向け手動Z調整。",

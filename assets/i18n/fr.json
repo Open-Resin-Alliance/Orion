@@ -430,6 +430,8 @@
         "verifyDesc": "Disponible après une séance de nivellement réussie.",
         "verifyNoData": "Aucune donnée de nivellement trouvée",
         "verifyNoDataHint": "Effectuez d'abord un nivellement assisté.",
+        "verifyClearOffsetTitle": "Effacer le décalage Z actuel ?",
+        "verifyClearOffsetMsg": "Le démarrage de la vérification du nivellement effacera le décalage Z actuel. Il ne sera réglé à nouveau qu’une fois la vérification terminée avec succès.\n\nVoulez-vous continuer ?",
         "notAvailable": "Indisponible",
         "manual": "Nivellement manuel",
         "manualDesc": "Réglage Z manuel pour experts.",

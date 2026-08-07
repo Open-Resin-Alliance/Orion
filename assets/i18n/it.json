@@ -430,6 +430,8 @@
         "verifyDesc": "Disponibile dopo una sessione di livellamento riuscita.",
         "verifyNoData": "Nessun dato di livellamento trovato",
         "verifyNoDataHint": "Completa prima una sessione di livellamento assistito.",
+        "verifyClearOffsetTitle": "Cancellare l’offset Z attuale?",
+        "verifyClearOffsetMsg": "L’avvio della verifica del livellamento cancellerà l’offset Z corrente. Verrà reimpostato solo dopo il completamento con successo della verifica.\n\nVuoi continuare?",
         "notAvailable": "Non disponibile",
         "manual": "Livellamento manuale",
         "manualDesc": "Regolazione Z manuale per esperti.",

@@ -716,6 +716,18 @@ class OrionConfig {
     return '';
   }
 
+  /// Whether the printer is currently considered leveled — i.e. a leveling
+  /// session has completed successfully and its Z offset is still valid.
+  ///
+  /// Persisted in `orion.cfg` under the `leveling` section.  Starts false;
+  /// set true when a leveling session completes successfully, and reset to
+  /// false when a Verify Leveling run starts (which clears the Z offset).
+  bool isLeveled() => getFlag('isLeveled', category: 'leveling');
+
+  /// Set whether the printer is currently considered leveled.
+  void setLeveled(bool value) =>
+      setFlag('isLeveled', value, category: 'leveling');
+
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.
   bool getFeatureFlag(String key, {bool defaultValue = false}) {

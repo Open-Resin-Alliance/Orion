@@ -430,6 +430,8 @@
         "verifyDesc": "成功调平后可用。",
         "verifyNoData": "未找到调平数据",
         "verifyNoDataHint": "请先完成辅助调平。",
+        "verifyClearOffsetTitle": "要清除当前的 Z 偏移吗？",
+        "verifyClearOffsetMsg": "开始验证调平将清除当前的 Z 偏移。只有验证成功完成后，才会重新设置该偏移。\n\n是否继续？",
         "notAvailable": "Not Available",
         "manual": "手动调平",
         "manualDesc": "适合有经验用户的手动Z调整。",

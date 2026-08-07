@@ -430,6 +430,8 @@
         "verifyDesc": "Available after a successful leveling session.",
         "verifyNoData": "No leveling data found",
         "verifyNoDataHint": "Complete an assisted leveling session first.",
+        "verifyClearOffsetTitle": "Clear Current Z Offset?",
+        "verifyClearOffsetMsg": "Starting Verify Leveling clears the current Z offset. It will only be set again after verification completes successfully.\n\nDo you want to continue?",
         "notAvailable": "Not Available",
         "manual": "Manual Leveling",
         "manualDesc": "Manual Z adjustment for experienced users.",

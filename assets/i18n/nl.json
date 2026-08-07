@@ -430,6 +430,8 @@
         "verifyDesc": "Beschikbaar na een succesvolle nivelleringssessie.",
         "verifyNoData": "Geen nivelleringsgegevens gevonden",
         "verifyNoDataHint": "Voltooi eerst een geleide nivelleringssessie.",
+        "verifyClearOffsetTitle": "Huidige Z-offset wissen?",
+        "verifyClearOffsetMsg": "Het starten van de nivelleringscontrole wist de huidige Z-offset. Deze wordt pas opnieuw ingesteld nadat de controle met succes is voltooid.\n\nWilt u doorgaan?",
         "notAvailable": "Niet beschikbaar",
         "manual": "Handmatig waterpas stellen",
         "manualDesc": "Handmatige Z-aanpassing voor ervaren gebruikers.",

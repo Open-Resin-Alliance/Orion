@@ -430,6 +430,8 @@
         "verifyDesc": "Disponible tras una nivelación exitosa.",
         "verifyNoData": "No se encontraron datos de nivelación",
         "verifyNoDataHint": "Complete primero una nivelación asistida.",
+        "verifyClearOffsetTitle": "¿Borrar el desplazamiento Z actual?",
+        "verifyClearOffsetMsg": "Al iniciar la verificación de nivelación se borrará el desplazamiento Z actual. Solo se volverá a establecer después de que la verificación se complete con éxito.\n\n¿Desea continuar?",
         "notAvailable": "No disponible",
         "manual": "Nivelación manual",
         "manualDesc": "Ajuste Z manual para expertos.",

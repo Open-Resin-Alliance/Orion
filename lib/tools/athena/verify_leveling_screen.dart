@@ -458,6 +458,68 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
             child: GlassButton(
               tint: GlassButtonTint.positive,
               onPressed: () async {
+                // Verify Leveling clears the current Z offset (the wizard
+                // runs probe_prepare before the first probe), so the
+                // existing leveling data is no longer valid until this
+                // verification completes successfully.  Warn the user and
+                // mark the printer as unleveled so they follow through.
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (dialogContext) => GlassAlertDialog(
+                    title: Row(
+                      children: [
+                        PhosphorIcon(PhosphorIcons.warning(),
+                            color: Colors.orangeAccent, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            FlutterI18n.translate(context,
+                                'leveling.verifyClearOffsetTitle'),
+                            style: const TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orangeAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    content: Text(
+                      FlutterI18n.translate(
+                          context, 'leveling.verifyClearOffsetMsg'),
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.w500),
+                    ),
+                    actions: [
+                      GlassButton(
+                        tint: GlassButtonTint.neutral,
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(false),
+                        style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(0, 55)),
+                        child: Text(FlutterI18n.translate(
+                            context, 'common.cancel')),
+                      ),
+                      GlassButton(
+                        tint: GlassButtonTint.warn,
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop(true),
+                        style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(0, 55)),
+                        child: Text(FlutterI18n.translate(
+                            context, 'common.confirm')),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !mounted || !context.mounted) return;
+
+                // The offset will be cleared when the recheck wizard starts
+                // probing — the printer is no longer leveled until the
+                // verification completes successfully.
+                OrionConfig().setLeveled(false);
+
                 final config = OrionConfig();
                 final levelingConfig = getLevelingConfigForMachine(
                   config.getMachineModelName(),
@@ -503,7 +565,7 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
                     FlutterI18n.translate(
                         context, 'leveling.recheckLeveling'),
                     style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700),
+                        fontSize: 19, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
