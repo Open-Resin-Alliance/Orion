@@ -692,7 +692,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
           content: Text(
             'Could not save exposure to profile.\n'
             'Please set it manually in Materials → Edit Resin.',
-            style: const TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 20),
           ),
           actions: [
             GlassButton(

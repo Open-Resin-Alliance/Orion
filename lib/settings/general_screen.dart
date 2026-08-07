@@ -638,7 +638,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                         content: Text(
                                             FlutterI18n.translate(context,
                                                 'generalSettings.resetConfirmMsg'),
-                                            style: TextStyle(fontSize: 18.0)),
+                                            style: TextStyle(fontSize: 20.0)),
                                         actions: [
                                           GlassButton(
                                             style: ElevatedButton.styleFrom(
@@ -764,7 +764,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                               FlutterI18n.translate(context,
                                                   'generalSettings.deliveryMsg'),
                                               style: const TextStyle(
-                                                  fontSize: 18.0)),
+                                                  fontSize: 20.0)),
                                           actions: [
                                             GlassButton(
                                                 style: ElevatedButton.styleFrom(
@@ -1041,7 +1041,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                               content: Text(
                                   FlutterI18n.translate(
                                       context, 'generalSettings.cacheClearMsg'),
-                                  style: const TextStyle(fontSize: 18.0)),
+                                  style: const TextStyle(fontSize: 20.0)),
                               actions: [
                                 GlassButton(
                                     style: ElevatedButton.styleFrom(
@@ -1085,7 +1085,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                   Text(
                                       FlutterI18n.translate(context,
                                           'generalSettings.cacheClearing'),
-                                      style: const TextStyle(fontSize: 18)),
+                                      style: const TextStyle(fontSize: 20)),
                                 ],
                               ),
                             ),
@@ -1107,7 +1107,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                 content: Text(
                                     FlutterI18n.translate(context,
                                         'generalSettings.cacheCleared'),
-                                    style: const TextStyle(fontSize: 18)),
+                                    style: const TextStyle(fontSize: 20)),
                                 actions: [
                                   GlassButton(
                                     style: ElevatedButton.styleFrom(
@@ -1134,7 +1134,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                                     context, 'common.error')),
                                 content: Text(
                                     '${FlutterI18n.translate(context, 'generalSettings.failedToClearCache')}$e',
-                                    style: const TextStyle(fontSize: 18)),
+                                    style: const TextStyle(fontSize: 20)),
                                 actions: [
                                   GlassButton(
                                     style: ElevatedButton.styleFrom(

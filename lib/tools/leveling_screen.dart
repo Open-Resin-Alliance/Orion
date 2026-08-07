@@ -234,7 +234,7 @@ class LevelingScreen extends StatelessWidget {
                     child: Text(
                       FlutterI18n.translate(context, 'leveling.manual'),
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 25,
                         fontWeight: FontWeight.bold,
                         color: Colors.orangeAccent,
                       ),
