@@ -41,6 +41,7 @@ import 'package:provider/provider.dart';
 
 enum _WizardPhase {
   variant,
+  screenType,
   introAndChecklist,
   workflow,
   adjustment,
@@ -114,6 +115,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   int _recheckNumber = 0;
   bool _probeConfigCaptured = false;
 
+  // Screen type selected during the wizard (tempered glass vs. wave
+  // release film).  Null until chosen (or loaded from config in recheck).
+  LevelingScreenType? _screenType;
+  LevelingScreenType? get screenType => _screenType;
+
   // Adaptive force→Z coupling, one controller per physical screw
   // (0=FL, 1=FR, 2=shared back).  Coupling is a property of each
   // screw's lever geometry and must not cross-mix.  Each controller
@@ -144,8 +150,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   bool _adjustmentIntroShown = false;
   Future<bool>? _recheckHomeFuture; // home started during preflight
   _PendingScrewCommand? _pendingCommand;
-  double? _lastAchievedForceGf; // what the live gauge read when the user stopped
-  double? _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
+  double?
+      _lastAchievedForceGf; // what the live gauge read when the user stopped
+  double?
+      _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
   int _consecutiveBackAdjustments = 0; // detect maxed-out back screw
 
   // Persisted per-screw coupling calibration — coupling is a physical
@@ -276,6 +284,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _lastAdjustedCorner = null;
     _resetCornerResults();
     _loadScrewCalibration();
+    // Recheck doesn't re-ask the screen type — reuse the persisted one.
+    _screenType = LevelingScreenType.fromId(OrionConfig().getScreenType());
 
     // Start at pre-flight so the user sees the safety checklist first.
     setState(() {
@@ -511,19 +521,28 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   }
 
   bool get _effectivelyRunning =>
-      _engine.isRunning || _holdingRunning || _autoAdvancing || _waitingForSettle;
+      _engine.isRunning ||
+      _holdingRunning ||
+      _autoAdvancing ||
+      _waitingForSettle;
 
   void _goBack() {
     switch (_phase) {
       case _WizardPhase.variant:
         Navigator.of(context).pop();
         return;
+      case _WizardPhase.screenType:
+        setState(() {
+          _phase = _WizardPhase.variant;
+          _preFlightIndex = -1;
+        });
+        return;
       case _WizardPhase.introAndChecklist:
         if (_preFlightIndex >= 0) {
           setState(() => _preFlightIndex -= 1);
         } else {
           setState(() {
-            _phase = _WizardPhase.variant;
+            _phase = _WizardPhase.screenType;
             _preFlightIndex = -1;
           });
         }
@@ -614,12 +633,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       builder: (ctx) => GlassAlertDialog(
         title: Row(
           children: [
-            Icon(PhosphorIcons.warning(),
-                size: 26, color: Colors.orangeAccent),
+            Icon(PhosphorIcons.warning(), size: 26, color: Colors.orangeAccent),
             const SizedBox(width: 14),
             Text(
-              FlutterI18n.translate(
-                  context, 'leveling.wizardSkipTitle'),
+              FlutterI18n.translate(context, 'leveling.wizardSkipTitle'),
               style: const TextStyle(
                 fontSize: 25,
                 fontWeight: FontWeight.bold,
@@ -629,10 +646,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           ],
         ),
         content: Text(
-          FlutterI18n.translate(
-              context, 'leveling.wizardSkipMsg'),
-          style: const TextStyle(
-              fontSize: 20, fontWeight: FontWeight.w500),
+          FlutterI18n.translate(context, 'leveling.wizardSkipMsg'),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
         ),
         actions: [
           GlassButton(
@@ -641,8 +656,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 55),
             ),
-            child: Text(FlutterI18n.translate(
-                context, 'leveling.cancel')),
+            child: Text(FlutterI18n.translate(context, 'leveling.cancel')),
           ),
           GlassButton(
             tint: GlassButtonTint.warn,
@@ -650,8 +664,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(0, 55),
             ),
-            child: Text(FlutterI18n.translate(
-                context, 'leveling.wizardSkip')),
+            child: Text(FlutterI18n.translate(context, 'leveling.wizardSkip')),
           ),
         ],
       ),
@@ -756,8 +769,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _adjustmentBusy = true;
     if (mounted) setState(() {});
 
-    final puckAlreadyPlaced =
-        _puckPlacedCorner == _adjustingCornerIndex;
+    final puckAlreadyPlaced = _puckPlacedCorner == _adjustingCornerIndex;
     if (puckAlreadyPlaced) {
       _puckPlacedCorner = null;
     }
@@ -769,13 +781,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         // the full probe_corner_prepare cycle (park then lower).  The
         // rapid up-then-down is a safety hazard when hands may be near
         // the plate and a re-probe is about to start anyway.
-        final moved =
-            await Provider.of<ManualProvider>(context, listen: false)
-                .moveDelta(10.0);
+        final moved = await Provider.of<ManualProvider>(context, listen: false)
+            .moveDelta(10.0);
         if (!mounted) return;
         if (!moved) {
-          _adjustmentError = FlutterI18n.translate(
-              context, 'leveling.wizardPrepareFailed');
+          _adjustmentError =
+              FlutterI18n.translate(context, 'leveling.wizardPrepareFailed');
           _adjustmentBusy = false;
           if (mounted) setState(() {});
           return;
@@ -993,6 +1004,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       sessionId: _levelingSessionId!,
       timestamp: DateTime.now().toUtc().toIso8601String(),
       variant: variant,
+      screenType: _screenType?.id,
       recheckNumber: _recheckNumber,
       corners: corners,
       totalDeviationMm: _cornerDeviation,
@@ -1179,6 +1191,33 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             Expanded(child: _buildPhaseBody(context)),
           ],
         );
+      case _WizardPhase.screenType:
+        return Column(
+          key: const ValueKey('screen-type-phase'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  PhosphorIcon(PhosphorIcons.monitor(), color: primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.screenTypeTitle'),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: OrionSpacing.listGap),
+            Expanded(child: _buildPhaseBody(context)),
+          ],
+        );
       case _WizardPhase.adjustment:
         return _buildAdjustmentPhase(context, primary);
       default:
@@ -1221,6 +1260,20 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             // happen much later in the flow).
             _loadScrewCalibration();
             setState(() {
+              _phase = _WizardPhase.screenType;
+              _preFlightIndex = -1;
+            });
+          },
+        );
+      case _WizardPhase.screenType:
+        return _ScreenTypeSelectionPane(
+          key: const ValueKey('screenType'),
+          onScreenTypeSelected: (screenType) {
+            setState(() {
+              _screenType = screenType;
+              // Persist the machine's screen type so later rechecks and
+              // sessions can reuse it without asking again.
+              OrionConfig().setScreenType(screenType.id);
               _phase = _WizardPhase.introAndChecklist;
               _preFlightIndex = -1;
             });
@@ -1320,8 +1373,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       );
     }
 
-    // Variant selection (first step): Cancel only
-    if (_phase == _WizardPhase.variant) {
+    // Variant / screen-type selection: Cancel only
+    if (_phase == _WizardPhase.variant || _phase == _WizardPhase.screenType) {
       return Center(
         child: SizedBox(
           width: 260,
@@ -1628,8 +1681,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                         const SizedBox(width: 14),
                         Expanded(
                           child: Text(
-                            FlutterI18n.translate(context,
-                                'leveling.tightenConfirmTitle'),
+                            FlutterI18n.translate(
+                                context, 'leveling.tightenConfirmTitle'),
                             style: const TextStyle(
                               fontSize: 25,
                               fontWeight: FontWeight.bold,
@@ -1648,27 +1701,25 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                     actions: [
                       GlassButton(
                         tint: GlassButtonTint.neutral,
-                        onPressed: () =>
-                            Navigator.of(ctx).pop(false),
+                        onPressed: () => Navigator.of(ctx).pop(false),
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(0, 55),
                         ),
                         child: Text(
-                          FlutterI18n.translate(context,
-                              'leveling.tightenConfirmNo'),
+                          FlutterI18n.translate(
+                              context, 'leveling.tightenConfirmNo'),
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),
                       GlassButton(
                         tint: GlassButtonTint.positive,
-                        onPressed: () =>
-                            Navigator.of(ctx).pop(true),
+                        onPressed: () => Navigator.of(ctx).pop(true),
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(0, 55),
                         ),
                         child: Text(
-                          FlutterI18n.translate(context,
-                              'leveling.tightenConfirmYes'),
+                          FlutterI18n.translate(
+                              context, 'leveling.tightenConfirmYes'),
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),
@@ -2181,8 +2232,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         final idx = _adjustingCornerIndex!;
 
         if (allForces.length < 4 ||
-            allForces[0] == null || allForces[1] == null ||
-            allForces[2] == null || allForces[3] == null) {
+            allForces[0] == null ||
+            allForces[1] == null ||
+            allForces[2] == null ||
+            allForces[3] == null) {
           return const SizedBox.shrink();
         }
 
@@ -2260,14 +2313,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              FlutterI18n.translate(
-                  context, 'leveling.adjustmentIntroBody'),
+              FlutterI18n.translate(context, 'leveling.adjustmentIntroBody'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 20,
                 height: 1.4,
-                color: theme.colorScheme.onSurface
-                    .withValues(alpha: 0.75),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
               ),
             ),
             const SizedBox(height: 36),
@@ -2293,8 +2344,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                       style: TextStyle(
                         fontSize: 18,
                         height: 1.4,
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.7),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                   ),
@@ -2798,6 +2849,234 @@ class _VariantAsset extends StatelessWidget {
           : Image.asset(asset, fit: BoxFit.contain),
     );
   }
+}
+
+// ================================================================================================================================================================================================
+// Phase: Screen Type Selection (recycles the select-arm UX)
+// ================================================================================================================================================================================================
+
+class _ScreenTypeSelectionPane extends StatelessWidget {
+  const _ScreenTypeSelectionPane({
+    super.key,
+    required this.onScreenTypeSelected,
+  });
+
+  final ValueChanged<LevelingScreenType> onScreenTypeSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('screenType'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (int i = 0; i < LevelingScreenType.values.length; i++) ...[
+                if (i > 0) const SizedBox(width: OrionSpacing.controlGap),
+                Expanded(
+                  child: _ScreenTypeCard(
+                    screenType: LevelingScreenType.values[i],
+                    onPressed: () =>
+                        onScreenTypeSelected(LevelingScreenType.values[i]),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScreenTypeCard extends StatelessWidget {
+  const _ScreenTypeCard({
+    required this.screenType,
+    required this.onPressed,
+  });
+
+  final LevelingScreenType screenType;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GlassCard(
+      outlined: true,
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(glassCornerRadius),
+        onTap: onPressed,
+        child: Padding(
+          padding: OrionSpacing.cardPadding,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Center(
+                  child: FractionallySizedBox(
+                    widthFactor: 0.85,
+                    child: AspectRatio(
+                      // Screen-like proportions, not a square.
+                      aspectRatio: 16 / 10,
+                      child: _ScreenTypeVisual(
+                        screenType: screenType,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: OrionSpacing.listGap),
+              Text(
+                FlutterI18n.translate(context, screenType.labelKey),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: OrionSpacing.compactListGap),
+              Text(
+                FlutterI18n.translate(context, screenType.descriptionKey),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.2,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.64),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Painted visual for a [LevelingScreenType] — a shared rounded rectangle
+/// outline, differentiated by what sits inside:
+///   * tempered glass → a "sparkly clean" sparkle in the top-left corner
+///   * wave release film → a honeycomb (hexagon) grid across the surface
+class _ScreenTypeVisual extends StatelessWidget {
+  const _ScreenTypeVisual({
+    required this.screenType,
+    required this.color,
+  });
+
+  final LevelingScreenType screenType;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _ScreenTypePainter(screenType: screenType, color: color),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _ScreenTypePainter extends CustomPainter {
+  _ScreenTypePainter({required this.screenType, required this.color});
+
+  final LevelingScreenType screenType;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    final outline = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.015
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color.withValues(alpha: 0.85);
+    final fill = Paint()..color = color.withValues(alpha: 0.12);
+
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(s * 0.10),
+    );
+
+    canvas.drawRRect(rrect, fill);
+    switch (screenType) {
+      case LevelingScreenType.temperedGlass:
+        _paintSparkle(canvas, s);
+      case LevelingScreenType.waveReleaseFilm:
+        _paintHexGrid(canvas, size, rrect);
+    }
+    canvas.drawRRect(rrect, outline);
+  }
+
+  /// A four-pointed "clean" sparkle in the top-left corner.
+  void _paintSparkle(Canvas canvas, double s) {
+    final center = Offset(s * 0.20, s * 0.20);
+    final outer = s * 0.075;
+    final inner = outer * 0.20;
+    final path = Path()
+      ..moveTo(center.dx, center.dy - outer)
+      ..quadraticBezierTo(
+          center.dx + inner, center.dy - inner, center.dx + outer, center.dy)
+      ..quadraticBezierTo(
+          center.dx + inner, center.dy + inner, center.dx, center.dy + outer)
+      ..quadraticBezierTo(
+          center.dx - inner, center.dy + inner, center.dx - outer, center.dy)
+      ..quadraticBezierTo(
+          center.dx - inner, center.dy - inner, center.dx, center.dy - outer)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  /// A honeycomb of pointy-top hexagons clipped to the rectangle.
+  void _paintHexGrid(Canvas canvas, Size size, RRect clip) {
+    // Finer cells with a thinner, lighter stroke than the outer outline.
+    final hexR = size.shortestSide * 0.050;
+    final hexStroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.shortestSide * 0.0075
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color.withValues(alpha: 0.85);
+    final dx = sqrt(3) * hexR;
+    final dy = 1.5 * hexR;
+    canvas.save();
+    canvas.clipRRect(clip);
+    final rows = (size.height / dy).ceil() + 2;
+    final cols = (size.width / dx).ceil() + 2;
+    for (int row = 0; row < rows; row++) {
+      final offsetX = row.isOdd ? dx / 2 : 0.0;
+      for (int col = 0; col < cols; col++) {
+        canvas.drawPath(
+          _hexagonPath(Offset(offsetX + col * dx - dx, row * dy - dy), hexR),
+          hexStroke,
+        );
+      }
+    }
+    canvas.restore();
+  }
+
+  Path _hexagonPath(Offset center, double r) {
+    final path = Path();
+    for (int i = 0; i < 6; i++) {
+      final angle = (i * 60 - 90) * pi / 180;
+      final x = center.dx + r * cos(angle);
+      final y = center.dy + r * sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    return path..close();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScreenTypePainter oldDelegate) =>
+      oldDelegate.screenType != screenType || oldDelegate.color != color;
 }
 
 // ================================================================================================================================================================================================
@@ -3682,9 +3961,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
             ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
     final bool anyDirection = liveNeedsTighten || liveNeedsLoosen;
-    final accent = anyDirection
-        ? const Color(0xFFFFC16D)
-        : const Color(0xFF57F0A4);
+    final accent =
+        anyDirection ? const Color(0xFFFFC16D) : const Color(0xFF57F0A4);
     // Rotation direction: -1 = CCW (loosen), 1 = CW (tighten), 0 = at target
     final rotationDirection = liveNeedsTighten
         ? 1
@@ -3861,33 +4139,31 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                 MainAxisAlignment.center,
                                             children: [
                                               Padding(
-                                                padding:
-                                                    const EdgeInsets.only(
-                                                        left: 24),
+                                                padding: const EdgeInsets.only(
+                                                    left: 24),
                                                 child: SizedBox(
                                                   width: 220,
                                                   child: Text(
                                                     forceDelta != null
                                                         ? forceDelta
-                                                            .toStringAsFixed(
-                                                                1)
+                                                            .toStringAsFixed(1)
                                                         : '--',
-                                                    textAlign:
-                                                        TextAlign.center,
-                                                  style: TextStyle(
-                                                    fontSize: 38,
-                                                    fontWeight: FontWeight.w800,
-                                                    fontFeatures: const [
-                                                      FontFeature
-                                                          .tabularFigures(),
-                                                    ],
-                                                    height: 1,
-                                                    color: accent,
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 38,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontFeatures: const [
+                                                        FontFeature
+                                                            .tabularFigures(),
+                                                      ],
+                                                      height: 1,
+                                                      color: accent,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 7),
+                                              const SizedBox(width: 7),
                                               Text(
                                                 'gf',
                                                 style: TextStyle(
@@ -3920,7 +4196,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                       // position > 0 → tighten → dot goes right
                                                       // position < 0 → loosen → dot goes left
                                                       final dotFrac =
-                                                          ((1.0 + position) / 2.0)
+                                                          ((1.0 + position) /
+                                                                  2.0)
                                                               .clamp(0.0, 1.0);
                                                       final centerX = w / 2;
                                                       final dotCenter =

@@ -107,6 +107,7 @@ class LevelingLogEntry {
     required this.sessionId,
     required this.timestamp,
     required this.variant,
+    this.screenType,
     required this.recheckNumber,
     required this.corners,
     required this.totalDeviationMm,
@@ -130,6 +131,10 @@ class LevelingLogEntry {
   final String sessionId;
   final String timestamp;
   final String variant;
+
+  /// Leveling screen type id (e.g. `'tempered_glass'`), when known.
+  final String? screenType;
+
   final int recheckNumber;
   final Map<String, CornerLogData> corners;
   final double totalDeviationMm;
@@ -187,6 +192,7 @@ class LevelingLogEntry {
         'session_id': sessionId,
         'timestamp': timestamp,
         'variant': variant,
+        'screen_type': screenType,
         'recheck_number': recheckNumber,
         'corners': corners.map((k, v) => MapEntry(k, v.toJson())),
         'total_deviation_mm': totalDeviationMm,

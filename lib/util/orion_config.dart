@@ -728,6 +728,14 @@ class OrionConfig {
   void setLeveled(bool value) =>
       setFlag('isLeveled', value, category: 'leveling');
 
+  /// The persisted leveling screen type id (e.g. `'tempered_glass'`,
+  /// `'wave_release_film'`), or empty when not configured.
+  String getScreenType() => getString('screenType', category: 'leveling');
+
+  /// Persist the leveling screen type id.
+  void setScreenType(String id) =>
+      setString('screenType', id, category: 'leveling');
+
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.
   bool getFeatureFlag(String key, {bool defaultValue = false}) {

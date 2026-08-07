@@ -68,6 +68,9 @@ class LevelingLogService {
       buf.writeln('LEVELING SESSION  ${entry.sessionId}');
       buf.writeln('Timestamp          ${_formatTimestamp(entry.timestamp)}');
       buf.writeln('Variant            ${entry.variant}');
+      if (entry.screenType != null && entry.screenType!.isNotEmpty) {
+        buf.writeln('Screen Type        ${entry.screenType}');
+      }
       buf.writeln('Recheck            #${entry.recheckNumber}${entry.recheckNumber == 0 ? " (initial)" : ""}');
       final resultTag = entry.passed ? 'PASSED' : 'FAILED';
       buf.writeln('Result             $resultTag — total deviation ${entry.totalDeviationMm.toStringAsFixed(3)} mm (limit 0.100 mm)');

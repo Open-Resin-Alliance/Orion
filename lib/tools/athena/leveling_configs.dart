@@ -285,3 +285,42 @@ LevelingConfig? getLevelingConfigForMachine(String machineModel) {
     return null;
   }
 }
+
+/// The type of screen surface the printer probes during leveling.
+///
+/// A rigid tempered-glass screen reads a firm contact, while a wave
+/// release film is flexible and compresses slightly under the probe —
+/// the two can require different leveling behaviour.  The selection is
+/// persisted in config and recorded in the leveling log.
+enum LevelingScreenType {
+  temperedGlass(
+    id: 'tempered_glass',
+    labelKey: 'leveling.screenTypeTemperedGlass',
+    descriptionKey: 'leveling.screenTypeTemperedGlassDesc',
+  ),
+  waveReleaseFilm(
+    id: 'wave_release_film',
+    labelKey: 'leveling.screenTypeWaveReleaseFilm',
+    descriptionKey: 'leveling.screenTypeWaveReleaseFilmDesc',
+  );
+
+  const LevelingScreenType({
+    required this.id,
+    required this.labelKey,
+    required this.descriptionKey,
+  });
+
+  /// Stable identifier persisted in `orion.cfg` (e.g. `'tempered_glass'`).
+  final String id;
+  final String labelKey;
+  final String descriptionKey;
+
+  /// Resolve from a persisted [id]; null when unknown/empty.
+  static LevelingScreenType? fromId(String? id) {
+    if (id == null) return null;
+    for (final t in values) {
+      if (t.id == id) return t;
+    }
+    return null;
+  }
+}
