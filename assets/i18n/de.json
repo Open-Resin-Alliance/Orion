@@ -472,6 +472,7 @@
         "settingsScreenTypeHint": "Der Bildschirmtyp wird von der Nivellierung verwendet, um das Prüfverhalten anzupassen.",
         "settingsZOffset": "Z-Offset",
         "settingsZOffsetHint": "Der während der letzten Nivellierungssitzung angewandte Offset.",
+        "settingsZOffsetDialogDesc": "Z-Offset relativ zur Nivellierungsbasis anpassen.",
         "wizardStartPreFlight": "Vorbereitung starten",
         "wizardProceed": "Weiter",
         "wizardAdjust": "Anpassen",

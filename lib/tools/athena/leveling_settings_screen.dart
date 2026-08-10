@@ -178,6 +178,8 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
     final result = await ZoomValueEditorDialog.show(
       context,
       title: FlutterI18n.translate(context, 'leveling.settingsZOffset'),
+      description: FlutterI18n.translate(
+          context, 'leveling.settingsZOffsetDialogDesc'),
       currentValue: current,
       min: base - delta,
       max: base + delta,

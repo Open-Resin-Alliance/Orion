@@ -472,6 +472,7 @@
         "settingsScreenTypeHint": "Le type d’écran est utilisé par le nivellement pour ajuster le comportement de la sonde.",
         "settingsZOffset": "Décalage Z",
         "settingsZOffsetHint": "Le décalage appliqué lors de la dernière séance de nivellement.",
+        "settingsZOffsetDialogDesc": "Réglez le décalage Z par rapport à la base de nivellement.",
         "wizardStartPreFlight": "Préparer",
         "wizardProceed": "Continuer",
         "wizardAdjust": "Ajuster",

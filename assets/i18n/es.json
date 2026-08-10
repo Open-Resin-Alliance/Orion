@@ -472,6 +472,7 @@
         "settingsScreenTypeHint": "El tipo de pantalla se usa en el nivelado para ajustar el comportamiento de la sonda.",
         "settingsZOffset": "Desplazamiento Z",
         "settingsZOffsetHint": "El desplazamiento aplicado durante la última sesión de nivelación.",
+        "settingsZOffsetDialogDesc": "Ajusta el desplazamiento Z sobre la base de nivelación.",
         "wizardStartPreFlight": "Iniciar preparación",
         "wizardProceed": "Continuar",
         "wizardAdjust": "Ajustar",

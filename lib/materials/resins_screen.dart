@@ -344,7 +344,7 @@ class ResinsScreenState extends State<ResinsScreen> {
                         Padding(
                           padding: const EdgeInsets.only(top: 2.0),
                           child: Text(
-                            parts.join(' ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ '),
+                            parts.join(' • '),
                             style: TextStyle(
                               fontSize: 13,
                               color:

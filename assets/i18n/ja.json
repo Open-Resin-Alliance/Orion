@@ -472,6 +472,7 @@
         "settingsScreenTypeHint": "画面タイプは、レベリングのプロービング動作を調整するために使用されます。",
         "settingsZOffset": "Zオフセット",
         "settingsZOffsetHint": "最後のレベリングセッションで適用されたオフセット。",
+        "settingsZOffsetDialogDesc": "レベリング基準に基づいてZオフセットを調整します。",
         "wizardStartPreFlight": "準備を開始",
         "wizardProceed": "進行",
         "wizardAdjust": "調整",

@@ -472,6 +472,7 @@
         "settingsScreenTypeHint": "Il tipo di schermo viene utilizzato dal livellamento per regolare il comportamento della sonda.",
         "settingsZOffset": "Offset Z",
         "settingsZOffsetHint": "L’offset applicato durante l’ultima sessione di livellamento.",
+        "settingsZOffsetDialogDesc": "Regola l’offset Z sopra la base di livellamento.",
         "wizardStartPreFlight": "Avvia preparazione",
         "wizardProceed": "Procedi",
         "wizardAdjust": "Regola",

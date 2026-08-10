@@ -472,6 +472,7 @@
         "settingsScreenTypeHint": "屏幕类型用于在调平过程中调整探测行为。",
         "settingsZOffset": "Z 偏移",
         "settingsZOffsetHint": "上次调平过程中应用的偏移。",
+        "settingsZOffsetDialogDesc": "在调平基准的基础上调整 Z 偏移。",
         "wizardStartPreFlight": "开始准备",
         "wizardProceed": "继续",
         "wizardAdjust": "调整",

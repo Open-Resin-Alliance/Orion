@@ -472,6 +472,7 @@
         "settingsScreenTypeHint": "The screen type is used by the leveling workflow to adjust probing behavior.",
         "settingsZOffset": "Z Offset",
         "settingsZOffsetHint": "The offset applied during the last leveling session.",
+        "settingsZOffsetDialogDesc": "Adjust the Z offset on top of the leveling base.",
         "wizardStartPreFlight": "Start Pre-Flight",
         "wizardProceed": "Proceed",
         "wizardAdjust": "Adjust",
