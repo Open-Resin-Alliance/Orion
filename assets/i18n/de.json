@@ -385,6 +385,7 @@
         "clearTag": "Tag löschen",
         "rawForceSensor": "Rohe Kraftsensorwerte",
         "reuseCalPlate": "Kalibrierungsplatte wiederverwenden (Debug)",
+        "forceMechanicalSkew": "Mechanische Schiefstellung erzwingen (Debug)",
         "releaseTagOverride": "Release-Tag-Ãœberschreibung",
         "athenaOsVersion": "AthenaOS Version: %s"
     },
@@ -527,6 +528,9 @@
         "wizardTighter": "Fester",
         "wizardLooser": "Lockerer",
         "wizardProbeFailed": "Messung fehlgeschlagen. Erneut versuchen.",
+        "wizardSkewTitle": "Mechanische Schiefstellung erkannt",
+        "wizardSkewLabel": "Mechanische Schiefstellung",
+        "wizardSkewBody": "Der Arm ist in seinem aktuellen Zustand nicht nivellierbar — die erforderliche Schraubenkorrektur übersteigt, was die Nivellierschrauben aufbringen können. Dies kann mit dem Concepts3D Pro Arm Leveling Guide behoben werden.\n\nScannen Sie den QR-Code, um den Leitfaden zu öffnen.",
         "wizardPrepareFailed": "Druckervorbereitung fehlgeschlagen.",
         "wizardBackScrewAlt": "Wenn sich die hintere Schraube nicht weiter drehen lässt, lockern Sie stattdessen beide vorderen Schrauben leicht — dies kippt die Platte auf die gleiche Weise.",
         "wizardBelowResolutionBody": "Die verbleibende Abweichung ist kleiner, als eine Schraubenkorrektur zuverlässig ändern kann — das ist meist Rauschen der Messsonde.\nPrüfen Sie die Ecken erneut. Wenn diese Meldung weiterhin erscheint, ist die Platte so eben, wie die Sonde messen kann.",

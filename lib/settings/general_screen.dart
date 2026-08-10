@@ -61,6 +61,7 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
   late bool overrideUpdateCheck;
   late bool overrideRawForceSensorValues;
   late bool reuseCalibrationPlate;
+  late bool forceMechanicalSkew;
   late String overrideRelease;
   late bool verboseLogging;
   late bool selfDestructMode;
@@ -103,6 +104,8 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
         config.getFlag('overrideRawForceSensorValues', category: 'developer');
     reuseCalibrationPlate =
         config.getFlag('reuseCalibrationPlate', category: 'developer');
+    forceMechanicalSkew =
+        config.getFlag('forceMechanicalSkew', category: 'developer');
     overrideRelease =
         config.getString('overrideRelease', category: 'developer');
     verboseLogging = config.getFlag('verboseLogging', category: 'developer');
@@ -1018,6 +1021,20 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
                 setState(() {
                   reuseCalibrationPlate = value;
                   config.setFlag('reuseCalibrationPlate', value,
+                      category: 'developer');
+                });
+              },
+            ),
+            const SizedBox(height: 20.0),
+            OrionListTile(
+              title: FlutterI18n.translate(
+                  context, 'update.forceMechanicalSkew'),
+              icon: PhosphorIcons.warning(),
+              value: forceMechanicalSkew,
+              onChanged: (bool value) {
+                setState(() {
+                  forceMechanicalSkew = value;
+                  config.setFlag('forceMechanicalSkew', value,
                       category: 'developer');
                 });
               },

@@ -385,6 +385,7 @@
         "clearTag": "Borrar etiqueta",
         "rawForceSensor": "Valores brutos del sensor de fuerza",
         "reuseCalPlate": "Reutilizar placa de calibración (Debug)",
+        "forceMechanicalSkew": "Forzar desalineación mecánica (debug)",
         "releaseTagOverride": "Sobrescribir etiqueta de versión",
         "athenaOsVersion": "AthenaOS Version: %s"
     },
@@ -527,6 +528,9 @@
         "wizardTighter": "Más apretado",
         "wizardLooser": "Más flojo",
         "wizardProbeFailed": "Medición fallida. Reintentar.",
+        "wizardSkewTitle": "Desalineación mecánica detectada",
+        "wizardSkewLabel": "Desalineación mecánica",
+        "wizardSkewBody": "El brazo no se puede nivelar en su estado actual — el ajuste de tornillo requerido supera lo que los tornillos de nivelación pueden aplicar. Esto se puede corregir con la guía de nivelación Pro Arm de Concepts3D.\n\nEscanee el código QR para abrir la guía.",
         "wizardPrepareFailed": "Error al preparar la impresora.",
         "wizardBackScrewAlt": "Si el tornillo trasero no puede girar más, afloje ligeramente ambos tornillos delanteros — esto inclina la placa de la misma manera.",
         "wizardBelowResolutionBody": "La desviación restante es menor de lo que un ajuste de tornillo puede cambiar de forma fiable — normalmente es ruido de la sonda.\nVuelva a comprobar las esquinas. Si este mensaje sigue apareciendo, la placa está tan nivelada como la sonda puede medir.",

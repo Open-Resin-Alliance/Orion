@@ -385,6 +385,7 @@
         "clearTag": "タグをクリア",
         "rawForceSensor": "フォーセンサーのラウ値",
         "reuseCalPlate": "キャリブレーションプレートを再利用 (Debug)",
+        "forceMechanicalSkew": "機械的な歪みを強制（デバッグ）",
         "releaseTagOverride": "リリースタグのオーバライド",
         "athenaOsVersion": "AthenaOS Version: %s"
     },
@@ -527,6 +528,9 @@
         "wizardTighter": "締める",
         "wizardLooser": "ゆるめる",
         "wizardProbeFailed": "測定失敗。もう一度お試しください。",
+        "wizardSkewTitle": "機械的な歪みを検出しました",
+        "wizardSkewLabel": "機械的な歪み",
+        "wizardSkewBody": "アームは現在の状態ではレベリングできません — 必要なネジ調整がレベリングネジで適用できる範囲を超えています。これはConcepts3D Pro Armレベリングガイドで修正できます。\n\nQRコードをスキャンしてガイドを開いてください。",
         "wizardPrepareFailed": "プリンターの準備に失敗しました。",
         "wizardBackScrewAlt": "後部のネジが回らなくなった場合は、代わりに前部の2本のネジを少し緩めます — これで同じようにプレートが傾きます。",
         "wizardBelowResolutionBody": "残りの偏差は、ネジ調整で確実に変更できるよりも小さくなっています — これは通常、プローブの測定ノイズです。\nコーナーを再確認してください。このメッセージが表示され続ける場合、プレートはプローブが測定できる限界まで水平です。",

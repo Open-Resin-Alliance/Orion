@@ -385,6 +385,7 @@
         "clearTag": "Effacer le tag",
         "rawForceSensor": "Valeurs brutes du capteur de force",
         "reuseCalPlate": "Réutiliser la plaque d™étalonnage (Debug)",
+        "forceMechanicalSkew": "Forcer le désalignement mécanique (debug)",
         "releaseTagOverride": "Remplacement du tag de version",
         "athenaOsVersion": "AthenaOS Version: %s"
     },
@@ -527,6 +528,9 @@
         "wizardTighter": "Plus serré",
         "wizardLooser": "Plus lâche",
         "wizardProbeFailed": "Échec mesure. Réessayer.",
+        "wizardSkewTitle": "Désalignement mécanique détecté",
+        "wizardSkewLabel": "Désalignement mécanique",
+        "wizardSkewBody": "Le bras ne peut pas être nivelé dans son état actuel — la correction de vis requise dépasse ce que les vis de nivellement peuvent appliquer. Cela peut être corrigé à l’aide du guide de nivellement Pro Arm de Concepts3D.\n\nScannez le QR code pour ouvrir le guide.",
         "wizardPrepareFailed": "Échec de la préparation de l’imprimante.",
         "wizardBackScrewAlt": "Si la vis arrière ne peut plus tourner, desserrez légèrement les deux vis avant à la place — cela incline la plaque de la même façon.",
         "wizardBelowResolutionBody": "La déviation restante est plus petite qu’un réglage de vis ne peut la modifier de façon fiable — il s’agit généralement du bruit de la sonde.\nRevérifiez les coins. Si ce message persiste, la plaque est aussi de niveau que la sonde peut le mesurer.",

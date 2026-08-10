@@ -385,6 +385,7 @@
         "clearTag": "Tag wissen",
         "rawForceSensor": "Ruwe krachtsensorwaarden",
         "reuseCalPlate": "Kalibratieplaat hergebruiken (Debug)",
+        "forceMechanicalSkew": "Mechanische scheefstand forceren (debug)",
         "releaseTagOverride": "Release Tag overschrijven",
         "athenaOsVersion": "AthenaOS Version: %s"
     },
@@ -527,6 +528,9 @@
         "wizardTighter": "Vaster",
         "wizardLooser": "Losser",
         "wizardProbeFailed": "Meting mislukt. Probeer opnieuw.",
+        "wizardSkewTitle": "Mechanische scheefstand gedetecteerd",
+        "wizardSkewLabel": "Mechanische scheefstand",
+        "wizardSkewBody": "De arm kan in de huidige staat niet worden genivelleerd — de benodigde schroefcorrectie overschrijdt wat de nivelleerschroeven kunnen aanbrengen. Dit kan worden verholpen met de Concepts3D Pro Arm Leveling Guide.\n\nScan de QR-code om de gids te openen.",
         "wizardPrepareFailed": "Voorbereiden van de printer mislukt.",
         "wizardBackScrewAlt": "Als de achterste schroef niet verder kan, draai dan in plaats daarvan beide voorste schroeven iets los — dit kantelt de plaat op dezelfde manier.",
         "wizardBelowResolutionBody": "De resterende afwijking is kleiner dan een schroefcorrectie betrouwbaar kan veranderen — dit is meestal ruis van de sonde.\nControleer de hoeken opnieuw. Als dit bericht blijft verschijnen, is de plaat zo vlak als de sonde kan meten.",

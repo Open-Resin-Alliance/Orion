@@ -39,6 +39,7 @@ import 'package:orion/util/safe_home.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 enum _WizardPhase {
   variant,
@@ -55,6 +56,7 @@ enum _AdjustmentStep {
   probing,
   feedback,
   belowResolution,
+  mechanicalSkew,
 }
 
 /// A screw command anchored into the gauge's force frame: the
@@ -135,6 +137,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   // measured sample replace these outright.
   static const double _frontBaselineSeed = -3.0e-4;
   static const double _backBaselineSeed = -2.0e-4;
+
+  /// If the suggested screw adjustment exceeds this force delta (gf), the
+  /// arm itself is mechanically skewed — no screw turn can physically apply
+  /// that much.  Surface an error instead of sending the user to the gauge.
+  static const double _maxSuggestedForceDeltaGf = 2500;
 
   static Map<int, ScrewController> _freshControllers() => {
         0: ScrewController(seedCouplingMmPerGf: _frontBaselineSeed),
@@ -696,6 +703,19 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   }
 
   void _enterAdjustmentMode() {
+    // Developer debug hook: force the mechanical-skew error screen for
+    // testing without a physically skewed arm.  Enable via the
+    // `forceMechanicalSkew` flag under the `developer` config category.
+    if (OrionConfig().getFlag('forceMechanicalSkew', category: 'developer')) {
+      _adjustingCornerIndex = null;
+      _adjustmentError = null;
+      _adjustmentBusy = false;
+      setState(() {
+        _phase = _WizardPhase.adjustment;
+        _adjustmentStep = _AdjustmentStep.mechanicalSkew;
+      });
+      return;
+    }
     // The build arm has 3 screws (2 front, 1 back) defining a plane.
     // With all screws already snug, we need PAIRED adjustments
     // (loosen one, tighten another) to maintain torque balance.
@@ -718,11 +738,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     // a human turn uncontrolled — field session f2c9f74d recheck #2),
     // and never a loosen (preload policy).
     int? probeCorner;
+    ScrewCommand? probeCommand;
     for (final corner in rankAdjustmentCandidates(zValues)) {
       final cmd = _controllerForCorner(corner)
           .command(zGapMm: adjustmentGapMm(corner, zValues));
       if (cmd.forceDeltaGf <= -ScrewController.minCommandDeltaGf) {
         probeCorner = corner;
+        probeCommand = cmd;
         break;
       }
     }
@@ -740,6 +762,21 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       setState(() {
         _phase = _WizardPhase.adjustment;
         _adjustmentStep = _AdjustmentStep.belowResolution;
+      });
+      return;
+    }
+
+    // A suggested delta larger than the screws can physically apply means
+    // the arm itself is mechanically skewed — no screw turn will fix it.
+    // Surface an error instead of sending the user through prepare/probe.
+    if (probeCommand != null &&
+        probeCommand.forceDeltaGf.abs() > _maxSuggestedForceDeltaGf) {
+      _adjustingCornerIndex = null;
+      _adjustmentError = null;
+      _adjustmentBusy = false;
+      setState(() {
+        _phase = _WizardPhase.adjustment;
+        _adjustmentStep = _AdjustmentStep.mechanicalSkew;
       });
       return;
     }
@@ -895,6 +932,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           _adjustmentBusy = false;
           _adjustmentStep = _AdjustmentStep.belowResolution;
           // No adjustment will happen — see _enterAdjustmentMode.
+          _preAdjustmentDeviation = null;
+          if (mounted) setState(() {});
+          return;
+        }
+        // Re-probe may still land on a mechanically skewed suggestion —
+        // error out instead of sending the user to the gauge.
+        if (cmd.forceDeltaGf.abs() > _maxSuggestedForceDeltaGf) {
+          _adjustmentBusy = false;
+          _adjustmentStep = _AdjustmentStep.mechanicalSkew;
           _preAdjustmentDeviation = null;
           if (mounted) setState(() {});
           return;
@@ -1720,7 +1766,6 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                         child: Text(
                           FlutterI18n.translate(
                               context, 'leveling.tightenConfirmNo'),
-                          style: const TextStyle(fontSize: 16),
                         ),
                       ),
                       GlassButton(
@@ -1732,7 +1777,6 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                         child: Text(
                           FlutterI18n.translate(
                               context, 'leveling.tightenConfirmYes'),
-                          style: const TextStyle(fontSize: 16),
                         ),
                       ),
                     ],
@@ -2046,6 +2090,41 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   Widget _buildAdjustmentActions(BuildContext context) {
     final isPuckStep = _adjustmentStep == _AdjustmentStep.puckPlacement;
 
+    // Mechanical skew: single close button — nothing to adjust, direct
+    // the user to support.
+    if (_adjustmentStep == _AdjustmentStep.mechanicalSkew) {
+      return Center(
+        child: SizedBox(
+          width: 320,
+          child: GlassButton(
+            tint: GlassButtonTint.negative,
+            onPressed: () {
+              Provider.of<ManualProvider>(context, listen: false)
+                  .moveToTop()
+                  .then((_) {})
+                  .catchError((_) {});
+              Navigator.of(context).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 65),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PhosphorIcons.x(), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  FlutterI18n.translate(context, 'common.close'),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     // Busy (preparing / probing): emergency stop with status label
     if (_adjustmentBusy) {
       return Center(
@@ -2219,6 +2298,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     if (_adjustmentStep == _AdjustmentStep.belowResolution) {
       return _buildBelowResolutionView(context, primary);
     }
+    // Mechanical skew likewise has no actionable corner — error screen
+    // before the corner guard.
+    if (_adjustmentStep == _AdjustmentStep.mechanicalSkew) {
+      return _buildMechanicalSkewView(context, primary);
+    }
     if (_adjustingCornerIndex == null) {
       return const SizedBox.shrink();
     }
@@ -2233,6 +2317,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         return _buildPuckPlacementView(context, primary);
       case _AdjustmentStep.belowResolution:
         return _buildBelowResolutionView(context, primary);
+      case _AdjustmentStep.mechanicalSkew:
+        return _buildMechanicalSkewView(context, primary);
       case _AdjustmentStep.feedback:
         // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
         // The gauge target is anchored to the adjusted corner's
@@ -2496,6 +2582,84 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Support URL encoded into the QR code on the mechanical-skew screen.
+  static const String _proArmLevelFailSupportUrl =
+      'https://concepts3d.ca/proarmlevelfail';
+
+  /// Shown when the suggested screw adjustment exceeds what the leveling
+  /// screws can physically apply — the Pro Arm itself is mechanically
+  /// skewed and no screw turn will fix it.  Mirrors the post-calibration
+  /// overlay's evaluation layout: two 1:1 cards, explanation left and a
+  /// QR code right.
+  Widget _buildMechanicalSkewView(BuildContext context, Color primary) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Center(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+        final qrSize = ((constraints.maxWidth / 2) - 40).clamp(80.0, 260.0);
+        return Padding(
+          padding:
+              const EdgeInsets.symmetric(horizontal: OrionSpacing.screenHorizontal),
+          child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Left column: warning + explanation.
+            Expanded(
+              flex: 1,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    FlutterI18n.translate(
+                        context, 'leveling.wizardSkewTitle'),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    FlutterI18n.translate(
+                        context, 'leveling.wizardSkewBody'),
+                    style: TextStyle(
+                      fontSize: 18,
+                      height: 1.5,
+                      color: onSurface.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Right column: QR code to the support page.
+            Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: QrImageView(
+                  data: _proArmLevelFailSupportUrl,
+                  version: QrVersions.auto,
+                  size: qrSize,
+                  gapless: true,
+                  errorCorrectionLevel: QrErrorCorrectLevel.M,
+                  eyeStyle: QrEyeStyle(color: onSurface),
+                  dataModuleStyle: QrDataModuleStyle(
+                    color: onSurface,
+                    dataModuleShape: QrDataModuleShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          ),
+        );
+        },
       ),
     );
   }

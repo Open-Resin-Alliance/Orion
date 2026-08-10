@@ -385,6 +385,7 @@
         "clearTag": "清除标签",
         "rawForceSensor": "力传感器原始值",
         "reuseCalPlate": "重复使用校准板 (Debug)",
+        "forceMechanicalSkew": "强制机械偏斜（调试）",
         "releaseTagOverride": "覆盖版本标签",
         "athenaOsVersion": "AthenaOS Version: %s"
     },
@@ -527,6 +528,9 @@
         "wizardTighter": "更紧",
         "wizardLooser": "更松",
         "wizardProbeFailed": "测量失败。请重试。",
+        "wizardSkewTitle": "检测到机械偏斜",
+        "wizardSkewLabel": "机械偏斜",
+        "wizardSkewBody": "构建臂目前状态下无法调平 — 所需的螺钉调整超出了调平螺钉可施加的范围。可以使用 Concepts3D Pro Arm 调平指南进行修复。\n\n扫描二维码打开指南。",
         "wizardPrepareFailed": "打印机准备失败。",
         "wizardBackScrewAlt": "如果后螺钉无法继续转动，则改为稍微松开两个前螺钉 — 这会使平台以相同方式倾斜。",
         "wizardBelowResolutionBody": "剩余偏差小于螺钉调整所能可靠改变的范围 — 这通常是探针测量噪声。\n请重新检查角点。如果此消息持续出现，则平台已达到探针可测量的水平。",

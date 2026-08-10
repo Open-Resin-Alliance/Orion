@@ -385,6 +385,7 @@
         "clearTag": "Cancella tag",
         "rawForceSensor": "Valori grezzi sensore di forza",
         "reuseCalPlate": "Riutilizza piastra di calibrazione (Debug)",
+        "forceMechanicalSkew": "Forza disallineamento meccanico (debug)",
         "releaseTagOverride": "Sovrascrittura tag di rilascio",
         "athenaOsVersion": "AthenaOS Version: %s"
     },
@@ -527,6 +528,9 @@
         "wizardTighter": "Più stretto",
         "wizardLooser": "Più lento",
         "wizardProbeFailed": "Misura fallita. Riprova.",
+        "wizardSkewTitle": "Disallineamento meccanico rilevato",
+        "wizardSkewLabel": "Disallineamento meccanico",
+        "wizardSkewBody": "Il braccio non può essere livellato nello stato attuale — la correzione della vite richiesta supera ciò che le viti di livellamento possono applicare. Questo può essere risolto con la guida di livellamento Pro Arm di Concepts3D.\n\nScansiona il codice QR per aprire la guida.",
         "wizardPrepareFailed": "Preparazione della stampante non riuscita.",
         "wizardBackScrewAlt": "Se la vite posteriore non può girare oltre, allenta invece leggermente entrambe le viti anteriori — inclina la piastra allo stesso modo.",
         "wizardBelowResolutionBody": "La deviazione residua è più piccola di quanto una regolazione della vite possa cambiare in modo affidabile — di solito è rumore della sonda.\nRipeti il controllo degli angoli. Se questo messaggio continua ad apparire, la piastra è il più livellata che la sonda possa misurare.",

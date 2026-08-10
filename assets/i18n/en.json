@@ -385,6 +385,7 @@
         "clearTag": "Clear Tag",
         "rawForceSensor": "Raw Force Sensor Values",
         "reuseCalPlate": "Reuse Calibration Plate (Debug)",
+        "forceMechanicalSkew": "Force Mechanical Skew (Debug)",
         "releaseTagOverride": "Release Tag Override",
         "athenaOsVersion": "AthenaOS Version"
     },
@@ -538,6 +539,9 @@
         "wizardTighter": "Tighter",
         "wizardLooser": "Looser",
         "wizardProbeFailed": "Probe failed. Please try again.",
+        "wizardSkewTitle": "Mechanical Skew Detected",
+        "wizardSkewLabel": "Mechanical Skew",
+        "wizardSkewBody": "The build arm is not levelable in its current state — the required screw adjustment exceeds what the leveling screws can apply. This can be fixed using the Concepts3D Pro Arm Leveling Guide.\n\nScan the QR code to open the guide.",
         "wizardPrepareFailed": "Failed to prepare the printer.",
         "adjustmentIntroTitle": "How Adjustment Works",
         "adjustmentIntroBody": "A live force gauge shows pressure on the build plate.\nTurn the indicated screw slowly with the short end of the hex key.\nCenter the dot — green means you've hit the target.",
