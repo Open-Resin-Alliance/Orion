@@ -112,7 +112,7 @@ void main() {
         () async {
       final calls = <String>[];
       final engine = LevelingWorkflowEngine(
-        runner: (endpoint) async {
+        runner: (endpoint, {screenType}) async {
           calls.add(endpoint);
           return ForceLevelingWorkflowResponse.fromJson({
             'result': true,
@@ -144,7 +144,7 @@ void main() {
     test('keeps failed step retryable after busy response', () async {
       var attempts = 0;
       final engine = LevelingWorkflowEngine(
-        runner: (_) async {
+        runner: (_, {screenType}) async {
           attempts++;
           if (attempts == 1) {
             return ForceLevelingWorkflowResponse.httpFailure(
@@ -177,7 +177,7 @@ void main() {
 
     test('maps thrown connection failures to localized retry state', () async {
       final engine = LevelingWorkflowEngine(
-        runner: (_) async => throw Exception(
+        runner: (_, {screenType}) async => throw Exception(
           'ClientException with SocketException: The remote computer refused',
         ),
       );
@@ -199,7 +199,7 @@ void main() {
       // was removed because it is always redone after corners.
       int probeOffsetCalls = 0;
       final engine = LevelingWorkflowEngine(
-        runner: (endpoint) async {
+        runner: (endpoint, {screenType}) async {
           if (endpoint == 'probe_offset') {
             probeOffsetCalls++;
             return ForceLevelingWorkflowResponse.fromJson({

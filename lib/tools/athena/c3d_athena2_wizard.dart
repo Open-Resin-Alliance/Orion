@@ -287,6 +287,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _loadScrewCalibration();
     // Recheck doesn't re-ask the screen type — reuse the persisted one.
     _screenType = LevelingScreenType.fromId(OrionConfig().getScreenType());
+    _engine.setScreenType(_screenType);
 
     // Start at pre-flight so the user sees the safety checklist first.
     setState(() {
@@ -1279,6 +1280,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           onScreenTypeSelected: (screenType) {
             setState(() {
               _screenType = screenType;
+              // The final offset steps (probe_standardarm / probe_offset)
+              // take the screen type so the probe accounts for the surface.
+              _engine.setScreenType(screenType);
               // Persist the machine's screen type so later rechecks and
               // sessions can reuse it without asking again.
               OrionConfig().setScreenType(screenType.id);
@@ -1344,7 +1348,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                         ? FlutterI18n.translate(context, 'leveling.cancel')
                         : FlutterI18n.translate(context, 'common.back'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1366,7 +1370,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                         ? FlutterI18n.translate(context, 'common.done')
                         : FlutterI18n.translate(context, 'leveling.next'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(width: 8),
                   Icon(
@@ -1400,7 +1404,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Text(
                   FlutterI18n.translate(context, 'common.cancel'),
                   style: const TextStyle(
-                      fontSize: 19, fontWeight: FontWeight.w700),
+                      fontSize: 21, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -1522,7 +1526,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Text(
                   FlutterI18n.translate(context, 'moveZ.emergencyStop'),
                   style: const TextStyle(
-                      fontSize: 19, fontWeight: FontWeight.w700),
+                      fontSize: 21, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -1552,7 +1556,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.cancel'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1583,7 +1587,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.done'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1614,7 +1618,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.cancel'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1636,7 +1640,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.done'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1667,7 +1671,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.cancel'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1754,7 +1758,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.done'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1784,7 +1788,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.cancel'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1820,7 +1824,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.done'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1923,7 +1927,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Text(
                   FlutterI18n.translate(context, 'common.cancel'),
                   style: const TextStyle(
-                      fontSize: 19, fontWeight: FontWeight.w700),
+                      fontSize: 21, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -1946,7 +1950,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'leveling.wizardSkip'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -1969,7 +1973,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Text(
                   primaryLabel,
                   style: const TextStyle(
-                      fontSize: 19, fontWeight: FontWeight.w700),
+                      fontSize: 21, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -2065,7 +2069,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                       : FlutterI18n.translate(
                           context, 'leveling.wizardPreparingBtn'),
                   style: const TextStyle(
-                      fontSize: 19, fontWeight: FontWeight.w700),
+                      fontSize: 21, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -2096,7 +2100,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Text(
                   FlutterI18n.translate(context, 'leveling.startLeveling'),
                   style: const TextStyle(
-                      fontSize: 19, fontWeight: FontWeight.w700),
+                      fontSize: 21, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -2124,7 +2128,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'common.cancel'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -2146,7 +2150,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Text(
                     FlutterI18n.translate(context, 'leveling.next'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -2174,7 +2178,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Text(
                   FlutterI18n.translate(context, 'common.cancel'),
                   style: const TextStyle(
-                      fontSize: 19, fontWeight: FontWeight.w700),
+                      fontSize: 21, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -2196,7 +2200,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Text(
                   FlutterI18n.translate(context, 'leveling.wizardRecheckAll'),
                   style: const TextStyle(
-                      fontSize: 19, fontWeight: FontWeight.w700),
+                      fontSize: 21, fontWeight: FontWeight.w700),
                 ),
               ],
             ),

@@ -255,7 +255,7 @@ class LevelingScreen extends StatelessWidget {
                 FlutterI18n.translate(
                     context, 'leveling.manualAdvancedWarning'),
                 style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w500),
+                    fontSize: 20, fontWeight: FontWeight.w500),
               ),
               actions: [
                 GlassButton(

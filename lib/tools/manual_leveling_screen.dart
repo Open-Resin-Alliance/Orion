@@ -111,7 +111,7 @@ class ManualLevelingScreenState extends State<ManualLevelingScreen> {
                 title,
                 style: TextStyle(
                   color: accentColor,
-                  fontSize: 24,
+                  fontSize: 25,
                   fontWeight: FontWeight.bold,
                 ),
               ),

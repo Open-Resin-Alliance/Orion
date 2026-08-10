@@ -195,7 +195,7 @@ class HeaterScreenState extends State<HeaterScreen>
         context: context,
         builder: (context) => GlassAlertDialog(
           title: Text(FlutterI18n.translate(context, 'heater.confirmMixing'),
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+              style: TextStyle(fontSize: 25, fontWeight: FontWeight.w600)),
           content: Text(
             FlutterI18n.translate(context, 'heater.mixingWarning'),
             style: TextStyle(fontSize: 20),

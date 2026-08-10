@@ -22,8 +22,9 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
 
 typedef ForceLevelingRunner = Future<ForceLevelingWorkflowResponse> Function(
-  String endpoint,
-);
+  String endpoint, {
+  String? screenType,
+});
 
 enum LevelingWorkflowStatus {
   idle,
@@ -37,13 +38,23 @@ class LevelingWorkflowEngine extends ChangeNotifier {
   LevelingWorkflowEngine({
     ForceLevelingRunner? runner,
   }) : _runner = runner ??
-            ((endpoint) => BackendService().runForceLevelingWorkflow(
+            ((endpoint, {screenType}) =>
+                BackendService().runForceLevelingWorkflow(
                   endpoint,
+                  screenType: screenType,
                   requestTimeout: const Duration(seconds: 90),
                 ));
 
   final ForceLevelingRunner _runner;
   final _log = Logger('LevelingWorkflowEngine');
+
+  /// Selected screen type (tempered glass vs. wave release film).  Passed
+  /// to the `probe_standardarm` / `probe_offset` endpoints as `screentype`.
+  LevelingScreenType? _screenType;
+
+  void setScreenType(LevelingScreenType? screenType) {
+    _screenType = screenType;
+  }
 
   LevelingVariant? _variant;
   List<LevelingWorkflowStep> _steps = const [];
@@ -87,6 +98,9 @@ class LevelingWorkflowEngine extends ChangeNotifier {
     _lastResponse = null;
     _errorMessage = null;
     _zOffsetApplied = null;
+    // A fresh session re-selects the screen type; the caller sets it again
+    // (wizard) or reuses the persisted value (recheck).
+    _screenType = null;
     _log.info(
       'Selected leveling variant: id=${variant.id} '
       'finalEndpoint=${variant.finalEndpoint} steps=${_steps.map((s) => s.endpoint).join(",")}',
@@ -172,7 +186,8 @@ class LevelingWorkflowEngine extends ChangeNotifier {
 
     late final ForceLevelingWorkflowResponse response;
     try {
-      response = await _runner(step.endpoint);
+      response =
+          await _runner(step.endpoint, screenType: _screenType?.screentypeParam);
     } catch (e) {
       _log.warning(
         'Leveling step threw before returning response: endpoint=${step.endpoint}',

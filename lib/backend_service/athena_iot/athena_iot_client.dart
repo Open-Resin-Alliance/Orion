@@ -147,12 +147,23 @@ class AthenaIotClient {
   }
 
   Future<ForceLevelingWorkflowResponse> runForceLevelingWorkflow(
-    String endpoint,
-  ) async {
+    String endpoint, {
+    String? screenType,
+  }) async {
     final safeEndpoint = endpoint.replaceAll(RegExp(r'^/+|/+$'), '');
     final baseNoSlash = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    // The probe_standardarm / probe_offset endpoints accept a `screentype`
+    // query parameter (glass | waverelease) so the probe can account for
+    // the screen surface.  Other workflow steps don't take it.
     final uri = Uri.parse(
       '$baseNoSlash/athena-iot/forcesensor/workflow/$safeEndpoint',
+    ).replace(
+      queryParameters:
+          (screenType != null &&
+                  (safeEndpoint == 'probe_standardarm' ||
+                      safeEndpoint == 'probe_offset'))
+              ? {'screentype': screenType}
+              : null,
     );
     final client = _createClient();
     try {

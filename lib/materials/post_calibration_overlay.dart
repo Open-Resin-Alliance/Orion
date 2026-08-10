@@ -688,7 +688,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
         builder: (context) => GlassAlertDialog(
           title: Text(FlutterI18n.translate(context, 'common.error'),
               style:
-                  const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
           content: Text(
             'Could not save exposure to profile.\n'
             'Please set it manually in Materials → Edit Resin.',
@@ -716,7 +716,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       context: navCtx,
       builder: (context) => GlassAlertDialog(
         title: Text(FlutterI18n.translate(context, 'postCal.complete'),
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+            style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -834,7 +834,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
           return GlassAlertDialog(
             title: Text(
                 FlutterI18n.translate(context, 'postCal.fineTuneExposure'),
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -936,7 +936,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         content: const Text(
                           'Could not save exposure to profile.\n'
                           'Please set it manually in Materials → Edit Resin.',
-                          style: TextStyle(fontSize: 16),
+                          style: TextStyle(fontSize: 20),
                         ),
                         actions: [
                           GlassButton(
@@ -963,7 +963,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                       title: Text(
                           FlutterI18n.translate(context, 'postCal.complete'),
                           style: TextStyle(
-                              fontSize: 26, fontWeight: FontWeight.bold)),
+                              fontSize: 25, fontWeight: FontWeight.bold)),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [

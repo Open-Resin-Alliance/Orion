@@ -323,4 +323,11 @@ enum LevelingScreenType {
     }
     return null;
   }
+
+  /// Backend query-param value for the `screentype` argument accepted by
+  /// the `probe_standardarm` / `probe_offset` workflow endpoints.
+  String get screentypeParam => switch (this) {
+        LevelingScreenType.temperedGlass => 'glass',
+        LevelingScreenType.waveReleaseFilm => 'waverelease',
+      };
 }

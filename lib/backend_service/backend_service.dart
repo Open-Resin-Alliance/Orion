@@ -325,6 +325,7 @@ class BackendService implements BackendClient {
 
   Future<ForceLevelingWorkflowResponse> runForceLevelingWorkflow(
     String endpoint, {
+    String? screenType,
     Duration? requestTimeout,
   }) async {
     // Simulated mode: return fake success data so devs can skip through the
@@ -383,7 +384,8 @@ class BackendService implements BackendClient {
           error: 'Athena IoT client is not available.',
         );
       }
-      return await client.runForceLevelingWorkflow(endpoint);
+      return await client.runForceLevelingWorkflow(endpoint,
+          screenType: screenType);
     } catch (e, st) {
       _log.warning('Failed to run force leveling workflow: $endpoint', e, st);
       return ForceLevelingWorkflowResponse(

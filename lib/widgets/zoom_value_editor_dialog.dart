@@ -265,7 +265,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
 
     return GlassAlertDialog(
       title: Text(widget.title,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+          style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w600)),
       content: SizedBox(
         width: 400,
         child: Column(
@@ -288,7 +288,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                             child: Text(
                               widget.description!,
                               style: TextStyle(
-                                fontSize: 19,
+                                fontSize: 20,
                                 color: Colors.grey.shade400,
                                 height: 1.4,
                               ),

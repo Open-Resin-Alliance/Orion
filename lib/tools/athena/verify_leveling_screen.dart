@@ -565,7 +565,7 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
                     FlutterI18n.translate(
                         context, 'leveling.recheckLeveling'),
                     style: const TextStyle(
-                        fontSize: 19, fontWeight: FontWeight.w700),
+                        fontSize: 21, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
