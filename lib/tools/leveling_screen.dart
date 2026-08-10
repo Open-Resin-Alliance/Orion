@@ -22,6 +22,7 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
+import 'package:orion/tools/athena/leveling_settings_screen.dart';
 import 'package:orion/tools/athena/verify_leveling_screen.dart'
     show VerifyLevelingScreen, hasPassedLevelingSession;
 import 'package:orion/tools/manual_leveling_screen.dart';
@@ -105,7 +106,15 @@ class LevelingScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: OrionSpacing.controlGap),
-            _buildManualButton(context, assistedEnabled),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildManualButton(context, assistedEnabled),
+                ),
+                const SizedBox(width: OrionSpacing.controlGap),
+                Expanded(child: _buildSettingsButton(context)),
+              ],
+            ),
           ],
         ),
       ),
@@ -289,6 +298,31 @@ class LevelingScreen extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             FlutterI18n.translate(context, 'leveling.manual'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsButton(BuildContext context) {
+    return GlassButton(
+      tint: GlassButtonTint.neutral,
+      onPressed: () {
+        Navigator.of(context).push(
+          _buildOverlayRoute(const LevelingSettingsScreen()),
+        );
+      },
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 56),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(PhosphorIconsFill.gear, size: 22),
+          const SizedBox(width: 10),
+          Text(
+            FlutterI18n.translate(context, 'leveling.settings'),
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
           ),
         ],

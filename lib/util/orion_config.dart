@@ -736,6 +736,28 @@ class OrionConfig {
   void setScreenType(String id) =>
       setString('screenType', id, category: 'leveling');
 
+  /// The Z offset applied by the last leveling session (mm), or null when
+  /// not recorded.  Manual adjustments are stored separately as an override
+  /// so the leveling-settings edit range stays anchored to this original.
+  double? getBaseZOffset() {
+    final s = getString('baseZOffset', category: 'leveling');
+    if (s.isEmpty) return null;
+    return double.tryParse(s);
+  }
+
+  void setBaseZOffset(double value) =>
+      setString('baseZOffset', value.toString(), category: 'leveling');
+
+  /// Manual Z-offset adjustment (mm) added on top of [getBaseZOffset].
+  /// The effective offset is `base + override`.
+  double getZOffsetOverride() {
+    final s = getString('zOffsetOverride', category: 'leveling');
+    return double.tryParse(s) ?? 0.0;
+  }
+
+  void setZOffsetOverride(double value) =>
+      setString('zOffsetOverride', value.toString(), category: 'leveling');
+
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.
   bool getFeatureFlag(String key, {bool defaultValue = false}) {

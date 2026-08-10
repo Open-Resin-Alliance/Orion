@@ -29,6 +29,7 @@ import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/athena/screw_calibration_store.dart';
 import 'package:orion/tools/athena/screw_controller.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
+import 'package:orion/tools/athena/screen_type_visual.dart';
 import 'package:orion/tools/athena/leveling_log_entry.dart';
 import 'package:orion/tools/athena/leveling_log_service.dart';
 import 'package:orion/tools/athena/leveling_workflow_engine.dart';
@@ -500,6 +501,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       // The workflow applied a fresh Z offset, so the printer is leveled
       // again.  (A Verify Leveling run resets this to false at start.)
       OrionConfig().setLeveled(true);
+      // Re-anchor the leveling-settings edit range to the newly applied
+      // offset and clear any manual override so it doesn't compound.
+      final applied = _engine.zOffsetApplied;
+      if (applied != null) {
+        OrionConfig().setBaseZOffset(applied);
+        OrionConfig().setZOffsetOverride(0);
+      }
       Provider.of<ManualProvider>(context, listen: false)
           .moveToTop()
           .then((_) {})
@@ -2922,7 +2930,7 @@ class _ScreenTypeCard extends StatelessWidget {
                     child: AspectRatio(
                       // Screen-like proportions, not a square.
                       aspectRatio: 16 / 10,
-                      child: _ScreenTypeVisual(
+                      child: ScreenTypeVisual(
                         screenType: screenType,
                         color: theme.colorScheme.primary,
                       ),
@@ -2956,127 +2964,6 @@ class _ScreenTypeCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Painted visual for a [LevelingScreenType] — a shared rounded rectangle
-/// outline, differentiated by what sits inside:
-///   * tempered glass → a "sparkly clean" sparkle in the top-left corner
-///   * wave release film → a honeycomb (hexagon) grid across the surface
-class _ScreenTypeVisual extends StatelessWidget {
-  const _ScreenTypeVisual({
-    required this.screenType,
-    required this.color,
-  });
-
-  final LevelingScreenType screenType;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _ScreenTypePainter(screenType: screenType, color: color),
-      child: const SizedBox.expand(),
-    );
-  }
-}
-
-class _ScreenTypePainter extends CustomPainter {
-  _ScreenTypePainter({required this.screenType, required this.color});
-
-  final LevelingScreenType screenType;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final s = size.shortestSide;
-    final outline = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = s * 0.015
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..color = color.withValues(alpha: 0.85);
-    final fill = Paint()..color = color.withValues(alpha: 0.12);
-
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Radius.circular(s * 0.10),
-    );
-
-    canvas.drawRRect(rrect, fill);
-    switch (screenType) {
-      case LevelingScreenType.temperedGlass:
-        _paintSparkle(canvas, s);
-      case LevelingScreenType.waveReleaseFilm:
-        _paintHexGrid(canvas, size, rrect);
-    }
-    canvas.drawRRect(rrect, outline);
-  }
-
-  /// A four-pointed "clean" sparkle in the top-left corner.
-  void _paintSparkle(Canvas canvas, double s) {
-    final center = Offset(s * 0.20, s * 0.20);
-    final outer = s * 0.075;
-    final inner = outer * 0.20;
-    final path = Path()
-      ..moveTo(center.dx, center.dy - outer)
-      ..quadraticBezierTo(
-          center.dx + inner, center.dy - inner, center.dx + outer, center.dy)
-      ..quadraticBezierTo(
-          center.dx + inner, center.dy + inner, center.dx, center.dy + outer)
-      ..quadraticBezierTo(
-          center.dx - inner, center.dy + inner, center.dx - outer, center.dy)
-      ..quadraticBezierTo(
-          center.dx - inner, center.dy - inner, center.dx, center.dy - outer)
-      ..close();
-    canvas.drawPath(path, Paint()..color = color);
-  }
-
-  /// A honeycomb of pointy-top hexagons clipped to the rectangle.
-  void _paintHexGrid(Canvas canvas, Size size, RRect clip) {
-    // Finer cells with a thinner, lighter stroke than the outer outline.
-    final hexR = size.shortestSide * 0.050;
-    final hexStroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.shortestSide * 0.0075
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..color = color.withValues(alpha: 0.85);
-    final dx = sqrt(3) * hexR;
-    final dy = 1.5 * hexR;
-    canvas.save();
-    canvas.clipRRect(clip);
-    final rows = (size.height / dy).ceil() + 2;
-    final cols = (size.width / dx).ceil() + 2;
-    for (int row = 0; row < rows; row++) {
-      final offsetX = row.isOdd ? dx / 2 : 0.0;
-      for (int col = 0; col < cols; col++) {
-        canvas.drawPath(
-          _hexagonPath(Offset(offsetX + col * dx - dx, row * dy - dy), hexR),
-          hexStroke,
-        );
-      }
-    }
-    canvas.restore();
-  }
-
-  Path _hexagonPath(Offset center, double r) {
-    final path = Path();
-    for (int i = 0; i < 6; i++) {
-      final angle = (i * 60 - 90) * pi / 180;
-      final x = center.dx + r * cos(angle);
-      final y = center.dy + r * sin(angle);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    return path..close();
-  }
-
-  @override
-  bool shouldRepaint(covariant _ScreenTypePainter oldDelegate) =>
-      oldDelegate.screenType != screenType || oldDelegate.color != color;
 }
 
 // ================================================================================================================================================================================================
