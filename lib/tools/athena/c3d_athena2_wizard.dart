@@ -1,4 +1,4 @@
-﻿/*
+/*
 * Orion - Athena 2 Leveling Wizard
 * Copyright (C) 2026 Open Resin Alliance
 *
@@ -33,6 +33,7 @@ import 'package:orion/tools/athena/screen_type_visual.dart';
 import 'package:orion/tools/athena/leveling_log_entry.dart';
 import 'package:orion/tools/athena/leveling_log_service.dart';
 import 'package:orion/tools/athena/leveling_workflow_engine.dart';
+import 'package:orion/tools/athena/uv_safety_timer.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/safe_home.dart';
@@ -244,6 +245,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   String? _adjustmentError;
   bool _wizardDisposed = false;
   _AdjustmentStep _adjustmentStep = _AdjustmentStep.preparing;
+  // Safety net for the projector's UV special screens: any screen that is
+  // shown auto-shuts off 30s later unless the wizard proceeds first.
+  late final UvSafetyTimer _uvSafetyTimer;
   static const _cornerLocations = [
     'front-left',
     'front-right',
@@ -255,6 +259,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   void initState() {
     super.initState();
     _engine = LevelingWorkflowEngine()..addListener(_handleEngineUpdate);
+    _uvSafetyTimer = UvSafetyTimer(() {
+      BackendService()
+          .turnOffSpecialScreens()
+          .then((_) {})
+          .catchError((_) {});
+    });
 
     // Prevent standby from activating while the leveling wizard is open.
     // Defer to avoid notifyListeners() during the build phase.
@@ -338,6 +348,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   @override
   void dispose() {
     _wizardDisposed = true;
+    // Deliberately NOT disarming _uvSafetyTimer: a special screen may still
+    // be projected when the wizard closes (cancel/back), and the timer is
+    // the guarantee that the UV shuts off within the safety window. Its
+    // callback touches no widget state, so firing after dispose is safe.
     _engine.removeListener(_handleEngineUpdate);
     _engine.dispose();
     // Re-allow standby now that the wizard is closed
@@ -400,6 +414,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             }
           }
         }
+        // UV safety: whatever screen was just shown must not stay on
+        // beyond the safety window.
+        _uvSafetyTimer.arm();
 
         // Standard arm: floor the Z to seat the plate before tightening.
         if (step.intermediateScreen == 'tighten' &&
@@ -852,6 +869,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             .showSpecialScreenCorner(_cornerLocations[cornerIdx])
             .then((_) {})
             .catchError((_) {});
+        _uvSafetyTimer.arm();
       }
     } catch (e) {
       _adjustmentError = e.toString();
@@ -875,6 +893,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     if (_adjustingCornerIndex == null) return;
 
     // The puck is placed — hide the projector pattern before probing.
+    _uvSafetyTimer.disarm();
     BackendService()
         .turnOffSpecialScreens()
         .then((_) {})
