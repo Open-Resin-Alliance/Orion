@@ -403,20 +403,24 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 .showSpecialScreenCenter()
                 .then((_) {})
                 .catchError((_) {});
+            _uvSafetyTimer.arm();
           } else if (step.specialScreen!.startsWith('corner-')) {
             final cornerIdx =
                 int.tryParse(step.specialScreen!.split('-')[1]) ?? 0;
             if (cornerIdx >= 0 && cornerIdx < 4) {
-              BackendService()
-                  .showSpecialScreenCorner(_cornerLocations[cornerIdx])
-                  .then((_) {})
-                  .catchError((_) {});
+              // The puck is already at this corner from the prior
+              // adjustment — no pattern needed, and the step auto-advances
+              // into probing right after.
+              if (cornerIdx != _puckPlacedCorner) {
+                BackendService()
+                    .showSpecialScreenCorner(_cornerLocations[cornerIdx])
+                    .then((_) {})
+                    .catchError((_) {});
+                _uvSafetyTimer.arm();
+              }
             }
           }
         }
-        // UV safety: whatever screen was just shown must not stay on
-        // beyond the safety window.
-        _uvSafetyTimer.arm();
 
         // Standard arm: floor the Z to seat the plate before tightening.
         if (step.intermediateScreen == 'tighten' &&
@@ -1954,6 +1958,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         LevelingWorkflowStatus.idle => () => _engine.runCurrentStep(),
         LevelingWorkflowStatus.failed => () => _engine.runCurrentStep(),
         LevelingWorkflowStatus.stepComplete => () {
+            // Proceeding from the puck-placement step — hide the projector
+            // pattern before probing.
+            _uvSafetyTimer.disarm();
+            BackendService()
+                .turnOffSpecialScreens()
+                .then((_) {})
+                .catchError((_) {});
             _engine.advanceAfterSuccessfulStep();
             // Auto-run the next step if advancing from a corner prepare,
             // or if it's a skipBackend intermediate screen (e.g. remove
