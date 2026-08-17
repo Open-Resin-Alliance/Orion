@@ -873,6 +873,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
   Future<void> _runAdjustmentProbe() async {
     if (_adjustingCornerIndex == null) return;
+
+    // The puck is placed — hide the projector pattern before probing.
+    BackendService()
+        .turnOffSpecialScreens()
+        .then((_) {})
+        .catchError((_) {});
+
     _adjustmentBusy = true;
     _adjustmentStep = _AdjustmentStep.probing;
     if (mounted) setState(() {});

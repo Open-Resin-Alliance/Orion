@@ -290,6 +290,12 @@ class AthenaIotClient {
     return _getSpecialScreen(path: '/athena-iot/specialscreens/center');
   }
 
+  /// Turn off the projector's UV LED, hiding any active special screen.
+  /// Returns `true` on success (plain text "Ok"), `false` on failure.
+  Future<bool> uvledOff() async {
+    return _getSpecialScreen(path: '/athena-iot/specialscreens/uvled_off');
+  }
+
   /// Shared helper for special screens GET requests.
   Future<bool> _getSpecialScreen({
     required String path,

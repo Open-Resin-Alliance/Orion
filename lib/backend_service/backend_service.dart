@@ -426,6 +426,19 @@ class BackendService implements BackendClient {
     }
   }
 
+  /// Turn off the projector's UV LED, hiding any active special screen.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> turnOffSpecialScreens({Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.uvledOff();
+    } catch (e, st) {
+      _log.warning('Failed to turn off special screens', e, st);
+      return false;
+    }
+  }
+
   @override
   Future<Map<String, dynamic>> getStatus() => _delegate.getStatus();
 
