@@ -2087,22 +2087,20 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             tint: GlassButtonTint.negative,
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
-              minimumSize: const Size(0, 60),
+              minimumSize: const Size(0, 55),
             ),
             child: Text(
               FlutterI18n.translate(context, 'levelingWorkflow.yes'),
-              style: const TextStyle(fontSize: 18),
             ),
           ),
           GlassButton(
             tint: GlassButtonTint.neutral,
             onPressed: () => Navigator.of(ctx).pop(false),
             style: ElevatedButton.styleFrom(
-              minimumSize: const Size(0, 60),
+              minimumSize: const Size(0, 55),
             ),
             child: Text(
               FlutterI18n.translate(context, 'levelingWorkflow.no'),
-              style: const TextStyle(fontSize: 18),
             ),
           ),
         ],
