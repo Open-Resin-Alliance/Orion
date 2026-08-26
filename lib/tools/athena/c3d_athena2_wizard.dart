@@ -54,6 +54,7 @@ enum _WizardPhase {
 
 enum _AdjustmentStep {
   intro,
+  hexShortEnd,
   preparing,
   puckPlacement,
   probing,
@@ -2370,8 +2371,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           child: GlassButton(
             tint: GlassButtonTint.positive,
             onPressed: () {
-              setState(() => _adjustmentStep = _AdjustmentStep.preparing);
-              _runAdjustmentPrepare();
+              setState(() => _adjustmentStep = _AdjustmentStep.hexShortEnd);
             },
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 65),
@@ -2390,6 +2390,60 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             ),
           ),
         ),
+      );
+    }
+
+    // Hex short-end prompt after intro (reuses long-end visuals, short text)
+    if (_adjustmentStep == _AdjustmentStep.hexShortEnd) {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () {
+                setState(() => _adjustmentStep = _AdjustmentStep.preparing);
+                _runAdjustmentPrepare();
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.check(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.done'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -2515,6 +2569,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     switch (_adjustmentStep) {
       case _AdjustmentStep.intro:
         return _buildAdjustmentIntroView(context, primary);
+      case _AdjustmentStep.hexShortEnd:
+        return _buildHexShortEndView(context, primary);
       case _AdjustmentStep.preparing:
       case _AdjustmentStep.probing:
         return _buildAdjustmentWarning(context, primary);
@@ -2658,6 +2714,67 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHexShortEndView(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final title = Text(
+      FlutterI18n.translate(context, 'leveling.hexShortEndTitle'),
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: theme.colorScheme.primary,
+      ),
+    );
+    final instruction = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        FlutterI18n.translate(context, 'leveling.hexShortEndInstruction'),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 20,
+          height: 1.4,
+          color: onSurface.withValues(alpha: 0.72),
+        ),
+      ),
+    );
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 8),
+          child: Column(
+            children: [
+              title,
+              const SizedBox(height: OrionSpacing.compactListGap),
+              instruction,
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final scale = min(
+                min((constraints.maxWidth - 24) / 395,
+                    (constraints.maxHeight - 16) / 411),
+                1.35,
+              );
+              return Center(
+                child: SizedBox(
+                  width: 395 * scale,
+                  height: 411 * scale,
+                  child: const FittedBox(
+                    fit: BoxFit.contain,
+                    child: _HexKeyLongEndDiagram(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
