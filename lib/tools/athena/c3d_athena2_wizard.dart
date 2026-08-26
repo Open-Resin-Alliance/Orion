@@ -3388,36 +3388,20 @@ class _SpacerPlacementDiagram extends StatelessWidget {
 
   final int cornerIndex;
 
-  static const _alignments = [
-    Alignment.bottomLeft, // 0 FL
-    Alignment.bottomRight, // 1 FR
-    Alignment.topRight, // 2 BR
-    Alignment.topLeft, // 3 BL
-  ];
-
   @override
   Widget build(BuildContext context) {
     final lineArt =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    final idx = cornerIndex.clamp(0, 3);
-    // Full viewBox is 1191×842; crop to 794×421 (2/3 × 1/2).
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85);
+    // DEBUG: show full base SVG first to verify asset bundles, ignore corner
     return SizedBox(
-      width: 794,
-      height: 421,
-      child: ClipRect(
-        child: Align(
-          alignment: _alignments[idx],
-          widthFactor: 794 / 1191,
-          heightFactor: 421 / 842,
-          child: SizedBox(
-            width: 1191,
-            height: 842,
-            child: SvgPicture.asset(
-              'assets/images/concepts_3d/levelingsystem/a2_lcd_ui_top_view.svg',
-              fit: BoxFit.contain,
-              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-            ),
-          ),
+      width: 400,
+      height: 280,
+      child: Container(
+        color: Colors.red.withValues(alpha: 0.15),
+        child: SvgPicture.asset(
+          'assets/images/concepts_3d/levelingsystem/a2_lcd_ui_top_view.svg',
+          fit: BoxFit.contain,
+          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
         ),
       ),
     );
