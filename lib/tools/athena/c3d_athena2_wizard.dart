@@ -1183,7 +1183,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         builder: (ctx) => GlassAlertDialog(
           title: Row(
             children: [
-              Icon(PhosphorIcons.warning(), size: 26, color: Colors.orangeAccent),
+              Icon(PhosphorIcons.warningCircle(), size: 26, color: Colors.redAccent),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -1191,7 +1191,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   style: const TextStyle(
                     fontSize: 25,
                     fontWeight: FontWeight.bold,
-                    color: Colors.orangeAccent,
+                    color: Colors.redAccent,
                   ),
                 ),
               ),

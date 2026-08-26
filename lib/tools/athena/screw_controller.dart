@@ -49,7 +49,6 @@ import 'dart:math' as math;
 List<int> rankAdjustmentCandidates(List<double> z) {
   assert(z.length >= 4);
   final z0 = z[0], z1 = z[1], z2 = z[2], z3 = z[3];
-  final frontAvg = (z0 + z1) / 2;
   final allFrontHigher = z0 > z2 && z0 > z3 && z1 > z2 && z1 > z3;
   final allBackHigher = z2 > z0 && z2 > z1 && z3 > z0 && z3 > z1;
 
@@ -64,8 +63,9 @@ List<int> rankAdjustmentCandidates(List<double> z) {
   }
 
   if (allFrontHigher || allBackHigher) {
-    final backOutlier =
-        (z2 - frontAvg).abs() >= (z3 - frontAvg).abs() ? 2 : 3;
+    // Back screw is single and centered — always show Back Left
+    // per product decision (BR/BL distinction doesn't matter).
+    const backOutlier = 3;
     return [
       backOutlier,
       // Fallback for when the back already leads: tighten the low
@@ -73,7 +73,9 @@ List<int> rankAdjustmentCandidates(List<double> z) {
       if (diagCorner <= 1) diagCorner,
     ];
   }
-  return [diagCorner];
+  // Map any back corner (BR→BL) so the UI always says Back Left
+  final backMapped = diagCorner == 2 ? 3 : diagCorner;
+  return [backMapped];
 }
 
 /// The preferred single-screw pick for the given corner Z values.
