@@ -3227,29 +3227,40 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
     return SizedBox(
       width: 395,
       height: 411,
-      child: ShaderMask(
-        shaderCallback: (Rect bounds) {
-          return const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.black, Colors.transparent],
-            stops: [0.78, 1.0],
-          ).createShader(bounds);
-        },
-        blendMode: BlendMode.dstIn,
-        child: Stack(
-          children: [
-            SvgPicture.asset(
+      child: Stack(
+        children: [
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black, Colors.transparent],
+                stops: [0.78, 1.0],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.dstIn,
+            child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer1.svg',
               fit: BoxFit.contain,
               colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
             ),
-            SvgPicture.asset(
+          ),
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black],
+                stops: [0.0, 0.38],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.dstIn,
+            child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer2.svg',
               fit: BoxFit.contain,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
