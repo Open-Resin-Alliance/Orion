@@ -3225,39 +3225,20 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
   Widget build(BuildContext context) {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     // Single hex key front view — flipped horizontally and rotated 60° CW.
-    // Tight viewBox -20 432 1044x711 fills the stage. Red circle around
-    // the long end tip (no exclamation).
+    // Tight viewBox -20 432 1044x711 fills the stage.
     return SizedBox(
       width: 1044,
       height: 711,
-      child: Stack(
+      child: Transform(
         alignment: Alignment.center,
-        children: [
-          Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..scale(-1.0, 1.0, 1.0)
-              ..rotateZ(60 * 3.141592653589793 / 180),
-            child: SvgPicture.asset(
-              'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
-              fit: BoxFit.contain,
-              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-            ),
-          ),
-          Positioned(
-            left: 148,
-            bottom: 88,
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.transparent,
-                border: Border.all(color: Colors.redAccent, width: 3),
-              ),
-            ),
-          ),
-        ],
+        transform: Matrix4.identity()
+          ..scale(-1.0, 1.0, 1.0)
+          ..rotateZ(60 * 3.141592653589793 / 180),
+        child: SvgPicture.asset(
+          'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
+          fit: BoxFit.contain,
+          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+        ),
       ),
     );
   }
@@ -4391,7 +4372,6 @@ class _WorkflowPane extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -4400,16 +4380,13 @@ class _WorkflowPane extends StatelessWidget {
                     (constraints.maxHeight - 16) / 600),
                 1.8,
               );
-              return Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Center(
-                  child: SizedBox(
-                    width: 600 * scale,
-                    height: 600 * scale,
-                    child: const FittedBox(
-                      fit: BoxFit.contain,
-                      child: _HexKeyLongEndDiagram(),
-                    ),
+              return Center(
+                child: SizedBox(
+                  width: 600 * scale,
+                  height: 600 * scale,
+                  child: const FittedBox(
+                    fit: BoxFit.contain,
+                    child: _HexKeyLongEndDiagram(),
                   ),
                 ),
               );
