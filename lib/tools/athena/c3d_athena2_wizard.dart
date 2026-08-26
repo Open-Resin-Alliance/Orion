@@ -3378,18 +3378,21 @@ class _AlignPlateDiagram extends StatelessWidget {
 }
 
 /// Corner-focused LCD top view for the "Place Leveling Spacer" step.
-/// Shows only the cropped a2_lcd_ui_top_view for that corner (dimmed
-/// line art). No puck highlight for now per latest spec.
+/// Uses the single base `a2_lcd_ui_top_view.svg` and dynamically crops
+/// to the requested corner (mirrors the loosen/tighten top-5/6 and align
+/// bottom-half pattern, but without pre-cropped assets).
+/// Mapping per spec: FL = bottom + left 2/3, FR = bottom + right 2/3,
+/// BR = top + right 2/3, BL = top + left 2/3.
 class _SpacerPlacementDiagram extends StatelessWidget {
   const _SpacerPlacementDiagram({required this.cornerIndex});
 
   final int cornerIndex;
 
-  static const _assets = [
-    'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_fl.svg',
-    'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_fr.svg',
-    'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_br.svg',
-    'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_bl.svg',
+  static const _alignments = [
+    Alignment.bottomLeft, // 0 FL
+    Alignment.bottomRight, // 1 FR
+    Alignment.topRight, // 2 BR
+    Alignment.topLeft, // 3 BL
   ];
 
   @override
@@ -3397,65 +3400,30 @@ class _SpacerPlacementDiagram extends StatelessWidget {
     final lineArt =
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     final idx = cornerIndex.clamp(0, 3);
+    // Full viewBox is 1191×842; crop to 794×421 (2/3 × 1/2).
     return SizedBox(
       width: 794,
       height: 421,
-      child: SvgPicture.asset(
-        _assets[idx],
-        fit: BoxFit.contain,
-        colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+      child: ClipRect(
+        child: Align(
+          alignment: _alignments[idx],
+          widthFactor: 794 / 1191,
+          heightFactor: 421 / 842,
+          child: SizedBox(
+            width: 1191,
+            height: 842,
+            child: SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_lcd_ui_top_view.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _SpacerPlacementPainter extends CustomPainter {
-  _SpacerPlacementPainter({
-    required this.primary,
-    required this.onPrimary,
-    required this.puckFraction,
-  });
-
-  final Color primary;
-  final Color onPrimary;
-  final Offset puckFraction;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final pos = Offset(
-      puckFraction.dx * size.width,
-      puckFraction.dy * size.height,
-    );
-    // Outer highlight halo so it pops on both light and washed backgrounds.
-    final halo = Paint()
-      ..color = Colors.black.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-    canvas.drawCircle(pos, 18, halo);
-    canvas.drawCircle(pos, 11, halo);
-    // Puck: double-circle like the isolated spacer top view.
-    final ring = Paint()
-      ..color = primary
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.6
-      ..strokeCap = StrokeCap.round;
-    final fill = Paint()
-      ..color = primary.withValues(alpha: 0.14)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(pos, 18, fill);
-    canvas.drawCircle(pos, 18, ring);
-    canvas.drawCircle(pos, 11, ring);
-    // Center dot.
-    canvas.drawCircle(pos, 3.2, Paint()..color = primary);
-  }
-
-  @override
-  bool shouldRepaint(covariant _SpacerPlacementPainter old) =>
-      old.primary != primary ||
-      old.onPrimary != onPrimary ||
-      old.puckFraction != puckFraction;
-}
 
 class _AlignPlatePainter extends CustomPainter {
   _AlignPlatePainter({required this.plateColor, required this.lcdColor});
