@@ -3223,6 +3223,7 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     return SizedBox(
       width: 395,
       height: 411,
@@ -3236,9 +3237,18 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
           ).createShader(bounds);
         },
         blendMode: BlendMode.dstIn,
-        child: SvgPicture.asset(
-          'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
-          fit: BoxFit.contain,
+        child: Stack(
+          children: [
+            SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer1.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
+            SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer2.svg',
+              fit: BoxFit.contain,
+            ),
+          ],
         ),
       ),
     );
