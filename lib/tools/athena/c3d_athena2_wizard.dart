@@ -3251,7 +3251,7 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [lineArt, Colors.white],
-                stops: const [0.0, 0.55],
+                stops: const [0.0, 0.32],
               ).createShader(bounds);
             },
             blendMode: BlendMode.modulate,
