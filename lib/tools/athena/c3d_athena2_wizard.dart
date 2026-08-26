@@ -3223,17 +3223,18 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.68);
     // Single hex key front view — flipped horizontally and rotated 60° CW.
-    // Tight viewBox -20 432 1044x711 fills the stage.
+    // Scaled 2.8x to fill the stage like loosen/tighten diagrams.
     return SizedBox(
-      width: 1044,
-      height: 711,
+      width: 600,
+      height: 600,
       child: Transform(
         alignment: Alignment.center,
         transform: Matrix4.identity()
           ..scale(-1.0, 1.0, 1.0)
-          ..rotateZ(60 * 3.141592653589793 / 180),
+          ..rotateZ(60 * 3.141592653589793 / 180)
+          ..scale(2.8, 2.8, 1.0),
         child: SvgPicture.asset(
           'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
           fit: BoxFit.contain,
@@ -4376,14 +4377,14 @@ class _WorkflowPane extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final scale = min(
-                min((constraints.maxWidth - 24) / 600,
-                    (constraints.maxHeight - 16) / 600),
-                1.8,
+                min((constraints.maxWidth - 24) / 320,
+                    (constraints.maxHeight - 16) / 320),
+                2.8,
               );
               return Center(
                 child: SizedBox(
-                  width: 600 * scale,
-                  height: 600 * scale,
+                  width: 320 * scale,
+                  height: 320 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),
