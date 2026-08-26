@@ -3223,29 +3223,18 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.32);
-    // Tight viewBox 364 403 395 411 — already cropped to long-end
-    // pictogram. Vertical fade softens the hard crop like the screw
-    // sequence diagram (top 5/6).
-    final raw = SizedBox(
-      width: 395,
-      height: 411,
-      child: ShaderMask(
-        shaderCallback: (Rect bounds) => const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.black, Colors.transparent],
-          stops: [0.78, 1.0],
-        ).createShader(bounds),
-        blendMode: BlendMode.dstIn,
-        child: SvgPicture.asset(
-          'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
-          fit: BoxFit.contain,
-          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-        ),
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    // Single hex key front view — already tight, no crop needed.
+    // Rendered like other line-art pictograms (dimmed, no extra fade).
+    return SizedBox(
+      width: 420,
+      height: 300,
+      child: SvgPicture.asset(
+        'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view.svg',
+        fit: BoxFit.contain,
+        colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
       ),
     );
-    return raw;
   }
 }
 
@@ -4380,16 +4369,15 @@ class _WorkflowPane extends StatelessWidget {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Tight viewBox 364 403 395 411 fills the stage.
               final scale = min(
-                min((constraints.maxWidth - 24) / 395,
-                    (constraints.maxHeight - 16) / 411),
+                min((constraints.maxWidth - 24) / 420,
+                    (constraints.maxHeight - 16) / 300),
                 1.8,
               );
               return Center(
                 child: SizedBox(
-                  width: 395 * scale,
-                  height: 411 * scale,
+                  width: 420 * scale,
+                  height: 300 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),
