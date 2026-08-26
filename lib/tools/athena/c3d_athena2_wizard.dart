@@ -3396,14 +3396,25 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Upper-half tactic like long-end top, no green fade-off per request.
+    // Upper-half tactic like long-end top, bottom fade-off regular, no green blend.
     return SizedBox(
       width: 395,
       height: 411,
-      child: SvgPicture.asset(
-        'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top.svg',
-        fit: BoxFit.contain,
-        colorFilter: ColorFilter.mode(Color(0xFF69F0AE), BlendMode.srcIn),
+      child: ShaderMask(
+        shaderCallback: (Rect bounds) {
+          return const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Colors.transparent],
+            stops: [0.78, 1.0],
+          ).createShader(bounds);
+        },
+        blendMode: BlendMode.dstIn,
+        child: SvgPicture.asset(
+          'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top.svg',
+          fit: BoxFit.contain,
+          colorFilter: ColorFilter.mode(Color(0xFF69F0AE), BlendMode.srcIn),
+        ),
       ),
     );
   }
