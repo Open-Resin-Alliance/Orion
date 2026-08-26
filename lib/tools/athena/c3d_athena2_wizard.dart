@@ -3224,15 +3224,21 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    // Single hex key front view — already tight, no crop needed.
-    // Rendered like other line-art pictograms (dimmed, no extra fade).
+    // Single hex key front view — flipped horizontally and rotated 60° CCW.
+    // Sized to fit the stage after transform.
     return SizedBox(
-      width: 420,
-      height: 300,
-      child: SvgPicture.asset(
-        'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view.svg',
-        fit: BoxFit.contain,
-        colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+      width: 600,
+      height: 600,
+      child: Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()
+          ..scale(-1.0, 1.0, 1.0)
+          ..rotateZ(60 * 3.141592653589793 / 180),
+        child: SvgPicture.asset(
+          'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
+          fit: BoxFit.contain,
+          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+        ),
       ),
     );
   }
@@ -4370,14 +4376,14 @@ class _WorkflowPane extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final scale = min(
-                min((constraints.maxWidth - 24) / 420,
-                    (constraints.maxHeight - 16) / 300),
+                min((constraints.maxWidth - 24) / 600,
+                    (constraints.maxHeight - 16) / 600),
                 1.8,
               );
               return Center(
                 child: SizedBox(
-                  width: 420 * scale,
-                  height: 300 * scale,
+                  width: 600 * scale,
+                  height: 600 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),
