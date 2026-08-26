@@ -150,12 +150,12 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
               tint: GlassButtonTint.neutral,
               onPressed: _editOffset,
               style: ElevatedButton.styleFrom(
-                minimumSize: const Size(0, 48),
+                minimumSize: const Size(0, 55),
               ),
               child: Text(
                 FlutterI18n.translate(context, 'common.edit'),
                 style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w600),
+                    fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
           ],
