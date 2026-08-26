@@ -280,10 +280,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     } else {
       // If arm and screen were already chosen, skip those panes on
       // subsequent runs — user can change them in Leveling Settings.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final savedVariantId = OrionConfig().getLevelingVariant();
-        if (savedVariantId.isEmpty) return;
+      // Do it synchronously so the first frame is already the correct
+      // phase (no flash of the variant selector).
+      final savedVariantId = OrionConfig().getLevelingVariant();
+      if (savedVariantId.isNotEmpty) {
         LevelingVariant? savedVariant;
         for (final v in widget.config.variants) {
           if (v.id == savedVariantId) {
@@ -291,35 +291,32 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             break;
           }
         }
-        if (savedVariant == null) return;
-        _engine.selectVariant(savedVariant);
-        _resetCornerResults();
-        _alignDone = savedVariant.id == 'regular';
-        _levelingSessionId = _uuid4();
-        _recheckNumber = 0;
-        _probeConfigCaptured = false;
-        _screwControllers = _freshControllers();
-        _pendingCommand = null;
-        _lastAchievedForceGf = null;
-        _lastAdjustedCorner = null;
-        _loadScrewCalibration();
-        final savedScreenId = OrionConfig().getScreenType();
-        final savedScreen = LevelingScreenType.fromId(
-            savedScreenId.isNotEmpty ? savedScreenId : null);
-        if (savedScreen != null) {
-          _screenType = savedScreen;
-          _engine.setScreenType(savedScreen);
-          setState(() {
+        if (savedVariant != null) {
+          _engine.selectVariant(savedVariant);
+          _resetCornerResults();
+          _alignDone = savedVariant.id == 'regular';
+          _levelingSessionId = _uuid4();
+          _recheckNumber = 0;
+          _probeConfigCaptured = false;
+          _screwControllers = _freshControllers();
+          _pendingCommand = null;
+          _lastAchievedForceGf = null;
+          _lastAdjustedCorner = null;
+          _loadScrewCalibration();
+          final savedScreenId = OrionConfig().getScreenType();
+          final savedScreen = LevelingScreenType.fromId(
+              savedScreenId.isNotEmpty ? savedScreenId : null);
+          if (savedScreen != null) {
+            _screenType = savedScreen;
+            _engine.setScreenType(savedScreen);
             _phase = _WizardPhase.introAndChecklist;
             _preFlightIndex = -1;
-          });
-        } else {
-          setState(() {
+          } else {
             _phase = _WizardPhase.screenType;
             _preFlightIndex = -1;
-          });
+          }
         }
-      });
+      }
     }
   }
 
