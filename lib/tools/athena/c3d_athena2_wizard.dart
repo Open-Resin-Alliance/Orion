@@ -2729,12 +2729,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         color: theme.colorScheme.primary,
       ),
     );
+    final rawInstruction = FlutterI18n.translate(context, 'leveling.hexShortEndInstruction');
     final instruction = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Text(
-        FlutterI18n.translate(context, 'leveling.hexShortEndInstruction'),
-        textAlign: TextAlign.center,
-        style: TextStyle(
+      child: _buildHighlightedInstruction(
+        context,
+        rawInstruction,
+        'short',
+        TextStyle(
           fontSize: 20,
           height: 1.4,
           color: onSurface.withValues(alpha: 0.72),
@@ -3408,6 +3410,42 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
 }
 
 
+
+
+  Widget _buildHighlightedInstruction(
+    BuildContext context,
+    String text,
+    String keyword,
+    TextStyle baseStyle,
+  ) {
+    final lower = text.toLowerCase();
+    final kwLower = keyword.toLowerCase();
+    final idx = lower.indexOf(kwLower);
+    if (idx == -1) {
+      return Text(text, textAlign: TextAlign.center, style: baseStyle);
+    }
+    final before = text.substring(0, idx);
+    final match = text.substring(idx, idx + keyword.length);
+    final after = text.substring(idx + keyword.length);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: before, style: baseStyle),
+          TextSpan(
+            text: match,
+            style: baseStyle.copyWith(
+              fontWeight: FontWeight.w700,
+              decoration: TextDecoration.underline,
+              decorationColor: baseStyle.color,
+              decorationThickness: 1.5,
+            ),
+          ),
+          TextSpan(text: after, style: baseStyle),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
 
 class _ScrewSequenceDiagram extends StatelessWidget {
   const _ScrewSequenceDiagram({this.clockwise = false});
@@ -4513,12 +4551,14 @@ class _WorkflowPane extends StatelessWidget {
         color: theme.colorScheme.primary,
       ),
     );
+    final rawInstruction = FlutterI18n.translate(context, 'leveling.hexLongEndInstruction');
     final instruction = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Text(
-        FlutterI18n.translate(context, 'leveling.hexLongEndInstruction'),
-        textAlign: TextAlign.center,
-        style: TextStyle(
+      child: _buildHighlightedInstruction(
+        context,
+        rawInstruction,
+        'long',
+        TextStyle(
           fontSize: 20,
           height: 1.4,
           color: onSurface.withValues(alpha: 0.72),
