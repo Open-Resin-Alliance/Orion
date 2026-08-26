@@ -2767,7 +2767,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   height: 411 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
-                    child: _HexKeyLongEndDiagram(),
+                    child: _HexKeyShortEndDiagram(),
                   ),
                 ),
               );
@@ -3384,6 +3384,24 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HexKeyShortEndDiagram extends StatelessWidget {
+  const _HexKeyShortEndDiagram();
+
+  @override
+  Widget build(BuildContext context) {
+    // Upper-half tactic like long-end top, no green fade-off per request.
+    return const SizedBox(
+      width: 395,
+      height: 411,
+      child: SvgPicture.asset(
+        'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top.svg',
+        fit: BoxFit.contain,
+        colorFilter: ColorFilter.mode(Color(0xFF69F0AE), BlendMode.srcIn),
       ),
     );
   }
