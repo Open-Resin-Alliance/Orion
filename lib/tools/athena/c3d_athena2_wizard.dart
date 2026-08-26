@@ -33,6 +33,7 @@ import 'package:orion/tools/athena/leveling_configs.dart';
 import 'package:orion/tools/athena/screen_type_visual.dart';
 import 'package:orion/tools/athena/leveling_log_entry.dart';
 import 'package:orion/tools/athena/leveling_log_service.dart';
+import 'package:orion/tools/athena/svg_cache.dart';
 import 'package:orion/tools/athena/leveling_workflow_engine.dart';
 import 'package:orion/tools/athena/uv_safety_timer.dart';
 import 'package:orion/util/orion_config.dart';
@@ -271,6 +272,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         Provider.of<StatusProvider>(context, listen: false)
             .setLevelingWorkflowActive(true);
       }
+    });
+
+    // Warm SVG cache so pictograms appear instantly.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) LevelingSvgCache.precache(context);
     });
 
     if (widget.recheck) {
