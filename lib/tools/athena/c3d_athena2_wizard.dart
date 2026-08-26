@@ -3247,14 +3247,14 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
           ),
           ShaderMask(
             shaderCallback: (Rect bounds) {
-              return const LinearGradient(
+              return LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.black],
-                stops: [0.0, 0.38],
+                colors: [lineArt, Colors.white],
+                stops: const [0.0, 0.55],
               ).createShader(bounds);
             },
-            blendMode: BlendMode.dstIn,
+            blendMode: BlendMode.modulate,
             child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer2.svg',
               fit: BoxFit.contain,
