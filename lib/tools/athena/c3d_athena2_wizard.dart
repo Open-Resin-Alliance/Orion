@@ -260,10 +260,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     super.initState();
     _engine = LevelingWorkflowEngine()..addListener(_handleEngineUpdate);
     _uvSafetyTimer = UvSafetyTimer(() {
-      BackendService()
-          .turnOffSpecialScreens()
-          .then((_) {})
-          .catchError((_) {});
+      BackendService().turnOffSpecialScreens().then((_) {}).catchError((_) {});
     });
 
     // Prevent standby from activating while the leveling wizard is open.
@@ -898,10 +895,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     // The puck is placed — hide the projector pattern before probing.
     _uvSafetyTimer.disarm();
-    BackendService()
-        .turnOffSpecialScreens()
-        .then((_) {})
-        .catchError((_) {});
+    BackendService().turnOffSpecialScreens().then((_) {}).catchError((_) {});
 
     _adjustmentBusy = true;
     _adjustmentStep = _AdjustmentStep.probing;
@@ -2637,65 +2631,65 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     return Center(
       child: LayoutBuilder(
         builder: (context, constraints) {
-        final qrSize = ((constraints.maxWidth / 2) - 40).clamp(80.0, 260.0);
-        return Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: OrionSpacing.screenHorizontal),
-          child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Left column: warning + explanation.
-            Expanded(
-              flex: 1,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    FlutterI18n.translate(
-                        context, 'leveling.wizardSkewTitle'),
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    FlutterI18n.translate(
-                        context, 'leveling.wizardSkewBody'),
-                    style: TextStyle(
-                      fontSize: 18,
-                      height: 1.5,
-                      color: onSurface.withValues(alpha: 0.75),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            // Right column: QR code to the support page.
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: QrImageView(
-                  data: _proArmLevelFailSupportUrl,
-                  version: QrVersions.auto,
-                  size: qrSize,
-                  gapless: true,
-                  errorCorrectionLevel: QrErrorCorrectLevel.M,
-                  eyeStyle: QrEyeStyle(color: onSurface),
-                  dataModuleStyle: QrDataModuleStyle(
-                    color: onSurface,
-                    dataModuleShape: QrDataModuleShape.circle,
+          final qrSize = ((constraints.maxWidth / 2) - 40).clamp(80.0, 260.0);
+          return Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: OrionSpacing.screenHorizontal),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Left column: warning + explanation.
+                Expanded(
+                  flex: 1,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'leveling.wizardSkewTitle'),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'leveling.wizardSkewBody'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          height: 1.5,
+                          color: onSurface.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+                const SizedBox(width: 16),
+                // Right column: QR code to the support page.
+                Expanded(
+                  flex: 1,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: QrImageView(
+                      data: _proArmLevelFailSupportUrl,
+                      version: QrVersions.auto,
+                      size: qrSize,
+                      gapless: true,
+                      errorCorrectionLevel: QrErrorCorrectLevel.M,
+                      eyeStyle: QrEyeStyle(color: onSurface),
+                      dataModuleStyle: QrDataModuleStyle(
+                        color: onSurface,
+                        dataModuleShape: QrDataModuleShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-          ),
-        );
+          );
         },
       ),
     );
@@ -3064,6 +3058,190 @@ class _VariantAsset extends StatelessWidget {
   }
 }
 
+/// Pro-Arm top view with the three leveling screws numbered in the
+/// recommended loosening sequence (top → bottom-right → bottom-left).
+/// Base line art is derived from the a2_pro_arm_solo top-view drawing
+/// and tinted with the theme accent like [_VariantAsset]; the dashed
+/// sequence arrows and number badges are painted on top so they follow
+/// the active theme colors.
+class _ScrewSequenceDiagram extends StatelessWidget {
+  const _ScrewSequenceDiagram();
+
+  /// Screw centres as fractions of the 254×230 SVG viewBox, in
+  /// loosening order: 1 top-centre, 2 bottom-right, 3 bottom-left.
+  static const _screwFractions = [
+    Offset(0.499, 0.223),
+    Offset(0.673, 0.555),
+    Offset(0.326, 0.555),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    // Line art is dimmed so the sequence arrows and number badges
+    // (full primary) read as the foreground layer.
+    final lineArt =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    final primary = Theme.of(context).colorScheme.primary;
+    return SizedBox(
+      width: 254,
+      height: 230,
+      child: Stack(
+        children: [
+          SvgPicture.asset(
+            'assets/images/concepts_3d/levelingsystem/'
+            'a2_pro_arm_solo_leveling_screws.svg',
+            fit: BoxFit.contain,
+            colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+          ),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _ScrewSequencePainter(
+                primary: primary,
+                onPrimary: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Paints the loosening sequence on top of the Pro-Arm line art:
+/// dashed straight arrows from screw to screw (1→2→3), a
+/// counter-clockwise rotation arc around each screw, and the numbered
+/// badges. All overlay elements run at full primary so they read as
+/// the foreground against the dimmed line art.
+class _ScrewSequencePainter extends CustomPainter {
+  _ScrewSequencePainter({required this.primary, required this.onPrimary});
+
+  final Color primary;
+  final Color onPrimary;
+
+  static const _badgeRadius = 12.0;
+  static const _badgeOffset = 36.0;
+
+  /// Teardrop tip stops this short of the circle edge so it points at
+  /// the screw head without touching the rotation arc.
+  static const _badgeTipClearance = 6.0;
+
+  /// Radius of the CCW rotation indicator around a screw head.
+  static const _rotationRadius = 15.0;
+
+  /// Straight arrows start/end well outside the rotation arcs — room
+  /// for the 7px arrowhead plus a visible gap so the sequence arrows
+  /// and the CCW indicators read as separate layers.
+  static const _arrowClearance = _rotationRadius + 17.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final screws = [
+      for (final f in _ScrewSequenceDiagram._screwFractions)
+        Offset(f.dx * size.width, f.dy * size.height),
+    ];
+    final centroid = (screws[0] + screws[1] + screws[2]) / 3;
+
+    final arrowPaint = Paint()
+      ..color = primary.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    for (int i = 0; i < screws.length; i++) {
+      final a = screws[i];
+      final b = screws[(i + 1) % screws.length];
+
+      // Dashed straight guide arrow to the next screw in sequence.
+      final dir = (b - a) / (b - a).distance;
+      final line = Path()
+        ..moveTo((a + dir * _arrowClearance).dx, (a + dir * _arrowClearance).dy)
+        ..lineTo(
+            (b - dir * _arrowClearance).dx, (b - dir * _arrowClearance).dy);
+      _strokeDashed(canvas, line, arrowPaint);
+      _drawArrowhead(canvas, b - dir * _arrowClearance, dir, arrowPaint);
+
+      // Counter-clockwise rotation arc, opening toward the badge so
+      // the arrowhead lands beside its screw number.
+      final out = (a - centroid) / (a - centroid).distance;
+      final badgeAngle = atan2(out.dy, out.dx);
+      const sweep = -250 * pi / 180; // negative sweep = CCW on screen
+      final startAngle = badgeAngle - 55 * pi / 180;
+      _strokeDashed(
+        canvas,
+        Path()
+          ..arcTo(Rect.fromCircle(center: a, radius: _rotationRadius),
+              startAngle, sweep, false),
+        arrowPaint,
+      );
+      final endAngle = startAngle + sweep;
+      _drawArrowhead(
+        canvas,
+        a +
+            Offset(_rotationRadius * cos(endAngle),
+                _rotationRadius * sin(endAngle)),
+        Offset(sin(endAngle), -cos(endAngle)),
+        arrowPaint,
+      );
+
+      // Teardrop number badge: circle pushed outward from the plate
+      // centre, with a point aimed at its screw head.
+      final badgeCenter = a + out * _badgeOffset;
+      final tip = a + out * (_badgeOffset - _badgeRadius - _badgeTipClearance);
+      final badgePerp = Offset(-out.dy, out.dx) * _badgeRadius;
+      final badgeFill = Paint()..color = primary;
+      canvas.drawPath(
+        Path()
+          ..moveTo(tip.dx, tip.dy)
+          ..lineTo(badgeCenter.dx + badgePerp.dx, badgeCenter.dy + badgePerp.dy)
+          ..lineTo(badgeCenter.dx - badgePerp.dx, badgeCenter.dy - badgePerp.dy)
+          ..close(),
+        badgeFill,
+      );
+      canvas.drawCircle(badgeCenter, _badgeRadius, badgeFill);
+      final tp = TextPainter(
+        text: TextSpan(
+          text: '${i + 1}',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: onPrimary,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, badgeCenter - Offset(tp.width / 2, tp.height / 2));
+    }
+  }
+
+  void _strokeDashed(Canvas canvas, Path path, Paint paint) {
+    for (final m in path.computeMetrics()) {
+      double pos = 0;
+      while (pos < m.length) {
+        canvas.drawPath(m.extractPath(pos, min(pos + 5, m.length)), paint);
+        pos += 9;
+      }
+    }
+  }
+
+  void _drawArrowhead(Canvas canvas, Offset at, Offset direction, Paint paint) {
+    final tip = at + direction * 7;
+    final perp = Offset(-direction.dy, direction.dx) * 4.5;
+    canvas.drawPath(
+      Path()
+        ..moveTo(tip.dx, tip.dy)
+        ..lineTo(at.dx + perp.dx, at.dy + perp.dy)
+        ..lineTo(at.dx - perp.dx, at.dy - perp.dy)
+        ..close(),
+      paint..style = PaintingStyle.fill,
+    );
+    paint.style = PaintingStyle.stroke;
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScrewSequencePainter old) =>
+      old.primary != primary || old.onPrimary != onPrimary;
+}
+
 // ================================================================================================================================================================================================
 // Phase: Screen Type Selection (recycles the select-arm UX)
 // ================================================================================================================================================================================================
@@ -3261,6 +3439,74 @@ class _WorkflowPane extends StatelessWidget {
   Widget _buildLoosenScrewsView(BuildContext context, Color primary) {
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
+    // The 3-screw sequence diagram is Pro-Arm-specific; the standard
+    // arm's screw layout differs, so it keeps the icon-only screen.
+    final showDiagram = engine.variant?.id == 'pro';
+    final title = Text(
+      FlutterI18n.translate(context, 'leveling.loosenTitle'),
+      textAlign: TextAlign.center,
+      // Matches the wizard's AppBar title convention.
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: theme.colorScheme.primary,
+      ),
+    );
+    final instruction = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        FlutterI18n.translate(context, 'leveling.loosenInstruction'),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 20,
+          height: 1.4,
+          color: onSurface.withValues(alpha: 0.72),
+        ),
+      ),
+    );
+
+    // Pictogram layout: title and subtitle sit in the app-bar header
+    // position; the diagram scales up into the remaining space.
+    if (showDiagram) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Column(
+              children: [
+                title,
+                const SizedBox(height: OrionSpacing.listGap),
+                instruction,
+              ],
+            ),
+          ),
+          // FittedBox under loose constraints would render at the
+          // diagram's natural 254×230 size, so compute the scale here
+          // and hand it a tight box instead. Capped for a slight bump.
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = min(
+                  (constraints.maxWidth - 24) / 254,
+                  (constraints.maxHeight - 16) / 230,
+                ).clamp(1.0, 1.35);
+                return Center(
+                  child: SizedBox(
+                    width: 254 * scale,
+                    height: 230 * scale,
+                    child: const FittedBox(
+                      fit: BoxFit.contain,
+                      child: _ScrewSequenceDiagram(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -3278,28 +3524,9 @@ class _WorkflowPane extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        Text(
-          FlutterI18n.translate(context, 'leveling.loosenTitle'),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-          ),
-        ),
+        title,
         const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            FlutterI18n.translate(context, 'leveling.loosenInstruction'),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              height: 1.4,
-              color: onSurface.withValues(alpha: 0.72),
-            ),
-          ),
-        ),
+        instruction,
       ],
     );
   }
