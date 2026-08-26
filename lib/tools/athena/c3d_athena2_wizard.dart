@@ -2037,6 +2037,30 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             ),
           ),
         ],
+        if (isAllCornersMeasured && !needsAdjustment) ...[
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.neutral,
+              onPressed: () => _enterAdjustmentMode(),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.wrench(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.wizardAdjustAgain'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(width: OrionSpacing.controlGap),
         Expanded(
           child: GlassButton(
