@@ -3260,6 +3260,95 @@ class _IsoMovementWarningState extends State<_IsoMovementWarning>
   }
 }
 
+/// Top view of the LCD with the Pro Arm, highlighting the two front
+/// edges that must be made parallel. Base line art is the cropped
+/// a2_lcd_pro_arm top view, dimmed via ColorFilter; the two edge
+/// guides are painted on top (primary for the build plate, green for
+/// the LCD) so they read as the foreground.
+class _AlignPlateDiagram extends StatelessWidget {
+  const _AlignPlateDiagram();
+
+  @override
+  Widget build(BuildContext context) {
+    final lineArt =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    return SizedBox(
+      width: 786,
+      height: 373,
+      child: ShaderMask(
+        shaderCallback: (Rect bounds) {
+          return const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.transparent, Colors.black],
+            stops: [0.0, 0.22],
+          ).createShader(bounds);
+        },
+        blendMode: BlendMode.dstIn,
+        child: Stack(
+          children: [
+            SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_lcd_pro_arm_align_plate_bottom.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _AlignPlatePainter(
+                  plateColor: Theme.of(context).colorScheme.primary,
+                  lcdColor: const Color(0xFF57F0A4),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AlignPlatePainter extends CustomPainter {
+  _AlignPlatePainter({required this.plateColor, required this.lcdColor});
+
+  final Color plateColor;
+  final Color lcdColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Second and third horizontal lines from the bottom of the
+    // 786×373 viewBox (bottom 2/3 crop) — front edges that must be
+    // parallel. Fractions recomputed for the cropped height.
+    const plateY = 0.807;
+    const lcdY = 0.860;
+    const left = 0.07;
+    const right = 0.93;
+    final platePaint = Paint()
+      ..color = plateColor
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final lcdPaint = Paint()
+      ..color = lcdColor
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(
+      Offset(left * size.width, plateY * size.height),
+      Offset(right * size.width, plateY * size.height),
+      platePaint,
+    );
+    canvas.drawLine(
+      Offset(left * size.width, lcdY * size.height),
+      Offset(right * size.width, lcdY * size.height),
+      lcdPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _AlignPlatePainter old) =>
+      old.plateColor != plateColor || old.lcdColor != lcdColor;
+}
+
 // ================================================================================================================================================================================================
 // Phase: Screen Type Selection (recycles the select-arm UX)
 // ================================================================================================================================================================================================
@@ -3560,7 +3649,8 @@ class _WorkflowPane extends StatelessWidget {
         switch (step.kind) {
           LevelingWorkflowStepKind.finalOffset =>
             FlutterI18n.translate(context, 'leveling.wizardSavingOffset'),
-          LevelingWorkflowStepKind.prepare when step.endpoint == 'probe_prepare' =>
+          LevelingWorkflowStepKind.prepare
+              when step.endpoint == 'probe_prepare' =>
             FlutterI18n.translate(context, 'leveling.wizardMovingHome'),
           LevelingWorkflowStepKind.prepare
               when step.endpoint == 'probe_corner_prepare' =>
@@ -3572,8 +3662,8 @@ class _WorkflowPane extends StatelessWidget {
                 FlutterI18n.translate(context, 'leveling.wizardMovingToScreen'),
               'probe_corner' =>
                 FlutterI18n.translate(context, 'leveling.wizardMovingCorner'),
-              _ =>
-                FlutterI18n.translate(context, 'leveling.wizardPreparingMachine'),
+              _ => FlutterI18n.translate(
+                  context, 'leveling.wizardPreparingMachine'),
             },
         };
     return Column(
@@ -3612,43 +3702,59 @@ class _WorkflowPane extends StatelessWidget {
 
   Widget _buildAlignPlateView(BuildContext context, Color primary) {
     final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final title = Text(
+      FlutterI18n.translate(context, 'leveling.wizardAlignTitle'),
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: theme.colorScheme.primary,
+      ),
+    );
+    final instruction = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        FlutterI18n.translate(context, 'leveling.wizardAlignInstr'),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 20,
+          height: 1.4,
+          color: onSurface.withValues(alpha: 0.72),
+        ),
+      ),
+    );
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: primary.withValues(alpha: 0.12),
-          ),
-          child: Icon(
-            PhosphorIcons.compass(),
-            size: 52,
-            color: primary,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          FlutterI18n.translate(context, 'leveling.wizardAlignTitle'),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 8),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            FlutterI18n.translate(context, 'leveling.wizardAlignInstr'),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              height: 1.4,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
-            ),
+          padding: const EdgeInsets.only(top: 12, bottom: 8),
+          child: Column(
+            children: [
+              title,
+              const SizedBox(height: OrionSpacing.listGap),
+              instruction,
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final scale = min(
+                min((constraints.maxWidth - 24) / 786,
+                    (constraints.maxHeight - 16) / 373),
+                1.35,
+              );
+              return Center(
+                child: SizedBox(
+                  width: 786 * scale,
+                  height: 373 * scale,
+                  child: const FittedBox(
+                    fit: BoxFit.contain,
+                    child: _AlignPlateDiagram(),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

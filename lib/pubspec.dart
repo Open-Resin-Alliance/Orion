@@ -106,6 +106,8 @@ mixin Pubspec {
       'assets/images/concepts_3d/a2_pro_arm.svg',
       'assets/images/concepts_3d/a2_standard_arm.svg',
       'assets/images/concepts_3d/levelingsystem/a2_pro_arm_solo_leveling_screws.svg',
+      'assets/images/concepts_3d/levelingsystem/a2_lcd_pro_arm_align_plate.svg',
+      'assets/images/concepts_3d/levelingsystem/a2_lcd_pro_arm_align_plate_bottom.svg',
       'assets/scripts/set_orion_config.sh',
       'README.md',
       'CHANGELOG.md',
