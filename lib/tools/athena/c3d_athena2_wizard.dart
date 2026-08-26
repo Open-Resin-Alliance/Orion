@@ -3395,7 +3395,7 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Upper-half tactic like long-end top, no green fade-off per request.
-    return const SizedBox(
+    return SizedBox(
       width: 395,
       height: 411,
       child: SvgPicture.asset(
