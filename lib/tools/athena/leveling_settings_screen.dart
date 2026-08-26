@@ -110,7 +110,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
         child: Row(
           children: [
             PhosphorIcon(PhosphorIcons.arrowsVertical(),
-                size: 28, color: primary),
+                size: 30, color: primary),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -119,7 +119,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   Text(
                     FlutterI18n.translate(context, 'leveling.settingsZOffset'),
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
                     ),
@@ -138,7 +138,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                     FlutterI18n.translate(
                         context, 'leveling.settingsZOffsetHint'),
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       height: 1.2,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
@@ -232,7 +232,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   Text(
                     FlutterI18n.translate(context, 'leveling.settingsArmTitle'),
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
                     ),
@@ -241,7 +241,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: primary,
                     ),
@@ -250,7 +250,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   Text(
                     FlutterI18n.translate(context, 'leveling.settingsArmHint'),
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       height: 1.2,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
@@ -264,7 +264,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
               style: ElevatedButton.styleFrom(minimumSize: const Size(0, 48)),
               child: Text(
                 FlutterI18n.translate(context, 'common.change'),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -296,7 +296,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   Text(
                     FlutterI18n.translate(context, 'leveling.settingsScreenTypeTitle'),
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
                     ),
@@ -305,7 +305,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: primary,
                     ),
@@ -314,7 +314,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   Text(
                     FlutterI18n.translate(context, 'leveling.settingsScreenTypeHint'),
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       height: 1.2,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
@@ -328,7 +328,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
               style: ElevatedButton.styleFrom(minimumSize: const Size(0, 48)),
               child: Text(
                 FlutterI18n.translate(context, 'common.change'),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -362,7 +362,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                       v == 'pro'
                           ? FlutterI18n.translate(context, 'leveling.proArm')
                           : FlutterI18n.translate(context, 'leveling.standardArm'),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -408,7 +408,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                     style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55)),
                     child: Text(
                       FlutterI18n.translate(context, t.labelKey),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
