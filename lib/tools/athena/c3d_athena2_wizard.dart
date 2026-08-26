@@ -3226,59 +3226,28 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     return SizedBox(
       width: 395,
-      height: 274,
-      child: Stack(
-        children: [
-          ShaderMask(
-            shaderCallback: (Rect bounds) {
-              return const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.black, Colors.transparent],
-                stops: [0.78, 1.0],
-              ).createShader(bounds);
-            },
-            blendMode: BlendMode.dstIn,
-            child: SvgPicture.asset(
-              'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
-              fit: BoxFit.contain,
-              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-            ),
-          ),
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _HexKeyLongEndCirclePainter(
-                circleColor: Colors.redAccent,
-              ),
-            ),
-          ),
-        ],
+      height: 411,
+      child: ShaderMask(
+        shaderCallback: (Rect bounds) {
+          return const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Colors.transparent],
+            stops: [0.78, 1.0],
+          ).createShader(bounds);
+        },
+        blendMode: BlendMode.dstIn,
+        child: SvgPicture.asset(
+          'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
+          fit: BoxFit.contain,
+          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+        ),
       ),
     );
   }
 }
 
-class _HexKeyLongEndCirclePainter extends CustomPainter {
-  _HexKeyLongEndCirclePainter({required this.circleColor});
-  final Color circleColor;
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Top 1/3 viewBox is tightly cropped around the long-end tip.
-    // Centre the highlight ellipse on the ball-end.
-    final center = Offset(size.width * 0.50, size.height * 0.52);
-    final r = size.width * 0.085;
-    final paint = Paint()
-      ..color = circleColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.2;
-    canvas.drawCircle(center, r, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _HexKeyLongEndCirclePainter old) =>
-      old.circleColor != circleColor;
-}
 
 class _ScrewSequenceDiagram extends StatelessWidget {
   const _ScrewSequenceDiagram({this.clockwise = false});
@@ -4413,13 +4382,13 @@ class _WorkflowPane extends StatelessWidget {
             builder: (context, constraints) {
               final scale = min(
                 min((constraints.maxWidth - 24) / 395,
-                    (constraints.maxHeight - 16) / 274),
+                    (constraints.maxHeight - 16) / 411),
                 1.35,
               );
               return Center(
                 child: SizedBox(
                   width: 395 * scale,
-                  height: 274 * scale,
+                  height: 411 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),
