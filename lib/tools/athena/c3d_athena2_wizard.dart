@@ -1175,7 +1175,44 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       final status = Provider.of<StatusProvider>(context, listen: false);
       status.clearHomedStatus();
       await status.refreshKinematicStatus();
-      // Exit the wizard after emergency stop
+      if (!mounted) return;
+      // Explain that the procedure was aborted with no offset applied.
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => GlassAlertDialog(
+          title: Row(
+            children: [
+              Icon(PhosphorIcons.warning(), size: 26, color: Colors.orangeAccent),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  FlutterI18n.translate(context, 'leveling.emergencyStopTitle'),
+                  style: const TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orangeAccent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            FlutterI18n.translate(context, 'leveling.emergencyStopMsg'),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+          ),
+          actions: [
+            GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 60),
+              ),
+              child: Text(FlutterI18n.translate(context, 'common.ok')),
+            ),
+          ],
+        ),
+      );
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } finally {
       if (mounted) setState(() => _busyStop = false);

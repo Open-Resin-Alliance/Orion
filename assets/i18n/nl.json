@@ -479,6 +479,8 @@
     "wizardProceed": "Doorgaan",
     "wizardAdjust": "Bijstellen",
     "wizardAdjustAgain": "Opnieuw aanpassen",
+    "emergencyStopTitle": "Nivellering gestopt",
+    "emergencyStopMsg": "De nivelleringsprocedure is gestopt. Er is geen offset toegepast.\n\nU moet de nivellering opnieuw uitvoeren voordat u kunt printen.",
     "wizardBeginAdjustment": "Aanpassing starten",
     "wizardContinue": "Verder",
     "wizardProbingBtn": "Meten…",

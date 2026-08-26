@@ -479,6 +479,8 @@
     "wizardProceed": "Procedi",
     "wizardAdjust": "Regola",
     "wizardAdjustAgain": "Regola ancora",
+    "emergencyStopTitle": "Livellamento interrotto",
+    "emergencyStopMsg": "La procedura di livellamento è stata interrotta. Nessun offset è stato applicato.\n\nÈ necessario ripetere il livellamento prima di poter stampare.",
     "wizardBeginAdjustment": "Inizia regolazione",
     "wizardContinue": "Continua",
     "wizardProbingBtn": "Misuro…",

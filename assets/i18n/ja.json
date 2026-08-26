@@ -479,6 +479,8 @@
     "wizardProceed": "進行",
     "wizardAdjust": "調整",
     "wizardAdjustAgain": "再調整",
+    "emergencyStopTitle": "レベリングが停止しました",
+    "emergencyStopMsg": "レベリング手順が停止しました。オフセットは適用されませんでした。\n\n印刷する前にレベリングを再実行する必要があります。",
     "wizardBeginAdjustment": "調整を開始",
     "wizardContinue": "続行",
     "wizardProbingBtn": "測定中…",

@@ -479,6 +479,8 @@
     "wizardProceed": "Continuer",
     "wizardAdjust": "Ajuster",
     "wizardAdjustAgain": "Réajuster",
+    "emergencyStopTitle": "Nivellement arrêté",
+    "emergencyStopMsg": "La procédure de nivellement a été arrêtée. Aucun offset n'a été appliqué.\n\nVous devez relancer le nivellement avant de pouvoir imprimer.",
     "wizardBeginAdjustment": "Commencer l'ajustement",
     "wizardContinue": "Poursuivre",
     "wizardProbingBtn": "Mesure…",

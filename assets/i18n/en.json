@@ -479,6 +479,8 @@
     "wizardProceed": "Proceed",
     "wizardAdjust": "Adjust",
     "wizardAdjustAgain": "Adjust Again",
+    "emergencyStopTitle": "Leveling Stopped",
+    "emergencyStopMsg": "The leveling procedure has been stopped. No offset was applied.\n\nYou need to re-attempt leveling before you can print.",
     "wizardBeginAdjustment": "Begin Adjustment",
     "wizardContinue": "Continue",
     "wizardProbingBtn": "Probing…",

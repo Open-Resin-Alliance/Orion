@@ -479,6 +479,8 @@
     "wizardProceed": "Weiter",
     "wizardAdjust": "Anpassen",
     "wizardAdjustAgain": "Erneut anpassen",
+    "emergencyStopTitle": "Nivellierung abgebrochen",
+    "emergencyStopMsg": "Das Nivellierungsverfahren wurde abgebrochen. Es wurde kein Offset angewendet.\n\nSie müssen die Nivellierung erneut durchführen, bevor Sie drucken können.",
     "wizardBeginAdjustment": "Anpassung beginnen",
     "wizardContinue": "Fortfahren",
     "wizardProbingBtn": "Messe…",

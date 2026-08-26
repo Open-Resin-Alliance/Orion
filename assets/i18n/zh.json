@@ -479,6 +479,8 @@
     "wizardProceed": "继续",
     "wizardAdjust": "调整",
     "wizardAdjustAgain": "再次调整",
+    "emergencyStopTitle": "调平已停止",
+    "emergencyStopMsg": "调平程序已停止。未应用偏移。\n\n打印前需要重新尝试调平。",
     "wizardBeginAdjustment": "开始调整",
     "wizardContinue": "继续",
     "wizardProbingBtn": "测量中…",
