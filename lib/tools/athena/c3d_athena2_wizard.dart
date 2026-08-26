@@ -4546,56 +4546,29 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                             ),
                             child: Stack(
                               children: [
-                                Align(
-                                  alignment: Alignment.topCenter,
-                                  child: Text(
-                                    FlutterI18n.translate(
-                                        context, 'leveling.wizardAdjustScrew'),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.2,
-                                      color: onSurface.withValues(alpha: 0.45),
-                                    ),
-                                  ),
-                                ),
                                 Positioned.fill(
                                   child: Center(
                                     child: Stack(
                                       alignment: Alignment.center,
                                       children: [
-                                        Positioned(
-                                          left: 0,
-                                          right: 0,
-                                          top: 13,
-                                          bottom: 24,
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 8),
                                           child: Center(
-                                            child: SizedBox(
-                                              width: 150,
-                                              height: 105,
-                                              child: AnimatedBuilder(
-                                                animation: _rotationController,
-                                                builder: (context, _) =>
-                                                    CustomPaint(
-                                                  size: const Size(150, 105),
-                                                  painter: _TrianglePainter(
-                                                    accent: accent,
-                                                    onSurface: onSurface,
-                                                    fillBack:
-                                                        widget.cornerIndex >= 2,
-                                                    fillFl:
-                                                        widget.cornerIndex == 0,
-                                                    fillFr:
-                                                        widget.cornerIndex == 1,
-                                                    pulse:
-                                                        _pulseController.value,
-                                                    rotationValue:
-                                                        _rotationController
-                                                            .value,
-                                                    rotationDirection:
-                                                        rotationDirection,
-                                                  ),
-                                                ),
+                                            child: AnimatedBuilder(
+                                              animation: Listenable.merge([
+                                                _pulseController,
+                                                _rotationController
+                                              ]),
+                                              builder: (context, _) =>
+                                                  _AdjustScrewPictogram(
+                                                cornerIndex: widget.cornerIndex,
+                                                accent: accent,
+                                                onSurface: onSurface,
+                                                pulse: _pulseController.value,
+                                                rotationValue:
+                                                    _rotationController.value,
+                                                rotationDirection:
+                                                    rotationDirection,
                                               ),
                                             ),
                                           ),
@@ -4987,6 +4960,218 @@ class _TrianglePainter extends CustomPainter {
       oldDelegate.rotationValue != rotationValue ||
       oldDelegate.rotationDirection != rotationDirection;
 }
+/// Pictogram for the adjust-X screen: reuses the Pro-Arm top-view SVG
+/// with the three screws at their real positions. Highlights the screw
+/// that the gauge wants the user to turn, with a pulsing dot and a
+/// continuously rotating direction arc.
+class _AdjustScrewPictogram extends StatelessWidget {
+  const _AdjustScrewPictogram({
+    required this.cornerIndex,
+    required this.accent,
+    required this.onSurface,
+    required this.rotationDirection,
+    required this.pulse,
+    required this.rotationValue,
+  });
+
+  final int cornerIndex;
+  final Color accent;
+  final Color onSurface;
+  final int rotationDirection;
+  final double pulse;
+  final double rotationValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final lineArt = onSurface.withValues(alpha: 0.35);
+    return SizedBox(
+      width: 254,
+      height: 192,
+      child: Stack(
+        children: [
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black, Colors.transparent],
+                stops: [0.78, 1.0],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.dstIn,
+            child: SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_pro_arm_solo_leveling_screws_top.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
+          ),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _AdjustScrewPictogramPainter(
+                accent: accent,
+                onSurface: onSurface,
+                screwIndex: cornerIndex == 0 ? 2 : cornerIndex == 1 ? 1 : 0,
+                pulse: pulse,
+                rotationValue: rotationValue,
+                rotationDirection: rotationDirection,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdjustScrewPictogramPainter extends CustomPainter {
+  _AdjustScrewPictogramPainter({
+    required this.accent,
+    required this.onSurface,
+    required this.screwIndex,
+    required this.pulse,
+    required this.rotationValue,
+    required this.rotationDirection,
+  });
+
+  final Color accent;
+  final Color onSurface;
+  final int screwIndex;
+  final double pulse;
+  final double rotationValue;
+  final int rotationDirection;
+
+  static const _screwFractions = [
+    Offset(0.499, 0.267), // 0 top / BACK
+    Offset(0.673, 0.665), // 1 FR / bottom-right
+    Offset(0.326, 0.665), // 2 FL / bottom-left
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (int i = 0; i < 3; i++) {
+      final pos = Offset(
+        _screwFractions[i].dx * size.width,
+        _screwFractions[i].dy * size.height,
+      );
+      final isActive = i == screwIndex;
+      if (isActive) {
+        canvas.drawCircle(
+          pos,
+          5.0,
+          Paint()
+            ..color = onSurface.withValues(alpha: 0.25)
+            ..style = PaintingStyle.fill,
+        );
+        canvas.drawCircle(
+          pos,
+          5.0,
+          Paint()
+            ..color = onSurface.withValues(alpha: 0.35)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2,
+        );
+        if (rotationDirection != 0) {
+          final shadowStroke = Paint()
+            ..color = Colors.black.withValues(alpha: 0.6)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4.5
+            ..strokeCap = StrokeCap.round
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+          final shadowFill = Paint()
+            ..color = Colors.black.withValues(alpha: 0.6)
+            ..style = PaintingStyle.fill
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+          final angle = rotationValue * 2 * pi * rotationDirection;
+          const sweep = 250 * pi / 180;
+          final arc = Path()
+            ..arcTo(Rect.fromCircle(center: pos, radius: 18),
+                angle, rotationDirection >= 0 ? sweep : -sweep, false);
+          _strokeDashed(canvas, arc, shadowStroke);
+          final arcStart = pos +
+              Offset(cos(angle) * 18, sin(angle) * 18);
+          final arcEnd = pos +
+              Offset(
+                  cos(angle + (rotationDirection >= 0 ? sweep : -sweep)) * 18,
+                  sin(angle + (rotationDirection >= 0 ? sweep : -sweep)) * 18);
+          final arcGradient = ui.Gradient.linear(
+              arcStart, arcEnd, const [Color(0xFFFF8C00), Color(0xFFE65100)]);
+          final arcPaint = Paint()
+            ..shader = arcGradient
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.2
+            ..strokeCap = StrokeCap.round;
+          _strokeDashed(canvas, arc, arcPaint);
+          final endAngle =
+              angle + (rotationDirection >= 0 ? sweep : -sweep);
+          final tip = pos +
+              Offset(cos(endAngle) * 18, sin(endAngle) * 18);
+          final direction = rotationDirection >= 0
+              ? Offset(-sin(endAngle), cos(endAngle))
+              : Offset(sin(endAngle), -cos(endAngle));
+          _drawArrowhead(canvas, tip, direction, shadowFill);
+          _drawArrowhead(
+              canvas,
+              tip,
+              direction,
+              Paint()
+
+                ..color = const Color(0xFFE65100)
+                ..style = PaintingStyle.fill);
+        }
+      } else {
+        canvas.drawCircle(
+          pos,
+          5.0,
+          Paint()
+            ..color = onSurface.withValues(alpha: 0.25)
+            ..style = PaintingStyle.fill,
+        );
+        canvas.drawCircle(
+          pos,
+          5.0,
+          Paint()
+            ..color = onSurface.withValues(alpha: 0.35)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2,
+        );
+      }
+    }
+  }
+  void _strokeDashed(Canvas canvas, Path path, Paint paint) {
+    for (final m in path.computeMetrics()) {
+      double pos = 0;
+      while (pos < m.length) {
+        canvas.drawPath(m.extractPath(pos, min(pos + 5, m.length)), paint);
+        pos += 9;
+      }
+    }
+  }
+
+  void _drawArrowhead(Canvas canvas, Offset at, Offset direction, Paint paint) {
+    final tip = at + direction * 9;
+    final perp = Offset(-direction.dy, direction.dx) * 6;
+    canvas.drawPath(
+      Path()
+        ..moveTo(tip.dx, tip.dy)
+        ..lineTo(at.dx + perp.dx, at.dy + perp.dy)
+        ..lineTo(at.dx - perp.dx, at.dy - perp.dy)
+        ..close(),
+      paint..style = PaintingStyle.fill,
+    );
+    paint.style = PaintingStyle.stroke;
+  }
+
+
+  @override
+  bool shouldRepaint(covariant _AdjustScrewPictogramPainter old) =>
+      old.accent != accent ||
+      old.onSurface != onSurface ||
+      old.screwIndex != screwIndex ||
+      old.pulse != pulse ||
+      old.rotationValue != rotationValue ||
+      old.rotationDirection != rotationDirection;
+}
+
 
 // ================================================================================================================================================================================================
 // Completion Pane (calibration-overlay style)
@@ -5001,6 +5186,7 @@ class _CompletionPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final variant = engine.variant;
     final theme = Theme.of(context);
+
 
     return Center(
       key: const ValueKey('complete'),
