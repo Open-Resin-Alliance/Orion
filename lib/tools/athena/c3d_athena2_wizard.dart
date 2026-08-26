@@ -2759,14 +2759,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final scale = min(
-                min((constraints.maxWidth - 24) / 400,
-                    (constraints.maxHeight - 16) / 350),
+                min((constraints.maxWidth - 24) / 395,
+                    (constraints.maxHeight - 16) / 411),
                 1.35,
               );
               return Center(
                 child: SizedBox(
-                  width: 400 * scale,
-                  height: 350 * scale,
+                  width: 395 * scale,
+                  height: 411 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyShortEndDiagram(),
@@ -3396,26 +3396,51 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    // Upper-half tactic like long-end top: tight 400x350 viewBox, regular bland, bottom fade.
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final lineArt = onSurface.withValues(alpha: 0.45);
+    // Same as long-end: base (bland, bottom fade) + hex (soft green, blend to Please text at top)
     return SizedBox(
-      width: 400,
-      height: 350,
-      child: ShaderMask(
-        shaderCallback: (Rect bounds) {
-          return const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.black, Colors.transparent],
-            stops: [0.78, 1.0],
-          ).createShader(bounds);
-        },
-        blendMode: BlendMode.dstIn,
-        child: SvgPicture.asset(
-          'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top.svg',
-          fit: BoxFit.contain,
-          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-        ),
+      width: 395,
+      height: 411,
+      child: Stack(
+        children: [
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black, Colors.transparent],
+                stops: [0.78, 1.0],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.dstIn,
+            child: SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer1.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
+          ),
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  onSurface.withValues(alpha: 0.72),
+                  onSurface.withValues(alpha: 0.72),
+                  Colors.transparent,
+                  Colors.transparent
+                ],
+                stops: const [0.0, 0.52, 0.82, 1.0],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.srcATop,
+            child: SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top_layer2.svg',
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
       ),
     );
   }
