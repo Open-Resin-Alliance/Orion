@@ -2494,7 +2494,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const _IsoMovementWarning(),
-          const SizedBox(height: 64),
+          const SizedBox(height: 32),
           Text(
             FlutterI18n.translate(context, 'leveling.wizardKeepHandsClear'),
             textAlign: TextAlign.center,
@@ -4037,7 +4037,7 @@ class _WorkflowPane extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const _IsoMovementWarning(),
-        const SizedBox(height: 64),
+        const SizedBox(height: 32),
         Text(
           FlutterI18n.translate(context, 'leveling.wizardKeepHandsClear'),
           textAlign: TextAlign.center,
