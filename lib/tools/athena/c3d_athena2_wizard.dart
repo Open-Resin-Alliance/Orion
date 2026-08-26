@@ -1569,7 +1569,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         Expanded(
           child: GlassButton(
             tint: GlassButtonTint.negative,
-            onPressed: _goBack,
+            onPressed: _cancelLeveling,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 65),
             ),
