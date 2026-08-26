@@ -28,7 +28,8 @@
     "checking": "检查中…",
     "error": "错误",
     "success": "成功",
-    "clear": "清除"
+    "clear": "清除",
+    "change": "更改"
   },
   "setup": {
     "section": "设置",
@@ -472,7 +473,7 @@
     "screenTypeWaveReleaseFilmDesc": "屏幕上的纹理离型薄膜。",
     "settings": "设置",
     "settingsTitle": "调平设置",
-    "settingsScreenTypeHint": "屏幕类型用于在调平过程中调整探测行为。",
+    "settingsScreenTypeHint": "已保存的屏幕将在下次运行时跳过选择。",
     "settingsZOffset": "Z 偏移",
     "settingsZOffsetHint": "上次调平过程中应用的偏移。",
     "settingsZOffsetDialogDesc": "调整相对于 LCD 的偏移。",
@@ -557,7 +558,14 @@
     "wizardSkipTitle": "跳过调整",
     "wizardSkipMsg": "偏差超过了0.100毫米的阈值。跳过调整可能导致打印平台调平不足。\n\n确定要不调整继续吗？",
     "wizardUnknownError": "未知错误",
-    "wizardZDeviation": "力 Δ"
+    "wizardZDeviation": "力 Δ",
+    "standardArm": "标准构建臂",
+    "notSet": "未设置",
+    "settingsArmTitle": "构建臂",
+    "settingsArmHint": "已保存的臂将在下次运行时跳过选择。",
+    "settingsScreenTypeTitle": "屏幕类型",
+    "settingsArmDialogTitle": "选择构建臂",
+    "settingsScreenTypeDialogTitle": "选择屏幕类型"
   },
   "levelingWorkflow": {
     "prepareTitle": "准备打印机",

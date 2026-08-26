@@ -28,7 +28,8 @@
     "checking": "Prüfe…",
     "error": "Fehler",
     "success": "Erfolg",
-    "clear": "Löschen"
+    "clear": "Löschen",
+    "change": "Ändern"
   },
   "setup": {
     "section": "Maschineneinstellungen",
@@ -472,7 +473,7 @@
     "screenTypeWaveReleaseFilmDesc": "Texturierte Release-Folie über dem Bildschirm.",
     "settings": "Einstellungen",
     "settingsTitle": "Nivellierungs-Einstellungen",
-    "settingsScreenTypeHint": "Der Bildschirmtyp wird von der Nivellierung verwendet, um das Prüfverhalten anzupassen.",
+    "settingsScreenTypeHint": "Gespeicherter Bildschirm wird beim nächsten Durchlauf übersprungen.",
     "settingsZOffset": "Z-Offset",
     "settingsZOffsetHint": "Der während der letzten Nivellierungssitzung angewandte Offset.",
     "settingsZOffsetDialogDesc": "Offset relativ zum LCD anpassen.",
@@ -557,7 +558,14 @@
     "wizardSkipTitle": "Anpassung überspringen",
     "wizardSkipMsg": "Die Abweichung liegt über dem Grenzwert von 0,100 mm. Das Überspringen der Anpassung kann zu einer unzureichend nivellierten Platte führen.\n\nMöchten Sie wirklich ohne Anpassung fortfahren?",
     "wizardUnknownError": "Unbekannter Fehler",
-    "wizardZDeviation": "KRAFT Δ"
+    "wizardZDeviation": "KRAFT Δ",
+    "standardArm": "Standard-Bauarm",
+    "notSet": "Nicht festgelegt",
+    "settingsArmTitle": "Bauarm",
+    "settingsArmHint": "Gespeicherter Arm wird beim nächsten Durchlauf übersprungen.",
+    "settingsScreenTypeTitle": "Bildschirmtyp",
+    "settingsArmDialogTitle": "Bauarm auswählen",
+    "settingsScreenTypeDialogTitle": "Bildschirmtyp auswählen"
   },
   "levelingWorkflow": {
     "prepareTitle": "Drucker vorbereiten",

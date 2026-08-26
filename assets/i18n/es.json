@@ -28,7 +28,8 @@
     "checking": "Comprobando…",
     "error": "Error",
     "success": "Ã‰xito",
-    "clear": "Limpiar"
+    "clear": "Limpiar",
+    "change": "Cambiar"
   },
   "setup": {
     "section": "Config. máquina",
@@ -472,7 +473,7 @@
     "screenTypeWaveReleaseFilmDesc": "Película de liberación texturizada sobre la pantalla.",
     "settings": "Configuración",
     "settingsTitle": "Configuración de nivelación",
-    "settingsScreenTypeHint": "El tipo de pantalla se usa en el nivelado para ajustar el comportamiento de la sonda.",
+    "settingsScreenTypeHint": "Pantalla guardada se omite en la próxima ejecución.",
     "settingsZOffset": "Desplazamiento Z",
     "settingsZOffsetHint": "El desplazamiento aplicado durante la última sesión de nivelación.",
     "settingsZOffsetDialogDesc": "Ajusta el desplazamiento respecto a la LCD.",
@@ -557,7 +558,14 @@
     "wizardSkipTitle": "Saltar ajuste",
     "wizardSkipMsg": "La desviación supera el umbral de 0,100 mm. Saltar el ajuste puede resultar en una placa mal nivelada.\n\n¿Está seguro de que desea continuar sin ajustar?",
     "wizardUnknownError": "Error desconocido",
-    "wizardZDeviation": "FUERZA Δ"
+    "wizardZDeviation": "FUERZA Δ",
+    "standardArm": "Brazo estándar",
+    "notSet": "No establecido",
+    "settingsArmTitle": "Brazo",
+    "settingsArmHint": "Brazo guardado se omite en la próxima ejecución.",
+    "settingsScreenTypeTitle": "Tipo de pantalla",
+    "settingsArmDialogTitle": "Seleccionar brazo",
+    "settingsScreenTypeDialogTitle": "Seleccionar tipo de pantalla"
   },
   "levelingWorkflow": {
     "prepareTitle": "Preparar impresora",

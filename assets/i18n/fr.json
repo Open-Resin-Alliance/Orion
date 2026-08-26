@@ -28,7 +28,8 @@
     "checking": "Vérification…",
     "error": "Erreur",
     "success": "Succès",
-    "clear": "Effacer"
+    "clear": "Effacer",
+    "change": "Modifier"
   },
   "setup": {
     "section": "Réglages machine",
@@ -472,7 +473,7 @@
     "screenTypeWaveReleaseFilmDesc": "Film de libération texturé sur l’écran.",
     "settings": "Paramètres",
     "settingsTitle": "Paramètres de nivellement",
-    "settingsScreenTypeHint": "Le type d’écran est utilisé par le nivellement pour ajuster le comportement de la sonde.",
+    "settingsScreenTypeHint": "Écran enregistré ignoré au prochain lancement.",
     "settingsZOffset": "Décalage Z",
     "settingsZOffsetHint": "Le décalage appliqué lors de la dernière séance de nivellement.",
     "settingsZOffsetDialogDesc": "Réglez le décalage par rapport à l'écran LCD.",
@@ -557,7 +558,14 @@
     "wizardSkipTitle": "Passer l'ajustement",
     "wizardSkipMsg": "L'écart dépasse le seuil de 0,100 mm. Passer l'ajustement peut entraîner un plateau mal nivelé.\n\nÊtes-vous sûr de vouloir continuer sans ajustement ?",
     "wizardUnknownError": "Erreur inconnue",
-    "wizardZDeviation": "FORCE Δ"
+    "wizardZDeviation": "FORCE Δ",
+    "standardArm": "Bras standard",
+    "notSet": "Non défini",
+    "settingsArmTitle": "Bras",
+    "settingsArmHint": "Bras enregistré ignoré au prochain lancement.",
+    "settingsScreenTypeTitle": "Type d'écran",
+    "settingsArmDialogTitle": "Sélectionner le bras",
+    "settingsScreenTypeDialogTitle": "Sélectionner le type d'écran"
   },
   "levelingWorkflow": {
     "prepareTitle": "Préparer l'imprimante",

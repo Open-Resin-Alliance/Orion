@@ -28,7 +28,8 @@
     "checking": "Controleren…",
     "error": "Fout",
     "success": "Succes",
-    "clear": "Wissen"
+    "clear": "Wissen",
+    "change": "Wijzigen"
   },
   "setup": {
     "section": "Machine-instellingen",
@@ -472,7 +473,7 @@
     "screenTypeWaveReleaseFilmDesc": "Getextureerde release-folie over het scherm.",
     "settings": "Instellingen",
     "settingsTitle": "Nivelleringsinstellingen",
-    "settingsScreenTypeHint": "Het schermtype wordt door de nivellering gebruikt om het proefgedrag aan te passen.",
+    "settingsScreenTypeHint": "Opgeslagen scherm wordt volgende keer overgeslagen.",
     "settingsZOffset": "Z-offset",
     "settingsZOffsetHint": "De offset die tijdens de laatste nivelleringssessie is toegepast.",
     "settingsZOffsetDialogDesc": "Past de offset aan ten opzichte van de LCD.",
@@ -557,7 +558,14 @@
     "wizardSkipTitle": "Aanpassing overslaan",
     "wizardSkipMsg": "De afwijking ligt boven de drempel van 0,100 mm. Het overslaan van de aanpassing kan leiden tot een onvoldoende genivelleerde plaat.\n\nWeet u zeker dat u zonder aanpassing verder wilt gaan?",
     "wizardUnknownError": "Onbekende fout",
-    "wizardZDeviation": "KRACHT Δ"
+    "wizardZDeviation": "KRACHT Δ",
+    "standardArm": "Standaard arm",
+    "notSet": "Niet ingesteld",
+    "settingsArmTitle": "Bouwarm",
+    "settingsArmHint": "Opgeslagen arm wordt volgende keer overgeslagen.",
+    "settingsScreenTypeTitle": "Schermtype",
+    "settingsArmDialogTitle": "Selecteer bouwarm",
+    "settingsScreenTypeDialogTitle": "Selecteer schermtype"
   },
   "levelingWorkflow": {
     "prepareTitle": "Printer voorbereiden",

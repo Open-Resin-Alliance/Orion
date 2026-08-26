@@ -736,6 +736,14 @@ class OrionConfig {
   void setScreenType(String id) =>
       setString('screenType', id, category: 'leveling');
 
+  /// The persisted leveling variant/arm id (e.g. `'pro'`, `'regular'`), or
+  /// empty when not configured.
+  String getLevelingVariant() => getString('variant', category: 'leveling');
+
+  /// Persist the leveling variant/arm id.
+  void setLevelingVariant(String id) =>
+      setString('variant', id, category: 'leveling');
+
   /// The Z offset applied by the last leveling session (mm), or null when
   /// not recorded.  Manual adjustments are stored separately as an override
   /// so the leveling-settings edit range stays anchored to this original.

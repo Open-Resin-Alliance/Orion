@@ -24,6 +24,7 @@ import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/tools/athena/leveling_configs.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
@@ -75,12 +76,17 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
         body: SafeArea(
           child: Padding(
             padding: OrionSpacing.screenPaddingWithBottomNav,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildZOffsetSection(context),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildZOffsetSection(context),
+                  const SizedBox(height: OrionSpacing.listGap),
+                  _buildArmSection(context),
+                  const SizedBox(height: OrionSpacing.listGap),
+                  _buildScreenTypeSection(context),
+                ],
+              ),
             ),
           ),
         ),
@@ -201,4 +207,228 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
     await statusProvider.refreshKinematicStatus();
     if (mounted) setState(() {});
   }
+
+  Widget _buildArmSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final variantId = OrionConfig().getLevelingVariant();
+    final label = variantId == 'pro'
+        ? FlutterI18n.translate(context, 'leveling.proArm')
+        : variantId == 'regular'
+            ? FlutterI18n.translate(context, 'leveling.standardArm')
+            : FlutterI18n.translate(context, 'leveling.notSet');
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: OrionSpacing.cardPadding,
+        child: Row(
+          children: [
+            PhosphorIcon(PhosphorIcons.wrench(), size: 28, color: primary),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.settingsArmTitle'),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: primary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.settingsArmHint'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.2,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GlassButton(
+              tint: GlassButtonTint.neutral,
+              onPressed: _changeArm,
+              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 48)),
+              child: Text(
+                FlutterI18n.translate(context, 'common.change'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScreenTypeSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final screenId = OrionConfig().getScreenType();
+    final screenType = LevelingScreenType.fromId(screenId.isNotEmpty ? screenId : null);
+    final label = screenType != null
+        ? FlutterI18n.translate(context, screenType.labelKey)
+        : FlutterI18n.translate(context, 'leveling.notSet');
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: OrionSpacing.cardPadding,
+        child: Row(
+          children: [
+            PhosphorIcon(PhosphorIcons.monitor(), size: 28, color: primary),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.settingsScreenTypeTitle'),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: primary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.settingsScreenTypeHint'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.2,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GlassButton(
+              tint: GlassButtonTint.neutral,
+              onPressed: _changeScreenType,
+              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 48)),
+              child: Text(
+                FlutterI18n.translate(context, 'common.change'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _changeArm() async {
+    final current = OrionConfig().getLevelingVariant();
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => GlassAlertDialog(
+        title: Text(
+          FlutterI18n.translate(context, 'leveling.settingsArmDialogTitle'),
+          style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.orangeAccent),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final v in const ['pro', 'regular'])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: GlassButton(
+                    tint: current == v ? GlassButtonTint.positive : GlassButtonTint.neutral,
+                    onPressed: () => Navigator.of(ctx).pop(v),
+                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55)),
+                    child: Text(
+                      v == 'pro'
+                          ? FlutterI18n.translate(context, 'leveling.proArm')
+                          : FlutterI18n.translate(context, 'leveling.standardArm'),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 55)),
+            child: Text(FlutterI18n.translate(context, 'common.cancel')),
+          ),
+        ],
+      ),
+    );
+    if (selected != null && selected != current) {
+      OrionConfig().setLevelingVariant(selected);
+      setState(() {});
+    }
+  }
+
+  Future<void> _changeScreenType() async {
+    final current = OrionConfig().getScreenType();
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => GlassAlertDialog(
+        title: Text(
+          FlutterI18n.translate(context, 'leveling.settingsScreenTypeDialogTitle'),
+          style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.orangeAccent),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final t in LevelingScreenType.values)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: GlassButton(
+                    tint: current == t.id ? GlassButtonTint.positive : GlassButtonTint.neutral,
+                    onPressed: () => Navigator.of(ctx).pop(t.id),
+                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55)),
+                    child: Text(
+                      FlutterI18n.translate(context, t.labelKey),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 55)),
+            child: Text(FlutterI18n.translate(context, 'common.cancel')),
+          ),
+        ],
+      ),
+    );
+    if (selected != null && selected != current) {
+      OrionConfig().setScreenType(selected);
+      setState(() {});
+    }
+  }
+
 }

@@ -277,6 +277,49 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _startRecheckMode();
       });
+    } else {
+      // If arm and screen were already chosen, skip those panes on
+      // subsequent runs — user can change them in Leveling Settings.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final savedVariantId = OrionConfig().getLevelingVariant();
+        if (savedVariantId.isEmpty) return;
+        LevelingVariant? savedVariant;
+        for (final v in widget.config.variants) {
+          if (v.id == savedVariantId) {
+            savedVariant = v;
+            break;
+          }
+        }
+        if (savedVariant == null) return;
+        _engine.selectVariant(savedVariant);
+        _resetCornerResults();
+        _alignDone = savedVariant.id == 'regular';
+        _levelingSessionId = _uuid4();
+        _recheckNumber = 0;
+        _probeConfigCaptured = false;
+        _screwControllers = _freshControllers();
+        _pendingCommand = null;
+        _lastAchievedForceGf = null;
+        _lastAdjustedCorner = null;
+        _loadScrewCalibration();
+        final savedScreenId = OrionConfig().getScreenType();
+        final savedScreen = LevelingScreenType.fromId(
+            savedScreenId.isNotEmpty ? savedScreenId : null);
+        if (savedScreen != null) {
+          _screenType = savedScreen;
+          _engine.setScreenType(savedScreen);
+          setState(() {
+            _phase = _WizardPhase.introAndChecklist;
+            _preFlightIndex = -1;
+          });
+        } else {
+          setState(() {
+            _phase = _WizardPhase.screenType;
+            _preFlightIndex = -1;
+          });
+        }
+      });
     }
   }
 
@@ -1360,6 +1403,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           config: widget.config,
           onVariantSelected: (variant) {
             _engine.selectVariant(variant);
+            OrionConfig().setLevelingVariant(variant.id);
             _resetCornerResults();
             // Standard arm is forcibly aligned — skip the align plate screen.
             _alignDone = variant.id == 'regular';

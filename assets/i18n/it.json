@@ -28,7 +28,8 @@
     "checking": "Controllo…",
     "error": "Errore",
     "success": "Successo",
-    "clear": "Cancella"
+    "clear": "Cancella",
+    "change": "Cambia"
   },
   "setup": {
     "section": "Impostazioni macchina",
@@ -472,7 +473,7 @@
     "screenTypeWaveReleaseFilmDesc": "Film di rilascio testurizzato sullo schermo.",
     "settings": "Impostazioni",
     "settingsTitle": "Impostazioni di livellamento",
-    "settingsScreenTypeHint": "Il tipo di schermo viene utilizzato dal livellamento per regolare il comportamento della sonda.",
+    "settingsScreenTypeHint": "Schermo salvato saltato alla prossima esecuzione.",
     "settingsZOffset": "Offset Z",
     "settingsZOffsetHint": "L’offset applicato durante l’ultima sessione di livellamento.",
     "settingsZOffsetDialogDesc": "Regola l’offset rispetto all’LCD.",
@@ -557,7 +558,14 @@
     "wizardSkipTitle": "Salta regolazione",
     "wizardSkipMsg": "La deviazione supera la soglia di 0,100 mm. Saltare la regolazione potrebbe causare un livellamento inadeguato della piastra.\n\nProcedere senza regolare?",
     "wizardUnknownError": "Errore sconosciuto",
-    "wizardZDeviation": "FORZA Δ"
+    "wizardZDeviation": "FORZA Δ",
+    "standardArm": "Braccio standard",
+    "notSet": "Non impostato",
+    "settingsArmTitle": "Braccio",
+    "settingsArmHint": "Braccio salvato saltato alla prossima esecuzione.",
+    "settingsScreenTypeTitle": "Tipo di schermo",
+    "settingsArmDialogTitle": "Seleziona braccio",
+    "settingsScreenTypeDialogTitle": "Seleziona tipo di schermo"
   },
   "levelingWorkflow": {
     "prepareTitle": "Prepara stampante",
