@@ -560,6 +560,7 @@
     "wizardUnknownError": "Onbekende fout",
     "wizardZDeviation": "KRACHT Δ",
     "standardArm": "Standaard arm",
+    "proArm": "Pro-arm",
     "notSet": "Niet ingesteld",
     "settingsArmTitle": "Bouwarm",
     "settingsArmHint": "Opgeslagen arm wordt volgende keer overgeslagen.",

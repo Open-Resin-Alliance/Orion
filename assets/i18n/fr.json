@@ -560,6 +560,7 @@
     "wizardUnknownError": "Erreur inconnue",
     "wizardZDeviation": "FORCE Δ",
     "standardArm": "Bras standard",
+    "proArm": "Bras Pro",
     "notSet": "Non défini",
     "settingsArmTitle": "Bras",
     "settingsArmHint": "Bras enregistré ignoré au prochain lancement.",

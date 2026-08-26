@@ -560,6 +560,7 @@
     "wizardSkipMsg": "The deviation is above the 0.100 mm threshold. Skipping adjustment may result in an inadequately leveled plate.\n\nAre you sure you want to proceed without adjusting?",
     "wizardUnknownError": "Unknown error",
     "standardArm": "Standard Build Arm",
+    "proArm": "Pro Build Arm",
     "notSet": "Not set",
     "settingsArmTitle": "Build Arm",
     "settingsArmHint": "Saved arm used to skip selection on next run.",

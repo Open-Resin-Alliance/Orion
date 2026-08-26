@@ -560,6 +560,7 @@
     "wizardUnknownError": "Errore sconosciuto",
     "wizardZDeviation": "FORZA Δ",
     "standardArm": "Braccio standard",
+    "proArm": "Braccio Pro",
     "notSet": "Non impostato",
     "settingsArmTitle": "Braccio",
     "settingsArmHint": "Braccio salvato saltato alla prossima esecuzione.",

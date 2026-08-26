@@ -560,6 +560,7 @@
     "wizardUnknownError": "不明なエラー",
     "wizardZDeviation": "力 Δ",
     "standardArm": "標準アーム",
+    "proArm": "Proアーム",
     "notSet": "未設定",
     "settingsArmTitle": "ビルドアーム",
     "settingsArmHint": "保存されたアームは次回スキップされます。",

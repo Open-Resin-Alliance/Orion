@@ -560,6 +560,7 @@
     "wizardUnknownError": "未知错误",
     "wizardZDeviation": "力 Δ",
     "standardArm": "标准构建臂",
+    "proArm": "Pro构建臂",
     "notSet": "未设置",
     "settingsArmTitle": "构建臂",
     "settingsArmHint": "已保存的臂将在下次运行时跳过选择。",

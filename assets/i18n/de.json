@@ -560,6 +560,7 @@
     "wizardUnknownError": "Unbekannter Fehler",
     "wizardZDeviation": "KRAFT Δ",
     "standardArm": "Standard-Bauarm",
+    "proArm": "Pro-Bauarm",
     "notSet": "Nicht festgelegt",
     "settingsArmTitle": "Bauarm",
     "settingsArmHint": "Gespeicherter Arm wird beim nächsten Durchlauf übersprungen.",
