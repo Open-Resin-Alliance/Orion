@@ -4659,7 +4659,7 @@ class _WorkflowPane extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            z != null ? '${(z - minZ).toStringAsFixed(2)} mm' : '--',
+            z != null ? '${(z - maxZ).toStringAsFixed(2)} mm' : '--',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
