@@ -3189,8 +3189,12 @@ class _ScrewSequencePainter extends CustomPainter {
       final arcEnd = a +
           Offset(cos(startAngle + sweep) * _rotationRadius,
               sin(startAngle + sweep) * _rotationRadius);
-      final arcGradient =
-          ui.Gradient.linear(arcStart, arcEnd, const [Color(0xFFFF8C00), Color(0xFFE65100)]);
+      final arcGradient = ui.Gradient.linear(
+          arcStart,
+          arcEnd,
+          clockwise
+              ? const [Color(0xFFFF8C00), Color(0xFFE65100)]
+              : const [Color(0xFF81C784), Color(0xFF2E7D32)]);
       final arcPaint = Paint()
         ..shader = arcGradient
         ..style = PaintingStyle.stroke
@@ -3210,7 +3214,7 @@ class _ScrewSequencePainter extends CustomPainter {
           arcTip,
           direction,
           Paint()
-            ..color = const Color(0xFFE65100)
+            ..color = clockwise ? const Color(0xFFE65100) : const Color(0xFF2E7D32)
             ..style = PaintingStyle.fill);
 
       // Teardrop number badge: circle pushed outward from the plate
@@ -4652,7 +4656,7 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                                         : '--',
                                                     textAlign: TextAlign.center,
                                                     style: TextStyle(
-                                                      fontSize: 38,
+                                                      fontSize: 49,
                                                       fontWeight:
                                                           FontWeight.w800,
                                                       fontFeatures: const [
@@ -5084,17 +5088,22 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
           final angle = rotationValue * 2 * pi * rotationDirection;
           const sweep = 250 * pi / 180;
           final arc = Path()
-            ..arcTo(Rect.fromCircle(center: pos, radius: 18),
+            ..arcTo(Rect.fromCircle(center: pos, radius: 23),
                 angle, rotationDirection >= 0 ? sweep : -sweep, false);
           _strokeDashed(canvas, arc, shadowStroke);
           final arcStart = pos +
-              Offset(cos(angle) * 18, sin(angle) * 18);
+              Offset(cos(angle) * 23, sin(angle) * 23);
           final arcEnd = pos +
               Offset(
-                  cos(angle + (rotationDirection >= 0 ? sweep : -sweep)) * 18,
-                  sin(angle + (rotationDirection >= 0 ? sweep : -sweep)) * 18);
+                  cos(angle + (rotationDirection >= 0 ? sweep : -sweep)) * 23,
+                  sin(angle + (rotationDirection >= 0 ? sweep : -sweep)) * 23);
+          final isTighten = rotationDirection >= 0;
           final arcGradient = ui.Gradient.linear(
-              arcStart, arcEnd, const [Color(0xFFFF8C00), Color(0xFFE65100)]);
+              arcStart,
+              arcEnd,
+              isTighten
+                  ? const [Color(0xFFFF8C00), Color(0xFFE65100)]
+                  : const [Color(0xFF81C784), Color(0xFF2E7D32)]);
           final arcPaint = Paint()
             ..shader = arcGradient
             ..style = PaintingStyle.stroke
@@ -5104,7 +5113,7 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
           final endAngle =
               angle + (rotationDirection >= 0 ? sweep : -sweep);
           final tip = pos +
-              Offset(cos(endAngle) * 18, sin(endAngle) * 18);
+              Offset(cos(endAngle) * 23, sin(endAngle) * 23);
           final direction = rotationDirection >= 0
               ? Offset(-sin(endAngle), cos(endAngle))
               : Offset(sin(endAngle), -cos(endAngle));
@@ -5114,8 +5123,9 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
               tip,
               direction,
               Paint()
-
-                ..color = const Color(0xFFE65100)
+                ..color = isTighten
+                    ? const Color(0xFFE65100)
+                    : const Color(0xFF2E7D32)
                 ..style = PaintingStyle.fill);
         }
       } else {
