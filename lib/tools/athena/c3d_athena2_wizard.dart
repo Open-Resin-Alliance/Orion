@@ -4870,9 +4870,11 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
         : liveNeedsLoosen
             ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
             : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
-    final bool anyDirection = liveNeedsTighten || liveNeedsLoosen;
-    final accent =
-        anyDirection ? const Color(0xFFFFC16D) : const Color(0xFF57F0A4);
+    final accent = liveNeedsLoosen
+        ? const Color(0xFFFF6B6B)
+        : liveNeedsTighten
+            ? const Color(0xFFFFC16D)
+            : const Color(0xFF57F0A4);
     // Rotation direction: -1 = CCW (loosen), 1 = CW (tighten), 0 = at target
     final rotationDirection = liveNeedsTighten
         ? 1
