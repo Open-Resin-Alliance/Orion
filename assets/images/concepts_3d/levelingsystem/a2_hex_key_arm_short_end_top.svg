@@ -1,15 +1,17 @@
-<svg
-   width="400"
-   height="350"
-   viewBox="550 750 400 350"
-   version="1.1"
-   id="svg5"
-   xml:space="preserve"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
 
+<svg
+   version="1.1"
+   id="svg1"
+   width="265"
+   height="185"
+   viewBox="660 237 265 185"
+   sodipodi:docname="upload_4ybbhx7fbdcz3c56hxz4agmvd5.pdf"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
   <defs
      id="defs1" />
   <sodipodi:namedview
@@ -26,7 +28,7 @@
        y="0"
        inkscape:label="1"
        id="page1"
-       width="1588"
+       width="265"
        height="1122.6667"
        margin="0"
        bleed="0" />
@@ -3696,5 +3698,4 @@
        style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
        transform="matrix(0.16,0,0,-0.16,0,1122.6667)" />
   </g>
-
 </svg>
