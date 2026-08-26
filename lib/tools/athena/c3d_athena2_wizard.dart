@@ -3240,7 +3240,8 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
         child: SvgPicture.asset(
           'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
           fit: BoxFit.contain,
-          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+          // ignore: deprecated_member_use
+          color: lineArt,
         ),
       ),
     );
