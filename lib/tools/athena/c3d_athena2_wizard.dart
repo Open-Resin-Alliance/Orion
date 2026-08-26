@@ -933,9 +933,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     _adjustmentBusy = false;
     if (puckAlreadyPlaced) {
-      _adjustmentStep = _AdjustmentStep.probing;
+      _adjustmentStep = _AdjustmentStep.hexShortEnd;
       if (mounted) setState(() {});
-      _runAdjustmentProbe();
       return;
     }
     _adjustmentStep = _AdjustmentStep.puckPlacement;
@@ -2371,7 +2370,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           child: GlassButton(
             tint: GlassButtonTint.positive,
             onPressed: () {
-              setState(() => _adjustmentStep = _AdjustmentStep.hexShortEnd);
+              setState(() => _adjustmentStep = _AdjustmentStep.preparing);
+              _runAdjustmentPrepare();
             },
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 65),
@@ -2423,8 +2423,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             child: GlassButton(
               tint: GlassButtonTint.positive,
               onPressed: () {
-                setState(() => _adjustmentStep = _AdjustmentStep.preparing);
-                _runAdjustmentPrepare();
+                setState(() => _adjustmentStep = _AdjustmentStep.probing);
+                _runAdjustmentProbe();
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
@@ -2476,7 +2476,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           Expanded(
             child: GlassButton(
               tint: GlassButtonTint.positive,
-              onPressed: _runAdjustmentProbe,
+              onPressed: () => setState(() => _adjustmentStep = _AdjustmentStep.hexShortEnd),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
               ),
@@ -3396,7 +3396,8 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Upper-half tactic like long-end top, bottom fade-off regular, no green blend.
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    // Upper-half tactic: clip original short_end.svg to its top half, regular bland lineArt, bottom fade.
     return SizedBox(
       width: 395,
       height: 411,
@@ -3410,10 +3411,16 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
           ).createShader(bounds);
         },
         blendMode: BlendMode.dstIn,
-        child: SvgPicture.asset(
-          'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top.svg',
-          fit: BoxFit.contain,
-          colorFilter: ColorFilter.mode(Color(0xFF69F0AE), BlendMode.srcIn),
+        child: ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: 0.5,
+            child: SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
+          ),
         ),
       ),
     );
