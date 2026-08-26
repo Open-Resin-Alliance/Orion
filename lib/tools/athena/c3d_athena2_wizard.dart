@@ -2759,14 +2759,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final scale = min(
-                min((constraints.maxWidth - 24) / 395,
-                    (constraints.maxHeight - 16) / 411),
+                min((constraints.maxWidth - 24) / 400,
+                    (constraints.maxHeight - 16) / 350),
                 1.35,
               );
               return Center(
                 child: SizedBox(
-                  width: 395 * scale,
-                  height: 411 * scale,
+                  width: 400 * scale,
+                  height: 350 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyShortEndDiagram(),
@@ -3397,10 +3397,10 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    // Upper-half tactic: clip original short_end.svg to its top half, regular bland lineArt, bottom fade.
+    // Upper-half tactic like long-end top: tight 400x350 viewBox, regular bland, bottom fade.
     return SizedBox(
-      width: 395,
-      height: 411,
+      width: 400,
+      height: 350,
       child: ShaderMask(
         shaderCallback: (Rect bounds) {
           return const LinearGradient(
@@ -3411,16 +3411,10 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
           ).createShader(bounds);
         },
         blendMode: BlendMode.dstIn,
-        child: ClipRect(
-          child: Align(
-            alignment: Alignment.topCenter,
-            heightFactor: 0.5,
-            child: SvgPicture.asset(
-              'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end.svg',
-              fit: BoxFit.contain,
-              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-            ),
-          ),
+        child: SvgPicture.asset(
+          'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top.svg',
+          fit: BoxFit.contain,
+          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
         ),
       ),
     );
