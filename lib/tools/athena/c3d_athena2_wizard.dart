@@ -4613,9 +4613,9 @@ class _WorkflowPane extends StatelessWidget {
   ) {
     final isLowest = validZ.isNotEmpty && z == minZ;
     final isHighest = validZ.isNotEmpty && z == maxZ;
-    final dotColor = isLowest
+    final dotColor = isHighest
         ? Colors.greenAccent
-        : isHighest
+        : isLowest
             ? Colors.orangeAccent
             : theme.colorScheme.primary;
 
