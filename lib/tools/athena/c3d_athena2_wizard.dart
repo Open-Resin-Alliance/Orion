@@ -3223,34 +3223,75 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.32);
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     return SizedBox(
       width: 786,
       height: 280,
-      child: ShaderMask(
-        shaderCallback: (Rect bounds) {
-          return const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black],
-            stops: [0.0, 0.22],
-          ).createShader(bounds);
-        },
-        blendMode: BlendMode.dstIn,
-        child: Transform(
-          alignment: Alignment.center,
-          transform: Matrix4.identity()
-            ..scale(-1.0, 1.0, 1.0)
-            ..rotateZ(60 * 3.141592653589793 / 180),
-          child: SvgPicture.asset(
-            'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
-            fit: BoxFit.contain,
-            colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-          ),
+      child: CustomPaint(
+        painter: _HexKeyLongEndPainter(
+          lineColor: lineArt,
+          circleColor: Colors.redAccent,
         ),
       ),
     );
   }
+}
+
+class _HexKeyLongEndPainter extends CustomPainter {
+  _HexKeyLongEndPainter({required this.lineColor, required this.circleColor});
+  final Color lineColor;
+  final Color circleColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.5;
+    // Slight tilt -12deg to match other pictograms
+    const tilt = -12 * 3.141592653589793 / 180;
+    canvas.save();
+    canvas.translate(cx, cy);
+    canvas.rotate(tilt);
+
+    // Hex key on its side: long arm horizontal, short arm up at left
+    // Long arm length ~ 56% of width, thickness ~ 10, ball end on right
+    final longLen = size.width * 0.52;
+    final shortLen = size.height * 0.42;
+    final thickness = 10.0;
+    final ballRadius = 7.0;
+
+    final paint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = thickness
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()
+      ..moveTo(-longLen * 0.55, 0)
+      ..lineTo(longLen * 0.38, 0)
+      ..lineTo(longLen * 0.38, -shortLen);
+
+    canvas.drawPath(path, paint);
+
+    // Ball end at long tip (right)
+    final ballPaint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(longLen * 0.38 + ballRadius * 0.3, 0), ballRadius, ballPaint);
+
+    // Red circle around the long-end ball-end
+    final circlePaint = Paint()
+      ..color = circleColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2;
+    canvas.drawCircle(Offset(longLen * 0.38 + ballRadius * 0.3, 0), 22, circlePaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _HexKeyLongEndPainter old) =>
+      old.lineColor != lineColor || old.circleColor != circleColor;
 }
 
 class _ScrewSequenceDiagram extends StatelessWidget {
