@@ -3244,11 +3244,11 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
             ),
           ),
           Positioned(
-            right: 72,
-            top: 98,
+            left: 132,
+            bottom: 72,
             child: Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.transparent,
