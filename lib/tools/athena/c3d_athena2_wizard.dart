@@ -3223,138 +3223,61 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7);
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     return SizedBox(
-      width: 786,
-      height: 280,
-      child: CustomPaint(
-        painter: _HexKeyLongEndPainter(
-          lineColor: lineArt,
-          circleColor: Colors.redAccent,
-        ),
+      width: 395,
+      height: 274,
+      child: Stack(
+        children: [
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black, Colors.transparent],
+                stops: [0.78, 1.0],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.dstIn,
+            child: SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
+          ),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _HexKeyLongEndCirclePainter(
+                circleColor: Colors.redAccent,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _HexKeyLongEndPainter extends CustomPainter {
-  _HexKeyLongEndPainter({required this.lineColor, required this.circleColor});
-  final Color lineColor;
+class _HexKeyLongEndCirclePainter extends CustomPainter {
+  _HexKeyLongEndCirclePainter({required this.circleColor});
   final Color circleColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cx = size.width * 0.5;
-    final cy = size.height * 0.54;
-    const tilt = -10 * 3.141592653589793 / 180;
-    canvas.save();
-    canvas.translate(cx, cy);
-    canvas.rotate(tilt);
-
-    final u = size.width;
-    final T = u * 0.025; // bar thickness
-    final longTipX = -u * 0.40; // long arm tip (left) = ball end
-    final bendX = u * 0.26; // L bend, right of centre
-    final shortTipY = -size.height * 0.40; // short arm points up
-    final rBar = T * 0.62; // ball / hex end radius
-
-    // --- bar body (rounded L) ---
-    final barPaint = Paint()
-      ..color = lineColor
+    // Top 1/3 viewBox is tightly cropped around the long-end tip.
+    // Centre the highlight ellipse on the ball-end.
+    final center = Offset(size.width * 0.50, size.height * 0.52);
+    final r = size.width * 0.085;
+    final paint = Paint()
+      ..color = circleColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = T
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(
-      Path()
-        ..moveTo(longTipX, 0)
-        ..lineTo(bendX, 0)
-        ..lineTo(bendX, shortTipY),
-      barPaint,
-    );
-
-    // top-edge highlight for a cylindrical, metallic read
-    final hlPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.28)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = T * 0.28
-      ..strokeCap = StrokeCap.round;
-    canvas.drawPath(
-      Path()
-        ..moveTo(longTipX + rBar, -T * 0.34)
-        ..lineTo(bendX - T * 0.34, -T * 0.34)
-        ..lineTo(bendX - T * 0.34, shortTipY + rBar),
-      hlPaint,
-    );
-
-    // --- short arm hex end (cross-section facing up) ---
-    final hexPath = Path();
-    for (int i = 0; i < 6; i++) {
-      final a = (-90 + i * 60) * 3.141592653589793 / 180;
-      final px = bendX + rBar * 1.05 * cos(a);
-      final py = shortTipY + rBar * 1.05 * sin(a);
-      if (i == 0) {
-        hexPath.moveTo(px, py);
-      } else {
-        hexPath.lineTo(px, py);
-      }
-    }
-    hexPath.close();
-    canvas.drawPath(
-      hexPath,
-      Paint()
-        ..color = lineColor
-        ..style = PaintingStyle.fill,
-    );
-    // inner hex hole hint
-    final inner = Path();
-    for (int i = 0; i < 6; i++) {
-      final a = (-90 + i * 60) * 3.141592653589793 / 180;
-      final px = bendX + rBar * 0.5 * cos(a);
-      final py = shortTipY + rBar * 0.5 * sin(a);
-      if (i == 0) {
-        inner.moveTo(px, py);
-      } else {
-        inner.lineTo(px, py);
-      }
-    }
-    inner.close();
-    canvas.drawPath(
-      inner,
-      Paint()..color = Colors.white.withValues(alpha: 0.18),
-    );
-
-    // --- long arm ball end (sphere) ---
-    final ballCenter = Offset(longTipX, 0);
-    final ballPaint = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.35, -0.35),
-        radius: 1.0,
-        colors: [
-          Colors.white.withValues(alpha: 0.55),
-          lineColor,
-          lineColor.withValues(alpha: 0.7),
-        ],
-        stops: const [0.0, 0.45, 1.0],
-      ).createShader(Rect.fromCircle(center: ballCenter, radius: rBar));
-    canvas.drawCircle(ballCenter, rBar, ballPaint);
-
-    // --- red ring around the long-end ball ---
-    canvas.drawCircle(
-      ballCenter,
-      rBar + T * 0.7,
-      Paint()
-        ..color = circleColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.4,
-    );
-
-    canvas.restore();
+      ..strokeWidth = 3.2;
+    canvas.drawCircle(center, r, paint);
   }
 
   @override
-  bool shouldRepaint(covariant _HexKeyLongEndPainter old) =>
-      old.lineColor != lineColor || old.circleColor != circleColor;
+  bool shouldRepaint(covariant _HexKeyLongEndCirclePainter old) =>
+      old.circleColor != circleColor;
 }
 
 class _ScrewSequenceDiagram extends StatelessWidget {
@@ -4489,14 +4412,14 @@ class _WorkflowPane extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final scale = min(
-                min((constraints.maxWidth - 24) / 786,
-                    (constraints.maxHeight - 16) / 280),
+                min((constraints.maxWidth - 24) / 395,
+                    (constraints.maxHeight - 16) / 274),
                 1.35,
               );
               return Center(
                 child: SizedBox(
-                  width: 786 * scale,
-                  height: 280 * scale,
+                  width: 395 * scale,
+                  height: 274 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),
