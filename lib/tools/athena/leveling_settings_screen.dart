@@ -153,7 +153,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                 minimumSize: const Size(110, 55),
               ),
               child: Text(
-                FlutterI18n.translate(context, 'common.edit'),
+                FlutterI18n.translate(context, 'common.change'),
                 style: const TextStyle(
                     fontSize: 18, fontWeight: FontWeight.w600),
               ),
