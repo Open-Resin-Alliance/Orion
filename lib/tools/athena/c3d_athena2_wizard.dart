@@ -3225,10 +3225,11 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
   Widget build(BuildContext context) {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     // Single hex key front view — flipped horizontally and rotated 60° CW.
-    // Red circle highlights the long end tip.
+    // Tight viewBox -20 432 1044x711 fills the stage. Red circle around
+    // the long end tip (no exclamation).
     return SizedBox(
-      width: 600,
-      height: 600,
+      width: 1044,
+      height: 711,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -3244,26 +3245,15 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: 132,
-            bottom: 72,
+            left: 148,
+            bottom: 88,
             child: Container(
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.transparent,
                 border: Border.all(color: Colors.redAccent, width: 3),
-              ),
-              child: const Center(
-                child: Text(
-                  '!',
-                  style: TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                  ),
-                ),
               ),
             ),
           ),
