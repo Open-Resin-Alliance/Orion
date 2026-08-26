@@ -3223,22 +3223,30 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.68);
-    // Single hex key front view — flipped horizontally and rotated 60° CW.
-    // Scaled 2.8x to fill the stage like loosen/tighten diagrams.
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.32);
     return SizedBox(
-      width: 600,
-      height: 600,
-      child: Transform(
-        alignment: Alignment.center,
-        transform: Matrix4.identity()
-          ..scale(-1.0, 1.0, 1.0)
-          ..rotateZ(60 * 3.141592653589793 / 180)
-          ..scale(2.8, 2.8, 1.0),
-        child: SvgPicture.asset(
-          'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
-          fit: BoxFit.contain,
-          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+      width: 786,
+      height: 280,
+      child: ShaderMask(
+        shaderCallback: (Rect bounds) {
+          return const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.transparent, Colors.black],
+            stops: [0.0, 0.22],
+          ).createShader(bounds);
+        },
+        blendMode: BlendMode.dstIn,
+        child: Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..scale(-1.0, 1.0, 1.0)
+            ..rotateZ(60 * 3.141592653589793 / 180),
+          child: SvgPicture.asset(
+            'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
+            fit: BoxFit.contain,
+            colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+          ),
         ),
       ),
     );
@@ -4377,14 +4385,14 @@ class _WorkflowPane extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final scale = min(
-                min((constraints.maxWidth - 24) / 320,
-                    (constraints.maxHeight - 16) / 320),
-                2.8,
+                min((constraints.maxWidth - 24) / 786,
+                    (constraints.maxHeight - 16) / 280),
+                1.35,
               );
               return Center(
                 child: SizedBox(
-                  width: 320 * scale,
-                  height: 320 * scale,
+                  width: 786 * scale,
+                  height: 280 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),
