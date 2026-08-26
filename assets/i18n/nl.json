@@ -428,7 +428,7 @@
     "assisted": "Begeleid waterpas stellen",
     "assistedDesc": "Begeleid waterpas stellen met automatische Z-offset.",
     "comingSoon": "Binnenkort!",
-    "verify": "Nivellering opnieuw controleren",
+    "verify": "Nivellering verifiëren",
     "verifyDesc": "Beschikbaar na een succesvolle nivelleringssessie.",
     "verifyNoData": "Geen nivelleringsgegevens gevonden",
     "verifyNoDataHint": "Voltooi eerst een geleide nivelleringssessie.",

@@ -428,7 +428,7 @@
     "assisted": "Assisted Leveling",
     "assistedDesc": "Guided leveling with automatic Z offset.",
     "comingSoon": "Coming Soon!",
-    "verify": "Re-Check Leveling",
+    "verify": "Verify Leveling",
     "verifyDesc": "Available after a successful leveling session.",
     "verifyNoData": "No leveling data found",
     "verifyNoDataHint": "Complete an assisted leveling session first.",

@@ -428,7 +428,7 @@
     "assisted": "Assistierte Nivellierung",
     "assistedDesc": "Geführte Nivellierung mit automatischem Z-Offset.",
     "comingSoon": "Demnächst!",
-    "verify": "Nivellierung erneut prüfen",
+    "verify": "Nivellierung prüfen",
     "verifyDesc": "Verfügbar nach einer erfolgreichen Nivellierungssitzung.",
     "verifyNoData": "Keine Nivellierungsdaten gefunden",
     "verifyNoDataHint": "Führen Sie zuerst eine geführte Nivellierung durch.",

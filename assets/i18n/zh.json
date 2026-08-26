@@ -428,7 +428,7 @@
     "assisted": "辅助调平",
     "assistedDesc": "引导式调平，自动设置 Z 偏移。",
     "comingSoon": "即将推出！",
-    "verify": "重新检查调平",
+    "verify": "验证调平",
     "verifyDesc": "成功调平后可用。",
     "verifyNoData": "未找到调平数据",
     "verifyNoDataHint": "请先完成辅助调平。",

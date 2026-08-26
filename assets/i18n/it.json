@@ -428,7 +428,7 @@
     "assisted": "Livellamento assistito",
     "assistedDesc": "Livellamento guidato con offset Z automatico.",
     "comingSoon": "Prossimamente!",
-    "verify": "Riverifica livellamento",
+    "verify": "Verifica livellamento",
     "verifyDesc": "Disponibile dopo una sessione di livellamento riuscita.",
     "verifyNoData": "Nessun dato di livellamento trovato",
     "verifyNoDataHint": "Completa prima una sessione di livellamento assistito.",
