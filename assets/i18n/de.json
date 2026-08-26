@@ -461,6 +461,7 @@
     "introMessage": "Dieser Assistent führt Sie durch den Nivellierungsprozess.",
     "introDetail": "Der Drucker fährt in die Ausgangsposition. Bitte stellen Sie sicher, dass der Bewegungsweg frei ist.",
     "startLeveling": "Nivellierung starten",
+    "startFineTuning": "Feineinstellung starten",
     "starting": "Starte...",
     "guideProgress": "Nivellierungsanleitung ({step}/{total})",
     "selectBuildArm": "Bauarm auswählen",

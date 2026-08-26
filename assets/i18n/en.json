@@ -461,6 +461,7 @@
     "introMessage": "This wizard will guide you through automated force-sensor leveling.",
     "introDetail": "The printer will clear the current Z offset, move the Z axis, probe the screen and corner positions, then save the final Z offset. Keep the resin vat removed and the motion path clear.",
     "startLeveling": "Start Leveling",
+    "startFineTuning": "Start Fine-Tuning",
     "starting": "Starting...",
     "guideProgress": "Leveling Guide ({step}/{total})",
     "selectBuildArm": "Select Build Arm",

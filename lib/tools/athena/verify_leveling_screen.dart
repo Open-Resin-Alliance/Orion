@@ -212,6 +212,9 @@ _ParsedSession? _parseLastPassedSession() {
 /// Whether at least one session in the leveling log has passed — i.e. the
 /// user has successfully leveled at some point and has results to verify.
 bool hasPassedLevelingSession() {
+  // If the printer was marked unleveled (cancel/emergency stop), treat
+  // verification as invalid even though the log still contains history.
+  if (!OrionConfig().isLeveled()) return false;
   final candidates = <String>[
     LevelingLogService.logFilePath,
     'orion_level.log',
@@ -312,7 +315,7 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
         body: SafeArea(
           child: Padding(
             padding: OrionSpacing.screenPaddingWithBottomNav,
-            child: session != null
+            child: session != null && OrionConfig().isLeveled()
                 ? _buildSessionView(context, session, primary)
                 : _buildNoDataView(context, primary),
           ),

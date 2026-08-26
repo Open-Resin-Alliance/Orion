@@ -461,6 +461,7 @@
     "introMessage": "このウィザードがレベリングプロセスを案内します。",
     "introDetail": "プリンターがホームポジションに移動します。動作経路が安全であることを確認してください。",
     "startLeveling": "レベリング開始",
+    "startFineTuning": "微調整を開始",
     "starting": "起動中...",
     "guideProgress": "レベリングガイド ({step}/{total})",
     "selectBuildArm": "ビルドアーム選択",

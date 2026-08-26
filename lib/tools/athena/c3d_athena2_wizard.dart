@@ -1175,6 +1175,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       final status = Provider.of<StatusProvider>(context, listen: false);
       status.clearHomedStatus();
       await status.refreshKinematicStatus();
+      OrionConfig().setLeveled(false);
       if (!mounted) return;
       // Explain that the procedure was aborted with no offset applied.
       await showDialog<void>(
@@ -2173,6 +2174,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     );
 
     if (confirmed == true && mounted) {
+      OrionConfig().setLeveled(false);
       // Move to top before cancelling so the arm is in a safe position
       Provider.of<ManualProvider>(context, listen: false)
           .moveToTop()
@@ -2272,7 +2274,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                 Icon(PhosphorIcons.arrowRight(), size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  FlutterI18n.translate(context, 'leveling.startLeveling'),
+                  FlutterI18n.translate(context, 'leveling.startFineTuning'),
                   style: const TextStyle(
                       fontSize: 21, fontWeight: FontWeight.w700),
                 ),

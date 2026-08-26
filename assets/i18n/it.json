@@ -461,6 +461,7 @@
     "introMessage": "Questa procedura guidata ti accompagnerà nel livellamento.",
     "introDetail": "La stampante si sposterà verso la posizione di home. Assicurati che il percorso sia libero.",
     "startLeveling": "Avvia livellamento",
+    "startFineTuning": "Avvia regolazione fine",
     "starting": "Avvio...",
     "guideProgress": "Guida livellamento ({step}/{total})",
     "selectBuildArm": "Seleziona braccio",

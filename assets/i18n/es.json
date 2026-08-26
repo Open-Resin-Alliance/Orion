@@ -461,6 +461,7 @@
     "introMessage": "Este asistente le guiará en el proceso de nivelación.",
     "introDetail": "La impresora se moverá a la posición de inicio. Asegúrese de que la ruta esté despejada.",
     "startLeveling": "Iniciar nivelación",
+    "startFineTuning": "Iniciar ajuste fino",
     "starting": "Iniciando...",
     "guideProgress": "Guía de nivelación ({step}/{total})",
     "selectBuildArm": "Seleccionar brazo",

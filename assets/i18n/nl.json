@@ -461,6 +461,7 @@
     "introMessage": "Deze wizard leidt u door het waterpas stellen.",
     "introDetail": "De printer gaat naar de startpositie. Zorg dat het bewegingstraject vrij is.",
     "startLeveling": "Waterpas stellen starten",
+    "startFineTuning": "Fijnafstelling starten",
     "starting": "Starten...",
     "guideProgress": "Waterpas gids ({step}/{total})",
     "selectBuildArm": "Bouward selecteren",

@@ -461,6 +461,7 @@
     "introMessage": "Cet assistant vous guidera dans le processus de nivellement.",
     "introDetail": "L'imprimante va se déplacer vers la position d'origine. Assurez-vous que la trajectoire est dégagée.",
     "startLeveling": "Démarrer le nivellement",
+    "startFineTuning": "Démarrer le réglage fin",
     "starting": "Démarrage...",
     "guideProgress": "Guide de nivellement ({step}/{total})",
     "selectBuildArm": "Sélectionner le bras",

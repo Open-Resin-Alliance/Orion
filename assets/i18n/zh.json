@@ -461,6 +461,7 @@
     "introMessage": "此向导将引导您完成调平过程。",
     "introDetail": "打印机将移动到归位位置。请确保运动路径畅通。",
     "startLeveling": "开始调平",
+    "startFineTuning": "开始微调",
     "starting": "启动中...",
     "guideProgress": "调平指南 ({step}/{total})",
     "selectBuildArm": "选择构建臂",
