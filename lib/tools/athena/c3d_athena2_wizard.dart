@@ -3038,31 +3038,44 @@ class _VariantAsset extends StatelessWidget {
 class _ScrewSequenceDiagram extends StatelessWidget {
   const _ScrewSequenceDiagram();
 
-  /// Screw centres as fractions of the 254×230 SVG viewBox, in
-  /// loosening order: 1 top-centre, 2 bottom-right, 3 bottom-left.
+  /// Screw centres as fractions of the 254×192 SVG viewBox (top 5/6
+  /// crop), in loosening order: 1 top-centre, 2 bottom-right, 3
+  /// bottom-left.
   static const _screwFractions = [
-    Offset(0.499, 0.223),
-    Offset(0.673, 0.555),
-    Offset(0.326, 0.555),
+    Offset(0.499, 0.267),
+    Offset(0.673, 0.665),
+    Offset(0.326, 0.665),
   ];
 
   @override
   Widget build(BuildContext context) {
     // Line art is dimmed so the sequence arrows and number badges
-    // (full primary) read as the foreground layer.
+    // (full primary) read as the foreground layer. Fade at the bottom
+    // softens the hard crop of the top 3/4 view.
     final lineArt =
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     final primary = Theme.of(context).colorScheme.primary;
     return SizedBox(
       width: 254,
-      height: 230,
+      height: 192,
       child: Stack(
         children: [
-          SvgPicture.asset(
-            'assets/images/concepts_3d/levelingsystem/'
-            'a2_pro_arm_solo_leveling_screws.svg',
-            fit: BoxFit.contain,
-            colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+          ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black, Colors.transparent],
+                stops: [0.78, 1.0],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.dstIn,
+            child: SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/'
+              'a2_pro_arm_solo_leveling_screws_top.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
           ),
           Positioned.fill(
             child: CustomPaint(
@@ -3582,25 +3595,25 @@ class _WorkflowPane extends StatelessWidget {
             child: Column(
               children: [
                 title,
-                const SizedBox(height: OrionSpacing.listGap),
+                const SizedBox(height: OrionSpacing.compactListGap),
                 instruction,
               ],
             ),
           ),
           // FittedBox under loose constraints would render at the
-          // diagram's natural 254×230 size, so compute the scale here
+          // diagram's natural 254×192 size, so compute the scale here
           // and hand it a tight box instead. Capped for a slight bump.
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final scale = min(
                   (constraints.maxWidth - 24) / 254,
-                  (constraints.maxHeight - 16) / 230,
+                  (constraints.maxHeight - 16) / 192,
                 ).clamp(1.0, 1.35);
                 return Center(
                   child: SizedBox(
                     width: 254 * scale,
-                    height: 230 * scale,
+                    height: 192 * scale,
                     child: const FittedBox(
                       fit: BoxFit.contain,
                       child: _ScrewSequenceDiagram(),
@@ -3731,7 +3744,7 @@ class _WorkflowPane extends StatelessWidget {
           child: Column(
             children: [
               title,
-              const SizedBox(height: OrionSpacing.listGap),
+              const SizedBox(height: OrionSpacing.compactListGap),
               instruction,
             ],
           ),
