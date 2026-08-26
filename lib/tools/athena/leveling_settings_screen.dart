@@ -362,7 +362,6 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                       v == 'pro'
                           ? FlutterI18n.translate(context, 'leveling.proArm')
                           : FlutterI18n.translate(context, 'leveling.standardArm'),
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -408,7 +407,6 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                     style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55)),
                     child: Text(
                       FlutterI18n.translate(context, t.labelKey),
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
