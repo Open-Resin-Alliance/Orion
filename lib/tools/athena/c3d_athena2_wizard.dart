@@ -2760,13 +2760,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             builder: (context, constraints) {
               final scale = min(
                 min((constraints.maxWidth - 24) / 886,
-                    (constraints.maxHeight - 16) / 324),
+                    (constraints.maxHeight - 16) / 207),
                 1.35,
               );
               return Center(
                 child: SizedBox(
                   width: 886 * scale,
-                  height: 324 * scale,
+                  height: 207 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyShortEndDiagram(),
@@ -3345,7 +3345,7 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final lineArt = onSurface.withValues(alpha: 0.45);
     return SizedBox(
-      width: 886,
+      width: 395,
       height: 411,
       child: Stack(
         children: [
@@ -3397,10 +3397,10 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    // Upper-half tactic like long-end top: tight 886x324 viewBox, regular bland, bottom fade, no green.
+    // Upper-half tactic like long-end top: tight 886x207 viewBox, regular bland, bottom fade, no green.
     return SizedBox(
       width: 886,
-      height: 324,
+      height: 207,
       child: ShaderMask(
         shaderCallback: (Rect bounds) {
           return const LinearGradient(
