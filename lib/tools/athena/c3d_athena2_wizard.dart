@@ -2494,7 +2494,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const _IsoMovementWarning(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 36),
           Text(
             FlutterI18n.translate(context, 'leveling.wizardKeepHandsClear'),
             textAlign: TextAlign.center,
@@ -3331,7 +3331,7 @@ class _IsoMovementWarningState extends State<_IsoMovementWarning>
       scale: _scale,
       child: SvgPicture.asset(
         'assets/images/ISO_7010_W024.svg',
-        width: 170,
+        width: 140,
         fit: BoxFit.contain,
       ),
     );
