@@ -3246,19 +3246,18 @@ class _HexKeyLongEndPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cx = size.width * 0.5;
     final cy = size.height * 0.5;
-    // Slight tilt -12deg to match other pictograms
     const tilt = -12 * 3.141592653589793 / 180;
     canvas.save();
     canvas.translate(cx, cy);
     canvas.rotate(tilt);
 
-    // Hex key on its side: long arm horizontal, short arm up at left
-    // Long arm length ~ 56% of width, thickness ~ 10, ball end on right
-    final longLen = size.width * 0.52;
-    final shortLen = size.height * 0.42;
-    final thickness = 10.0;
-    final ballRadius = 7.0;
+    // Long arm horizontal, short arm up at the bend. Long tip is LEFT.
+    final longLen = size.width * 0.62;
+    final shortLen = size.height * 0.48;
+    final thickness = 13.0;
+    final ballRadius = 8.5;
 
+    // Hex key body: thick L with chamfered hex profile hint (two-tone stroke)
     final paint = Paint()
       ..color = lineColor
       ..style = PaintingStyle.stroke
@@ -3266,25 +3265,44 @@ class _HexKeyLongEndPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
+    final bendX = longLen * 0.32;
+    final longTipX = -longLen * 0.58;
+    final shortTipY = -shortLen;
+
     final path = Path()
-      ..moveTo(-longLen * 0.55, 0)
-      ..lineTo(longLen * 0.38, 0)
-      ..lineTo(longLen * 0.38, -shortLen);
+      ..moveTo(longTipX, 0)
+      ..lineTo(bendX, 0)
+      ..lineTo(bendX, shortTipY);
 
     canvas.drawPath(path, paint);
 
-    // Ball end at long tip (right)
+    // Hex chamfer highlight (subtle inner line)
+    final hl = Paint()
+      ..color = lineColor.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+    final hlPath = Path()
+      ..moveTo(longTipX + 6, -thickness * 0.28)
+      ..lineTo(bendX - 6, -thickness * 0.28)
+      ..lineTo(bendX - thickness * 0.28, shortTipY + 6);
+    canvas.drawPath(hlPath, hl);
+
+    // Ball end at the LONG tip (left)
     final ballPaint = Paint()
       ..color = lineColor
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(longLen * 0.38 + ballRadius * 0.3, 0), ballRadius, ballPaint);
+    canvas.drawCircle(Offset(longTipX, 0), ballRadius, ballPaint);
+    // Ball highlight
+    final ballHl = Paint()..color = Colors.white.withValues(alpha: 0.32)..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(longTipX - 2.2, -2.2), 2.0, ballHl);
 
-    // Red circle around the long-end ball-end
+    // Red circle around the LONG-END ball-end
     final circlePaint = Paint()
       ..color = circleColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.2;
-    canvas.drawCircle(Offset(longLen * 0.38 + ballRadius * 0.3, 0), 22, circlePaint);
+      ..strokeWidth = 3.4;
+    canvas.drawCircle(Offset(longTipX, 0), 26, circlePaint);
 
     canvas.restore();
   }
