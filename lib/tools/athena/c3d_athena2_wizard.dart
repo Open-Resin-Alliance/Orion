@@ -3377,6 +3377,111 @@ class _AlignPlateDiagram extends StatelessWidget {
   }
 }
 
+/// Corner-focused LCD top view for the "Place Leveling Spacer" step.
+/// Base line art is the cropped a2_lcd_ui_top_view for that corner
+/// (dimmed); the spacer position is highlighted as a pulsating puck.
+class _SpacerPlacementDiagram extends StatelessWidget {
+  const _SpacerPlacementDiagram({required this.cornerIndex});
+
+  final int cornerIndex;
+
+  static const _assets = [
+    'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_fl.svg',
+    'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_fr.svg',
+    'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_br.svg',
+    'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_bl.svg',
+  ];
+
+  /// Puck centre as fraction of the 794×421 crop viewBox for each corner.
+  /// Tuned so the double-circle sits inset from the outer frame at that
+  /// corner (FL bottom-left, FR bottom-right, BR top-right, BL top-left).
+  static const _puckFractions = [
+    Offset(0.32, 0.38), // FL bottom-left: inner-rect corner inset
+    Offset(0.68, 0.38), // FR bottom-right
+    Offset(0.68, 0.62), // BR top-right
+    Offset(0.32, 0.62), // BL top-left
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final lineArt =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    final primary = Theme.of(context).colorScheme.primary;
+    final idx = cornerIndex.clamp(0, 3);
+    final asset = _assets[idx];
+    return SizedBox(
+      width: 794,
+      height: 421,
+      child: Stack(
+        children: [
+          SvgPicture.asset(
+            asset,
+            fit: BoxFit.contain,
+            colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+          ),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _SpacerPlacementPainter(
+                primary: primary,
+                onPrimary: Theme.of(context).colorScheme.onPrimary,
+                puckFraction: _puckFractions[idx],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpacerPlacementPainter extends CustomPainter {
+  _SpacerPlacementPainter({
+    required this.primary,
+    required this.onPrimary,
+    required this.puckFraction,
+  });
+
+  final Color primary;
+  final Color onPrimary;
+  final Offset puckFraction;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final pos = Offset(
+      puckFraction.dx * size.width,
+      puckFraction.dy * size.height,
+    );
+    // Outer highlight halo so it pops on both light and washed backgrounds.
+    final halo = Paint()
+      ..color = Colors.black.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    canvas.drawCircle(pos, 18, halo);
+    canvas.drawCircle(pos, 11, halo);
+    // Puck: double-circle like the isolated spacer top view.
+    final ring = Paint()
+      ..color = primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round;
+    final fill = Paint()
+      ..color = primary.withValues(alpha: 0.14)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(pos, 18, fill);
+    canvas.drawCircle(pos, 18, ring);
+    canvas.drawCircle(pos, 11, ring);
+    // Center dot.
+    canvas.drawCircle(pos, 3.2, Paint()..color = primary);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpacerPlacementPainter old) =>
+      old.primary != primary ||
+      old.onPrimary != onPrimary ||
+      old.puckFraction != puckFraction;
+}
+
 class _AlignPlatePainter extends CustomPainter {
   _AlignPlatePainter({required this.plateColor, required this.lcdColor});
 
@@ -4269,10 +4374,78 @@ class _WorkflowPane extends StatelessWidget {
     Color primary,
     LevelingWorkflowStep step,
   ) {
-    final title =
+    final titleStr =
         step.stepTitle ?? FlutterI18n.translate(context, step.titleKey);
-    final instruction = step.stepInstruction ??
+    final instructionStr = step.stepInstruction ??
         FlutterI18n.translate(context, step.instructionKey);
+
+    // "Place Leveling Spacer" steps get a corner-focused pictogram:
+    // bottom half + left 2/3 = FL, bottom+right = FR, top+right = BR,
+    // top+left = BL — per spec, using a2_lcd_ui_top_view crops.
+    if (step.id.startsWith('fine_prepare_')) {
+      final cornerNum =
+          int.tryParse(step.id.replaceFirst('fine_prepare_', '')) ?? 1;
+      final cornerIndex = (cornerNum - 1).clamp(0, 3);
+      final onSurface = theme.colorScheme.onSurface;
+      final title = Text(
+        titleStr,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.primary,
+        ),
+      );
+      final instruction = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Text(
+          instructionStr,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 20,
+            height: 1.4,
+            color: onSurface.withValues(alpha: 0.72),
+          ),
+        ),
+      );
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Column(
+              children: [
+                title,
+                const SizedBox(height: 8),
+                instruction,
+              ],
+            ),
+          ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = min(
+                  min((constraints.maxWidth - 24) / 794,
+                      (constraints.maxHeight - 16) / 421),
+                  1.35,
+                );
+                return Center(
+                  child: SizedBox(
+                    width: 794 * scale,
+                    height: 421 * scale,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: _SpacerPlacementDiagram(
+                        cornerIndex: cornerIndex,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -4295,7 +4468,7 @@ class _WorkflowPane extends StatelessWidget {
         const SizedBox(height: 20),
         // ====== Title ======
         Text(
-          title,
+          titleStr,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 24,
@@ -4308,7 +4481,7 @@ class _WorkflowPane extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
-            instruction,
+            instructionStr,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 20,
