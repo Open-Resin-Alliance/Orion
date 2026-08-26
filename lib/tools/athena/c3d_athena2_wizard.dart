@@ -3224,23 +3224,34 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    // Top half of the long-end SVG (original viewBox 0 0 1191 842) — show only 0 0 1191 421
-    // via heightFactor clipping so the bottom half is cropped.
-    return SizedBox(
-      width: 596,
-      height: 210,
+    // Original SVG viewBox 0 0 1122.67 1588 — show only top half (0 0 1122.67 794)
+    // via heightFactor clipping. Larger base and horizontal fade like other
+    // pictograms so the line art fills the stage.
+    final raw = SizedBox(
+      width: 900,
+      height: 420,
       child: ClipRect(
         child: Align(
           alignment: Alignment.topCenter,
           heightFactor: 0.5,
           child: SvgPicture.asset(
             'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end.svg',
-            width: 596,
+            width: 900,
             fit: BoxFit.contain,
             colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
           ),
         ),
       ),
+    );
+    return ShaderMask(
+      shaderCallback: (Rect bounds) => const LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+        stops: [0.0, 0.12, 0.88, 1.0],
+      ).createShader(bounds),
+      blendMode: BlendMode.dstIn,
+      child: raw,
     );
   }
 }
@@ -4376,15 +4387,17 @@ class _WorkflowPane extends StatelessWidget {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              // Larger base so the pictogram fills the stage; top-half
+              // crop is done inside the diagram via ClipRect.
               final scale = min(
-                min((constraints.maxWidth - 24) / 596,
-                    (constraints.maxHeight - 16) / 210),
-                1.35,
+                min((constraints.maxWidth - 24) / 900,
+                    (constraints.maxHeight - 16) / 420),
+                1.8,
               );
               return Center(
                 child: SizedBox(
-                  width: 596 * scale,
-                  height: 210 * scale,
+                  width: 900 * scale,
+                  height: 420 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),

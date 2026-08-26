@@ -506,7 +506,7 @@
     "tightenTitle": "Apretar tornillos",
     "tightenInstructionPro": "Apriete cada tornillo solo a mano con el extremo largo de la llave hexagonal.",
     "tightenInstructionStandard": "Presione firmemente la placa de construcción con una mano mientras aprieta cada tornillo con el extremo largo de la llave hexagonal. Apriete en patrón cruzado, no más de ¼ de vuelta a la vez.",
-    "hexLongEndTitle": "Use el extremo largo",
+    "hexLongEndTitle": "Información importante",
     "hexLongEndInstruction": "Use el extremo largo de la llave hexagonal de 3 mm.",
     "tightenConfirmTitle": "¿Tornillos apretados?",
     "tightenConfirmMsg": "¿Están todos los tornillos de nivelación uniformemente ajustados?\n\n¡Los tornillos sueltos pueden hacer que la plataforma se desplace durante la impresión!",
