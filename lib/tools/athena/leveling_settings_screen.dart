@@ -261,10 +261,10 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
             GlassButton(
               tint: GlassButtonTint.neutral,
               onPressed: _changeArm,
-              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 48)),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 55)),
               child: Text(
                 FlutterI18n.translate(context, 'common.change'),
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -325,10 +325,10 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
             GlassButton(
               tint: GlassButtonTint.neutral,
               onPressed: _changeScreenType,
-              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 48)),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 55)),
               child: Text(
                 FlutterI18n.translate(context, 'common.change'),
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
           ],
