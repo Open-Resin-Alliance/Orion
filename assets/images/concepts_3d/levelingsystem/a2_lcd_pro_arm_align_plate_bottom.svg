@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="786" height="373" viewBox="216 277 786 373">
-<!-- Bottom 2/3 crop of a2_lcd_pro_arm top view - for align plate pictogram.
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="786" height="280" viewBox="216 370 786 280">
+<!-- Bottom half crop of a2_lcd_pro_arm top view - for align plate pictogram.
      Monochrome line art - tinted at runtime. Front edges at y ~578/597 in original coords. -->
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M5579 5495 5569 5501"/>
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M4240 3235V3212"/>

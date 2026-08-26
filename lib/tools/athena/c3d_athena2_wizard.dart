@@ -16,6 +16,7 @@
 */
 
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
@@ -3036,7 +3037,9 @@ class _VariantAsset extends StatelessWidget {
 /// sequence arrows and number badges are painted on top so they follow
 /// the active theme colors.
 class _ScrewSequenceDiagram extends StatelessWidget {
-  const _ScrewSequenceDiagram();
+  const _ScrewSequenceDiagram({this.clockwise = false});
+
+  final bool clockwise;
 
   /// Screw centres as fractions of the 254×192 SVG viewBox (top 5/6
   /// crop), in loosening order: 1 top-centre, 2 bottom-right, 3
@@ -3051,7 +3054,7 @@ class _ScrewSequenceDiagram extends StatelessWidget {
   Widget build(BuildContext context) {
     // Line art is dimmed so the sequence arrows and number badges
     // (full primary) read as the foreground layer. Fade at the bottom
-    // softens the hard crop of the top 3/4 view.
+    // softens the hard crop of the top 5/6 view.
     final lineArt =
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     final primary = Theme.of(context).colorScheme.primary;
@@ -3082,6 +3085,7 @@ class _ScrewSequenceDiagram extends StatelessWidget {
               painter: _ScrewSequencePainter(
                 primary: primary,
                 onPrimary: Theme.of(context).colorScheme.onPrimary,
+                clockwise: clockwise,
               ),
             ),
           ),
@@ -3093,14 +3097,19 @@ class _ScrewSequenceDiagram extends StatelessWidget {
 
 /// Paints the loosening sequence on top of the Pro-Arm line art:
 /// dashed straight arrows from screw to screw (1→2→3), a
-/// counter-clockwise rotation arc around each screw, and the numbered
-/// badges. All overlay elements run at full primary so they read as
-/// the foreground against the dimmed line art.
+/// Paints the loosening/tightening sequence on top of the Pro-Arm line
+/// art: dashed straight arrows from screw to screw (1→2→3), a rotation
+/// arc around each screw, and the numbered badges. All overlay
+/// elements run at full primary so they read as the foreground against
+/// the dimmed line art.
 class _ScrewSequencePainter extends CustomPainter {
-  _ScrewSequencePainter({required this.primary, required this.onPrimary});
+  _ScrewSequencePainter(
+      {required this.primary, required this.onPrimary, this.clockwise = false});
 
   final Color primary;
   final Color onPrimary;
+  final bool clockwise;
+
 
   static const _badgeRadius = 12.0;
   static const _badgeOffset = 36.0;
@@ -3109,9 +3118,8 @@ class _ScrewSequencePainter extends CustomPainter {
   /// the screw head without touching the rotation arc.
   static const _badgeTipClearance = 6.0;
 
-  /// Radius of the CCW rotation indicator around a screw head.
+  /// Radius of the rotation indicator around a screw head.
   static const _rotationRadius = 15.0;
-
   /// Straight arrows start/end well outside the rotation arcs — room
   /// for the 7px arrowhead plus a visible gap so the sequence arrows
   /// and the CCW indicators read as separate layers.
@@ -3125,11 +3133,18 @@ class _ScrewSequencePainter extends CustomPainter {
     ];
     final centroid = (screws[0] + screws[1] + screws[2]) / 3;
 
-    final arrowPaint = Paint()
-      ..color = primary.withValues(alpha: 0.85)
+    // Dark backdrop so the orange pops on washed-out light screens and
+    // stays crisp on dark. Blurred and slightly wider than the arrow.
+    final shadowStroke = Paint()
+      ..color = Colors.black.withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = 4.5
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    final shadowFill = Paint()
+      ..color = Colors.black.withValues(alpha: 0.6)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
 
     for (int i = 0; i < screws.length; i++) {
       final a = screws[i];
@@ -3141,37 +3156,68 @@ class _ScrewSequencePainter extends CustomPainter {
         ..moveTo((a + dir * _arrowClearance).dx, (a + dir * _arrowClearance).dy)
         ..lineTo(
             (b - dir * _arrowClearance).dx, (b - dir * _arrowClearance).dy);
-      _strokeDashed(canvas, line, arrowPaint);
-      _drawArrowhead(canvas, b - dir * _arrowClearance, dir, arrowPaint);
+      final linePaint = Paint()
+        ..color = primary
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round;
+      _strokeDashed(canvas, line, linePaint);
+      _drawArrowhead(canvas, b - dir * _arrowClearance, dir, shadowFill);
+      _drawArrowhead(
+          canvas,
+          b - dir * _arrowClearance,
+          dir,
+          Paint()
+            ..color = primary
+            ..style = PaintingStyle.fill);
 
-      // Counter-clockwise rotation arc, opening toward the badge so
-      // the arrowhead lands beside its screw number.
+      // Rotation arc, opening toward the badge so the arrowhead lands
+      // beside its screw number. Direction is CCW for loosen, CW for
+      // tighten (mirrored sweep/start and tangent).
       final out = (a - centroid) / (a - centroid).distance;
       final badgeAngle = atan2(out.dy, out.dx);
-      const sweep = -250 * pi / 180; // negative sweep = CCW on screen
-      final startAngle = badgeAngle - 55 * pi / 180;
-      _strokeDashed(
-        canvas,
-        Path()
-          ..arcTo(Rect.fromCircle(center: a, radius: _rotationRadius),
-              startAngle, sweep, false),
-        arrowPaint,
-      );
+      final sweep = clockwise ? 250 * pi / 180 : -250 * pi / 180;
+      final startAngle =
+          clockwise ? badgeAngle + 55 * pi / 180 : badgeAngle - 55 * pi / 180;
+      final arc = Path()
+        ..arcTo(Rect.fromCircle(center: a, radius: _rotationRadius),
+            startAngle, sweep, false);
+      _strokeDashed(canvas, arc, shadowStroke);
+      final arcStart = a +
+          Offset(cos(startAngle) * _rotationRadius,
+              sin(startAngle) * _rotationRadius);
+      final arcEnd = a +
+          Offset(cos(startAngle + sweep) * _rotationRadius,
+              sin(startAngle + sweep) * _rotationRadius);
+      final arcGradient =
+          ui.Gradient.linear(arcStart, arcEnd, const [Color(0xFFFF8C00), Color(0xFFE65100)]);
+      final arcPaint = Paint()
+        ..shader = arcGradient
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round;
+      _strokeDashed(canvas, arc, arcPaint);
       final endAngle = startAngle + sweep;
+      final direction = clockwise
+          ? Offset(-sin(endAngle), cos(endAngle))
+          : Offset(sin(endAngle), -cos(endAngle));
+      final arcTip = a +
+          Offset(_rotationRadius * cos(endAngle),
+              _rotationRadius * sin(endAngle));
+      _drawArrowhead(canvas, arcTip, direction, shadowFill);
       _drawArrowhead(
-        canvas,
-        a +
-            Offset(_rotationRadius * cos(endAngle),
-                _rotationRadius * sin(endAngle)),
-        Offset(sin(endAngle), -cos(endAngle)),
-        arrowPaint,
-      );
+          canvas,
+          arcTip,
+          direction,
+          Paint()
+            ..color = const Color(0xFFE65100)
+            ..style = PaintingStyle.fill);
 
       // Teardrop number badge: circle pushed outward from the plate
       // centre, with a point aimed at its screw head.
       final badgeCenter = a + out * _badgeOffset;
       final tip = a + out * (_badgeOffset - _badgeRadius - _badgeTipClearance);
-      final badgePerp = Offset(-out.dy, out.dx) * _badgeRadius;
+      final badgePerp = Offset(-out.dy, out.dx) * _badgeRadius * 0.55;
       final badgeFill = Paint()..color = primary;
       canvas.drawPath(
         Path()
@@ -3208,8 +3254,8 @@ class _ScrewSequencePainter extends CustomPainter {
   }
 
   void _drawArrowhead(Canvas canvas, Offset at, Offset direction, Paint paint) {
-    final tip = at + direction * 7;
-    final perp = Offset(-direction.dy, direction.dx) * 4.5;
+    final tip = at + direction * 9;
+    final perp = Offset(-direction.dy, direction.dx) * 6;
     canvas.drawPath(
       Path()
         ..moveTo(tip.dx, tip.dy)
@@ -3223,7 +3269,9 @@ class _ScrewSequencePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ScrewSequencePainter old) =>
-      old.primary != primary || old.onPrimary != onPrimary;
+      old.primary != primary ||
+      old.onPrimary != onPrimary ||
+      old.clockwise != clockwise;
 }
 
 /// ISO 7010 W024 "hand crushing" warning pictogram for machine-movement
@@ -3287,7 +3335,7 @@ class _AlignPlateDiagram extends StatelessWidget {
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     return SizedBox(
       width: 786,
-      height: 373,
+      height: 280,
       child: ShaderMask(
         shaderCallback: (Rect bounds) {
           return const LinearGradient(
@@ -3329,10 +3377,10 @@ class _AlignPlatePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Second and third horizontal lines from the bottom of the
-    // 786×373 viewBox (bottom 2/3 crop) — front edges that must be
+    // 786×280 viewBox (bottom half crop) — front edges that must be
     // parallel. Fractions recomputed for the cropped height.
-    const plateY = 0.807;
-    const lcdY = 0.860;
+    const plateY = 0.744;
+    const lcdY = 0.814;
     const left = 0.07;
     const right = 0.93;
     final platePaint = Paint()
@@ -3754,13 +3802,13 @@ class _WorkflowPane extends StatelessWidget {
             builder: (context, constraints) {
               final scale = min(
                 min((constraints.maxWidth - 24) / 786,
-                    (constraints.maxHeight - 16) / 373),
+                    (constraints.maxHeight - 16) / 280),
                 1.35,
               );
               return Center(
                 child: SizedBox(
                   width: 786 * scale,
-                  height: 373 * scale,
+                  height: 280 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _AlignPlateDiagram(),
@@ -3776,6 +3824,70 @@ class _WorkflowPane extends StatelessWidget {
 
   Widget _buildTightenScrewsView(BuildContext context, Color primary) {
     final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    // Same 3-screw diagram as loosen, but tightening is clockwise.
+    final showDiagram = engine.variant?.id == 'pro';
+    final title = Text(
+      FlutterI18n.translate(context, 'leveling.tightenTitle'),
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: theme.colorScheme.primary,
+      ),
+    );
+    final instruction = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        engine.variant?.id == 'pro'
+            ? FlutterI18n.translate(context, 'leveling.tightenInstructionPro')
+            : FlutterI18n.translate(
+                context, 'leveling.tightenInstructionStandard'),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 20,
+          height: 1.4,
+          color: onSurface.withValues(alpha: 0.72),
+        ),
+      ),
+    );
+    if (showDiagram) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Column(
+              children: [
+                title,
+                const SizedBox(height: OrionSpacing.compactListGap),
+                instruction,
+              ],
+            ),
+          ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = min(
+                  min((constraints.maxWidth - 24) / 254,
+                      (constraints.maxHeight - 16) / 192),
+                  1.35,
+                );
+                return Center(
+                  child: SizedBox(
+                    width: 254 * scale,
+                    height: 192 * scale,
+                    child: const FittedBox(
+                      fit: BoxFit.contain,
+                      child: _ScrewSequenceDiagram(clockwise: true),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -3793,32 +3905,9 @@ class _WorkflowPane extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        Text(
-          FlutterI18n.translate(context, 'leveling.tightenTitle'),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-          ),
-        ),
+        title,
         const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            engine.variant?.id == 'pro'
-                ? FlutterI18n.translate(
-                    context, 'leveling.tightenInstructionPro')
-                : FlutterI18n.translate(
-                    context, 'leveling.tightenInstructionStandard'),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              height: 1.4,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
-            ),
-          ),
-        ),
+        instruction,
       ],
     );
   }
