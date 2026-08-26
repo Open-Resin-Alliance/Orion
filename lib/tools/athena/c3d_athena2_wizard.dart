@@ -1915,7 +1915,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         FlutterI18n.translate(context, 'leveling.wizardProceed'),
       LevelingWorkflowStatus.stepComplete => isAllCornersMeasured
           ? (needsAdjustment
-              ? FlutterI18n.translate(context, 'leveling.wizardAdjust')
+              ? FlutterI18n.translate(
+                  context,
+                  _recheckNumber == 0
+                      ? 'leveling.wizardBeginAdjustment'
+                      : 'leveling.wizardAdjust')
               : FlutterI18n.translate(context, 'leveling.wizardContinue'))
           : isCornerPrepare
               ? FlutterI18n.translate(context, 'leveling.next')
