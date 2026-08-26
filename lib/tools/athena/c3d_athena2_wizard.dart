@@ -3189,12 +3189,17 @@ class _ScrewSequencePainter extends CustomPainter {
       final arcEnd = a +
           Offset(cos(startAngle + sweep) * _rotationRadius,
               sin(startAngle + sweep) * _rotationRadius);
-      final arcGradient = ui.Gradient.linear(
-          arcStart,
-          arcEnd,
-          clockwise
-              ? const [Color(0xFFFF8C00), Color(0xFFE65100)]
-              : const [Color(0xFF81C784), Color(0xFF2E7D32)]);
+      final arcGradient = ui.Gradient.linear(
+
+          arcStart,
+
+          arcEnd,
+
+          clockwise
+
+              ? const [Color(0xFFFF8C00), Color(0xFFE65100)]
+
+              : const [Color(0xFF2E7D32), Color(0xFF81C784)]);
       final arcPaint = Paint()
         ..shader = arcGradient
         ..style = PaintingStyle.stroke
@@ -3214,7 +3219,7 @@ class _ScrewSequencePainter extends CustomPainter {
           arcTip,
           direction,
           Paint()
-            ..color = clockwise ? const Color(0xFFE65100) : const Color(0xFF2E7D32)
+            ..color = clockwise ? const Color(0xFFE65100) : const Color(0xFF81C784)
             ..style = PaintingStyle.fill);
 
       // Teardrop number badge: circle pushed outward from the plate
@@ -5103,7 +5108,7 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
               arcEnd,
               isTighten
                   ? const [Color(0xFFFF8C00), Color(0xFFE65100)]
-                  : const [Color(0xFF81C784), Color(0xFF2E7D32)]);
+                  : const [Color(0xFF2E7D32), Color(0xFF81C784)]);
           final arcPaint = Paint()
             ..shader = arcGradient
             ..style = PaintingStyle.stroke
@@ -5125,7 +5130,7 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
               Paint()
                 ..color = isTighten
                     ? const Color(0xFFE65100)
-                    : const Color(0xFF2E7D32)
+                    : const Color(0xFF81C784)
                 ..style = PaintingStyle.fill);
         }
       } else {
