@@ -357,7 +357,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   child: GlassButton(
                     tint: current == v ? GlassButtonTint.positive : GlassButtonTint.neutral,
                     onPressed: () => Navigator.of(ctx).pop(v),
-                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55)),
+                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 60)),
                     child: Text(
                       v == 'pro'
                           ? FlutterI18n.translate(context, 'leveling.proArm')
@@ -372,7 +372,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
           GlassButton(
             tint: GlassButtonTint.neutral,
             onPressed: () => Navigator.of(ctx).pop(),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 55)),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
             child: Text(FlutterI18n.translate(context, 'common.cancel')),
           ),
         ],
@@ -404,7 +404,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
                   child: GlassButton(
                     tint: current == t.id ? GlassButtonTint.positive : GlassButtonTint.neutral,
                     onPressed: () => Navigator.of(ctx).pop(t.id),
-                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55)),
+                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 60)),
                     child: Text(
                       FlutterI18n.translate(context, t.labelKey),
                     ),
@@ -417,7 +417,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
           GlassButton(
             tint: GlassButtonTint.neutral,
             onPressed: () => Navigator.of(ctx).pop(),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 55)),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
             child: Text(FlutterI18n.translate(context, 'common.cancel')),
           ),
         ],
