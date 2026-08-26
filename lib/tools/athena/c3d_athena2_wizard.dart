@@ -1786,7 +1786,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                         tint: GlassButtonTint.neutral,
                         onPressed: () => Navigator.of(ctx).pop(false),
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(0, 55),
+                          minimumSize: const Size(0, 60),
                         ),
                         child: Text(
                           FlutterI18n.translate(
@@ -1797,7 +1797,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                         tint: GlassButtonTint.positive,
                         onPressed: () => Navigator.of(ctx).pop(true),
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(0, 55),
+                          minimumSize: const Size(0, 60),
                         ),
                         child: Text(
                           FlutterI18n.translate(
