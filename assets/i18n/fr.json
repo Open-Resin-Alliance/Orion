@@ -506,6 +506,8 @@
     "tightenTitle": "Serrer les vis",
     "tightenInstructionPro": "Serrer chaque vis à la main avec l'extrémité longue de la clé Allen.",
     "tightenInstructionStandard": "Appuyez fermement sur le plateau avec une main tout en serrant chaque vis avec l'extrémité longue de la clé Allen. Serrez en croix, pas plus d'¼ de tour à la fois.",
+    "hexLongEndTitle": "Utilisez l'extrémité longue",
+    "hexLongEndInstruction": "Utilisez l'extrémité longue de la clé hexagonale de 3 mm.",
     "tightenConfirmTitle": "Vis serrées ?",
     "tightenConfirmMsg": "Toutes les vis de nivellement sont-elles uniformément serrées ?\n\nDes vis desserrées peuvent laisser le plateau bouger pendant l'impression !",
     "tightenConfirmYes": "Oui, uniformément serrées",

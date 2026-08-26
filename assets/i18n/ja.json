@@ -506,6 +506,8 @@
     "tightenTitle": "レベリングネジを締める",
     "tightenInstructionPro": "六角レンチの長い方で各ネジを手締めします。",
     "tightenInstructionStandard": "片手でビルドプレートをしっかり押さえながら、六角レンチの長い方で各ネジを締めます。クロスパターンで、一度に¼回転以内ずつ締めてください。",
+    "hexLongEndTitle": "長い端を使用",
+    "hexLongEndInstruction": "3mm六角レンチの長い端を使用してください。",
     "tightenConfirmTitle": "ネジは締まりましたか？",
     "tightenConfirmMsg": "すべてのレベリングネジは均等に締まっていますか？\n\nネジが緩んでいると、印刷中にビルドプレートがずれる可能性があります！",
     "tightenConfirmYes": "はい、均等に締まっています",

@@ -112,6 +112,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   bool _loosenScrewsDone = false;
   bool _tightenScrewsDone = false;
   bool _alignDone = false;
+  bool _hexLongEndDone = false;
 
   // Prevents the home-after-leveling command from firing more than once
   bool _homeAfterCompleteFired = false;
@@ -301,6 +302,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           _engine.selectVariant(savedVariant);
           _resetCornerResults();
           _alignDone = savedVariant.id == 'regular';
+          _hexLongEndDone = false;
           _levelingSessionId = _uuid4();
           _recheckNumber = 0;
           _probeConfigCaptured = false;
@@ -337,6 +339,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _loosenScrewsDone = true;
     _tightenScrewsDone = true;
     _alignDone = true;
+    _hexLongEndDone = true;
     _levelingSessionId = _uuid4();
     _recheckNumber = 0;
     _probeConfigCaptured = false;
@@ -417,6 +420,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       // Standard arm is rigidly fixed — the plate can't be misaligned,
       // so the align-plate intermediate screen is never needed for it.
       _alignDone = _engine.variant?.id == 'regular';
+      _hexLongEndDone = false;
     } else if (_engine.status == LevelingWorkflowStatus.stepComplete) {
       final step = _engine.currentStep;
       if (step != null) {
@@ -1410,6 +1414,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _resetCornerResults();
             // Standard arm is forcibly aligned — skip the align plate screen.
             _alignDone = variant.id == 'regular';
+            _hexLongEndDone = false;
             // Generate a new session ID for each leveling attempt
             _levelingSessionId = _uuid4();
             _recheckNumber = 0;
@@ -1455,6 +1460,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           loosenScrewsDone: _loosenScrewsDone,
           tightenScrewsDone: _tightenScrewsDone,
           alignDone: _alignDone,
+          hexLongEndDone: _hexLongEndDone,
           cornerResults: _cornerResults,
           cornerZs: _rawCornerZs,
           preAdjustmentDeviation: _preAdjustmentDeviation,
@@ -1806,10 +1812,65 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       );
     }
 
+    // Hex long-end prompt (between Align and Tighten): Cancel | Done
+    if (status == LevelingWorkflowStatus.stepComplete &&
+        _engine.currentStep?.intermediateScreen == 'tighten' &&
+        _alignDone &&
+        !_hexLongEndDone) {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () => setState(() => _hexLongEndDone = true),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.check(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.done'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     // Tighten-screws prompt (after alignment): Cancel | Done â†’ auto-run offset
     if (status == LevelingWorkflowStatus.stepComplete &&
         _engine.currentStep?.intermediateScreen == 'tighten' &&
-        _alignDone) {
+        _alignDone &&
+        _hexLongEndDone) {
       return Row(
         children: [
           Expanded(
@@ -3157,6 +3218,33 @@ class _VariantAsset extends StatelessWidget {
 /// and tinted with the theme accent like [_VariantAsset]; the dashed
 /// sequence arrows and number badges are painted on top so they follow
 /// the active theme colors.
+class _HexKeyLongEndDiagram extends StatelessWidget {
+  const _HexKeyLongEndDiagram();
+
+  @override
+  Widget build(BuildContext context) {
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    // Top half of the long-end SVG (original viewBox 0 0 1191 842) — show only 0 0 1191 421
+    // via heightFactor clipping so the bottom half is cropped.
+    return SizedBox(
+      width: 596,
+      height: 210,
+      child: ClipRect(
+        child: Align(
+          alignment: Alignment.topCenter,
+          heightFactor: 0.5,
+          child: SvgPicture.asset(
+            'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end.svg',
+            width: 596,
+            fit: BoxFit.contain,
+            colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ScrewSequenceDiagram extends StatelessWidget {
   const _ScrewSequenceDiagram({this.clockwise = false});
 
@@ -3959,6 +4047,7 @@ class _WorkflowPane extends StatelessWidget {
     required this.loosenScrewsDone,
     required this.tightenScrewsDone,
     required this.alignDone,
+    required this.hexLongEndDone,
     required this.cornerResults,
     required this.cornerZs,
     this.preAdjustmentDeviation,
@@ -3969,6 +4058,7 @@ class _WorkflowPane extends StatelessWidget {
   final bool loosenScrewsDone;
   final bool tightenScrewsDone;
   final bool alignDone;
+  final bool hexLongEndDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
 
   /// Averaged per-corner Z values from the sample accumulator — the
@@ -3995,9 +4085,14 @@ class _WorkflowPane extends StatelessWidget {
     final isLoosenScrews =
         isComplete && intermediate == 'loosen' && !loosenScrewsDone;
     final isAlignPlate = isComplete && intermediate == 'tighten' && !alignDone;
+    final isHexLongEnd = isComplete &&
+        intermediate == 'tighten' &&
+        alignDone &&
+        !hexLongEndDone;
     final isTightenScrews = isComplete &&
         intermediate == 'tighten' &&
         alignDone &&
+        hexLongEndDone &&
         !tightenScrewsDone;
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
     final isRemovePuck = isComplete && intermediate == 'removePuck';
@@ -4012,7 +4107,9 @@ class _WorkflowPane extends StatelessWidget {
               ? _buildLoosenScrewsView(context, primary)
               : isAlignPlate
                   ? _buildAlignPlateView(context, primary)
-                  : isTightenScrews
+                  : isHexLongEnd
+                      ? _buildHexLongEndView(context, primary)
+                      : isTightenScrews
                       ? _buildTightenScrewsView(context, primary)
                       : isAllCornersMeasured
                           ? _buildAllCornersMeasuredView(context, primary)
@@ -4230,6 +4327,67 @@ class _WorkflowPane extends StatelessWidget {
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _AlignPlateDiagram(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHexLongEndView(BuildContext context, Color primary) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final title = Text(
+      FlutterI18n.translate(context, 'leveling.hexLongEndTitle'),
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: theme.colorScheme.primary,
+      ),
+    );
+    final instruction = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        FlutterI18n.translate(context, 'leveling.hexLongEndInstruction'),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 20,
+          height: 1.4,
+          color: onSurface.withValues(alpha: 0.72),
+        ),
+      ),
+    );
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 8),
+          child: Column(
+            children: [
+              title,
+              const SizedBox(height: OrionSpacing.compactListGap),
+              instruction,
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final scale = min(
+                min((constraints.maxWidth - 24) / 596,
+                    (constraints.maxHeight - 16) / 210),
+                1.35,
+              );
+              return Center(
+                child: SizedBox(
+                  width: 596 * scale,
+                  height: 210 * scale,
+                  child: const FittedBox(
+                    fit: BoxFit.contain,
+                    child: _HexKeyLongEndDiagram(),
                   ),
                 ),
               );

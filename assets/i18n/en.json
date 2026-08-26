@@ -508,6 +508,8 @@
     "tightenTitle": "Tighten Leveling Screws",
     "tightenInstructionPro": "Snug-tighten each screw with the long end of the hex key.",
     "tightenInstructionStandard": "Press down firmly on the build plate with one hand while tightening each screw with the long end of the hex key. Tighten in a cross pattern, no more than ¼ turn at a time.",
+    "hexLongEndTitle": "Use the long end",
+    "hexLongEndInstruction": "Use the long end of the 3mm hex key.",
     "tightenConfirmTitle": "Screws tightened?",
     "tightenConfirmMsg": "Are all leveling screws evenly snug?\n\nLoose screws can allow the build plate to shift during printing!",
     "tightenConfirmYes": "Yes, evenly snug",

@@ -118,6 +118,8 @@ flutter:
     - assets/images/concepts_3d/levelingsystem/a2_lcd_pro_arm_align_plate_bottom.svg
     - assets/images/concepts_3d/levelingsystem/a2_lcd_ui_top_view.svg
     - assets/images/concepts_3d/levelingsystem/a2_leveling_spacer_ui_top_view.svg
+    - assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end.svg
+    - assets/images/concepts_3d/levelingsystem/a2_lcd_ui_top_view_sanitized.svg
     - README.md
     - CHANGELOG.md
 
