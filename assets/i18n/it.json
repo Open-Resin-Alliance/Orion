@@ -507,7 +507,7 @@
     "tightenInstructionPro": "Stringi ogni vite a mano con l'estremità lunga della chiave a brugola.",
     "tightenInstructionStandard": "Premi con decisione sul piatto di costruzione con una mano mentre stringi ogni vite con l'estremità lunga della chiave a brugola. Stringi a croce, non più di ¼ di giro alla volta.",
     "hexLongEndTitle": "Informazioni importanti",
-    "hexLongEndInstruction": "Usa l'estremità lunga della chiave esagonale da 3 mm.",
+    "hexLongEndInstruction": "Si prega di usare l'estremità lunga della chiave esagonale da 3 mm.",
     "tightenConfirmTitle": "Viti serrate?",
     "tightenConfirmMsg": "Tutte le viti di livellamento sono serrate uniformemente?\n\nLe viti allentate possono far spostare il piatto durante la stampa!",
     "tightenConfirmYes": "Sì, serrate uniformemente",

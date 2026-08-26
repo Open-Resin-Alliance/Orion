@@ -18,7 +18,7 @@ class LevelingSvgCache {
     final assetSvgs = <String>[
       'assets/images/ISO_7010_W024.svg',
       'assets/images/concepts_3d/levelingsystem/a2_lcd_ui_top_view_sanitized.svg',
-      'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end.svg',
+      'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
     ];
 
     for (final asset in assetSvgs) {

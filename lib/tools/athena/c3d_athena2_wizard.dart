@@ -3224,23 +3224,15 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    // Original SVG viewBox 0 0 1122.67 1588 — show only top half (0 0 1122.67 794)
-    // via heightFactor clipping. Larger base and horizontal fade like other
-    // pictograms so the line art fills the stage.
+    // Top-half sanitized viewBox (0 0 1122.67 794) so only the long-end
+    // pictogram is shown, with the same horizontal fade as other screens.
     final raw = SizedBox(
       width: 900,
-      height: 420,
-      child: ClipRect(
-        child: Align(
-          alignment: Alignment.topCenter,
-          heightFactor: 0.5,
-          child: SvgPicture.asset(
-            'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end.svg',
-            width: 900,
-            fit: BoxFit.contain,
-            colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-          ),
-        ),
+      height: 636,
+      child: SvgPicture.asset(
+        'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
+        fit: BoxFit.contain,
+        colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
       ),
     );
     return ShaderMask(
@@ -4391,13 +4383,13 @@ class _WorkflowPane extends StatelessWidget {
               // crop is done inside the diagram via ClipRect.
               final scale = min(
                 min((constraints.maxWidth - 24) / 900,
-                    (constraints.maxHeight - 16) / 420),
+                    (constraints.maxHeight - 16) / 636),
                 1.8,
               );
               return Center(
                 child: SizedBox(
                   width: 900 * scale,
-                  height: 420 * scale,
+                  height: 636 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),

@@ -507,7 +507,7 @@
     "tightenInstructionPro": "Jede Schraube mit dem langen Ende des Inbusschlüssels handfest anziehen.",
     "tightenInstructionStandard": "Drücken Sie die Bauplatte mit einer Hand fest nach unten und ziehen Sie jede Schraube mit dem langen Ende des Inbusschlüssels fest. Im Kreuzmuster anziehen, maximal ¼ Umdrehung pro Durchgang.",
     "hexLongEndTitle": "Wichtige Information",
-    "hexLongEndInstruction": "Verwenden Sie das lange Ende des 3-mm-Inbusschlüssels.",
+    "hexLongEndInstruction": "Bitte verwenden Sie das lange Ende des 3-mm-Inbusschlüssels.",
     "tightenConfirmTitle": "Schrauben festgezogen?",
     "tightenConfirmMsg": "Sind alle Nivellierschrauben gleichmäßig handfest?\n\nLose Schrauben können dazu führen, dass sich die Bauplatte während des Drucks verschiebt!",
     "tightenConfirmYes": "Ja, gleichmäßig handfest",
