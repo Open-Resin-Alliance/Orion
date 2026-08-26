@@ -3224,21 +3224,50 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    // Single hex key front view — flipped horizontally and rotated 60° CCW.
-    // Sized to fit the stage after transform.
+    // Single hex key front view — flipped horizontally and rotated 60° CW.
+    // Red circle highlights the long end tip.
     return SizedBox(
       width: 600,
       height: 600,
-      child: Transform(
+      child: Stack(
         alignment: Alignment.center,
-        transform: Matrix4.identity()
-          ..scale(-1.0, 1.0, 1.0)
-          ..rotateZ(60 * 3.141592653589793 / 180),
-        child: SvgPicture.asset(
-          'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
-          fit: BoxFit.contain,
-          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-        ),
+        children: [
+          Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..scale(-1.0, 1.0, 1.0)
+              ..rotateZ(60 * 3.141592653589793 / 180),
+            child: SvgPicture.asset(
+              'assets/images/concepts_3d/levelingsystem/a2_hex_key_ui_front_view_tight.svg',
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+            ),
+          ),
+          Positioned(
+            right: 72,
+            top: 98,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.transparent,
+                border: Border.all(color: Colors.redAccent, width: 3),
+              ),
+              child: const Center(
+                child: Text(
+                  '!',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -4372,6 +4401,7 @@ class _WorkflowPane extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 12),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -4380,13 +4410,16 @@ class _WorkflowPane extends StatelessWidget {
                     (constraints.maxHeight - 16) / 600),
                 1.8,
               );
-              return Center(
-                child: SizedBox(
-                  width: 600 * scale,
-                  height: 600 * scale,
-                  child: const FittedBox(
-                    fit: BoxFit.contain,
-                    child: _HexKeyLongEndDiagram(),
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Center(
+                  child: SizedBox(
+                    width: 600 * scale,
+                    height: 600 * scale,
+                    child: const FittedBox(
+                      fit: BoxFit.contain,
+                      child: _HexKeyLongEndDiagram(),
+                    ),
                   ),
                 ),
               );
