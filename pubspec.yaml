@@ -104,6 +104,7 @@ flutter:
     - assets/
     - assets/i18n/
     - assets/images/opensource.svg
+    - assets/images/ISO_7010_W024.svg
     - assets/images/placeholder.png
     - assets/images/bsod.png
     - assets/images/ora/open_resin_alliance_logo_darkmode.png

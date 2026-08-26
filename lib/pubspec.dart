@@ -98,6 +98,7 @@ mixin Pubspec {
       'assets/',
       'assets/images/opensource.svg',
       'assets/images/placeholder.png',
+      'assets/images/ISO_7010_W024.svg',
       'assets/images/bsod.png',
       'assets/images/ora/open_resin_alliance_logo_darkmode.png',
       'assets/images/concepts_3d/athena_logo.svg',

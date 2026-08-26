@@ -195,9 +195,9 @@ class LevelingVariant {
             PhosphorIcons.arrowUpLeft(),
           ][i],
           kind: LevelingWorkflowStepKind.prepare,
-          stepTitle: 'Place Calibration Puck',
+          stepTitle: 'Place Leveling Spacer',
           stepInstruction:
-              'Please place the Leveling Puck in the ${cornerDefs[i].$1} corner',
+              'Please place the Leveling Spacer in the ${cornerDefs[i].$1} corner',
           specialScreen: 'corner-$i',
         ),
         LevelingWorkflowStep(
@@ -208,7 +208,7 @@ class LevelingVariant {
             icon: PhosphorIconsFill.crosshair,
             kind: LevelingWorkflowStepKind.probe,
             stepTitle: 'Corner: ${cornerDefs[i].$1}',
-            stepInstruction: 'Please put the Leveling Puck at the position '
+            stepInstruction: 'Please put the Leveling Spacer at the position '
                 'indicated on the screen.',
             runningTitle: 'Probing ${cornerDefs[i].$1} Corner',
             cornerLabel: cornerDefs[i].$1,

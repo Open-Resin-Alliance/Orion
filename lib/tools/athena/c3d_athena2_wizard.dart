@@ -2492,37 +2492,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 100,
-            height: 100,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.redAccent.withValues(alpha: 0.20),
-                  ),
-                ),
-                const Icon(
-                  PhosphorIconsFill.hand,
-                  size: 56,
-                  color: Colors.redAccent,
-                ),
-                SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 4,
-                    color: Colors.redAccent.withValues(alpha: 0.50),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
+          const _IsoMovementWarning(),
+          const SizedBox(height: 24),
           Text(
             FlutterI18n.translate(context, 'leveling.wizardKeepHandsClear'),
             textAlign: TextAlign.center,
@@ -3242,6 +3213,53 @@ class _ScrewSequencePainter extends CustomPainter {
       old.primary != primary || old.onPrimary != onPrimary;
 }
 
+/// ISO 7010 W024 "hand crushing" warning pictogram for machine-movement
+/// screens. Rendered in its standard colours (yellow triangle, black
+/// symbol) — deliberately never tinted, so it stays compliant with the
+/// real-world safety sign. Pulses gently to draw the eye.
+class _IsoMovementWarning extends StatefulWidget {
+  const _IsoMovementWarning();
+
+  @override
+  State<_IsoMovementWarning> createState() => _IsoMovementWarningState();
+}
+
+class _IsoMovementWarningState extends State<_IsoMovementWarning>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.03).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scale,
+      child: SvgPicture.asset(
+        'assets/images/ISO_7010_W024.svg',
+        width: 170,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+}
+
 // ================================================================================================================================================================================================
 // Phase: Screen Type Selection (recycles the select-arm UX)
 // ================================================================================================================================================================================================
@@ -3536,49 +3554,33 @@ class _WorkflowPane extends StatelessWidget {
     Color primary,
     LevelingWorkflowStep step,
   ) {
+    // Definitive movement state per step, so the subtitle names where
+    // the machine is actually going instead of a generic label.
     final title = step.runningTitle ??
         switch (step.kind) {
-          LevelingWorkflowStepKind.prepare =>
-            FlutterI18n.translate(context, 'leveling.wizardPreparingMachine'),
           LevelingWorkflowStepKind.finalOffset =>
             FlutterI18n.translate(context, 'leveling.wizardSavingOffset'),
-          _ => FlutterI18n.translate(context, 'leveling.wizardMovingToScreen'),
+          LevelingWorkflowStepKind.prepare when step.endpoint == 'probe_prepare' =>
+            FlutterI18n.translate(context, 'leveling.wizardMovingHome'),
+          LevelingWorkflowStepKind.prepare
+              when step.endpoint == 'probe_corner_prepare' =>
+            FlutterI18n.translate(context, 'leveling.wizardMovingPark'),
+          _ => switch (step.endpoint) {
+              'probe_screen' ||
+              'probe_levelcheck' ||
+              'probe_standardarm' =>
+                FlutterI18n.translate(context, 'leveling.wizardMovingToScreen'),
+              'probe_corner' =>
+                FlutterI18n.translate(context, 'leveling.wizardMovingCorner'),
+              _ =>
+                FlutterI18n.translate(context, 'leveling.wizardPreparingMachine'),
+            },
         };
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: 100,
-          height: 100,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.redAccent.withValues(alpha: 0.20),
-                ),
-              ),
-              const Icon(
-                PhosphorIconsFill.hand,
-                size: 56,
-                color: Colors.redAccent,
-              ),
-              SizedBox(
-                width: 100,
-                height: 100,
-                child: CircularProgressIndicator(
-                  strokeWidth: 4,
-                  color: Colors.redAccent.withValues(alpha: 0.50),
-                  backgroundColor: Colors.redAccent.withValues(alpha: 0.20),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
+        const _IsoMovementWarning(),
+        const SizedBox(height: 24),
         Text(
           FlutterI18n.translate(context, 'leveling.wizardKeepHandsClear'),
           textAlign: TextAlign.center,
