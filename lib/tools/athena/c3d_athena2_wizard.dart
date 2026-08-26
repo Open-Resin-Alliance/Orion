@@ -3223,28 +3223,29 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    // Top-half sanitized viewBox (0 0 1122.67 794) so only the long-end
-    // pictogram is shown, with the same horizontal fade as other screens.
+    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.32);
+    // Tight viewBox 364 403 395 411 — already cropped to long-end
+    // pictogram. Vertical fade softens the hard crop like the screw
+    // sequence diagram (top 5/6).
     final raw = SizedBox(
-      width: 900,
-      height: 636,
-      child: SvgPicture.asset(
-        'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
-        fit: BoxFit.contain,
-        colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+      width: 395,
+      height: 411,
+      child: ShaderMask(
+        shaderCallback: (Rect bounds) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.black, Colors.transparent],
+          stops: [0.78, 1.0],
+        ).createShader(bounds),
+        blendMode: BlendMode.dstIn,
+        child: SvgPicture.asset(
+          'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top.svg',
+          fit: BoxFit.contain,
+          colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
+        ),
       ),
     );
-    return ShaderMask(
-      shaderCallback: (Rect bounds) => const LinearGradient(
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-        colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
-        stops: [0.0, 0.12, 0.88, 1.0],
-      ).createShader(bounds),
-      blendMode: BlendMode.dstIn,
-      child: raw,
-    );
+    return raw;
   }
 }
 
@@ -4379,17 +4380,16 @@ class _WorkflowPane extends StatelessWidget {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Larger base so the pictogram fills the stage; top-half
-              // crop is done inside the diagram via ClipRect.
+              // Tight viewBox 364 403 395 411 fills the stage.
               final scale = min(
-                min((constraints.maxWidth - 24) / 900,
-                    (constraints.maxHeight - 16) / 636),
+                min((constraints.maxWidth - 24) / 395,
+                    (constraints.maxHeight - 16) / 411),
                 1.8,
               );
               return Center(
                 child: SizedBox(
-                  width: 900 * scale,
-                  height: 636 * scale,
+                  width: 395 * scale,
+                  height: 411 * scale,
                   child: const FittedBox(
                     fit: BoxFit.contain,
                     child: _HexKeyLongEndDiagram(),
