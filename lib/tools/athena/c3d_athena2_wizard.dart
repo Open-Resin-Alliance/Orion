@@ -3378,8 +3378,8 @@ class _AlignPlateDiagram extends StatelessWidget {
 }
 
 /// Corner-focused LCD top view for the "Place Leveling Spacer" step.
-/// Base line art is the cropped a2_lcd_ui_top_view for that corner
-/// (dimmed); the spacer position is highlighted as a pulsating puck.
+/// Shows only the cropped a2_lcd_ui_top_view for that corner (dimmed
+/// line art). No puck highlight for now per latest spec.
 class _SpacerPlacementDiagram extends StatelessWidget {
   const _SpacerPlacementDiagram({required this.cornerIndex});
 
@@ -3392,43 +3392,18 @@ class _SpacerPlacementDiagram extends StatelessWidget {
     'assets/images/concepts_3d/levelingsystem/a2_lcd_top_corner_bl.svg',
   ];
 
-  /// Puck centre as fraction of the 794×421 crop viewBox for each corner.
-  /// Tuned so the double-circle sits inset from the outer frame at that
-  /// corner (FL bottom-left, FR bottom-right, BR top-right, BL top-left).
-  static const _puckFractions = [
-    Offset(0.32, 0.38), // FL bottom-left: inner-rect corner inset
-    Offset(0.68, 0.38), // FR bottom-right
-    Offset(0.68, 0.62), // BR top-right
-    Offset(0.32, 0.62), // BL top-left
-  ];
-
   @override
   Widget build(BuildContext context) {
     final lineArt =
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
-    final primary = Theme.of(context).colorScheme.primary;
     final idx = cornerIndex.clamp(0, 3);
-    final asset = _assets[idx];
     return SizedBox(
       width: 794,
       height: 421,
-      child: Stack(
-        children: [
-          SvgPicture.asset(
-            asset,
-            fit: BoxFit.contain,
-            colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
-          ),
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _SpacerPlacementPainter(
-                primary: primary,
-                onPrimary: Theme.of(context).colorScheme.onPrimary,
-                puckFraction: _puckFractions[idx],
-              ),
-            ),
-          ),
-        ],
+      child: SvgPicture.asset(
+        _assets[idx],
+        fit: BoxFit.contain,
+        colorFilter: ColorFilter.mode(lineArt, BlendMode.srcIn),
       ),
     );
   }
