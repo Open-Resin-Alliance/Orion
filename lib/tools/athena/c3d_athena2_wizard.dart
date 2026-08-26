@@ -3223,7 +3223,8 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final lineArt = onSurface.withValues(alpha: 0.45);
     return SizedBox(
       width: 395,
       height: 411,
@@ -3250,11 +3251,16 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
               return LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [lineArt, Colors.white],
-                stops: const [0.48, 0.78],
+                colors: [
+                  onSurface.withValues(alpha: 0.72),
+                  onSurface.withValues(alpha: 0.72),
+                  Colors.transparent,
+                  Colors.transparent
+                ],
+                stops: const [0.0, 0.32, 0.62, 1.0],
               ).createShader(bounds);
             },
-            blendMode: BlendMode.modulate,
+            blendMode: BlendMode.srcATop,
             child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer2.svg',
               fit: BoxFit.contain,
