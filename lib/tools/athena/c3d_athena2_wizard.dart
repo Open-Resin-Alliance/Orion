@@ -2663,18 +2663,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       }
     }
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 280),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero).animate(animation),
-            child: child,
-          ),
-        );
-      },
+      duration: const Duration(milliseconds: 350),
+      switchInCurve: Curves.easeInOut,
+      switchOutCurve: Curves.easeInOut,
+      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: Alignment.center,
+        children: <Widget>[...previousChildren, if (currentChild != null) currentChild],
+      ),
       child: KeyedSubtree(
         key: ValueKey(_adjustmentStep),
         child: content,
@@ -4366,26 +4362,35 @@ class _WorkflowPane extends StatelessWidget {
                         : isRemovePuck
                             ? _buildRemovePuckView(context, primary)
                             : _buildStepView(context, theme, primary, step);
+    // Unique key per pictogram so Loosen->Align->HexLong->Tighten cross-fades
+    // even when they share the same underlying step id (all depend on status==stepComplete).
+    final String viewId;
+    if (isLoosenScrews) {
+      viewId = 'loosen';
+    } else if (isAlignPlate) {
+      viewId = 'align';
+    } else if (isHexLongEnd) {
+      viewId = 'hexLong';
+    } else if (isTightenScrews) {
+      viewId = 'tighten';
+    } else if (isAllCornersMeasured) {
+      viewId = 'allCorners';
+    } else if (isRemovePuck) {
+      viewId = 'removePuck';
+    } else {
+      viewId = step.id;
+    }
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 280),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.04, 0),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        );
-      },
+      duration: const Duration(milliseconds: 350),
+      switchInCurve: Curves.easeInOut,
+      switchOutCurve: Curves.easeInOut,
+      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: Alignment.center,
+        children: <Widget>[...previousChildren, if (currentChild != null) currentChild],
+      ),
       child: Center(
-        key: ValueKey(
-          'workflow-${engine.currentStepIndex}-${engine.status.name}-${step?.id}',
-        ),
+        key: ValueKey('workflow-${engine.currentStepIndex}-${engine.status.name}-$viewId'),
         child: content,
       ),
     );
