@@ -3421,18 +3421,22 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
           ),
           ShaderMask(
             shaderCallback: (Rect bounds) {
-              return const LinearGradient(
+              return LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.black, Colors.transparent],
-                stops: [0.78, 1.0],
+                colors: [
+                  Colors.transparent,
+                  Colors.transparent,
+                  Colors.redAccent,
+                  Colors.redAccent,
+                ],
+                stops: const [0.0, 0.18, 0.48, 1.0],
               ).createShader(bounds);
             },
-            blendMode: BlendMode.dstIn,
+            blendMode: BlendMode.srcATop,
             child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top_layer2.svg',
               fit: BoxFit.contain,
-              colorFilter: const ColorFilter.mode(Colors.redAccent, BlendMode.srcIn),
             ),
           ),
         ],
