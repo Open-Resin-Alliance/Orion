@@ -3367,22 +3367,18 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
           ),
           ShaderMask(
             shaderCallback: (Rect bounds) {
-              return LinearGradient(
+              return const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  onSurface.withValues(alpha: 0.72),
-                  onSurface.withValues(alpha: 0.72),
-                  Colors.transparent,
-                  Colors.transparent
-                ],
-                stops: const [0.0, 0.52, 0.82, 1.0],
+                colors: [Colors.black, Colors.transparent],
+                stops: [0.78, 1.0],
               ).createShader(bounds);
             },
-            blendMode: BlendMode.srcATop,
+            blendMode: BlendMode.dstIn,
             child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer2.svg',
               fit: BoxFit.contain,
+              colorFilter: const ColorFilter.mode(Color(0xFF69F0AE), BlendMode.srcIn),
             ),
           ),
         ],
@@ -3424,19 +3420,15 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
               return const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.redAccent,
-                  Colors.redAccent,
-                  Colors.transparent,
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.52, 0.82, 1.0],
+                colors: [Colors.black, Colors.transparent],
+                stops: [0.78, 1.0],
               ).createShader(bounds);
             },
-            blendMode: BlendMode.srcATop,
+            blendMode: BlendMode.dstIn,
             child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top_layer2.svg',
               fit: BoxFit.contain,
+              colorFilter: const ColorFilter.mode(Colors.redAccent, BlendMode.srcIn),
             ),
           ),
         ],
