@@ -3421,16 +3421,16 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
           ),
           ShaderMask(
             shaderCallback: (Rect bounds) {
-              return LinearGradient(
+              return const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.transparent,
-                  Colors.transparent,
                   Colors.redAccent,
                   Colors.redAccent,
+                  Colors.transparent,
+                  Colors.transparent,
                 ],
-                stops: const [0.0, 0.18, 0.48, 1.0],
+                stops: const [0.0, 0.52, 0.82, 1.0],
               ).createShader(bounds);
             },
             blendMode: BlendMode.srcATop,
