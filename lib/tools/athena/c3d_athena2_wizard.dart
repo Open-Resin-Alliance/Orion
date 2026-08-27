@@ -2664,7 +2664,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       }
     }
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 70),
+      duration: const Duration(milliseconds: 300),
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
       transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
@@ -4387,7 +4387,7 @@ class _WorkflowPane extends StatelessWidget {
       viewId = '${effectivelyRunning ? 'run-' : 'idle-'}${step.id}';
     }
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 70),
+      duration: const Duration(milliseconds: 300),
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
       transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
