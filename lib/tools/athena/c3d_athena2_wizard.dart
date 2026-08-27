@@ -2664,8 +2664,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       }
     }
     return AnimatedSwitcher(
-      // Same as startup_gate: 600ms pure Fade crossfade.
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 70),
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
       transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
@@ -4386,8 +4385,7 @@ class _WorkflowPane extends StatelessWidget {
       viewId = step.id;
     }
     return AnimatedSwitcher(
-      // Same cross-fade as Orion-wide page switch (startup_gate 600ms Fade).
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 70),
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
       transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
