@@ -2549,38 +2549,37 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   }
 
   Widget _buildAdjustmentPhase(BuildContext context, Color primary) {
+    Widget content;
     if (_adjustmentError != null) {
-      return _buildAdjustmentError(context, primary);
-    }
-    // Below-resolution has no adjusting corner — handle it before the
-    // corner guard.
-    if (_adjustmentStep == _AdjustmentStep.belowResolution) {
-      return _buildBelowResolutionView(context, primary);
-    }
-    // Mechanical skew likewise has no actionable corner — error screen
-    // before the corner guard.
-    if (_adjustmentStep == _AdjustmentStep.mechanicalSkew) {
-      return _buildMechanicalSkewView(context, primary);
-    }
-    if (_adjustingCornerIndex == null) {
-      return const SizedBox.shrink();
-    }
-
-    switch (_adjustmentStep) {
-      case _AdjustmentStep.intro:
-        return _buildAdjustmentIntroView(context, primary);
-      case _AdjustmentStep.hexShortEnd:
-        return _buildHexShortEndView(context, primary);
-      case _AdjustmentStep.preparing:
-      case _AdjustmentStep.probing:
-        return _buildAdjustmentWarning(context, primary);
-      case _AdjustmentStep.puckPlacement:
-        return _buildPuckPlacementView(context, primary);
-      case _AdjustmentStep.belowResolution:
-        return _buildBelowResolutionView(context, primary);
-      case _AdjustmentStep.mechanicalSkew:
-        return _buildMechanicalSkewView(context, primary);
-      case _AdjustmentStep.feedback:
+      content = _buildAdjustmentError(context, primary);
+    } else if (_adjustmentStep == _AdjustmentStep.belowResolution) {
+      content = _buildBelowResolutionView(context, primary);
+    } else if (_adjustmentStep == _AdjustmentStep.mechanicalSkew) {
+      content = _buildMechanicalSkewView(context, primary);
+    } else if (_adjustingCornerIndex == null) {
+      content = const SizedBox.shrink();
+    } else {
+      switch (_adjustmentStep) {
+        case _AdjustmentStep.intro:
+          content = _buildAdjustmentIntroView(context, primary);
+          break;
+        case _AdjustmentStep.hexShortEnd:
+          content = _buildHexShortEndView(context, primary);
+          break;
+        case _AdjustmentStep.preparing:
+        case _AdjustmentStep.probing:
+          content = _buildAdjustmentWarning(context, primary);
+          break;
+        case _AdjustmentStep.puckPlacement:
+          content = _buildPuckPlacementView(context, primary);
+          break;
+        case _AdjustmentStep.belowResolution:
+          content = _buildBelowResolutionView(context, primary);
+          break;
+        case _AdjustmentStep.mechanicalSkew:
+          content = _buildMechanicalSkewView(context, primary);
+          break;
+        case _AdjustmentStep.feedback:
         // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
         // The gauge target is anchored to the adjusted corner's
         // re-probed first-stage peak force plus the controller's
@@ -2642,7 +2641,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           _predictionRechecks = _pendingCommand!.cmd.predictedRechecks;
         }
 
-        return _AdjustmentFeedbackScreen(
+        content = _AdjustmentFeedbackScreen(
           key: const ValueKey('adjustment-feedback'),
           cornerIndex: _adjustingCornerIndex!,
           cornerForce: cornerForce,
@@ -2660,7 +2659,27 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           // recheck log can compare it against the suggested target.
           onAchievedForce: (force) => _lastAchievedForceGf = force,
         );
+          break;
+      }
     }
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0.04, 0), end: Offset.zero).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(
+        key: ValueKey(_adjustmentStep),
+        child: content,
+      ),
+    );
   }
 
   Widget _buildAdjustmentIntroView(BuildContext context, Color primary) {
@@ -4327,25 +4346,51 @@ class _WorkflowPane extends StatelessWidget {
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
     final isRemovePuck = isComplete && intermediate == 'removePuck';
 
-    return Center(
-      key: ValueKey(
-        'workflow-${engine.currentStepIndex}-${engine.status.name}',
+    // Suppress one-frame flash for skipBackend/autoAdvance intermediates (corner_results, remove_puck, etc.)
+    // that are auto-run in _handleEngineUpdate — don't mount their intermediateScreen at all.
+    if (_autoAdvancing &&
+        step != null &&
+        step.skipBackend &&
+        step.intermediateScreen != null) {
+      return const Center(child: SizedBox.shrink());
+    }
+    final content = effectivelyRunning
+        ? _buildRunningView(context, primary, step)
+        : isLoosenScrews
+            ? _buildLoosenScrewsView(context, primary)
+            : isAlignPlate
+                ? _buildAlignPlateView(context, primary)
+                : isHexLongEnd
+                    ? _buildHexLongEndView(context, primary)
+                    : isTightenScrews
+                    ? _buildTightenScrewsView(context, primary)
+                    : isAllCornersMeasured
+                        ? _buildAllCornersMeasuredView(context, primary)
+                        : isRemovePuck
+                            ? _buildRemovePuckView(context, primary)
+                            : _buildStepView(context, theme, primary, step);
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.04, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: Center(
+        key: ValueKey(
+          'workflow-${engine.currentStepIndex}-${engine.status.name}-${step?.id}',
+        ),
+        child: content,
       ),
-      child: effectivelyRunning
-          ? _buildRunningView(context, primary, step)
-          : isLoosenScrews
-              ? _buildLoosenScrewsView(context, primary)
-              : isAlignPlate
-                  ? _buildAlignPlateView(context, primary)
-                  : isHexLongEnd
-                      ? _buildHexLongEndView(context, primary)
-                      : isTightenScrews
-                      ? _buildTightenScrewsView(context, primary)
-                      : isAllCornersMeasured
-                          ? _buildAllCornersMeasuredView(context, primary)
-                          : isRemovePuck
-                              ? _buildRemovePuckView(context, primary)
-                              : _buildStepView(context, theme, primary, step),
     );
   }
 
