@@ -1457,6 +1457,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           key: const ValueKey('workflow'),
           engine: _engine,
           effectivelyRunning: _effectivelyRunning,
+          autoAdvancing: _autoAdvancing,
           loosenScrewsDone: _loosenScrewsDone,
           tightenScrewsDone: _tightenScrewsDone,
           alignDone: _alignDone,
@@ -2663,9 +2664,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       }
     }
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 350),
-      switchInCurve: Curves.easeInOut,
-      switchOutCurve: Curves.easeInOut,
+      // Same as startup_gate: 600ms pure Fade crossfade.
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
       transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
       layoutBuilder: (currentChild, previousChildren) => Stack(
         alignment: Alignment.center,
@@ -4289,6 +4291,7 @@ class _WorkflowPane extends StatelessWidget {
     super.key,
     required this.engine,
     required this.effectivelyRunning,
+    required this.autoAdvancing,
     required this.loosenScrewsDone,
     required this.tightenScrewsDone,
     required this.alignDone,
@@ -4297,16 +4300,14 @@ class _WorkflowPane extends StatelessWidget {
     required this.cornerZs,
     this.preAdjustmentDeviation,
   });
-
   final LevelingWorkflowEngine engine;
   final bool effectivelyRunning;
+  final bool autoAdvancing;
   final bool loosenScrewsDone;
   final bool tightenScrewsDone;
   final bool alignDone;
   final bool hexLongEndDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
-
-  /// Averaged per-corner Z values from the sample accumulator — the
   /// values the wizard actually levels with; the results view must
   /// display the same numbers.
   final List<double?> cornerZs;
@@ -4342,9 +4343,13 @@ class _WorkflowPane extends StatelessWidget {
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
     final isRemovePuck = isComplete && intermediate == 'removePuck';
 
-    // Suppress one-frame flash for skipBackend/autoAdvance intermediates (corner_results, remove_puck, etc.)
-    // that are auto-run in _handleEngineUpdate — don't mount their intermediateScreen at all.
-    if (step.skipBackend && step.intermediateScreen != null) {
+    // Suppress the one-frame empty-step flash before a skipBackend/autoAdvance
+    // target is run. Once the target reaches stepComplete its intermediate
+    // (allCorners/removePuck etc.) must be shown, so don't hide after.
+    if (autoAdvancing &&
+        step.skipBackend &&
+        step.intermediateScreen != null &&
+        engine.status != LevelingWorkflowStatus.stepComplete) {
       return const Center(child: SizedBox.shrink());
     }
     final content = effectivelyRunning
@@ -4381,16 +4386,17 @@ class _WorkflowPane extends StatelessWidget {
       viewId = step.id;
     }
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 350),
-      switchInCurve: Curves.easeInOut,
-      switchOutCurve: Curves.easeInOut,
+      // Same cross-fade as Orion-wide page switch (startup_gate 600ms Fade).
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
       transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
       layoutBuilder: (currentChild, previousChildren) => Stack(
         alignment: Alignment.center,
         children: <Widget>[...previousChildren, if (currentChild != null) currentChild],
       ),
       child: Center(
-        key: ValueKey('workflow-${engine.currentStepIndex}-${engine.status.name}-$viewId'),
+        key: ValueKey('workflow-${engine.currentStepIndex}-${engine.status.name}-${effectivelyRunning ? 'run' : 'idle'}-$viewId'),
         child: content,
       ),
     );
