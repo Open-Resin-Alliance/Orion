@@ -4348,10 +4348,7 @@ class _WorkflowPane extends StatelessWidget {
 
     // Suppress one-frame flash for skipBackend/autoAdvance intermediates (corner_results, remove_puck, etc.)
     // that are auto-run in _handleEngineUpdate — don't mount their intermediateScreen at all.
-    if (_autoAdvancing &&
-        step != null &&
-        step.skipBackend &&
-        step.intermediateScreen != null) {
+    if (step.skipBackend && step.intermediateScreen != null) {
       return const Center(child: SizedBox.shrink());
     }
     final content = effectivelyRunning
