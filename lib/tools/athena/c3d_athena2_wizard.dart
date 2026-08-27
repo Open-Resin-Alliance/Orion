@@ -4382,7 +4382,9 @@ class _WorkflowPane extends StatelessWidget {
     } else if (isRemovePuck) {
       viewId = 'removePuck';
     } else {
-      viewId = step.id;
+      // Idle step view (Place Spacer) vs running Keep Clear for same step.id
+      // must cross-fade: prefix with run/idle so same index still animates.
+      viewId = '${effectivelyRunning ? 'run-' : 'idle-'}${step.id}';
     }
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 70),
