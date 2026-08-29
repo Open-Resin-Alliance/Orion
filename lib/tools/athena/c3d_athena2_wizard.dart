@@ -146,8 +146,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   /// If the suggested screw adjustment exceeds this force delta (gf), the
   /// arm itself is mechanically skewed — no screw turn can physically apply
   /// that much.  Surface an error instead of sending the user to the gauge.
-  static const double _maxSuggestedForceDeltaGf = 2500;
-
+  /// Threshold is 3000 gf (gauge ceiling) — only triggers when the command
+  /// would clamp. Gap gate + two-strike debounce (see _enterAdjustmentMode
+  /// / _runAdjustmentProbe) keep single noisy probes from surfacing.
+  static const double _maxSuggestedForceDeltaGf = 3000;
+  static const double _mechanicalSkewGapThresholdMm = 0.90;
   static Map<int, ScrewController> _freshControllers() => {
         0: ScrewController(seedCouplingMmPerGf: _frontBaselineSeed),
         1: ScrewController(seedCouplingMmPerGf: _frontBaselineSeed),
@@ -168,6 +171,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   double?
       _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
   int _consecutiveBackAdjustments = 0; // detect maxed-out back screw
+  int _consecutiveSkewHits = 0; // debounce mechanical-skew: needs 2 consecutive hits + gap gate
 
   // Persisted per-screw coupling calibration — coupling is a physical
   // property of the plate, so sessions start from the previous
@@ -311,6 +315,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           _pendingCommand = null;
           _lastAchievedForceGf = null;
           _lastAdjustedCorner = null;
+          _consecutiveSkewHits = 0;
+          _consecutiveBackAdjustments = 0;
           _loadScrewCalibration();
           final savedScreenId = OrionConfig().getScreenType();
           final savedScreen = LevelingScreenType.fromId(
@@ -339,8 +345,6 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _engine.selectVariant(proVariant);
     _loosenScrewsDone = true;
     _tightenScrewsDone = true;
-    _alignDone = true;
-    _hexLongEndDone = true;
     _levelingSessionId = _uuid4();
     _recheckNumber = 0;
     _probeConfigCaptured = false;
@@ -348,6 +352,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _pendingCommand = null;
     _lastAchievedForceGf = null;
     _lastAdjustedCorner = null;
+    _consecutiveSkewHits = 0;
+    _consecutiveBackAdjustments = 0;
     _resetCornerResults();
     _loadScrewCalibration();
     // Recheck doesn't re-ask the screen type — reuse the persisted one.
@@ -820,6 +826,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     }
 
     if (probeCorner == null) {
+      _consecutiveSkewHits = 0;
       // Every candidate is below the execution floor: the remaining
       // deviation is within measurement/adjustment resolution.  Don't
       // send the user to a screw — offer a recheck instead.
@@ -838,17 +845,31 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     // A suggested delta larger than the screws can physically apply means
     // the arm itself is mechanically skewed — no screw turn will fix it.
-    // Surface an error instead of sending the user through prepare/probe.
+    // Two-strike debounce + gap gate: require |forceDelta| >= 3000,
+    // |gap| >= 0.90 mm, and two consecutive hits (pre-gauge + re-probe
+    // or two adjustment cycles) to filter single noisy probes.
     if (probeCommand != null &&
-        probeCommand.forceDeltaGf.abs() > _maxSuggestedForceDeltaGf) {
-      _adjustingCornerIndex = null;
-      _adjustmentError = null;
-      _adjustmentBusy = false;
-      setState(() {
-        _phase = _WizardPhase.adjustment;
-        _adjustmentStep = _AdjustmentStep.mechanicalSkew;
-      });
-      return;
+        probeCommand.forceDeltaGf.abs() >= _maxSuggestedForceDeltaGf) {
+      final gapMm = adjustmentGapMm(probeCorner!, zValues);
+      final gapExceeds = gapMm.abs() >= _mechanicalSkewGapThresholdMm;
+      if (gapExceeds) {
+        _consecutiveSkewHits++;
+        if (_consecutiveSkewHits >= 2) {
+          _adjustingCornerIndex = null;
+          _adjustmentError = null;
+          _adjustmentBusy = false;
+          setState(() {
+            _phase = _WizardPhase.adjustment;
+            _adjustmentStep = _AdjustmentStep.mechanicalSkew;
+          });
+          return;
+        }
+        // Single hit — defer, let the re-probe confirmation decide.
+      } else {
+        _consecutiveSkewHits = 0;
+      }
+    } else {
+      _consecutiveSkewHits = 0;
     }
 
     _adjustingCornerIndex = probeCorner;
@@ -1004,6 +1025,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         // floor — or flipped its sign, which under the tighten-only
         // policy must never turn into a loosen command.
         if (cmd.forceDeltaGf > -ScrewController.minCommandDeltaGf) {
+          _consecutiveSkewHits = 0;
           _adjustmentBusy = false;
           _adjustmentStep = _AdjustmentStep.belowResolution;
           // No adjustment will happen — see _enterAdjustmentMode.
@@ -1012,15 +1034,26 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           return;
         }
         // Re-probe may still land on a mechanically skewed suggestion —
-        // error out instead of sending the user to the gauge.
-        if (cmd.forceDeltaGf.abs() > _maxSuggestedForceDeltaGf) {
-          _adjustmentBusy = false;
-          _adjustmentStep = _AdjustmentStep.mechanicalSkew;
-          _preAdjustmentDeviation = null;
-          if (mounted) setState(() {});
-          return;
+        // need two consecutive clamped hits with large gap to surface
+        // (debounces single noisy probe). First hit defers to the gauge.
+        if (cmd.forceDeltaGf.abs() >= _maxSuggestedForceDeltaGf) {
+          final gapExceeds = zGapMm.abs() >= _mechanicalSkewGapThresholdMm;
+          if (gapExceeds) {
+            _consecutiveSkewHits++;
+            if (_consecutiveSkewHits >= 2) {
+              _adjustmentBusy = false;
+              _adjustmentStep = _AdjustmentStep.mechanicalSkew;
+              _preAdjustmentDeviation = null;
+              if (mounted) setState(() {});
+              return;
+            }
+            // Single hit — fall through to gauge, let next cycle confirm.
+          } else {
+            _consecutiveSkewHits = 0;
+          }
+        } else {
+          _consecutiveSkewHits = 0;
         }
-        controller.recordCommand(cmd);
         _lastAdjustedCorner = idx;
         _pendingCommand = _PendingScrewCommand(
           cmd,
@@ -1425,7 +1458,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _pendingCommand = null;
             _lastAchievedForceGf = null;
             _lastAdjustedCorner = null;
-            // Pre-seed the fresh controllers from the persisted
+            _consecutiveSkewHits = 0;
+            _consecutiveBackAdjustments = 0;
             // per-screw calibration (fire-and-forget; adjustments
             // happen much later in the flow).
             _loadScrewCalibration();
