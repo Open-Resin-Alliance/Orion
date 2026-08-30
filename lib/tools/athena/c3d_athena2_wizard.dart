@@ -146,11 +146,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   /// If the suggested screw adjustment exceeds this force delta (gf), the
   /// arm itself is mechanically skewed — no screw turn can physically apply
   /// that much.  Surface an error instead of sending the user to the gauge.
-  /// Threshold is 3000 gf (gauge ceiling) — only triggers when the command
+  /// Threshold is 2500 gf (gauge ceiling) — only triggers when the command
   /// would clamp. Gap gate + two-strike debounce (see _enterAdjustmentMode
   /// / _runAdjustmentProbe) keep single noisy probes from surfacing.
-  static const double _maxSuggestedForceDeltaGf = 3000;
-  static const double _mechanicalSkewGapThresholdMm = 0.90;
+  static const double _maxSuggestedForceDeltaGf = 2500;
+  static const double _mechanicalSkewGapThresholdMm = 0.50;
   static Map<int, ScrewController> _freshControllers() => {
         0: ScrewController(seedCouplingMmPerGf: _frontBaselineSeed),
         1: ScrewController(seedCouplingMmPerGf: _frontBaselineSeed),
@@ -171,7 +171,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   double?
       _preAdjustmentDeviation; // snapshot before adjustment for divergence detection
   int _consecutiveBackAdjustments = 0; // detect maxed-out back screw
-  int _consecutiveSkewHits = 0; // debounce mechanical-skew: needs 2 consecutive hits + gap gate
+  int _consecutiveSkewHits =
+      0; // debounce mechanical-skew: needs 2 consecutive hits + gap gate
 
   // Persisted per-screw coupling calibration — coupling is a physical
   // property of the plate, so sessions start from the previous
@@ -1267,7 +1268,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         builder: (ctx) => GlassAlertDialog(
           title: Row(
             children: [
-              Icon(PhosphorIcons.warningCircle(), size: 26, color: Colors.redAccent),
+              Icon(PhosphorIcons.warningCircle(),
+                  size: 26, color: Colors.redAccent),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -2233,7 +2235,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   Icon(PhosphorIcons.wrench(), size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    FlutterI18n.translate(context, 'leveling.wizardAdjustAgain'),
+                    FlutterI18n.translate(
+                        context, 'leveling.wizardAdjustAgain'),
                     style: const TextStyle(
                         fontSize: 21, fontWeight: FontWeight.w700),
                   ),
@@ -2511,7 +2514,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           Expanded(
             child: GlassButton(
               tint: GlassButtonTint.positive,
-              onPressed: () => setState(() => _adjustmentStep = _AdjustmentStep.hexShortEnd),
+              onPressed: () =>
+                  setState(() => _adjustmentStep = _AdjustmentStep.hexShortEnd),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
               ),
@@ -2615,85 +2619,85 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           content = _buildMechanicalSkewView(context, primary);
           break;
         case _AdjustmentStep.feedback:
-        // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
-        // The gauge target is anchored to the adjusted corner's
-        // re-probed first-stage peak force plus the controller's
-        // commanded delta (see _runAdjustmentProbe).
-        final allForces = _cornerResults
-            .map((r) => r?.measurements?.firstStagePeakForce)
-            .toList();
-        final idx = _adjustingCornerIndex!;
+          // Corner indexing: 0=FL, 1=FR, 2=BR, 3=BL
+          // The gauge target is anchored to the adjusted corner's
+          // re-probed first-stage peak force plus the controller's
+          // commanded delta (see _runAdjustmentProbe).
+          final allForces = _cornerResults
+              .map((r) => r?.measurements?.firstStagePeakForce)
+              .toList();
+          final idx = _adjustingCornerIndex!;
 
-        if (allForces.length < 4 ||
-            allForces[0] == null ||
-            allForces[1] == null ||
-            allForces[2] == null ||
-            allForces[3] == null) {
-          return const SizedBox.shrink();
-        }
+          if (allForces.length < 4 ||
+              allForces[0] == null ||
+              allForces[1] == null ||
+              allForces[2] == null ||
+              allForces[3] == null) {
+            return const SizedBox.shrink();
+          }
 
-        // ── Unified screw command (front and back) ──
-        // The command was computed once when the re-probe completed
-        // (see _runAdjustmentProbe) and is only rendered here, so
-        // rebuilds can't shift the target.  Direction comes from the
-        // Z gap, magnitude from the per-screw learned coupling —
-        // never from raw force differences, whose ±300–500 gf noise
-        // can point the gauge the wrong way (e.g. session b9ef2b8f
-        // recheck #1: FR's force sat ABOVE its diagonal reference
-        // even though FR was the highest corner).
-        if (_pendingCommand == null) {
-          return const SizedBox.shrink();
-        }
-        final double targetForce = _pendingCommand!.targetForceGf;
+          // ── Unified screw command (front and back) ──
+          // The command was computed once when the re-probe completed
+          // (see _runAdjustmentProbe) and is only rendered here, so
+          // rebuilds can't shift the target.  Direction comes from the
+          // Z gap, magnitude from the per-screw learned coupling —
+          // never from raw force differences, whose ±300–500 gf noise
+          // can point the gauge the wrong way (e.g. session b9ef2b8f
+          // recheck #1: FR's force sat ABOVE its diagonal reference
+          // even though FR was the highest corner).
+          if (_pendingCommand == null) {
+            return const SizedBox.shrink();
+          }
+          final double targetForce = _pendingCommand!.targetForceGf;
 
-        final double cornerForce = allForces[idx]!;
-        final double forceDeltaGf = cornerForce - targetForce;
-        // Positive → corner more compressed than reference → TIGHTEN.
-        // Negative → corner less compressed than reference → LOOSEN.
-        final bool needsTighten = forceDeltaGf > 20;
-        final bool needsLoosen = forceDeltaGf < -20;
+          final double cornerForce = allForces[idx]!;
+          final double forceDeltaGf = cornerForce - targetForce;
+          // Positive → corner more compressed than reference → TIGHTEN.
+          // Negative → corner less compressed than reference → LOOSEN.
+          final bool needsTighten = forceDeltaGf > 20;
+          final bool needsLoosen = forceDeltaGf < -20;
 
-        // ── Prediction summary ──
-        // Compute what the user should expect from this adjustment so
-        // they can see whether they're on track.
-        {
-          final screwNames = [
-            FlutterI18n.translate(context, 'leveling.wizardScrewFL'),
-            FlutterI18n.translate(context, 'leveling.wizardScrewFR'),
-            FlutterI18n.translate(context, 'leveling.wizardScrewBack'),
-            FlutterI18n.translate(context, 'leveling.wizardScrewBack'),
-          ];
-          _predictionScrew = screwNames[idx];
-          _predictionDirection = needsTighten
-              ? FlutterI18n.translate(context, 'leveling.wizardTighten')
-              : needsLoosen
-                  ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
-                  : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
+          // ── Prediction summary ──
+          // Compute what the user should expect from this adjustment so
+          // they can see whether they're on track.
+          {
+            final screwNames = [
+              FlutterI18n.translate(context, 'leveling.wizardScrewFL'),
+              FlutterI18n.translate(context, 'leveling.wizardScrewFR'),
+              FlutterI18n.translate(context, 'leveling.wizardScrewBack'),
+              FlutterI18n.translate(context, 'leveling.wizardScrewBack'),
+            ];
+            _predictionScrew = screwNames[idx];
+            _predictionDirection = needsTighten
+                ? FlutterI18n.translate(context, 'leveling.wizardTighten')
+                : needsLoosen
+                    ? FlutterI18n.translate(context, 'leveling.wizardLoosen')
+                    : FlutterI18n.translate(context, 'leveling.wizardAtTarget');
 
-          // The command carries its own damped target and a
-          // clamp-aware recheck estimate.
-          _predictionZMm = _pendingCommand!.cmd.targetZMm.abs();
-          _predictionRechecks = _pendingCommand!.cmd.predictedRechecks;
-        }
+            // The command carries its own damped target and a
+            // clamp-aware recheck estimate.
+            _predictionZMm = _pendingCommand!.cmd.targetZMm.abs();
+            _predictionRechecks = _pendingCommand!.cmd.predictedRechecks;
+          }
 
-        content = _AdjustmentFeedbackScreen(
-          key: const ValueKey('adjustment-feedback'),
-          cornerIndex: _adjustingCornerIndex!,
-          cornerForce: cornerForce,
-          targetForce: targetForce,
-          allCornerForces: allForces.whereType<double>().toList(),
-          forceDelta: forceDeltaGf,
-          needsTighten: needsTighten,
-          needsLoosen: needsLoosen,
-          predictionDirection: _predictionDirection,
-          predictionScrew: _predictionScrew,
-          predictionZMm: _predictionZMm,
-          predictionRechecks: _predictionRechecks,
-          consecutiveBackAdjustments: _consecutiveBackAdjustments,
-          // Track where the user actually leaves the gauge so the
-          // recheck log can compare it against the suggested target.
-          onAchievedForce: (force) => _lastAchievedForceGf = force,
-        );
+          content = _AdjustmentFeedbackScreen(
+            key: const ValueKey('adjustment-feedback'),
+            cornerIndex: _adjustingCornerIndex!,
+            cornerForce: cornerForce,
+            targetForce: targetForce,
+            allCornerForces: allForces.whereType<double>().toList(),
+            forceDelta: forceDeltaGf,
+            needsTighten: needsTighten,
+            needsLoosen: needsLoosen,
+            predictionDirection: _predictionDirection,
+            predictionScrew: _predictionScrew,
+            predictionZMm: _predictionZMm,
+            predictionRechecks: _predictionRechecks,
+            consecutiveBackAdjustments: _consecutiveBackAdjustments,
+            // Track where the user actually leaves the gauge so the
+            // recheck log can compare it against the suggested target.
+            onAchievedForce: (force) => _lastAchievedForceGf = force,
+          );
           break;
       }
     }
@@ -2701,10 +2705,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       duration: const Duration(milliseconds: 300),
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+      transitionBuilder: (child, animation) =>
+          FadeTransition(opacity: animation, child: child),
       layoutBuilder: (currentChild, previousChildren) => Stack(
         alignment: Alignment.center,
-        children: <Widget>[...previousChildren, if (currentChild != null) currentChild],
+        children: <Widget>[
+          ...previousChildren,
+          if (currentChild != null) currentChild
+        ],
       ),
       child: KeyedSubtree(
         key: ValueKey(_adjustmentStep),
@@ -2779,7 +2787,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         color: theme.colorScheme.primary,
       ),
     );
-    final rawInstruction = FlutterI18n.translate(context, 'leveling.hexShortEndInstruction');
+    final rawInstruction =
+        FlutterI18n.translate(context, 'leveling.hexShortEndInstruction');
     final instruction = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: _buildHighlightedInstruction(
@@ -3428,7 +3437,8 @@ class _HexKeyLongEndDiagram extends StatelessWidget {
             child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer2.svg',
               fit: BoxFit.contain,
-              colorFilter: const ColorFilter.mode(Color(0xFF69F0AE), BlendMode.srcIn),
+              colorFilter:
+                  const ColorFilter.mode(Color(0xFF69F0AE), BlendMode.srcIn),
             ),
           ),
         ],
@@ -3442,7 +3452,8 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
+    final lineArt =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
     // Layer 1: regular lineArt with bottom fade; Layer 2: cancel red (instead of green) for the short-end highlight.
     return SizedBox(
       width: 886,
@@ -3478,7 +3489,8 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
             child: SvgPicture.asset(
               'assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_short_end_top_layer2.svg',
               fit: BoxFit.contain,
-              colorFilter: const ColorFilter.mode(Colors.redAccent, BlendMode.srcIn),
+              colorFilter:
+                  const ColorFilter.mode(Colors.redAccent, BlendMode.srcIn),
             ),
           ),
         ],
@@ -3487,43 +3499,40 @@ class _HexKeyShortEndDiagram extends StatelessWidget {
   }
 }
 
-
-
-
-  Widget _buildHighlightedInstruction(
-    BuildContext context,
-    String text,
-    String keyword,
-    TextStyle baseStyle,
-  ) {
-    final lower = text.toLowerCase();
-    final kwLower = keyword.toLowerCase();
-    final idx = lower.indexOf(kwLower);
-    if (idx == -1) {
-      return Text(text, textAlign: TextAlign.center, style: baseStyle);
-    }
-    final before = text.substring(0, idx);
-    final match = text.substring(idx, idx + keyword.length);
-    final after = text.substring(idx + keyword.length);
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: before, style: baseStyle),
-          TextSpan(
-            text: match,
-            style: baseStyle.copyWith(
-              fontWeight: FontWeight.w700,
-              decoration: TextDecoration.underline,
-              decorationColor: baseStyle.color,
-              decorationThickness: 1.5,
-            ),
-          ),
-          TextSpan(text: after, style: baseStyle),
-        ],
-      ),
-      textAlign: TextAlign.center,
-    );
+Widget _buildHighlightedInstruction(
+  BuildContext context,
+  String text,
+  String keyword,
+  TextStyle baseStyle,
+) {
+  final lower = text.toLowerCase();
+  final kwLower = keyword.toLowerCase();
+  final idx = lower.indexOf(kwLower);
+  if (idx == -1) {
+    return Text(text, textAlign: TextAlign.center, style: baseStyle);
   }
+  final before = text.substring(0, idx);
+  final match = text.substring(idx, idx + keyword.length);
+  final after = text.substring(idx + keyword.length);
+  return Text.rich(
+    TextSpan(
+      children: [
+        TextSpan(text: before, style: baseStyle),
+        TextSpan(
+          text: match,
+          style: baseStyle.copyWith(
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline,
+            decorationColor: baseStyle.color,
+            decorationThickness: 1.5,
+          ),
+        ),
+        TextSpan(text: after, style: baseStyle),
+      ],
+    ),
+    textAlign: TextAlign.center,
+  );
+}
 
 class _ScrewSequenceDiagram extends StatelessWidget {
   const _ScrewSequenceDiagram({this.clockwise = false});
@@ -3544,7 +3553,8 @@ class _ScrewSequenceDiagram extends StatelessWidget {
     // Line art is dimmed so the sequence arrows and number badges
     // (full primary) read as the foreground layer. Fade at the bottom
     // softens the hard crop of the top 5/6 view.
-    final lineArt = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.32);
+    final lineArt =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.32);
     final primary = Theme.of(context).colorScheme.primary;
     return SizedBox(
       width: 254,
@@ -3598,7 +3608,6 @@ class _ScrewSequencePainter extends CustomPainter {
   final Color onPrimary;
   final bool clockwise;
 
-
   static const _badgeRadius = 12.0;
   static const _badgeOffset = 36.0;
 
@@ -3608,6 +3617,7 @@ class _ScrewSequencePainter extends CustomPainter {
 
   /// Radius of the rotation indicator around a screw head.
   static const _rotationRadius = 15.0;
+
   /// Straight arrows start/end well outside the rotation arcs — room
   /// for the 7px arrowhead plus a visible gap so the sequence arrows
   /// and the CCW indicators read as separate layers.
@@ -3668,8 +3678,8 @@ class _ScrewSequencePainter extends CustomPainter {
       final startAngle =
           clockwise ? badgeAngle + 55 * pi / 180 : badgeAngle - 55 * pi / 180;
       final arc = Path()
-        ..arcTo(Rect.fromCircle(center: a, radius: _rotationRadius),
-            startAngle, sweep, false);
+        ..arcTo(Rect.fromCircle(center: a, radius: _rotationRadius), startAngle,
+            sweep, false);
       _strokeDashed(canvas, arc, shadowStroke);
       final arcStart = a +
           Offset(cos(startAngle) * _rotationRadius,
@@ -3678,15 +3688,10 @@ class _ScrewSequencePainter extends CustomPainter {
           Offset(cos(startAngle + sweep) * _rotationRadius,
               sin(startAngle + sweep) * _rotationRadius);
       final arcGradient = ui.Gradient.linear(
-
           arcStart,
-
           arcEnd,
-
           clockwise
-
               ? const [Color(0xFFFF8C00), Color(0xFFE65100)]
-
               : const [Color(0xFF2E7D32), Color(0xFF81C784)]);
       final arcPaint = Paint()
         ..shader = arcGradient
@@ -3699,15 +3704,16 @@ class _ScrewSequencePainter extends CustomPainter {
           ? Offset(-sin(endAngle), cos(endAngle))
           : Offset(sin(endAngle), -cos(endAngle));
       final arcTip = a +
-          Offset(_rotationRadius * cos(endAngle),
-              _rotationRadius * sin(endAngle));
+          Offset(
+              _rotationRadius * cos(endAngle), _rotationRadius * sin(endAngle));
       _drawArrowhead(canvas, arcTip, direction, shadowFill);
       _drawArrowhead(
           canvas,
           arcTip,
           direction,
           Paint()
-            ..color = clockwise ? const Color(0xFFE65100) : const Color(0xFF81C784)
+            ..color =
+                clockwise ? const Color(0xFFE65100) : const Color(0xFF81C784)
             ..style = PaintingStyle.fill);
 
       // Teardrop number badge: circle pushed outward from the plate
@@ -3871,7 +3877,8 @@ class _AlignPlateDiagram extends StatelessWidget {
 /// bottom-half pattern, but without pre-cropped assets).
 /// Mapping per spec: FL = bottom + left 2/3, FR = bottom + right 2/3,
 /// BR = top + right 2/3, BL = top + left 2/3.
-const _lcdSanitizedBody = r'''<path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M2468 2296H7688"/>
+const _lcdSanitizedBody =
+    r'''<path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M2468 2296H7688"/>
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M6111 6102H4045"/>
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M2114 2630V2589"/>
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M3791 1810 3755 1789"/>
@@ -4051,9 +4058,8 @@ const _lcdSanitizedBody = r'''<path transform="matrix(.12,0,0,-.12,0,842)" strok
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M8196 5160C8196 5094.8308 8143.1696 5042 8078 5042 8012.8308 5042 7960 5094.8308 7960 5160 7960 5225.1696 8012.8308 5278 8078 5278 8143.1696 5278 8196 5225.1696 8196 5160"/>
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M2196 5160C2196 5094.8308 2143.1697 5042 2078 5042 2012.8305 5042 1960 5094.8308 1960 5160 1960 5225.1696 2012.8305 5278 2078 5278 2143.1697 5278 2196 5225.1696 2196 5160"/>
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M6519 1830C6519 1764.8305 6466.1696 1712 6401 1712 6335.8308 1712 6283 1764.8305 6283 1830 6283 1895.1696 6335.8308 1948 6401 1948 6466.1696 1948 6519 1895.1696 6519 1830"/>''';
-const _spacerSanitizedBody = '<g transform="matrix(.12,0,0,-.12,0,842)"><path d="M5668.5 3932C5668.5 3605.8758 5404.124 3341.5 5078 3341.5 4751.876 3341.5 4487.5 3605.8758 4487.5 3932 4487.5 4258.124 4751.876 4522.5 5078 4522.5 5404.124 4522.5 5668.5 4258.124 5668.5 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5692 3932C5692 3592.8973 5417.103 3318 5078 3318 4738.897 3318 4464 3592.8973 4464 3932 4464 4271.103 4738.897 4546 5078 4546 5417.103 4546 5692 4271.103 5692 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5904.5 3932C5904.5 3475.5367 5534.4636 3105.5 5078 3105.5 4621.5368 3105.5 4251.5 3475.5367 4251.5 3932 4251.5 4388.4636 4621.5368 4758.5 5078 4758.5 5534.4636 4758.5 5904.5 4388.4636 5904.5 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>';
-
-
+const _spacerSanitizedBody =
+    '<g transform="matrix(.12,0,0,-.12,0,842)"><path d="M5668.5 3932C5668.5 3605.8758 5404.124 3341.5 5078 3341.5 4751.876 3341.5 4487.5 3605.8758 4487.5 3932 4487.5 4258.124 4751.876 4522.5 5078 4522.5 5404.124 4522.5 5668.5 4258.124 5668.5 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5692 3932C5692 3592.8973 5417.103 3318 5078 3318 4738.897 3318 4464 3592.8973 4464 3932 4464 4271.103 4738.897 4546 5078 4546 5417.103 4546 5692 4271.103 5692 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5904.5 3932C5904.5 3475.5367 5534.4636 3105.5 5078 3105.5 4621.5368 3105.5 4251.5 3475.5367 4251.5 3932 4251.5 4388.4636 4621.5368 4758.5 5078 4758.5 5534.4636 4758.5 5904.5 4388.4636 5904.5 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>';
 
 class _SpacerPlacementDiagram extends StatelessWidget {
   const _SpacerPlacementDiagram({required this.cornerIndex});
@@ -4102,7 +4108,10 @@ class _SpacerPlacementDiagram extends StatelessWidget {
     );
     // Spacer puck inside the inner LCD rect, near its corner
     final vbParts2 = vb.split(' ').map(double.parse).toList();
-    final vx2 = vbParts2[0], vy2 = vbParts2[1], vw2 = vbParts2[2], vh2 = vbParts2[3];
+    final vx2 = vbParts2[0],
+        vy2 = vbParts2[1],
+        vw2 = vbParts2[2],
+        vh2 = vbParts2[3];
     double sx2(double x) => (x - vx2) / vw2;
     double sy2(double y) => (y - vy2) / vh2;
     const ix2 = 220.0, iy2 = 190.0, iw2 = 751.0, ih2 = 462.0;
@@ -4116,15 +4125,19 @@ class _SpacerPlacementDiagram extends StatelessWidget {
     // Per-corner pads: Front Left is reference (82/92); other corners need less due to viewBox cropping
     final double edgePadX = isLeft2 ? 82.0 : 52.0;
     final double edgePadY = isBottom2 ? 92.0 : 22.0;
-    final px2 = isLeft2 ? cx2 + puckOuter + edgePadX : cx2 - puckOuter - edgePadX;
-    final py2 = isBottom2 ? cy2 - puckOuter - edgePadY : cy2 + puckOuter + edgePadY;
+    final px2 =
+        isLeft2 ? cx2 + puckOuter + edgePadX : cx2 - puckOuter - edgePadX;
+    final py2 =
+        isBottom2 ? cy2 - puckOuter - edgePadY : cy2 + puckOuter + edgePadY;
     // Two SVGs sharing the same 794x320 viewBox so puck locks to screen, but only LCD is muted
     final lcdSvg = SvgPicture.string(
       '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="794" height="320" viewBox="$vb">$_lcdSanitizedBody</svg>',
       fit: BoxFit.contain,
-      colorFilter: ColorFilter.mode(lineArt.withValues(alpha: 0.35), BlendMode.srcIn),
+      colorFilter:
+          ColorFilter.mode(lineArt.withValues(alpha: 0.35), BlendMode.srcIn),
     );
-    final puckSvgStr = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="794" height="320" viewBox="$vb"><circle cx="$px2" cy="$py2" r="$puckOuter" fill="#FF8C00" fill-opacity="0.14" stroke="#FF8C00" stroke-width="3.8"/><circle cx="$px2" cy="$py2" r="$puckInner" fill="#FF8C00" fill-opacity="0.10" stroke="#FF8C00" stroke-width="3"/></svg>';
+    final puckSvgStr =
+        '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="794" height="320" viewBox="$vb"><circle cx="$px2" cy="$py2" r="$puckOuter" fill="#FF8C00" fill-opacity="0.14" stroke="#FF8C00" stroke-width="3.8"/><circle cx="$px2" cy="$py2" r="$puckInner" fill="#FF8C00" fill-opacity="0.10" stroke="#FF8C00" stroke-width="3"/></svg>';
     final puckSvg2 = SvgPicture.string(puckSvgStr, fit: BoxFit.contain);
     Widget lcdBox = SizedBox(width: 794, height: 320, child: lcdSvg);
     lcdBox = ShaderMask(
@@ -4152,7 +4165,6 @@ class _SpacerPlacementDiagram extends StatelessWidget {
     return Stack(children: [lcdBox, puckBox]);
   }
 }
-
 
 class _AlignPlatePainter extends CustomPainter {
   _AlignPlatePainter({required this.plateColor, required this.lcdColor});
@@ -4341,6 +4353,7 @@ class _WorkflowPane extends StatelessWidget {
   final bool alignDone;
   final bool hexLongEndDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
+
   /// values the wizard actually levels with; the results view must
   /// display the same numbers.
   final List<double?> cornerZs;
@@ -4364,10 +4377,8 @@ class _WorkflowPane extends StatelessWidget {
     final isLoosenScrews =
         isComplete && intermediate == 'loosen' && !loosenScrewsDone;
     final isAlignPlate = isComplete && intermediate == 'tighten' && !alignDone;
-    final isHexLongEnd = isComplete &&
-        intermediate == 'tighten' &&
-        alignDone &&
-        !hexLongEndDone;
+    final isHexLongEnd =
+        isComplete && intermediate == 'tighten' && alignDone && !hexLongEndDone;
     final isTightenScrews = isComplete &&
         intermediate == 'tighten' &&
         alignDone &&
@@ -4394,12 +4405,12 @@ class _WorkflowPane extends StatelessWidget {
                 : isHexLongEnd
                     ? _buildHexLongEndView(context, primary)
                     : isTightenScrews
-                    ? _buildTightenScrewsView(context, primary)
-                    : isAllCornersMeasured
-                        ? _buildAllCornersMeasuredView(context, primary)
-                        : isRemovePuck
-                            ? _buildRemovePuckView(context, primary)
-                            : _buildStepView(context, theme, primary, step);
+                        ? _buildTightenScrewsView(context, primary)
+                        : isAllCornersMeasured
+                            ? _buildAllCornersMeasuredView(context, primary)
+                            : isRemovePuck
+                                ? _buildRemovePuckView(context, primary)
+                                : _buildStepView(context, theme, primary, step);
     // Unique key per pictogram so Loosen->Align->HexLong->Tighten cross-fades
     // even when they share the same underlying step id (all depend on status==stepComplete).
     final String viewId;
@@ -4424,13 +4435,18 @@ class _WorkflowPane extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+      transitionBuilder: (child, animation) =>
+          FadeTransition(opacity: animation, child: child),
       layoutBuilder: (currentChild, previousChildren) => Stack(
         alignment: Alignment.center,
-        children: <Widget>[...previousChildren, if (currentChild != null) currentChild],
+        children: <Widget>[
+          ...previousChildren,
+          if (currentChild != null) currentChild
+        ],
       ),
       child: Center(
-        key: ValueKey('workflow-${engine.currentStepIndex}-${engine.status.name}-${effectivelyRunning ? 'run' : 'idle'}-$viewId'),
+        key: ValueKey(
+            'workflow-${engine.currentStepIndex}-${engine.status.name}-${effectivelyRunning ? 'run' : 'idle'}-$viewId'),
         child: content,
       ),
     );
@@ -4666,7 +4682,8 @@ class _WorkflowPane extends StatelessWidget {
         color: theme.colorScheme.primary,
       ),
     );
-    final rawInstruction = FlutterI18n.translate(context, 'leveling.hexLongEndInstruction');
+    final rawInstruction =
+        FlutterI18n.translate(context, 'leveling.hexLongEndInstruction');
     final instruction = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: _buildHighlightedInstruction(
@@ -5524,7 +5541,8 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
                                       alignment: Alignment.center,
                                       children: [
                                         Padding(
-                                          padding: const EdgeInsets.only(bottom: 8),
+                                          padding:
+                                              const EdgeInsets.only(bottom: 8),
                                           child: Center(
                                             child: AnimatedBuilder(
                                               animation: Listenable.merge([
@@ -5932,6 +5950,7 @@ class _TrianglePainter extends CustomPainter {
       oldDelegate.rotationValue != rotationValue ||
       oldDelegate.rotationDirection != rotationDirection;
 }
+
 /// Pictogram for the adjust-X screen: reuses the Pro-Arm top-view SVG
 /// with the three screws at their real positions. Highlights the screw
 /// that the gauge wants the user to turn, with a pulsing dot and a
@@ -5982,7 +6001,11 @@ class _AdjustScrewPictogram extends StatelessWidget {
               painter: _AdjustScrewPictogramPainter(
                 accent: accent,
                 onSurface: onSurface,
-                screwIndex: cornerIndex == 0 ? 2 : cornerIndex == 1 ? 1 : 0,
+                screwIndex: cornerIndex == 0
+                    ? 2
+                    : cornerIndex == 1
+                        ? 1
+                        : 0,
                 pulse: pulse,
                 rotationValue: rotationValue,
                 rotationDirection: rotationDirection,
@@ -6056,11 +6079,10 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
           final angle = rotationValue * 2 * pi * rotationDirection;
           const sweep = 250 * pi / 180;
           final arc = Path()
-            ..arcTo(Rect.fromCircle(center: pos, radius: 23),
-                angle, rotationDirection >= 0 ? sweep : -sweep, false);
+            ..arcTo(Rect.fromCircle(center: pos, radius: 23), angle,
+                rotationDirection >= 0 ? sweep : -sweep, false);
           _strokeDashed(canvas, arc, shadowStroke);
-          final arcStart = pos +
-              Offset(cos(angle) * 23, sin(angle) * 23);
+          final arcStart = pos + Offset(cos(angle) * 23, sin(angle) * 23);
           final arcEnd = pos +
               Offset(
                   cos(angle + (rotationDirection >= 0 ? sweep : -sweep)) * 23,
@@ -6078,10 +6100,8 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
             ..strokeWidth = 2.2
             ..strokeCap = StrokeCap.round;
           _strokeDashed(canvas, arc, arcPaint);
-          final endAngle =
-              angle + (rotationDirection >= 0 ? sweep : -sweep);
-          final tip = pos +
-              Offset(cos(endAngle) * 23, sin(endAngle) * 23);
+          final endAngle = angle + (rotationDirection >= 0 ? sweep : -sweep);
+          final tip = pos + Offset(cos(endAngle) * 23, sin(endAngle) * 23);
           final direction = rotationDirection >= 0
               ? Offset(-sin(endAngle), cos(endAngle))
               : Offset(sin(endAngle), -cos(endAngle));
@@ -6115,6 +6135,7 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
       }
     }
   }
+
   void _strokeDashed(Canvas canvas, Path path, Paint paint) {
     for (final m in path.computeMetrics()) {
       double pos = 0;
@@ -6139,7 +6160,6 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
     paint.style = PaintingStyle.stroke;
   }
 
-
   @override
   bool shouldRepaint(covariant _AdjustScrewPictogramPainter old) =>
       old.accent != accent ||
@@ -6149,7 +6169,6 @@ class _AdjustScrewPictogramPainter extends CustomPainter {
       old.rotationValue != rotationValue ||
       old.rotationDirection != rotationDirection;
 }
-
 
 // ================================================================================================================================================================================================
 // Completion Pane (calibration-overlay style)
@@ -6164,7 +6183,6 @@ class _CompletionPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final variant = engine.variant;
     final theme = Theme.of(context);
-
 
     return Center(
       key: const ValueKey('complete'),
