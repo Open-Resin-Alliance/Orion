@@ -224,7 +224,7 @@ class EditResinScreenState extends State<EditResinScreen> {
           builder: (context) => GlassAlertDialog(
             title: Text(
                 FlutterI18n.translate(context, 'editResin.profileSaved'),
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

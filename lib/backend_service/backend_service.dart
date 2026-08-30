@@ -21,6 +21,7 @@ import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 import 'package:orion/backend_service/athena_iot/models/athena_feature_flags.dart';
 import 'package:orion/backend_service/athena_iot/models/athena_printer_data.dart';
+import 'package:orion/backend_service/athena_iot/models/force_leveling_workflow.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
@@ -38,6 +39,9 @@ import 'package:orion/util/orion_config.dart';
 class BackendService implements BackendClient {
   static final _log = Logger('BackendService');
   static BackendService? _sharedInstance;
+
+  /// Simulated corner probe index, cycles 0..3 on each `probe_corner` call.
+  static int _simCornerIndex = -1;
   static bool _sharedListenerRegistered = false;
 
   BackendClient _delegate;
@@ -316,6 +320,122 @@ class BackendService implements BackendClient {
       _log.warning(
           'Failed to fetch Athena printer_data via BackendService', e, st);
       return <String, dynamic>{};
+    }
+  }
+
+  Future<ForceLevelingWorkflowResponse> runForceLevelingWorkflow(
+    String endpoint, {
+    String? screenType,
+    Duration? requestTimeout,
+  }) async {
+    // Simulated mode: return fake success data so devs can skip through the
+    // workflow without a real printer or Athena connection.
+    try {
+      final cfg = OrionConfig();
+      if (cfg.getFlag('simulated', category: 'developer')) {
+        _log.info('Simulated force leveling workflow: endpoint=$endpoint');
+        // Cycle through different Z values for corner probes so the deviation
+        // is large enough (>0.1mm) to trigger the adjustment mode.
+        const cornerZValues = [5.000, 5.030, 5.180, 5.210];
+        late final double secondZ;
+        if (endpoint == 'probe_corner') {
+          // Use a static counter that cycles 0..3 so each of the 4 corner
+          // probes gets a different Z value.
+          _simCornerIndex = (_simCornerIndex + 1) % 4;
+          secondZ = cornerZValues[_simCornerIndex];
+        } else {
+          secondZ = 5.0;
+        }
+        return ForceLevelingWorkflowResponse(
+          result: true,
+          error: '',
+          machineHomed: true,
+          measurements: ForceProbeMeasurements(
+            firstStageTriggerZ: 10.0,
+            firstStageTriggerForce: -15.0,
+            firstStagePeakForce: -18.0,
+            secondStageTriggerZ: secondZ,
+            secondStageTriggerForce: -20.0,
+            secondStagePeakForce: -22.0,
+          ),
+          zOffsetApplied:
+              endpoint == 'probe_offset' || endpoint == 'probe_standardarm'
+                  ? 0.5
+                  : null,
+          parkHeightMm: 150.0,
+        );
+      }
+    } catch (_) {
+      // Fall through to real backend if config can't be read.
+    }
+
+    if (!supportsCapability(BackendCapabilities.supportsForceLeveling)) {
+      return const ForceLevelingWorkflowResponse(
+        result: false,
+        error: 'Force leveling is not supported by this backend.',
+      );
+    }
+
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) {
+        return const ForceLevelingWorkflowResponse(
+          result: false,
+          error: 'Athena IoT client is not available.',
+        );
+      }
+      return await client.runForceLevelingWorkflow(endpoint,
+          screenType: screenType);
+    } catch (e, st) {
+      _log.warning('Failed to run force leveling workflow: $endpoint', e, st);
+      return ForceLevelingWorkflowResponse(
+        result: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  /// Show a corner alignment pattern on the projector via special screens.
+  ///
+  /// [location] must be one of: front-left, front-right, back-left, back-right.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> showSpecialScreenCorner(
+    String location, {
+    Duration? requestTimeout,
+  }) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.showCornerScreen(location);
+    } catch (e, st) {
+      _log.warning('Failed to show special screen corner: $location', e, st);
+      return false;
+    }
+  }
+
+  /// Show the center alignment pattern on the projector via special screens.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> showSpecialScreenCenter({Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.showCenterScreen();
+    } catch (e, st) {
+      _log.warning('Failed to show special screen center', e, st);
+      return false;
+    }
+  }
+
+  /// Turn off the projector's UV LED, hiding any active special screen.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> turnOffSpecialScreens({Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.uvledOff();
+    } catch (e, st) {
+      _log.warning('Failed to turn off special screens', e, st);
+      return false;
     }
   }
 
