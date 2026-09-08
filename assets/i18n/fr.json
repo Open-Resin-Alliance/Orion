@@ -508,6 +508,8 @@
     "tightenInstructionStandard": "Appuyez fermement sur le plateau avec une main tout en serrant chaque vis avec l'extrémité longue de la clé Allen. Serrez en croix, pas plus d'¼ de tour à la fois.",
     "hexLongEndTitle": "Informations importantes",
     "hexLongEndInstruction": "Veuillez utiliser l'extrémité longue de la clé hexagonale de 3 mm.",
+    "hexShortEndTitle": "Important Information",
+    "hexShortEndInstruction": "Please use the short end of the 3mm hex key.",
     "tightenConfirmTitle": "Vis serrées ?",
     "tightenConfirmMsg": "Toutes les vis de nivellement sont-elles uniformément serrées ?\n\nDes vis desserrées peuvent laisser le plateau bouger pendant l'impression !",
     "tightenConfirmYes": "Oui, uniformément serrées",
@@ -691,7 +693,9 @@
     "liftAfterPrintDesc": "Distance de levage du plateau entre couches.",
     "waitAfterLift": "Pause après levage",
     "waitAfterLiftDesc": "Temps pour que la résine s'écoule.",
-    "saving": "Enregistrement…"
+    "saving": "Enregistrement…",
+    "cloneNameTitle": "Name Profile",
+    "cloneNameHint": "Enter a name for the copy"
   },
   "heater": {
     "confirmMixing": "Mélanger la résine ?",
@@ -742,7 +746,10 @@
     "ok": "OK",
     "viscosity": "Viscosité : {value}",
     "exposureLabel": "Exposition : {value}",
-    "implementAddResin": "Ajout de résine bientôt disponible"
+    "implementAddResin": "Ajout de résine bientôt disponible",
+    "cloneTitle": "Locked Profile",
+    "cloneMessage": "{name} is a manufacturer-locked profile and cannot be edited directly. Clone it to create your own editable copy.",
+    "clone": "Clone"
   },
   "status": {
     "waiting": "Attente de l'imprimante…",

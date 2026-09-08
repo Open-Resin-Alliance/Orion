@@ -508,6 +508,8 @@
     "tightenInstructionStandard": "片手でビルドプレートをしっかり押さえながら、六角レンチの長い方で各ネジを締めます。クロスパターンで、一度に¼回転以内ずつ締めてください。",
     "hexLongEndTitle": "重要な情報",
     "hexLongEndInstruction": "3mm六角レンチの長い端を使用してください。",
+    "hexShortEndTitle": "Important Information",
+    "hexShortEndInstruction": "Please use the short end of the 3mm hex key.",
     "tightenConfirmTitle": "ネジは締まりましたか？",
     "tightenConfirmMsg": "すべてのレベリングネジは均等に締まっていますか？\n\nネジが緩んでいると、印刷中にビルドプレートがずれる可能性があります！",
     "tightenConfirmYes": "はい、均等に締まっています",
@@ -691,7 +693,9 @@
     "liftAfterPrintDesc": "層間でのビルドプレートの上昇距離。",
     "waitAfterLift": "リフト後待機",
     "waitAfterLiftDesc": "レジンが流れ込むためのリフト後の休止時間。",
-    "saving": "保存中…"
+    "saving": "保存中…",
+    "cloneNameTitle": "Name Profile",
+    "cloneNameHint": "Enter a name for the copy"
   },
   "heater": {
     "confirmMixing": "レジン混合確認",
@@ -742,7 +746,10 @@
     "ok": "OK",
     "viscosity": "粘度: {value}",
     "exposureLabel": "露光: {value}",
-    "implementAddResin": "レジン追加は近日対応予定"
+    "implementAddResin": "レジン追加は近日対応予定",
+    "cloneTitle": "Locked Profile",
+    "cloneMessage": "{name} is a manufacturer-locked profile and cannot be edited directly. Clone it to create your own editable copy.",
+    "clone": "Clone"
   },
   "status": {
     "waiting": "プリンター待機中…",

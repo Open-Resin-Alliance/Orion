@@ -508,6 +508,8 @@
     "tightenInstructionStandard": "Premi con decisione sul piatto di costruzione con una mano mentre stringi ogni vite con l'estremità lunga della chiave a brugola. Stringi a croce, non più di ¼ di giro alla volta.",
     "hexLongEndTitle": "Informazioni importanti",
     "hexLongEndInstruction": "Si prega di usare l'estremità lunga della chiave esagonale da 3 mm.",
+    "hexShortEndTitle": "Important Information",
+    "hexShortEndInstruction": "Please use the short end of the 3mm hex key.",
     "tightenConfirmTitle": "Viti serrate?",
     "tightenConfirmMsg": "Tutte le viti di livellamento sono serrate uniformemente?\n\nLe viti allentate possono far spostare il piatto durante la stampa!",
     "tightenConfirmYes": "Sì, serrate uniformemente",
@@ -691,7 +693,9 @@
     "liftAfterPrintDesc": "Quanto si solleva la piattaforma tra gli strati.",
     "waitAfterLift": "Pausa dopo sollevamento",
     "waitAfterLiftDesc": "Pausa dopo il sollevamento per far defluire la resina.",
-    "saving": "Salvataggio…"
+    "saving": "Salvataggio…",
+    "cloneNameTitle": "Name Profile",
+    "cloneNameHint": "Enter a name for the copy"
   },
   "heater": {
     "confirmMixing": "Conferma miscelazione resina",
@@ -742,7 +746,10 @@
     "ok": "OK",
     "viscosity": "Viscosità: {value}",
     "exposureLabel": "Esposizione: {value}",
-    "implementAddResin": "Aggiunta resina in arrivo"
+    "implementAddResin": "Aggiunta resina in arrivo",
+    "cloneTitle": "Locked Profile",
+    "cloneMessage": "{name} is a manufacturer-locked profile and cannot be edited directly. Clone it to create your own editable copy.",
+    "clone": "Clone"
   },
   "status": {
     "waiting": "In attesa della stampante…",

@@ -508,6 +508,8 @@
     "tightenInstructionStandard": "Presione firmemente la placa de construcción con una mano mientras aprieta cada tornillo con el extremo largo de la llave hexagonal. Apriete en patrón cruzado, no más de ¼ de vuelta a la vez.",
     "hexLongEndTitle": "Información importante",
     "hexLongEndInstruction": "Por favor, use el extremo largo de la llave hexagonal de 3 mm.",
+    "hexShortEndTitle": "Important Information",
+    "hexShortEndInstruction": "Please use the short end of the 3mm hex key.",
     "tightenConfirmTitle": "¿Tornillos apretados?",
     "tightenConfirmMsg": "¿Están todos los tornillos de nivelación uniformemente ajustados?\n\n¡Los tornillos sueltos pueden hacer que la plataforma se desplace durante la impresión!",
     "tightenConfirmYes": "Sí, uniformemente ajustados",
@@ -691,7 +693,9 @@
     "liftAfterPrintDesc": "Distancia que sube la placa entre capas.",
     "waitAfterLift": "Espera elevación",
     "waitAfterLiftDesc": "Pausa para que fluya la resina.",
-    "saving": "Guardando…"
+    "saving": "Guardando…",
+    "cloneNameTitle": "Name Profile",
+    "cloneNameHint": "Enter a name for the copy"
   },
   "heater": {
     "confirmMixing": "¿Mezclar resina?",
@@ -742,7 +746,10 @@
     "ok": "OK",
     "viscosity": "Viscosidad: {value}",
     "exposureLabel": "Exposición: {value}",
-    "implementAddResin": "Añadir resina próximamente"
+    "implementAddResin": "Añadir resina próximamente",
+    "cloneTitle": "Locked Profile",
+    "cloneMessage": "{name} is a manufacturer-locked profile and cannot be edited directly. Clone it to create your own editable copy.",
+    "clone": "Clone"
   },
   "status": {
     "waiting": "Esperando a la impresora…",

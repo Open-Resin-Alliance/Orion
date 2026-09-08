@@ -508,6 +508,8 @@
     "tightenInstructionStandard": "Druk de bouwplaat stevig naar beneden met één hand terwijl u elke schroef vastdraait met het lange uiteinde van de inbussleutel. Draai kruislings vast, niet meer dan ¼ slag per keer.",
     "hexLongEndTitle": "Belangrijke informatie",
     "hexLongEndInstruction": "Gebruik a.u.b. het lange uiteinde van de 3 mm-inbussleutel.",
+    "hexShortEndTitle": "Important Information",
+    "hexShortEndInstruction": "Please use the short end of the 3mm hex key.",
     "tightenConfirmTitle": "Schroeven vastgedraaid?",
     "tightenConfirmMsg": "Zijn alle nivelleerschroeven gelijkmatig vast?\n\nLosse schroeven kunnen het bouwplatform laten verschuiven tijdens het printen!",
     "tightenConfirmYes": "Ja, gelijkmatig vast",
@@ -691,7 +693,9 @@
     "liftAfterPrintDesc": "Hoe ver de bouwplaat omhoog komt tussen lagen.",
     "waitAfterLift": "Wacht na lift",
     "waitAfterLiftDesc": "Pauze na optillen zodat hars kan terugvloeien.",
-    "saving": "Opslaan…"
+    "saving": "Opslaan…",
+    "cloneNameTitle": "Name Profile",
+    "cloneNameHint": "Enter a name for the copy"
   },
   "heater": {
     "confirmMixing": "Bevestig hars mengen",
@@ -742,7 +746,10 @@
     "ok": "OK",
     "viscosity": "Viscositeit: {value}",
     "exposureLabel": "Belichting: {value}",
-    "implementAddResin": "Hars toevoegen binnenkort"
+    "implementAddResin": "Hars toevoegen binnenkort",
+    "cloneTitle": "Locked Profile",
+    "cloneMessage": "{name} is a manufacturer-locked profile and cannot be edited directly. Clone it to create your own editable copy.",
+    "clone": "Clone"
   },
   "status": {
     "waiting": "Wachten op printer…",

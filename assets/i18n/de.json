@@ -508,6 +508,8 @@
     "tightenInstructionStandard": "Drücken Sie die Bauplatte mit einer Hand fest nach unten und ziehen Sie jede Schraube mit dem langen Ende des Inbusschlüssels fest. Im Kreuzmuster anziehen, maximal ¼ Umdrehung pro Durchgang.",
     "hexLongEndTitle": "Wichtige Information",
     "hexLongEndInstruction": "Bitte verwenden Sie das lange Ende des 3-mm-Inbusschlüssels.",
+    "hexShortEndTitle": "Important Information",
+    "hexShortEndInstruction": "Please use the short end of the 3mm hex key.",
     "tightenConfirmTitle": "Schrauben festgezogen?",
     "tightenConfirmMsg": "Sind alle Nivellierschrauben gleichmäßig handfest?\n\nLose Schrauben können dazu führen, dass sich die Bauplatte während des Drucks verschiebt!",
     "tightenConfirmYes": "Ja, gleichmäßig handfest",
@@ -691,7 +693,9 @@
     "liftAfterPrintDesc": "Hubhöhe der Bauplatte zwischen Schichten.",
     "waitAfterLift": "Warten nach Hub",
     "waitAfterLiftDesc": "Pause nach Hub für Harzrückfluss.",
-    "saving": "Speichern…"
+    "saving": "Speichern…",
+    "cloneNameTitle": "Name Profile",
+    "cloneNameHint": "Enter a name for the copy"
   },
   "heater": {
     "confirmMixing": "Harzmischung bestätigen",
@@ -742,7 +746,10 @@
     "ok": "OK",
     "viscosity": "Viskosität: {value}",
     "exposureLabel": "Belichtung: {value}",
-    "implementAddResin": "Harz hinzufügen in Kürze verfügbar"
+    "implementAddResin": "Harz hinzufügen in Kürze verfügbar",
+    "cloneTitle": "Locked Profile",
+    "cloneMessage": "{name} is a manufacturer-locked profile and cannot be edited directly. Clone it to create your own editable copy.",
+    "clone": "Clone"
   },
   "status": {
     "waiting": "Warte auf Drucker...",
