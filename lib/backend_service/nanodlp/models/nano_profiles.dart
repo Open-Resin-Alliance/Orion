@@ -214,7 +214,6 @@ class NanoProfile {
       if (v != null) {
         // Different NanoDLP variants expose this as TopDistance and/or
         // WaitHeight. Send both to maximize compatibility.
-        out['TopDistance'] = v;
         out['WaitHeight'] = v;
       }
     }
@@ -309,7 +308,6 @@ class NanoProfile {
             'ZLiftDistance',
             'PdPeelMinLiftDistance',
             'LiftAfterPrint',
-            'TopDistance',
             'WaitHeight',
           ]),
           5.0);
