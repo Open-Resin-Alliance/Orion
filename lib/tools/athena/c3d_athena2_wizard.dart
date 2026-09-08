@@ -930,10 +930,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           return;
         }
       } else {
-        await BackendService().runForceLevelingWorkflow(
-          'probe_corner_prepare',
-          requestTimeout: const Duration(seconds: 90),
-        );
+        // First visit to this corner: the plate sits at probe height
+        // from the recheck. Lift for hand/puck access FIRST — showing
+        // the puck screen after probe_corner_prepare leaves the plate
+        // back down at ~10 mm with no room to place the puck
+        // (prepare parks high but lowers again before returning).
+        // The move result is advisory: the plate may already be high,
+        // and prepare re-parks anyway once the puck is down.
+        await Provider.of<ManualProvider>(context, listen: false)
+            .moveDelta(50.0);
         if (!mounted) return;
       }
 
@@ -961,6 +966,34 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     }
     _adjustmentStep = _AdjustmentStep.puckPlacement;
     if (mounted) setState(() {});
+  }
+
+  /// Runs `probe_corner_prepare` after the user confirms puck placement,
+  /// then advances to the hex-key prompt. Split out of
+  /// [_runAdjustmentPrepare] so the puck is placed at lift height —
+  /// prepare parks high but lowers again, and running it first left the
+  /// plate at ~10 mm with no room for the puck.
+  Future<void> _runPrepareAfterPuck() async {
+    _adjustmentBusy = true;
+    setState(() {
+      _adjustmentStep = _AdjustmentStep.preparing;
+    });
+    try {
+      await BackendService().runForceLevelingWorkflow(
+        'probe_corner_prepare',
+        requestTimeout: const Duration(seconds: 90),
+      );
+      if (!mounted) return;
+    } catch (e) {
+      _adjustmentError = e.toString();
+      _adjustmentBusy = false;
+      if (mounted) setState(() {});
+      return;
+    }
+    _adjustmentBusy = false;
+    setState(() {
+      _adjustmentStep = _AdjustmentStep.hexShortEnd;
+    });
   }
 
   Future<void> _runAdjustmentProbe() async {
@@ -2514,8 +2547,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           Expanded(
             child: GlassButton(
               tint: GlassButtonTint.positive,
-              onPressed: () =>
-                  setState(() => _adjustmentStep = _AdjustmentStep.hexShortEnd),
+              onPressed: _runPrepareAfterPuck,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
               ),
