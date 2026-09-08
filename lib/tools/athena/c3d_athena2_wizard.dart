@@ -2354,6 +2354,13 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     if (confirmed == true && mounted) {
       OrionConfig().setLeveled(false);
+      // Hide any projector pattern immediately — otherwise it stays up
+      // until the 30s UV safety timer fires.
+      _uvSafetyTimer.disarm();
+      BackendService()
+          .turnOffSpecialScreens()
+          .then((_) {})
+          .catchError((_) {});
       // Move to top before cancelling so the arm is in a safe position
       Provider.of<ManualProvider>(context, listen: false)
           .moveToTop()
@@ -2375,6 +2382,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           child: GlassButton(
             tint: GlassButtonTint.negative,
             onPressed: () {
+              _uvSafetyTimer.disarm();
+              BackendService()
+                  .turnOffSpecialScreens()
+                  .then((_) {})
+                  .catchError((_) {});
               Provider.of<ManualProvider>(context, listen: false)
                   .moveToTop()
                   .then((_) {})
