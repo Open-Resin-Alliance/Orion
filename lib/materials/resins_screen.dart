@@ -294,6 +294,21 @@ class ResinsScreenState extends State<ResinsScreen> {
                     children: [
                       Row(
                         children: [
+                          if (isLocked) ...[
+                            Tooltip(
+                              message: FlutterI18n.translate(
+                                  context, 'resins.locked'),
+                              child: Icon(
+                                Icons.lock_outline,
+                                size: 16,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.color,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           if (isTemplate) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -357,36 +372,37 @@ class ResinsScreenState extends State<ResinsScreen> {
                     ],
                   ),
                 ),
-                // Edit affordance
-                Opacity(
-                  opacity: isLocked ? 0.35 : 1.0,
-                  child: Tooltip(
-                    message: isLocked
-                        ? FlutterI18n.translate(context, 'resins.locked')
-                        : FlutterI18n.translate(context, 'resins.edit'),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: isLocked ? null : () => _onEditResin(resin),
-                      child: SizedBox(
-                        width: 110,
-                        height: 46,
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              PhosphorIcon(PhosphorIcons.pencil(),
-                                  size: 21, color: Colors.grey.shade200),
-                              const SizedBox(width: 7),
-                              Text(
-                                FlutterI18n.translate(context, 'resins.edit'),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade200,
-                                ),
+                // Edit affordance. Locked (manufacturer) profiles stay
+                // tappable: tapping one explains the lock and offers to
+                // open it as a clone instead of editing it in place.
+                Tooltip(
+                  message: isLocked
+                      ? FlutterI18n.translate(context, 'resins.locked')
+                      : FlutterI18n.translate(context, 'resins.edit'),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: isLocked
+                        ? () => _showClonePrompt(resin)
+                        : () => _onEditResin(resin),
+                    child: SizedBox(
+                      width: 110,
+                      height: 46,
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PhosphorIcon(PhosphorIcons.pencil(),
+                                size: 21, color: Colors.grey.shade200),
+                            const SizedBox(width: 7),
+                            Text(
+                              FlutterI18n.translate(context, 'resins.edit'),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade200,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -454,6 +470,45 @@ class ResinsScreenState extends State<ResinsScreen> {
         // TODO: wire saving of edited fields to the provider/backend.
       }
     });
+  }
+
+  /// Locked (manufacturer) profiles cannot be edited in place. Explain the
+  /// lock and offer to open the profile as an editable clone instead.
+  void _showClonePrompt(ResinProfile resin) {
+    _logger.info('Clone prompt for locked resin: ${resin.name}');
+    showDialog(
+      context: context,
+      builder: (dialogContext) => GlassAlertDialog(
+        title: Text(FlutterI18n.translate(context, 'resins.cloneTitle')),
+        content: Text(
+          FlutterI18n.translate(context, 'resins.cloneMessage',
+              translationParams: {'name': resin.name}),
+          style: const TextStyle(fontSize: 20),
+        ),
+        actions: [
+          GlassButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: Text(FlutterI18n.translate(context, 'common.cancel'),
+                style: const TextStyle(fontSize: 20)),
+          ),
+          GlassButton(
+            tint: GlassButtonTint.positive,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _onEditResin(resin);
+            },
+            child: Text(FlutterI18n.translate(context, 'resins.clone'),
+                style: const TextStyle(fontSize: 20)),
+          ),
+        ],
+      ),
+    );
   }
 
   // Delete flow removed from UI; keep deletion logic out until needed.

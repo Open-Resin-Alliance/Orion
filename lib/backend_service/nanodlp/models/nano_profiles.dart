@@ -28,11 +28,21 @@ class NanoProfile {
   /// NanoDLP commonly uses short uppercase bracket prefixes like "[AFP]"
   /// to indicate vendor-locked profiles. We treat short (2-5 uppercase
   /// chars) bracket tokens as a lock. Backends may also provide an explicit
-  /// signal in the raw map (e.g. `locked: true`) — prefer that when present.
+  /// signal in the raw map — prefer that when present. NanoDLP's
+  /// `profiles.json` marks manufacturer profiles with
+  /// `ManufacturerLock: true`.
   bool get locked {
     try {
       final lm = raw['locked'];
       if (lm is bool) return lm;
+      final ml = raw['ManufacturerLock'];
+      if (ml is bool) return ml;
+      if (ml is num) return ml != 0;
+      if (ml is String) {
+        final v = ml.trim().toLowerCase();
+        if (v == 'true' || v == '1') return true;
+        if (v == 'false' || v == '0') return false;
+      }
     } catch (_) {}
 
     final name = (title ?? '').trim();

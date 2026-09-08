@@ -21,6 +21,9 @@ import 'package:logging/logging.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/domain/models.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
+import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
+import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_spacing.dart';
@@ -159,6 +162,16 @@ class EditResinScreenState extends State<EditResinScreen> {
   }
 
   void _save() async {
+    // Locked (manufacturer) profiles are never overwritten in place: saving
+    // them always produces a renamed clone. Ask for the clone name first so
+    // the user explicitly acknowledges the copy.
+    String? cloneName;
+    if (widget.resin?.locked == true) {
+      cloneName = await _promptCloneName();
+      // Empty/cancelled: stay on the edit screen, nothing is saved.
+      if (cloneName == null || cloneName.isEmpty) return;
+    }
+
     final result = {
       'burn_in_cure_time': _burnInTime,
       'normal_cure_time': _normalTime,
@@ -166,6 +179,7 @@ class EditResinScreenState extends State<EditResinScreen> {
       'burn_in_count': _burnInCount,
       'wait_after_cure': _waitAfterCure,
       'wait_after_life': _waitAfterLife,
+      if (cloneName != null) 'title': cloneName,
     };
 
     _log.info('Saving profile edits: $result');
@@ -180,6 +194,7 @@ class EditResinScreenState extends State<EditResinScreen> {
     }
 
     if (profileId == null || profileId == 0) {
+      if (!mounted) return;
       Navigator.of(context).pop(result);
       return;
     }
@@ -198,7 +213,16 @@ class EditResinScreenState extends State<EditResinScreen> {
         waitAfterCure: _waitAfterCure,
         waitAfterLife: _waitAfterLife,
       );
-      await svc.saveResinSettings(profileId, settings);
+      if (cloneName != null) {
+        // Cloned save: persist the edited values together with the new
+        // title so the copy is stored under the name the user chose.
+        final fields =
+            NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
+        fields['Title'] = cloneName;
+        await svc.editProfile(profileId, fields);
+      } else {
+        await svc.saveResinSettings(profileId, settings);
+      }
 
       if (mounted) {
         setState(() {
@@ -229,7 +253,7 @@ class EditResinScreenState extends State<EditResinScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.resin?.name ?? 'Resin Profile',
+                  cloneName ?? widget.resin?.name ?? 'Resin Profile',
                   style: TextStyle(
                     fontSize: 22,
                     color: Colors.grey.shade400,
@@ -339,6 +363,62 @@ class EditResinScreenState extends State<EditResinScreen> {
         });
       }
     }
+  }
+
+  /// Ask the user to name the clone produced from a locked (manufacturer)
+  /// profile. Returns the chosen name, or null when the dialog is
+  /// cancelled or left empty.
+  Future<String?> _promptCloneName() {
+    final nameKey = GlobalKey<SpawnOrionTextFieldState>();
+    final defaultName = '${widget.resin?.name ?? 'Resin Profile'} copy';
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => GlassAlertDialog(
+        title: Text(FlutterI18n.translate(context, 'editResin.cloneNameTitle')),
+        content: SizedBox(
+          width: MediaQuery.of(dialogContext).size.width * 0.5,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SpawnOrionTextField(
+                  key: nameKey,
+                  keyboardHint: FlutterI18n.translate(
+                      context, 'editResin.cloneNameHint'),
+                  locale: Localizations.localeOf(dialogContext).toString(),
+                  presetText: defaultName,
+                ),
+                OrionKbExpander(textFieldKey: nameKey),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          GlassButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            child: Text(FlutterI18n.translate(context, 'common.cancel'),
+                style: const TextStyle(fontSize: 20)),
+          ),
+          GlassButton(
+            tint: GlassButtonTint.positive,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            onPressed: () {
+              final name =
+                  nameKey.currentState?.getCurrentText().trim() ?? '';
+              if (name.isEmpty) return;
+              Navigator.of(dialogContext).pop(name);
+            },
+            child: Text(FlutterI18n.translate(context, 'common.save'),
+                style: const TextStyle(fontSize: 20)),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCard({

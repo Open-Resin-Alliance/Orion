@@ -690,10 +690,11 @@
     "waitAfterCure": "Wait After Cure",
     "waitAfterCureDesc": "Pause after UV exposure before lifting.",
     "liftAfterPrint": "Lift Distance",
-    "liftAfterPrintDesc": "How far the build plate lifts between layers.",
     "waitAfterLift": "Wait After Lift",
     "waitAfterLiftDesc": "Pause after lifting to let resin flow back.",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "cloneNameTitle": "Name Profile",
+    "cloneNameHint": "Enter a name for the copy"
   },
   "heater": {
     "confirmMixing": "Confirm Resin Mixing",
@@ -742,9 +743,11 @@
     "edit": "Edit",
     "addResin": "Add Resin",
     "ok": "OK",
-    "viscosity": "Viscosity: {value}",
     "exposureLabel": "Exposure: {value}",
-    "implementAddResin": "Add Resin flow coming soon"
+    "implementAddResin": "Add Resin flow coming soon",
+    "cloneTitle": "Locked Profile",
+    "cloneMessage": "{name} is a manufacturer-locked profile and cannot be edited directly. Clone it to create your own editable copy.",
+    "clone": "Clone"
   },
   "status": {
     "waiting": "Waiting for printer to start…",
