@@ -173,7 +173,9 @@ class ScrewController {
   /// Commands smaller than this are never used to update the estimate:
   /// the numerator SNR would be dominated by the ±0.06 mm gap noise,
   /// and deltas this small only occur when the gap is nearly closed.
-  static const double minCommandDeltaGf = 150.0;
+  /// Lowered from 150 after repeat below-resolution reports; 100 keeps
+  /// margin above the ±20 gf gauge green zone.
+  static const double minCommandDeltaGf = 100.0;
 
   /// Gap movement below this is treated as "the plate did not move"
   /// (stiction / thread backlash) rather than a measurable response.

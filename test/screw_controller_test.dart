@@ -45,7 +45,7 @@ ScrewController _flooredController() {
 }
 
 /// Emulate the wizard's candidate filter: the first ranked candidate
-/// whose command is an executable tighten (≤ −150 gf), using the
+/// whose command is an executable tighten (≤ −100 gf), using the
 /// leapfrog-biased controller for back corners.
 (int, ScrewCommand)? _wizardPick(List<double> z) {
   for (final corner in rankAdjustmentCandidates(z)) {
@@ -337,8 +337,8 @@ void main() {
 
     test('small commands are skipped without escalation', () {
       final ctrl = ScrewController();
-      final cmd = ctrl.command(zGapMm: 0.07); // delta = 98 gf < 150
-      expect(cmd.forceDeltaGf.abs(), lessThan(150));
+      final cmd = ctrl.command(zGapMm: 0.07); // delta = 98 gf < 100
+      expect(cmd.forceDeltaGf.abs(), lessThan(100));
       ctrl.recordCommand(cmd);
       final r = ctrl.onRecheck(newGapMm: 0.07); // no movement either
       expect(r.outcome, CouplingUpdateOutcome.rejectedSmallDelta);

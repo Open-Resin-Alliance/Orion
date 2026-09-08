@@ -810,7 +810,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     // Legacy leapfrog pick order (see rankAdjustmentCandidates):
     // front-back tilt → back screw (worst outlier), else the lower
     // corner of the worst diagonal.  Take the first candidate whose
-    // command is an executable TIGHTEN: at least the 150 gf execution
+    // command is an executable TIGHTEN: at least the 100 gf execution
     // floor (below it the ±20 gf green zone plus live-force noise make
     // a human turn uncontrolled — field session f2c9f74d recheck #2),
     // and never a loosen (preload policy).
@@ -2526,6 +2526,81 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
                   const SizedBox(width: 8),
                   Text(
                     FlutterI18n.translate(context, 'leveling.next'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Below resolution + borderline: restore the corner-check Skip escape
+    // (that screen's canSkip never fires once pushed into adjustment).
+    // Cancel | Skip | Re-check.
+    if (_adjustmentStep == _AdjustmentStep.belowResolution && _isBorderline) {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.neutral,
+              onPressed: _skipAdjustment,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.fastForward(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.wizardSkip'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: _runRecheckCorners,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.arrowClockwise(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'leveling.wizardRecheckAll'),
                     style: const TextStyle(
                         fontSize: 21, fontWeight: FontWeight.w700),
                   ),

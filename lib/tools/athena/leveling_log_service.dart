@@ -19,6 +19,7 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:orion/tools/athena/leveling_log_entry.dart';
+import 'package:orion/tools/athena/screw_controller.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:path/path.dart' as path;
 
@@ -238,7 +239,7 @@ class LevelingLogService {
       case 'rejectedPositiveSample':
         return '[REJECTED: positive sample — wrong-way turn or noise]';
       case 'rejectedSmallDelta':
-        return '[REJECTED: commanded delta below 150 gf]';
+        return '[REJECTED: commanded delta below ${ScrewController.minCommandDeltaGf.toStringAsFixed(0)} gf]';
       case 'stictionEscalated':
         final n = entry.stictionEscalations;
         return '[STICTION: no measurable movement — force ×3 next cycle'
