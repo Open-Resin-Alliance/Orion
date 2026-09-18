@@ -915,17 +915,21 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     try {
       if (puckAlreadyPlaced) {
-        // Puck is already at this corner from the last probe — just
-        // lift the plate a small amount for hand clearance instead of
-        // the full probe_corner_prepare cycle (park then lower).  The
-        // rapid up-then-down is a safety hazard when hands may be near
-        // the plate and a re-probe is about to start anyway.
-        final moved = await Provider.of<ManualProvider>(context, listen: false)
-            .moveDelta(10.0);
+        // Puck is already at this corner from the last probe — ask the
+        // backend to skip parking the plate (park high, then lower it
+        // back down) instead of jogging it up manually.  The rapid
+        // up-then-down is a safety hazard when hands may be near the
+        // plate and a re-probe is about to start anyway.
+        final response = await BackendService().runForceLevelingWorkflow(
+          'probe_corner_prepare',
+          skipPark: true,
+          requestTimeout: const Duration(seconds: 90),
+        );
         if (!mounted) return;
-        if (!moved) {
-          _adjustmentError =
-              FlutterI18n.translate(context, 'leveling.wizardPrepareFailed');
+        if (!response.result) {
+          _adjustmentError = response.error.isNotEmpty
+              ? response.error
+              : FlutterI18n.translate(context, 'leveling.wizardPrepareFailed');
           _adjustmentBusy = false;
           if (mounted) setState(() {});
           return;

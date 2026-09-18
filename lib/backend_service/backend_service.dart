@@ -340,6 +340,7 @@ class BackendService implements BackendClient {
   Future<ForceLevelingWorkflowResponse> runForceLevelingWorkflow(
     String endpoint, {
     String? screenType,
+    bool skipPark = false,
     Duration? requestTimeout,
   }) async {
     // Simulated mode: return fake success data so devs can skip through the
@@ -399,7 +400,7 @@ class BackendService implements BackendClient {
         );
       }
       return await client.runForceLevelingWorkflow(endpoint,
-          screenType: screenType);
+          screenType: screenType, skipPark: skipPark);
     } catch (e, st) {
       _log.warning('Failed to run force leveling workflow: $endpoint', e, st);
       return ForceLevelingWorkflowResponse(

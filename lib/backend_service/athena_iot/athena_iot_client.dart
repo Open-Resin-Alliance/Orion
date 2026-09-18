@@ -149,21 +149,29 @@ class AthenaIotClient {
   Future<ForceLevelingWorkflowResponse> runForceLevelingWorkflow(
     String endpoint, {
     String? screenType,
+    bool skipPark = false,
   }) async {
     final safeEndpoint = endpoint.replaceAll(RegExp(r'^/+|/+$'), '');
     final baseNoSlash = baseUrl.replaceAll(RegExp(r'/+$'), '');
     // The probe_standardarm / probe_offset endpoints accept a `screentype`
     // query parameter (glass | waverelease) so the probe can account for
     // the screen surface.  Other workflow steps don't take it.
+    final query = <String, String>{};
+    if (screenType != null &&
+        (safeEndpoint == 'probe_standardarm' ||
+            safeEndpoint == 'probe_offset')) {
+      query['screentype'] = screenType;
+    }
+    // The prepare endpoints accept `skip_park` to leave the plate where it
+    // already sits (the spacer is still on the same corner) instead of
+    // parking it high and lowering it back down.
+    if (skipPark) {
+      query['skip_park'] = 'true';
+    }
     final uri = Uri.parse(
       '$baseNoSlash/athena-iot/forcesensor/workflow/$safeEndpoint',
     ).replace(
-      queryParameters:
-          (screenType != null &&
-                  (safeEndpoint == 'probe_standardarm' ||
-                      safeEndpoint == 'probe_offset'))
-              ? {'screentype': screenType}
-              : null,
+      queryParameters: query.isEmpty ? null : query,
     );
     final client = _createClient();
     try {
