@@ -652,6 +652,8 @@
   },
   "calibration": {
     "resinProfile": "树脂配置",
+    "promptResin": "请在下方选择要校准的树脂配置",
+    "promptModel": "请在下方选择要打印的校准模型",
     "loading": "加载中…",
     "selectResin": "选择树脂",
     "startingExposure": "起始曝光",
@@ -679,7 +681,10 @@
     "testPiecesExplanation": "%s个测试件将依次打印，曝光时间递增。",
     "submittingJob": "提交校准任务…",
     "startingExistingPlate": "使用现有校准板（调试）…",
-    "processingFile": "处理文件元数据…"
+    "processingFile": "处理文件元数据…",
+    "promptStartingExposure": "请设置起始曝光时间",
+    "promptExposureIncrement": "请设置曝光增量",
+    "secondsUnit": "秒"
   },
   "editResin": {
     "profileSaved": "配置已保存",

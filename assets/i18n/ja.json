@@ -652,6 +652,8 @@
   },
   "calibration": {
     "resinProfile": "レジンプロファイル",
+    "promptResin": "下から較正するレジンプロファイルを選択してください",
+    "promptModel": "下から印刷する較正モデルを選択してください",
     "loading": "読み込み中…",
     "selectResin": "レジン選択",
     "startingExposure": "初期露光",
@@ -679,7 +681,10 @@
     "testPiecesExplanation": "%s個のテスト片を露光時間を増やしながら連続印刷します。",
     "submittingJob": "キャリブレーションジョブ送信中…",
     "startingExistingPlate": "既存のキャリブレーションプレートを使用（デバッグ）…",
-    "processingFile": "ファイルメタデータ処理中…"
+    "processingFile": "ファイルメタデータ処理中…",
+    "promptStartingExposure": "開始露光時間を設定してください",
+    "promptExposureIncrement": "露光時間の増加量を設定してください",
+    "secondsUnit": "秒"
   },
   "editResin": {
     "profileSaved": "プロファイル保存完了",

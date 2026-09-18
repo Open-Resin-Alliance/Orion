@@ -652,6 +652,8 @@
   },
   "calibration": {
     "resinProfile": "Profilo resina",
+    "promptResin": "Seleziona qui sotto il profilo di resina che vuoi calibrare",
+    "promptModel": "Seleziona qui sotto il modello di calibrazione che vuoi stampare",
     "loading": "Caricamento licenze…",
     "selectResin": "Seleziona resina",
     "startingExposure": "Esposizione iniziale",
@@ -679,7 +681,10 @@
     "testPiecesExplanation": "pezzi stampati con esposizione crescente.",
     "submittingJob": "Invio calibrazione…",
     "startingExistingPlate": "Uso piastra esistente (debug)…",
-    "processingFile": "Elaborazione metadati…"
+    "processingFile": "Elaborazione metadati…",
+    "promptStartingExposure": "Imposta l'esposizione iniziale",
+    "promptExposureIncrement": "Imposta l'incremento di esposizione",
+    "secondsUnit": "secondi"
   },
   "editResin": {
     "profileSaved": "Profilo salvato",

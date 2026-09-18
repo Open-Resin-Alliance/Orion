@@ -24,6 +24,7 @@ import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/widgets/resin_chip.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
@@ -39,8 +40,52 @@ class CalibrationScreen extends StatefulWidget {
   CalibrationScreenState createState() => CalibrationScreenState();
 }
 
+/// The calibration workflow: pick the resin, pick the model, set the exposure.
+enum _CalibrationStep { resin, model, startingExposure, exposureIncrement }
+
 class CalibrationScreenState extends State<CalibrationScreen> {
   final _log = Logger('CalibrationScreen');
+  _CalibrationStep _step = _CalibrationStep.resin;
+
+
+  /// The changing part of a step: its header and its control, cross-faded the
+  /// way the rest of Orion cross-fades a step change. The actions below stay
+  /// outside it, so they hold still.
+  Widget _buildStepBody(
+    ResinsProvider provider,
+    List<ResinProfile> resins,
+    bool isResinsLoading,
+    double headerWidth,
+  ) {
+    return Column(
+      key: ValueKey(_step),
+      children: [
+        // The header is the only part that changes size between steps and it
+        // takes whatever room the control below leaves, scaling its text down
+        // rather than overflowing. So the selector and the actions sit at the
+        // same place on every step, in any window.
+        Expanded(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.bottomCenter,
+              child: SizedBox(
+                width: headerWidth,
+                child: _buildStepHeader(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildStepContent(provider, resins, isResinsLoading),
+      ],
+    );
+  }
+
+  /// The 80%-wide guide column, anchored so tests can assert that the steps do
+  /// not shift under each other.
+  static const Key _guideColumnKey = Key('calibration-guide-column');
 
   CalibrationModel? _selectedModel;
   ResinProfile? _selectedResin;
@@ -89,15 +134,6 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     });
   }
 
-  void _resetValues(ResinsProvider provider) {
-    setState(() {
-      _selectedModel = provider.selectedCalibrationModel;
-      _selectedResin = null;
-      _startingExposure = 1.0;
-      _exposureIncrement = 0.2;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final resinsProvider = Provider.of<ResinsProvider>(context);
@@ -105,9 +141,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     // (e.g. NanoDLP AFP templates) are hidden from calibration flows.
     final resins = resinsProvider.userResins;
     final hasResins = resins.isNotEmpty;
-    final hasModels = resinsProvider.calibrationModels.isNotEmpty;
     final isResinsLoading = resinsProvider.isLoading && !hasResins;
-    final isModelsLoading = resinsProvider.isLoading && !hasModels;
 
     // If the selected model has no cached image, force-fetch it immediately.
     final selectedId = _selectedModel?.id;
@@ -133,148 +167,281 @@ class CalibrationScreenState extends State<CalibrationScreen> {
           top: OrionSpacing.settingsScreenPaddingTightTop.top,
           bottom: OrionSpacing.screenBottomNavClearance,
         ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Left side: Parameter cards
-                  Expanded(
-                    flex: 9,
-                    child: Column(
-                      children: [
-                        // Resin Profile
-                        Expanded(
-                          child: _buildCompactCard(
-                            title: FlutterI18n.translate(
-                                context, 'calibration.resinProfile'),
-                            value: isResinsLoading
-                                ? 'Loading...'
-                                : (_selectedResin?.name ??
-                                    FlutterI18n.translate(
-                                        context, 'calibration.selectResin')),
-                            onTap: isResinsLoading
-                                ? () {}
-                                : () => _selectResinProfile(resins),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Starting Exposure
-                        Expanded(
-                          child: _buildCompactCard(
-                            title: FlutterI18n.translate(
-                                context, 'calibration.startingExposure'),
-                            value: '${_startingExposure.toStringAsFixed(2)} s',
-                            onTap: () => _editValue(
-                              title: FlutterI18n.translate(
-                                  context, 'calibration.startingExposure'),
-                              description: FlutterI18n.translate(
-                                  context, 'calibration.exposureDesc'),
-                              currentValue: _startingExposure,
-                              min: 0.5,
-                              max: 10,
-                              suffix: ' sec',
-                              decimals: 1,
-                              step: 0.1,
-                              onSave: (v) =>
-                                  setState(() => _startingExposure = v),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Exposure Increment
-                        Expanded(
-                          child: _buildCompactCard(
-                            title: FlutterI18n.translate(
-                                context, 'calibration.exposureIncrement'),
-                            value: '${_exposureIncrement.toStringAsFixed(2)} s',
-                            onTap: () => _editValue(
-                              title: FlutterI18n.translate(
-                                  context, 'calibration.exposureIncrement'),
-                              description: FlutterI18n.translate(
-                                  context, 'calibration.incrementDesc'),
-                              currentValue: _exposureIncrement,
-                              min: 0.1,
-                              max: 2,
-                              suffix: ' s',
-                              decimals: 2,
-                              step: 0.1,
-                              onSave: (v) =>
-                                  setState(() => _exposureIncrement = v),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Right side: Model selector with large thumbnail
-                  Expanded(
-                    flex: 11,
-                    child: _buildLargeModelSelectorCard(
-                      model: _selectedModel,
-                      isLoading: isModelsLoading,
-                      imageUrl: _selectedModel != null
-                          ? resinsProvider
-                              .calibrationImageUrl(_selectedModel!.id)
-                          : null,
-                      onTap: isModelsLoading
-                          ? () {}
-                          : () => _selectCalibrationModel(
-                              resinsProvider.calibrationModels),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Bottom Buttons: Reset | Start
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: Row(
+        child: Center(
+          child: FractionallySizedBox(
+            key: _guideColumnKey,
+            widthFactor: 0.80,
+            child: LayoutBuilder(builder: (context, constraints) {
+              return Column(
                 children: [
                   Expanded(
-                    flex: 9,
-                    child: GlassButton(
-                      tint: GlassButtonTint.negative,
-                      onPressed: () => _resetValues(resinsProvider),
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 65),
-                      ),
-                      child: Text(
-                          FlutterI18n.translate(context, 'calibration.reset'),
-                          style: TextStyle(fontSize: 22)),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      switchInCurve: Curves.easeInOut,
+                      switchOutCurve: Curves.easeInOut,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      child: _buildStepBody(resinsProvider, resins,
+                          isResinsLoading, constraints.maxWidth),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 11,
-                    child: GlassButton(
-                      tint: GlassButtonTint.positive,
-                      onPressed:
-                          _selectedResin == null ? null : _startCalibration,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 65),
-                      ),
-                      child: Text(
-                          FlutterI18n.translate(context, 'calibration.start'),
-                          style: TextStyle(fontSize: 22)),
-                    ),
-                  ),
+                  const SizedBox(height: 24),
+                  _buildStepActions(),
+                  const SizedBox(height: 24),
                 ],
-              ),
-            ),
-          ],
+              );
+            }),
+          ),
         ),
       ),
     );
   }
 
+  /// The step's header: what to do, then why it matters.
+  Widget _buildStepHeader() {
+    final (promptKey, helpKey) = switch (_step) {
+      // Only the exposure steps carry an explainer: the ones that set a value
+      // the user has to understand.
+      _CalibrationStep.resin => ('calibration.promptResin', null),
+      _CalibrationStep.model => ('calibration.promptModel', null),
+      _CalibrationStep.startingExposure => (
+          'calibration.promptStartingExposure',
+          'calibration.exposureDesc'
+        ),
+      _CalibrationStep.exposureIncrement => (
+          'calibration.promptExposureIncrement',
+          'calibration.incrementDesc'
+        ),
+    };
+    return Column(
+      children: [
+        Text(
+          FlutterI18n.translate(context, promptKey),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            height: 1.3,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        if (helpKey != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            FlutterI18n.translate(context, helpKey),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 17,
+              height: 1.35,
+              color:
+                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// The control the current step asks for.
+  Widget _buildStepContent(
+      ResinsProvider provider, List<ResinProfile> resins, bool isResinsLoading) {
+    switch (_step) {
+      case _CalibrationStep.resin:
+        return _buildResinStep(resins, isResinsLoading);
+      case _CalibrationStep.model:
+        return _buildModelStep(provider);
+      case _CalibrationStep.startingExposure:
+        return _buildExposureValue(
+          titleKey: 'calibration.startingExposure',
+          descriptionKey: 'calibration.exposureDesc',
+          value: _startingExposure,
+          min: 0.5,
+          max: 10,
+          decimals: 1,
+          onSave: (v) => setState(() => _startingExposure = v),
+        );
+      case _CalibrationStep.exposureIncrement:
+        return _buildExposureValue(
+          titleKey: 'calibration.exposureIncrement',
+          descriptionKey: 'calibration.incrementDesc',
+          value: _exposureIncrement,
+          min: 0.1,
+          max: 2,
+          decimals: 2,
+          onSave: (v) => setState(() => _exposureIncrement = v),
+        );
+    }
+  }
+
+  /// One exposure value, edited in the shared zoom editor. The header names the
+  /// field, so the card carries the value alone.
+  Widget _buildExposureValue({
+    required String titleKey,
+    required String descriptionKey,
+    required double value,
+    required double min,
+    required double max,
+    required int decimals,
+    required ValueChanged<double> onSave,
+  }) {
+    return SizedBox(
+      height: 88,
+      child: _buildCompactCard(
+        value: '${value.toStringAsFixed(2)} $_secondsUnit',
+        onTap: () => _editValue(
+          title: FlutterI18n.translate(context, titleKey),
+          description: FlutterI18n.translate(context, descriptionKey),
+          currentValue: value,
+          min: min,
+          max: max,
+          suffix: ' $_secondsUnit',
+          decimals: decimals,
+          step: 0.1,
+          onSave: onSave,
+        ),
+      ),
+    );
+  }
+
+  /// The unit the exposure cards and their editors use.
+  String get _secondsUnit =>
+      FlutterI18n.translate(context, 'calibration.secondsUnit');
+
+  /// Step 1: the resin profile the calibration will use. It is chosen on its
+  /// own screen rather than listed here, and the header already names the
+  /// field, so the card shows the profile and its layer height alone.
+  Widget _buildResinStep(List<ResinProfile> resins, bool isLoading) {
+    final layerHeightUm = _selectedResin?.layerHeightUm;
+    return SizedBox(
+      height: 88,
+      child: _buildCompactCard(
+        value: isLoading
+            ? 'Loading...'
+            : (_selectedResin?.name ??
+                FlutterI18n.translate(context, 'calibration.selectResin')),
+        trailing: layerHeightUm == null
+            ? null
+            : ResinChip(
+                icon: PhosphorIcons.stack(),
+                label: FlutterI18n.translate(
+                    context, 'resins.layerHeightChip',
+                    translationParams: {
+                      'value': formatResinChipNumber(layerHeightUm)
+                    }),
+              ),
+        onTap: isLoading ? () {} : () => _selectResinProfile(resins),
+      ),
+    );
+  }
+
+  Future<void> _selectResinProfile(List<ResinProfile> resins) async {
+    if (resins.isEmpty) return;
+
+    final selected = await Navigator.of(context).push<ResinProfile>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => ResinProfileSelectionScreen(
+          title: FlutterI18n.translate(context, 'calibration.selectResin'),
+          resins: resins,
+          selectedResinKey: _selectedResin == null
+              ? null
+              : _selectedResin!.path ?? _selectedResin!.name,
+          onSelected: (resin) => Navigator.of(context).pop(resin),
+        ),
+      ),
+    );
+
+    if (selected == null || !mounted) return;
+    setState(() => _selectedResin = selected);
+  }
+
+  /// Step 2: the test model the calibration will print. The preview belongs to
+  /// the picker, not to the selector, so this stays a plain value card.
+  Widget _buildModelStep(ResinsProvider provider) {
+    final models = provider.calibrationModels;
+    final isModelsLoading = provider.isLoading && models.isEmpty;
+    return SizedBox(
+      height: 88,
+      child: _buildCompactCard(
+        value: _selectedModel?.name ??
+            FlutterI18n.translate(context, 'calibration.selectModel'),
+        onTap: isModelsLoading ? () {} : () => _selectCalibrationModel(models),
+      ),
+    );
+  }
+
+  /// Only the last step starts the print; the steps before it just move on.
+  /// The first step has nothing to go back to, so it carries the primary action
+  /// alone. Both are a fixed 65pt tall and scale their label down rather than
+  /// wrapping, so a long translation cannot move the layout either.
+  Widget _buildStepActions() {
+    final isLast = _step == _CalibrationStep.exposureIncrement;
+
+    Widget actionButton({
+      required GlassButtonTint tint,
+      required VoidCallback? onPressed,
+      required String label,
+    }) {
+      return GlassButton(
+        tint: tint,
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 65),
+          maximumSize: const Size(double.infinity, 65),
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, style: const TextStyle(fontSize: 22)),
+        ),
+      );
+    }
+
+    final primary = actionButton(
+      tint: GlassButtonTint.positive,
+      onPressed: isLast
+          ? (_selectedResin == null ? null : _startCalibration)
+          : _advanceStep,
+      label: FlutterI18n.translate(
+          context, isLast ? 'calibration.start' : 'common.next'),
+    );
+
+    if (_step == _CalibrationStep.resin) {
+      return primary;
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: actionButton(
+            tint: GlassButtonTint.negative,
+            onPressed: _previousStep,
+            label: FlutterI18n.translate(context, 'common.back'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: primary),
+      ],
+    );
+  }
+
+  void _advanceStep() {
+    if (_step == _CalibrationStep.exposureIncrement) return;
+    setState(() => _step = _CalibrationStep.values[_step.index + 1]);
+  }
+
+  void _previousStep() {
+    if (_step.index == 0) return;
+    setState(() => _step = _CalibrationStep.values[_step.index - 1]);
+  }
+
+  /// One tappable value card. With no [title] the value stands alone, centred —
+  /// for fields whose prompt already names them.
   Widget _buildCompactCard({
-    required String title,
+    String? title,
     required String value,
     required VoidCallback onTap,
+    Widget? trailing,
   }) {
     return GlassCard(
       outlined: true,
@@ -288,30 +455,38 @@ class CalibrationScreenState extends State<CalibrationScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  // spread when the card is given a height, hug when it is not
+                  mainAxisAlignment: title == null
+                      ? MainAxisAlignment.center
+                      : MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade400,
+                    if (title != null) ...[
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade400,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Spacer(),
+                      const SizedBox(height: 6),
+                    ],
                     Text(
                       value,
-                      style: const TextStyle(
-                        fontSize: 19,
-                      ),
+                      style: TextStyle(fontSize: title == null ? 22 : 19),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              if (trailing != null) ...[
+                const SizedBox(width: 12),
+                trailing,
+              ],
+              const SizedBox(width: 8),
               Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 28),
             ],
           ),
@@ -371,136 +546,6 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     }
   }
 
-  Widget _buildLargeModelSelectorCard({
-    required CalibrationModel? model,
-    required VoidCallback onTap,
-    required bool isLoading,
-    String? imageUrl,
-  }) {
-    return GlassCard(
-      outlined: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (isLoading) ...[
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade800,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircularProgressIndicator(),
-                          const SizedBox(height: 12),
-                          Text(
-                            FlutterI18n.translate(
-                                context, 'calibration.loadingModels'),
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ] else if (model != null) ...[
-                // Large preview image
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: imageUrl != null
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade800,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Center(
-                                  child: Icon(Icons.image,
-                                      size: 64, color: Colors.grey),
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade800,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ] else
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade800,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.science,
-                              size: 64, color: Colors.grey.shade600),
-                          const SizedBox(height: 12),
-                          Text(
-                            FlutterI18n.translate(
-                                context, 'calibration.noModel'),
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              if (model != null)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        model.name,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Icon(Icons.chevron_right,
-                        color: Colors.grey.shade400, size: 28),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _editValue({
     required String title,
     String? description,
@@ -549,28 +594,6 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     resinsProvider.setSelectedCalibrationModelId(selected.id);
     _lastImageFetchRequestModelId = selected.id;
     unawaited(resinsProvider.ensureCalibrationImage(selected.id));
-  }
-
-  Future<void> _selectResinProfile(List<ResinProfile> resins) async {
-    if (resins.isEmpty) {
-      return;
-    }
-
-    final selected = await Navigator.of(context).push<ResinProfile>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (context) => _ResinProfilePickerScreen(
-          title: FlutterI18n.translate(context, 'calibration.selectResin'),
-          resins: resins,
-          selectedResin: _selectedResin,
-        ),
-      ),
-    );
-
-    if (selected == null || !mounted) return;
-    setState(() {
-      _selectedResin = selected;
-    });
   }
 
   void _startCalibration() async {
@@ -989,32 +1012,6 @@ class _CalibrationModelPickerScreen extends StatelessWidget {
   }
 }
 
-class _ResinProfilePickerScreen extends StatelessWidget {
-  final String title;
-  final List<ResinProfile> resins;
-  final ResinProfile? selectedResin;
-
-  const _ResinProfilePickerScreen({
-    required this.title,
-    required this.resins,
-    required this.selectedResin,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ResinProfileSelectionScreen(
-      title: title,
-      resins: resins,
-      selectedResinKey: selectedResin?.path ?? selectedResin?.name,
-      onSelected: (resin) {
-        Navigator.of(context).pop(resin);
-      },
-    );
-  }
-}
-
-/// Compact pre-calibration overlay
-/// Shows info and checklist in single screen
 class _PreCalibrationOverlay extends StatelessWidget {
   final String calibrationModelName;
   final String? resinProfileName;

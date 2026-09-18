@@ -23,6 +23,7 @@ import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/widgets/resin_chip.dart';
 // error dialog util removed (delete flow not present); import kept out for now
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/util/orion_spacing.dart';
@@ -354,22 +355,22 @@ class ResinsScreenState extends State<ResinsScreen> {
                 // Material parameters, immediately left of the edit
                 // affordance so they read as one cluster.
                 if (depthUm != null)
-                  _ResinChip(
+                  ResinChip(
                     icon: PhosphorIcons.stack(),
                     label: FlutterI18n.translate(
                         context, 'resins.layerHeightChip',
                         translationParams: {
-                          'value': _formatChipNumber(depthUm)
+                          'value': formatResinChipNumber(depthUm)
                         }),
                   ),
                 if (depthUm != null) const SizedBox(width: 6),
                 if (exposureS != null)
-                  _ResinChip(
+                  ResinChip(
                     icon: PhosphorIcons.timer(),
                     label: FlutterI18n.translate(
                         context, 'resins.exposureChip',
                         translationParams: {
-                          'value': _formatChipNumber(exposureS)
+                          'value': formatResinChipNumber(exposureS)
                         }),
                   ),
                 if (exposureS != null) const SizedBox(width: 10),
@@ -421,15 +422,6 @@ class ResinsScreenState extends State<ResinsScreen> {
         ),
       ),
     );
-  }
-
-  /// 2 -> "2", 2.5 -> "2.5", 0.05 -> "0.05".
-  static String _formatChipNumber(double value) {
-    final text = value.toStringAsFixed(2);
-    if (!text.contains('.')) return text;
-    return text
-        .replaceFirst(RegExp(r'0+$'), '')
-        .replaceFirst(RegExp(r'\.$'), '');
   }
 
   void _onAddResin(BuildContext context) {
@@ -528,45 +520,4 @@ class ResinsScreenState extends State<ResinsScreen> {
   }
 
   // Delete flow removed from UI; keep deletion logic out until needed.
-}
-
-/// Compact parameter pill (layer height, cure time) shown on a resin row.
-/// Mirrors the "Template" pill's shape so the row reads as one family.
-class _ResinChip extends StatelessWidget {
-  const _ResinChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.color;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PhosphorIcon(icon, size: 16, color: muted),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: muted,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

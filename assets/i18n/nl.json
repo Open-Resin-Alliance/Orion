@@ -652,6 +652,8 @@
   },
   "calibration": {
     "resinProfile": "Harsprofiel",
+    "promptResin": "Selecteer hieronder het harsprofiel dat je wilt kalibreren",
+    "promptModel": "Selecteer hieronder het kalibratiemodel dat je wilt printen",
     "loading": "Bezig met laden van licenties…",
     "selectResin": "Selecteer hars",
     "startingExposure": "Startbelichting",
@@ -679,7 +681,10 @@
     "testPiecesExplanation": "teststukken worden achter elkaar geprint met oplopende belichting.",
     "submittingJob": "Kalibratietaak wordt verzonden…",
     "startingExistingPlate": "Bestaande kalibratieplaat starten (debug)…",
-    "processingFile": "Bestandsmetadata verwerken…"
+    "processingFile": "Bestandsmetadata verwerken…",
+    "promptStartingExposure": "Stel de startbelichting in",
+    "promptExposureIncrement": "Stel de belichtingstoename in",
+    "secondsUnit": "seconden"
   },
   "editResin": {
     "profileSaved": "Profiel opgeslagen",

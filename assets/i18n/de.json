@@ -652,6 +652,8 @@
   },
   "calibration": {
     "resinProfile": "Harzprofil",
+    "promptResin": "Bitte wählen Sie unten das Harzprofil aus, das Sie kalibrieren möchten",
+    "promptModel": "Bitte wählen Sie unten das Kalibrierungsmodell aus, das Sie drucken möchten",
     "loading": "Lizenzen werden geladen...",
     "selectResin": "Harz auswählen",
     "startingExposure": "Startbelichtung",
@@ -679,7 +681,10 @@
     "testPiecesExplanation": "Teststücke werden nacheinander mit steigender Belichtung gedruckt.",
     "submittingJob": "Kalibrierungsauftrag wird übermittelt…",
     "startingExistingPlate": "Vorhandene Kalibrierungsplatte wird gestartet (Debug)…",
-    "processingFile": "Datei-Metadaten werden verarbeitet…"
+    "processingFile": "Datei-Metadaten werden verarbeitet…",
+    "promptStartingExposure": "Bitte legen Sie die Startbelichtung fest",
+    "promptExposureIncrement": "Bitte legen Sie die Belichtungssteigerung fest",
+    "secondsUnit": "Sekunden"
   },
   "editResin": {
     "profileSaved": "Profil gespeichert",

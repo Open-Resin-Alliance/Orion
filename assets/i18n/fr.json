@@ -652,6 +652,8 @@
   },
   "calibration": {
     "resinProfile": "Profil résine",
+    "promptResin": "Sélectionnez ci-dessous le profil de résine que vous souhaitez calibrer",
+    "promptModel": "Sélectionnez ci-dessous le modèle de calibration que vous souhaitez imprimer",
     "loading": "Chargement des licences…",
     "selectResin": "Choisir la résine",
     "startingExposure": "Exposition initiale",
@@ -679,7 +681,10 @@
     "testPiecesExplanation": "pièces imprimées à la suite avec exposition croissante.",
     "submittingJob": "Envoi de la calibration…",
     "startingExistingPlate": "Utilisation de la plaque existante (debug)…",
-    "processingFile": "Traitement des métadonnées…"
+    "processingFile": "Traitement des métadonnées…",
+    "promptStartingExposure": "Définissez l'exposition de départ",
+    "promptExposureIncrement": "Définissez l'incrément d'exposition",
+    "secondsUnit": "secondes"
   },
   "editResin": {
     "profileSaved": "Profil enregistré",
