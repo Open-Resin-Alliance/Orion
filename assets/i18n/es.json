@@ -4,6 +4,7 @@
     "next": "Siguiente",
     "back": "Atrás",
     "skip": "Saltar",
+    "decline": "Rechazar",
     "completeSetup": "Completar",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
@@ -40,6 +41,11 @@
     "nameTitle": "Poner nombre",
     "themeTitle": "Tema",
     "wifiTitle": "Conectar WiFi",
+    "verifyLevelingTitle": "Verificar nivelación",
+    "levelingIntro": "Su impresora se niveló en fábrica.",
+    "levelingIntroDetail": "Verifique la nivelación ahora para asegurar que sus primeras impresiones salgan correctas.\nSolo tarda unos minutos.",
+    "calibrationTitle": "Calibración de resina",
+    "calibrationIntro": "La calibración determina la exposición correcta para su resina.",
     "completeTitle": ""
   },
   "region": {

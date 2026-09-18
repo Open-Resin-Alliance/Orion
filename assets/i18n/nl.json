@@ -4,6 +4,7 @@
     "next": "Volgende",
     "back": "Terug",
     "skip": "Overslaan",
+    "decline": "Weigeren",
     "completeSetup": "Installatie voltooien",
     "cancel": "Annuleren",
     "confirm": "Bevestigen",
@@ -40,6 +41,11 @@
     "nameTitle": "Naam kiezen",
     "themeTitle": "Thema selecteren",
     "wifiTitle": "Verbinden met WiFi",
+    "verifyLevelingTitle": "Nivellering verifiëren",
+    "levelingIntro": "Je printer is in de fabriek genivelleerd.",
+    "levelingIntroDetail": "Verifieer de nivellering nu zodat je eerste prints goed uitkomen.\nHet duurt maar een paar minuten.",
+    "calibrationTitle": "Harskalibratie",
+    "calibrationIntro": "Kalibratie bepaalt de juiste belichting voor je hars.",
     "completeTitle": ""
   },
   "region": {

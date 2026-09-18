@@ -4,6 +4,7 @@
     "next": "下一步",
     "back": "返回",
     "skip": "跳过",
+    "decline": "拒绝",
     "completeSetup": "完成设置",
     "cancel": "取消",
     "confirm": "确认",
@@ -40,6 +41,11 @@
     "nameTitle": "命名",
     "themeTitle": "选择主题",
     "wifiTitle": "连接WiFi",
+    "verifyLevelingTitle": "验证调平",
+    "levelingIntro": "您的打印机已在工厂完成调平。",
+    "levelingIntroDetail": "请现在验证调平，以确保首次打印效果良好。\n只需几分钟。",
+    "calibrationTitle": "树脂校准",
+    "calibrationIntro": "校准可确定适合您树脂的曝光时间。",
     "completeTitle": ""
   },
   "region": {

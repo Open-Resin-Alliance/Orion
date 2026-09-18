@@ -23,6 +23,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
 import 'package:logging/logging.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/glasser/glasser.dart';
@@ -32,6 +33,10 @@ import 'package:orion/home/onboarding/pages.dart';
 import 'package:orion/home/onboarding/welcome_bubbles.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/settings/wifi_screen.dart';
+import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
+import 'package:orion/materials/calibration_screen.dart';
+import 'package:orion/tools/athena/leveling_configs.dart';
+import 'package:orion/util/overlay_route.dart';
 import 'package:orion/util/locales/all_countries.dart';
 import 'package:orion/util/locales/available_languages.dart';
 import 'package:orion/util/onboarding_utils.dart';
@@ -100,11 +105,15 @@ class OnboardingScreenState extends State<OnboardingScreen>
         FlutterI18n.translate(context, 'setup.nameTitle'),
         FlutterI18n.translate(context, 'setup.themeTitle'),
         FlutterI18n.translate(context, 'setup.wifiTitle'),
+        FlutterI18n.translate(context, 'setup.verifyLevelingTitle'),
+        FlutterI18n.translate(context, 'setup.calibrationTitle'),
         FlutterI18n.translate(context, 'setup.completeTitle'),
       ];
 
   List<String> _getBtnTitles(BuildContext context) => [
         FlutterI18n.translate(context, 'setup.getStarted'),
+        FlutterI18n.translate(context, 'common.next'),
+        FlutterI18n.translate(context, 'common.next'),
         FlutterI18n.translate(context, 'common.next'),
         FlutterI18n.translate(context, 'common.next'),
         FlutterI18n.translate(context, 'common.next'),
@@ -375,7 +384,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
       }
     }
 
-    if (targetPage >= 0 && targetPage <= 7) {
+    if (targetPage >= 0 && targetPage <= 9) {
       // Store previous page before updating current
       _previousPage = _currentPage;
 
@@ -479,6 +488,26 @@ class OnboardingScreenState extends State<OnboardingScreen>
         return OnboardingPages.buildWifiPage(
             context, _wifiScreenKey, isConnected, _wifiInitialized);
       case 7:
+        return OnboardingPages.buildWizardOfferPage(
+          context,
+          headingKey: 'setup.levelingIntro',
+          detailKey: 'setup.levelingIntroDetail',
+          actionKey: 'leveling.recheckLeveling',
+          actionIcon: PhosphorIcons.arrowsCounterClockwise(),
+          onAction: _canRecheckLeveling ? _startLevelingRecheck : null,
+          onDecline: () => _handlePageChange(_currentPage + 1),
+        );
+      case 8:
+        return OnboardingPages.buildWizardOfferPage(
+          context,
+          headingKey: 'setup.calibrationIntro',
+          detailKey: 'calibration.wizardIntroDetail',
+          actionKey: 'calibration.start',
+          actionIcon: PhosphorIcons.flask(),
+          onAction: _startCalibration,
+          onDecline: () => _handlePageChange(_currentPage + 1),
+        );
+      case 9:
         return OnboardingPages.buildCompletePage(
             context, _completeAnimation, _printerName);
       default:
@@ -585,10 +614,14 @@ class OnboardingScreenState extends State<OnboardingScreen>
     final bool hideBackButton = _currentPage == 1;
     final bool isTimezonePageWithNoData = _currentPage == 3 &&
         countryData[_selectedCountry]?['timezones'] == null;
-    // Hide Next button on language, region, and timezone pages (unless no timezones available)
+    // Hide Next button on language, region, and timezone pages (unless no timezones available).
+    // The leveling and calibration steps own both of their buttons, so they
+    // hide Next too.
     final bool hideNextButton = _currentPage == 1 ||
         _currentPage == 2 ||
-        (_currentPage == 3 && !isTimezonePageWithNoData);
+        (_currentPage == 3 && !isTimezonePageWithNoData) ||
+        _currentPage == 7 ||
+        _currentPage == 8;
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
@@ -664,7 +697,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _handleNextButtonPressed() {
-    if (_currentPage < 7) {
+    if (_currentPage < 9) {
       if (_currentPage == 6 && !isConnected.value) {
         _showSkipWifiDialog();
       } else if (_currentPage == 0) {
@@ -707,6 +740,41 @@ class OnboardingScreenState extends State<OnboardingScreen>
     } else {
       _completeSetup();
     }
+  }
+
+  /// Whether this machine has a leveling configuration to re-check. Without
+  /// one the offer cannot be honoured, so the page keeps only its decline.
+  bool get _canRecheckLeveling =>
+      getLevelingConfigForMachine(config.getMachineModelName()) != null;
+
+  /// Runs the leveling re-check over onboarding and moves on to the last step
+  /// whichever way it ends: verified, failed or abandoned. The printer ships
+  /// leveled, so the offset is cleared before probing and only restored by a
+  /// verification that completes — exactly as the Tools flow treats it.
+  Future<void> _startLevelingRecheck() async {
+    final levelingConfig = getLevelingConfigForMachine(
+      config.getMachineModelName(),
+    );
+    if (levelingConfig == null) return;
+
+    OrionConfig().setLeveled(false);
+    await Navigator.of(context).push(
+      buildOverlayRoute(
+        Athena2LevelingWizard(config: levelingConfig, recheck: true),
+      ),
+    );
+    if (!mounted) return;
+    _handlePageChange(_currentPage + 1);
+  }
+
+  /// Runs the resin calibration over onboarding, then carries on to the last
+  /// step whichever way it ends.
+  Future<void> _startCalibration() async {
+    await Navigator.of(context).push(
+      buildOverlayRoute(const CalibrationWizardScreen()),
+    );
+    if (!mounted) return;
+    _handlePageChange(_currentPage + 1);
   }
 
   void _showSkipWifiDialog() {

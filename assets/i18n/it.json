@@ -4,6 +4,7 @@
     "next": "Avanti",
     "back": "Indietro",
     "skip": "Salta",
+    "decline": "Rifiuta",
     "completeSetup": "Completa configurazione",
     "cancel": "Annulla",
     "confirm": "Conferma",
@@ -40,6 +41,11 @@
     "nameTitle": "Scegli un nome",
     "themeTitle": "Seleziona tema",
     "wifiTitle": "Connetti al WiFi",
+    "verifyLevelingTitle": "Verifica livellamento",
+    "levelingIntro": "La tua stampante è stata livellata in fabbrica.",
+    "levelingIntroDetail": "Verifica il livellamento ora per essere sicuro che le prime stampe vengano bene.\nBastano pochi minuti.",
+    "calibrationTitle": "Calibrazione resina",
+    "calibrationIntro": "La calibrazione trova l'esposizione giusta per la tua resina.",
     "completeTitle": ""
   },
   "region": {

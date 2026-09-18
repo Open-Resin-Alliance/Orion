@@ -4,6 +4,7 @@
     "next": "次へ",
     "back": "戻る",
     "skip": "スキップ",
+    "decline": "辞退する",
     "completeSetup": "設定完了",
     "cancel": "キャンセル",
     "confirm": "確認",
@@ -40,6 +41,11 @@
     "nameTitle": "名前設定",
     "themeTitle": "テーマ選択",
     "wifiTitle": "WiFi接続",
+    "verifyLevelingTitle": "レベリングを確認",
+    "levelingIntro": "お使いのプリンターは工場でレベリング済みです。",
+    "levelingIntroDetail": "最初のプリントが正しく仕上がるよう、今すぐレベリングを確認してください。\n数分で完了します。",
+    "calibrationTitle": "レジンの較正",
+    "calibrationIntro": "較正で、お使いのレジンに合った露光時間を求めます。",
     "completeTitle": ""
   },
   "region": {

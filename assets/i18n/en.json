@@ -4,6 +4,7 @@
         "next": "Next",
         "back": "Back",
         "skip": "Skip",
+        "decline": "Decline",
         "completeSetup": "Complete Setup",
         "cancel": "Cancel",
         "confirm": "Confirm",
@@ -40,6 +41,11 @@
         "nameTitle": "Choose a Name",
         "themeTitle": "Select Theme",
         "wifiTitle": "Connect to WiFi",
+        "verifyLevelingTitle": "Verify Leveling",
+        "levelingIntro": "Your printer was leveled at the factory.",
+        "levelingIntroDetail": "Verify the level now to be sure your first prints come out right.\nIt only takes a few minutes.",
+        "calibrationTitle": "Resin Calibration",
+        "calibrationIntro": "Calibration finds the right exposure for your resin.",
         "completeTitle": ""
     },
     "region": {

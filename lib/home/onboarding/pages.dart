@@ -33,6 +33,7 @@ import 'package:orion/util/locales/available_languages.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
+import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/theme_color_selector.dart';
@@ -643,6 +644,103 @@ class OnboardingPages {
 
               return contentColumn;
             },
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A step that offers to run a wizard: what it is for, what it does, and the
+  /// way in — plus a decline for skipping it.
+  ///
+  /// Used by the leveling check and the resin calibration, so both steps read
+  /// as the same kind of offer.
+  ///
+  /// [onAction] is null when the machine cannot run the wizard, which leaves
+  /// only the decline.
+  static Widget buildWizardOfferPage(
+    BuildContext context, {
+    required String headingKey,
+    required String detailKey,
+    required String actionKey,
+    required IconData actionIcon,
+    required VoidCallback? onAction,
+    required VoidCallback onDecline,
+  }) {
+    final theme = Theme.of(context);
+    return GlassApp(
+      child: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 20),
+                Text(
+                  FlutterI18n.translate(context, headingKey),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  FlutterI18n.translate(context, detailKey),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    height: 1.4,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                  ),
+                ),
+                const SizedBox(height: OrionSpacing.controlGap + 24),
+                SizedBox(
+                  width: 320,
+                  child: GlassButton(
+                    tint: GlassButtonTint.positive,
+                    onPressed: onAction,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 65),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(actionIcon, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            FlutterI18n.translate(context, actionKey),
+                            style: const TextStyle(
+                                fontSize: 21, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: OrionSpacing.controlGap),
+                SizedBox(
+                  width: 320,
+                  child: GlassButton(
+                    tint: GlassButtonTint.neutral,
+                    onPressed: onDecline,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 55),
+                    ),
+                    child: Text(
+                      FlutterI18n.translate(context, 'common.decline'),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: kToolbarHeight),
+              ],
+            ),
           ),
         ),
       ),

@@ -4,6 +4,7 @@
     "next": "Weiter",
     "back": "Zurück",
     "skip": "Ãœberspringen",
+    "decline": "Ablehnen",
     "completeSetup": "Einrichtung abschlieÃŸen",
     "cancel": "Abbrechen",
     "confirm": "Bestätigen",
@@ -40,6 +41,11 @@
     "nameTitle": "Namen wählen",
     "themeTitle": "Design auswählen",
     "wifiTitle": "Mit WLAN verbinden",
+    "verifyLevelingTitle": "Nivellierung prüfen",
+    "levelingIntro": "Ihr Drucker wurde im Werk nivelliert.",
+    "levelingIntroDetail": "Prüfen Sie die Nivellierung jetzt, damit Ihre ersten Drucke korrekt ausfallen.\nEs dauert nur wenige Minuten.",
+    "calibrationTitle": "Harz-Kalibrierung",
+    "calibrationIntro": "Die Kalibrierung ermittelt die richtige Belichtungszeit für Ihr Harz.",
     "completeTitle": ""
   },
   "region": {
