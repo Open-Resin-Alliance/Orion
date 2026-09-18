@@ -176,8 +176,6 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
     throw UnimplementedError();
   }
 
-  void main() {}
-
   @override
   Future<Map<String, dynamic>> emergencyStop() {
     throw UnimplementedError();
