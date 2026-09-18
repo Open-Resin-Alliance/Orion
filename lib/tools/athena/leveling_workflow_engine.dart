@@ -24,6 +24,7 @@ import 'package:orion/tools/athena/leveling_configs.dart';
 typedef ForceLevelingRunner = Future<ForceLevelingWorkflowResponse> Function(
   String endpoint, {
   String? screenType,
+  bool skipPark,
 });
 
 enum LevelingWorkflowStatus {
@@ -37,15 +38,24 @@ enum LevelingWorkflowStatus {
 class LevelingWorkflowEngine extends ChangeNotifier {
   LevelingWorkflowEngine({
     ForceLevelingRunner? runner,
+    this.skipParkFor,
   }) : _runner = runner ??
-            ((endpoint, {screenType}) =>
+            ((endpoint, {screenType, skipPark = false}) =>
                 BackendService().runForceLevelingWorkflow(
                   endpoint,
                   screenType: screenType,
+                  skipPark: skipPark,
                   requestTimeout: const Duration(seconds: 90),
                 ));
 
   final ForceLevelingRunner _runner;
+
+  /// Answers whether a step's prepare move should leave the plate where it
+  /// already sits.  Owned by the wizard, which is what knows whether the
+  /// leveling spacer is still on the corner being prepared — parking high and
+  /// lowering back down is wasted motion, and a hazard to hands near the plate,
+  /// when the spacer is already in place and a probe follows immediately.
+  bool Function(LevelingWorkflowStep step)? skipParkFor;
   final _log = Logger('LevelingWorkflowEngine');
 
   /// Selected screen type (tempered glass vs. wave release film).  Passed
@@ -186,8 +196,11 @@ class LevelingWorkflowEngine extends ChangeNotifier {
 
     late final ForceLevelingWorkflowResponse response;
     try {
-      response =
-          await _runner(step.endpoint, screenType: _screenType?.screentypeParam);
+      response = await _runner(
+        step.endpoint,
+        screenType: _screenType?.screentypeParam,
+        skipPark: skipParkFor?.call(step) ?? false,
+      );
     } catch (e) {
       _log.warning(
         'Leveling step threw before returning response: endpoint=${step.endpoint}',

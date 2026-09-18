@@ -276,7 +276,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   @override
   void initState() {
     super.initState();
-    _engine = LevelingWorkflowEngine()..addListener(_handleEngineUpdate);
+    _engine = LevelingWorkflowEngine(skipParkFor: _skipParkForPrepare)
+      ..addListener(_handleEngineUpdate);
     _uvSafetyTimer = UvSafetyTimer(() {
       BackendService().turnOffSpecialScreens().then((_) {}).catchError((_) {});
     });
@@ -565,12 +566,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     if (_puckPlacedCorner != null &&
         _engine.status == LevelingWorkflowStatus.stepComplete) {
       final step = _engine.currentStep;
-      if (step != null &&
-          step.kind == LevelingWorkflowStepKind.prepare &&
-          step.id.startsWith('fine_prepare_')) {
-        final cornerNum =
-            int.tryParse(step.id.replaceFirst('fine_prepare_', '')) ?? 0;
-        final cornerIndex = cornerNum - 1; // fine_prepare_1 → corner 0
+      final cornerIndex = step == null ? null : finePrepareCorner(step);
+      if (cornerIndex != null) {
         if (cornerIndex == _puckPlacedCorner) {
           _puckPlacedCorner = null;
           _engine.advanceAfterSuccessfulStep();
@@ -912,48 +909,45 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _runAdjustmentPrepare();
   }
 
+  /// Whether the engine's prepare move can leave the plate where it is: the
+  /// spacer is already on the corner being prepared, so parking the plate high
+  /// and lowering it back down is wasted motion — and a hazard to hands near
+  /// the plate — when a probe follows straight after.
+  bool _skipParkForPrepare(LevelingWorkflowStep step) =>
+      _puckPlacedCorner != null && finePrepareCorner(step) == _puckPlacedCorner;
+
   Future<void> _runAdjustmentPrepare() async {
     if (_adjustingCornerIndex == null) return;
     _adjustmentBusy = true;
     if (mounted) setState(() {});
 
+    // Whether the spacer is still on this corner is the whole difference
+    // between the two prepares: if it is, the plate stays where it is already
+    // seated (hands are clear, and a probe follows straight after); if it is
+    // not, the regular prepare parks and lowers the plate, which is the
+    // position the spacer gets placed at.
+    //
+    // Both are the same endpoint, so the plate is always positioned by the
+    // leveling workflow rather than by a relative jog.
     final puckAlreadyPlaced = _puckPlacedCorner == _adjustingCornerIndex;
     if (puckAlreadyPlaced) {
       _puckPlacedCorner = null;
     }
 
     try {
-      if (puckAlreadyPlaced) {
-        // Puck is already at this corner from the last probe — ask the
-        // backend to skip parking the plate (park high, then lower it
-        // back down) instead of jogging it up manually.  The rapid
-        // up-then-down is a safety hazard when hands may be near the
-        // plate and a re-probe is about to start anyway.
-        final response = await BackendService().runForceLevelingWorkflow(
-          'probe_corner_prepare',
-          skipPark: true,
-          requestTimeout: const Duration(seconds: 90),
-        );
-        if (!mounted) return;
-        if (!response.result) {
-          _adjustmentError = response.error.isNotEmpty
-              ? response.error
-              : FlutterI18n.translate(context, 'leveling.wizardPrepareFailed');
-          _adjustmentBusy = false;
-          if (mounted) setState(() {});
-          return;
-        }
-      } else {
-        // First visit to this corner: the plate sits at probe height
-        // from the recheck. Lift for hand/puck access FIRST — showing
-        // the puck screen after probe_corner_prepare leaves the plate
-        // back down at ~10 mm with no room to place the puck
-        // (prepare parks high but lowers again before returning).
-        // The move result is advisory: the plate may already be high,
-        // and prepare re-parks anyway once the puck is down.
-        await Provider.of<ManualProvider>(context, listen: false)
-            .moveDelta(50.0);
-        if (!mounted) return;
+      final response = await BackendService().runForceLevelingWorkflow(
+        'probe_corner_prepare',
+        skipPark: puckAlreadyPlaced,
+        requestTimeout: const Duration(seconds: 90),
+      );
+      if (!mounted) return;
+      if (!response.result) {
+        _adjustmentError = response.error.isNotEmpty
+            ? response.error
+            : FlutterI18n.translate(context, 'leveling.wizardPrepareFailed');
+        _adjustmentBusy = false;
+        if (mounted) setState(() {});
+        return;
       }
 
       // Fire the special screen for this corner so the projector shows the position
@@ -974,40 +968,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     _adjustmentBusy = false;
     if (puckAlreadyPlaced) {
-      _adjustmentStep = _AdjustmentStep.hexShortEnd;
+      // The spacer never left this corner, so measure straight away.
+      _adjustmentStep = _AdjustmentStep.probing;
       if (mounted) setState(() {});
+      _runAdjustmentProbe();
       return;
     }
     _adjustmentStep = _AdjustmentStep.puckPlacement;
     if (mounted) setState(() {});
-  }
-
-  /// Runs `probe_corner_prepare` after the user confirms puck placement,
-  /// then advances to the hex-key prompt. Split out of
-  /// [_runAdjustmentPrepare] so the puck is placed at lift height —
-  /// prepare parks high but lowers again, and running it first left the
-  /// plate at ~10 mm with no room for the puck.
-  Future<void> _runPrepareAfterPuck() async {
-    _adjustmentBusy = true;
-    setState(() {
-      _adjustmentStep = _AdjustmentStep.preparing;
-    });
-    try {
-      await BackendService().runForceLevelingWorkflow(
-        'probe_corner_prepare',
-        requestTimeout: const Duration(seconds: 90),
-      );
-      if (!mounted) return;
-    } catch (e) {
-      _adjustmentError = e.toString();
-      _adjustmentBusy = false;
-      if (mounted) setState(() {});
-      return;
-    }
-    _adjustmentBusy = false;
-    setState(() {
-      _adjustmentStep = _AdjustmentStep.hexShortEnd;
-    });
   }
 
   Future<void> _runAdjustmentProbe() async {
@@ -2467,7 +2435,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       );
     }
 
-    // Adjustment intro: single "Start" button
+    // Adjustment intro: single "Start" button, then the hex-key explainer
     if (_adjustmentStep == _AdjustmentStep.intro) {
       return Center(
         child: SizedBox(
@@ -2475,8 +2443,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           child: GlassButton(
             tint: GlassButtonTint.positive,
             onPressed: () {
-              setState(() => _adjustmentStep = _AdjustmentStep.preparing);
-              _runAdjustmentPrepare();
+              setState(() => _adjustmentStep = _AdjustmentStep.hexShortEnd);
             },
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 65),
@@ -2498,7 +2465,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       );
     }
 
-    // Hex short-end prompt after intro (reuses long-end visuals, short text)
+    // Hex short-end explainer, shown once after the intro: every corner after
+    // that goes straight from its prepare move into probing.
     if (_adjustmentStep == _AdjustmentStep.hexShortEnd) {
       return Row(
         children: [
@@ -2528,8 +2496,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             child: GlassButton(
               tint: GlassButtonTint.positive,
               onPressed: () {
-                setState(() => _adjustmentStep = _AdjustmentStep.probing);
-                _runAdjustmentProbe();
+                setState(() => _adjustmentStep = _AdjustmentStep.preparing);
+                _runAdjustmentPrepare();
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
@@ -2581,7 +2549,12 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           Expanded(
             child: GlassButton(
               tint: GlassButtonTint.positive,
-              onPressed: _runPrepareAfterPuck,
+              // The plate is already positioned by the prepare above; placing
+              // the spacer is all that is left before measuring it.
+              onPressed: () {
+                setState(() => _adjustmentStep = _AdjustmentStep.probing);
+                _runAdjustmentProbe();
+              },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
               ),

@@ -105,6 +105,27 @@ void main() {
       expect(regularSteps.map((s) => s.endpoint), contains('probe_prepare'));
       expect(regularSteps.last.endpoint, 'probe_standardarm');
     });
+
+    test('fine prepare steps name their corner, others have none', () {
+      final steps = getLevelingConfigForMachine('Athena2')!
+          .variants
+          .firstWhere((v) => v.id == 'pro')
+          .buildSteps();
+
+      // fine_prepare_1 is corner 0, the front-left.
+      expect(
+        steps.where((s) => s.id.startsWith('fine_prepare_')).map(
+              finePrepareCorner,
+            ),
+        [0, 1, 2, 3],
+      );
+      // A corner probe and the initial prepare are not corner prepares, so
+      // neither can ask for the parking to be skipped.
+      expect(finePrepareCorner(steps.firstWhere((s) => s.id == 'fine_corner_1')),
+          isNull);
+      expect(finePrepareCorner(steps.firstWhere((s) => s.id == 'probe_prepare')),
+          isNull);
+    });
   });
 
   group('LevelingWorkflowEngine', () {
@@ -112,7 +133,7 @@ void main() {
         () async {
       final calls = <String>[];
       final engine = LevelingWorkflowEngine(
-        runner: (endpoint, {screenType}) async {
+        runner: (endpoint, {screenType, skipPark = false}) async {
           calls.add(endpoint);
           return ForceLevelingWorkflowResponse.fromJson({
             'result': true,
@@ -141,10 +162,43 @@ void main() {
       expect(engine.zOffsetApplied, 12.45);
     });
 
+    test('only the spacer\'s own corner prepare skips parking', () async {
+      // What the wizard does when a corner was just adjusted: the spacer never
+      // left it, so that corner's prepare must leave the plate seated instead
+      // of parking it high and lowering it back down.
+      final calls = <String>[];
+      final engine = LevelingWorkflowEngine(
+        skipParkFor: (step) => finePrepareCorner(step) == 3, // back-left
+        runner: (endpoint, {screenType, skipPark = false}) async {
+          calls.add('$endpoint${skipPark ? ' skipPark' : ''}');
+          return ForceLevelingWorkflowResponse.fromJson({
+            'result': true,
+            'error': '',
+          });
+        },
+      );
+      final variant = getLevelingConfigForMachine('Athena2')!
+          .variants
+          .firstWhere((v) => v.id == 'pro');
+      engine.selectVariant(variant);
+
+      for (var corner = 1; corner <= 4; corner++) {
+        engine.jumpToFirstStepId('fine_prepare_$corner');
+        await engine.runCurrentStep();
+      }
+
+      expect(calls, [
+        'probe_corner_prepare',
+        'probe_corner_prepare',
+        'probe_corner_prepare',
+        'probe_corner_prepare skipPark',
+      ]);
+    });
+
     test('keeps failed step retryable after busy response', () async {
       var attempts = 0;
       final engine = LevelingWorkflowEngine(
-        runner: (_, {screenType}) async {
+        runner: (_, {screenType, skipPark = false}) async {
           attempts++;
           if (attempts == 1) {
             return ForceLevelingWorkflowResponse.httpFailure(
@@ -177,7 +231,7 @@ void main() {
 
     test('maps thrown connection failures to localized retry state', () async {
       final engine = LevelingWorkflowEngine(
-        runner: (_, {screenType}) async => throw Exception(
+        runner: (_, {screenType, skipPark = false}) async => throw Exception(
           'ClientException with SocketException: The remote computer refused',
         ),
       );
@@ -196,7 +250,7 @@ void main() {
     test('surfaces an obstruction error code as a localized message',
         () async {
       final engine = LevelingWorkflowEngine(
-        runner: (_, {screenType}) async =>
+        runner: (_, {screenType, skipPark = false}) async =>
             ForceLevelingWorkflowResponse.fromJson({
           'result': false,
           'error_code': 'obstruction',
@@ -230,7 +284,7 @@ void main() {
       // was removed because it is always redone after corners.
       int probeOffsetCalls = 0;
       final engine = LevelingWorkflowEngine(
-        runner: (endpoint, {screenType}) async {
+        runner: (endpoint, {screenType, skipPark = false}) async {
           if (endpoint == 'probe_offset') {
             probeOffsetCalls++;
             return ForceLevelingWorkflowResponse.fromJson({

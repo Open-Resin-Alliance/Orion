@@ -111,6 +111,16 @@ class LevelingWorkflowStep {
   }
 }
 
+/// The corner a `fine_prepare_N` step prepares, or null when the step is not a
+/// corner prepare.  `fine_prepare_1` prepares corner 0, the front-left.
+int? finePrepareCorner(LevelingWorkflowStep step) {
+  if (step.kind != LevelingWorkflowStepKind.prepare) return null;
+  const prefix = 'fine_prepare_';
+  if (!step.id.startsWith(prefix)) return null;
+  final cornerNum = int.tryParse(step.id.substring(prefix.length));
+  return cornerNum == null ? null : cornerNum - 1;
+}
+
 class LevelingVariant {
   final String id;
   final String label;
