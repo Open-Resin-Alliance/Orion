@@ -152,6 +152,10 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
   /// The height every step's control occupies.
   static const double _controlHeight = 88.0;
 
+  /// The gap the step body keeps above its control, matching the one between
+  /// the control and the actions.
+  static const double _contentGap = 16.0;
+
   /// The 80%-wide guide column, anchored so tests can assert that the steps do
   /// not shift under each other.
   static const Key _guideColumnKey = Key('calibration-guide-column');
@@ -294,8 +298,9 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
     // The header holds the top of the step and scales down rather than pushing
     // the control or the actions out of the window; the control then centres
     // itself in whatever room is left between the header and the actions.
+    final controlHeight = _controlHeightFor(resins, slot.height);
     final headerMaxHeight =
-        (slot.height - _controlHeight).clamp(0.0, double.infinity);
+        (slot.height - controlHeight - _contentGap).clamp(0.0, double.infinity);
     return Column(
       key: ValueKey(_step),
       children: [
@@ -310,9 +315,13 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
             ),
           ),
         ),
+        // The control keeps the same distance from the header as the actions
+        // keep from it below, with the slack shared either side.
+        const SizedBox(height: _contentGap),
         Expanded(
           child: Center(
-            child: _buildStepContent(provider, resins, isResinsLoading),
+            child: _buildStepContent(
+                provider, resins, isResinsLoading, controlHeight),
           ),
         ),
       ],
@@ -337,11 +346,11 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
       _CalibrationStep.model => ('calibration.promptModel', null),
       _CalibrationStep.startingExposure => (
           'calibration.promptStartingExposure',
-          'calibration.exposureDesc'
+          'calibration.startingExposureHelp'
         ),
       _CalibrationStep.exposureIncrement => (
           'calibration.promptExposureIncrement',
-          'calibration.incrementDesc'
+          'calibration.exposureIncrementHelp'
         ),
     };
     return Column(
@@ -377,14 +386,16 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
 
   /// The control the current step asks for.
   Widget _buildStepContent(ResinsProvider provider, List<ResinProfile> resins,
-      bool isResinsLoading) {
+      bool isResinsLoading, double controlHeight) {
     switch (_step) {
       case _CalibrationStep.source:
         return _buildSourceStep(resins);
       case _CalibrationStep.resin:
-        return _buildResinStep(resins, isResinsLoading);
+        return _resinSource == _ResinSource.template
+            ? _buildTemplateGrid(resins, controlHeight)
+            : _buildResinStep(resins, isResinsLoading);
       case _CalibrationStep.model:
-        return _buildModelStep(provider);
+        return _buildModelStep(provider, controlHeight);
       case _CalibrationStep.startingExposure:
         return _buildExposureValue(
           titleKey: 'calibration.startingExposure',
@@ -447,6 +458,31 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
     }
   }
 
+  /// How tall this step's control needs to be. Everything is one card tall
+  /// except the template grid, which grows a row at a time and never takes more
+  /// room than the step has.
+  double _controlHeightFor(List<ResinProfile> resins, double available) {
+    if (_step == _CalibrationStep.model) {
+      // Room for the model's preview, with the header's share kept back.
+      final wanted = available - 140;
+      if (wanted >= _controlHeight) {
+        return wanted < 300 ? wanted : 300;
+      }
+      return available;
+    }
+    final isTemplateGrid = _step == _CalibrationStep.resin &&
+        _resinSource == _ResinSource.template;
+    if (!isTemplateGrid) return _controlHeight;
+    if (available <= _controlHeight) return available;
+    final rows = (_sourceResins(resins).length / 2).ceil();
+    final needed = rows * _controlHeight + (rows - 1) * 12;
+    if (needed <= _controlHeight) return _controlHeight;
+    return needed < available ? needed : available;
+  }
+
+  /// The key a profile is identified by, as the provider stores it.
+  String _resinKey(ResinProfile resin) => resin.path ?? resin.name;
+
   /// The profiles the chosen source offers: factory templates, or the user's
   /// own profiles.
   List<ResinProfile> _sourceResins(List<ResinProfile> resins) {
@@ -492,42 +528,136 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
     final selected = _resinSource == source;
     final accent = selected ? Colors.green.shade400 : null;
     return GlassCard(
-      outlined: true,
+      outlined: false,
+      elevation: selected ? 2 : 1,
       margin: EdgeInsets.zero,
-      color: selected ? Colors.green.withValues(alpha: 0.10) : null,
+      color: selected ? Colors.green.shade400.withValues(alpha: 0.08) : null,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(glassCornerRadius),
         onTap: !enabled ? null : () => setState(() => _setSource(source)),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              PhosphorIcon(
-                icon,
-                size: 22,
-                color: enabled ? (accent ?? Colors.grey.shade400) : Colors.grey,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: enabled ? accent : Colors.grey.shade600,
+        child: _selectedOutline(
+          selected: selected,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PhosphorIcon(
+                  icon,
+                  size: 22,
+                  color:
+                      enabled ? (accent ?? Colors.grey.shade400) : Colors.grey,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: enabled ? accent : Colors.grey.shade600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  /// The treatment the resin rows use for the chosen one: a green outline over
+  /// a green wash, so a selected card reads the same here as in the resin list.
+  Widget _selectedOutline({required bool selected, required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(glassCornerRadius),
+        border: Border.all(
+          color: selected
+              ? Colors.green.shade400.withValues(alpha: 0.55)
+              : Theme.of(context).dividerColor.withValues(alpha: 0.35),
+          width: selected ? 1.6 : 1.0,
+        ),
+      ),
+      child: child,
+    );
+  }
+
   /// The unit the exposure cards and their editors use.
   String get _secondsUnit =>
       FlutterI18n.translate(context, 'calibration.secondsUnit');
+
+  /// The templates, shown inline instead of behind a picker: the factory ships
+  /// a handful of them, so two columns is the whole list.
+  Widget _buildTemplateGrid(List<ResinProfile> resins, double height) {
+    final templates = _sourceResins(resins);
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: GridView.builder(
+        padding: EdgeInsets.zero,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          mainAxisExtent: _controlHeight,
+        ),
+        itemCount: templates.length,
+        itemBuilder: (context, i) => _buildTemplateCard(templates[i]),
+      ),
+    );
+  }
+
+  Widget _buildTemplateCard(ResinProfile resin) {
+    final selected =
+        _selectedResin != null && _resinKey(_selectedResin!) == _resinKey(resin);
+    final success = Colors.green.shade400;
+    final layerHeightUm = resin.layerHeightUm;
+
+    return GlassCard(
+      outlined: false,
+      elevation: selected ? 2 : 1,
+      margin: EdgeInsets.zero,
+      color: selected ? Colors.green.shade400.withValues(alpha: 0.08) : null,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(glassCornerRadius),
+        onTap: () => setState(() => _selectedResin = resin),
+        child: _selectedOutline(
+          selected: selected,
+          child: Padding(
+            padding: OrionSpacing.compactCardPadding,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    resin.name,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? success : null,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (layerHeightUm != null) ...[
+                  const SizedBox(width: 8),
+                  ResinChip(
+                    icon: PhosphorIcons.stack(),
+                    label: FlutterI18n.translate(
+                        context, 'resins.layerHeightChip',
+                        translationParams: {
+                          'value': formatResinChipNumber(layerHeightUm)
+                        }),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   /// Step 1: the resin profile the calibration will use. It is chosen on its
   /// own screen rather than listed here, and the header already names the
@@ -578,15 +708,105 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
 
   /// Step 2: the test model the calibration will print. The preview belongs to
   /// the picker, not to the selector, so this stays a plain value card.
-  Widget _buildModelStep(ResinsProvider provider) {
+  Widget _buildModelStep(ResinsProvider provider, double controlHeight) {
     final models = provider.calibrationModels;
     final isModelsLoading = provider.isLoading && models.isEmpty;
+    final model = _selectedModel;
+    final imageUrl =
+        model == null ? null : provider.calibrationImageUrl(model.id);
+
     return SizedBox(
-      height: 88,
-      child: _buildCompactCard(
-        value: _selectedModel?.name ??
-            FlutterI18n.translate(context, 'calibration.selectModel'),
-        onTap: isModelsLoading ? () {} : () => _selectCalibrationModel(models),
+      height: controlHeight,
+      child: GlassCard(
+        outlined: false,
+        margin: EdgeInsets.zero,
+        color: model == null
+            ? null
+            : Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(glassCornerRadius),
+          onTap: isModelsLoading ? () {} : () => _selectCalibrationModel(models),
+          child: Padding(
+            padding: OrionSpacing.cardPadding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: isModelsLoading
+                        ? _buildModelPreviewPlaceholder(
+                            FlutterI18n.translate(
+                                context, 'calibration.loadingModels'))
+                        : imageUrl == null
+                            ? _buildModelPreviewPlaceholder(
+                                FlutterI18n.translate(
+                                    context, 'calibration.noModel'),
+                                icon: Icons.science)
+                            : Image.network(
+                                imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _buildModelPreviewPlaceholder(
+                                        FlutterI18n.translate(
+                                            context, 'calibration.noModel'),
+                                        icon: Icons.science),
+                              ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        model?.name ??
+                            FlutterI18n.translate(
+                                context, 'calibration.selectModel'),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right,
+                        color: Colors.grey.shade400, size: 24),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// What the preview area shows until there is an image to show.
+  Widget _buildModelPreviewPlaceholder(String label, {IconData? icon}) {
+    return Container(
+      color: Colors.grey.shade800.withValues(alpha: 0.6),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null)
+              Icon(icon, size: 48, color: Colors.grey.shade600)
+            else
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 15, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -694,7 +914,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
     return GlassCard(
       outlined: true,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(glassCornerRadius),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),

@@ -653,7 +653,7 @@
   "calibration": {
     "resinProfile": "Profilo resina",
     "promptResin": "Seleziona qui sotto il profilo di resina che vuoi calibrare",
-    "promptModel": "Seleziona qui sotto il modello di calibrazione che vuoi stampare",
+    "promptModel": "Seleziona il modello di calibrazione che vuoi stampare",
     "loading": "Caricamento licenze…",
     "selectResin": "Seleziona resina",
     "startingExposure": "Esposizione iniziale",
@@ -690,7 +690,9 @@
     "sourceExisting": "Profilo esistente",
     "wizardIntro": "Questa procedura guidata ti accompagna nella calibrazione.",
     "wizardIntroDetail": "Vengono stampati pezzi di prova con esposizioni crescenti. Scegli il migliore e il suo tempo di esposizione viene salvato nel profilo della resina.",
-    "promptTemplate": "Seleziona qui sotto il profilo template che vuoi usare per la calibrazione"
+    "promptTemplate": "Seleziona qui sotto il profilo template che vuoi usare per la calibrazione",
+    "startingExposureHelp": "Il tempo di esposizione del primo pezzo di prova. Ogni pezzo successivo viene esposto un po' più a lungo del precedente.",
+    "exposureIncrementHelp": "Quanto più a lungo viene esposto ogni pezzo di prova rispetto al precedente. Un passo maggiore copre più intervallo di esposizione; uno minore distingue meglio il risultato migliore."
   },
   "editResin": {
     "profileSaved": "Profilo salvato",

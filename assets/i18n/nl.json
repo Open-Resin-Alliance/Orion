@@ -653,7 +653,7 @@
   "calibration": {
     "resinProfile": "Harsprofiel",
     "promptResin": "Selecteer hieronder het harsprofiel dat je wilt kalibreren",
-    "promptModel": "Selecteer hieronder het kalibratiemodel dat je wilt printen",
+    "promptModel": "Selecteer het kalibratiemodel dat je wilt printen",
     "loading": "Bezig met laden van licenties…",
     "selectResin": "Selecteer hars",
     "startingExposure": "Startbelichting",
@@ -690,7 +690,9 @@
     "sourceExisting": "Bestaand profiel",
     "wizardIntro": "Deze wizard leidt je door de kalibratie.",
     "wizardIntroDetail": "Er worden teststukken geprint met oplopende belichting. Je kiest de beste en de bijbehorende belichtingstijd wordt opgeslagen in het harsprofiel.",
-    "promptTemplate": "Selecteer hieronder het templateprofiel dat je voor de kalibratie wilt gebruiken"
+    "promptTemplate": "Selecteer hieronder het templateprofiel dat je voor de kalibratie wilt gebruiken",
+    "startingExposureHelp": "De belichtingstijd van het eerste teststuk. Elk volgend teststuk wordt iets langer belicht dan het vorige.",
+    "exposureIncrementHelp": "Hoeveel langer elk teststuk wordt belicht dan het vorige. Een grotere stap dekt meer belichtingsbereik; een kleinere onderscheidt het beste resultaat fijner."
   },
   "editResin": {
     "profileSaved": "Profiel opgeslagen",

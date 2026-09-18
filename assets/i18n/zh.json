@@ -653,7 +653,7 @@
   "calibration": {
     "resinProfile": "树脂配置",
     "promptResin": "请在下方选择要校准的树脂配置",
-    "promptModel": "请在下方选择要打印的校准模型",
+    "promptModel": "请选择要打印的校准模型",
     "loading": "加载中…",
     "selectResin": "选择树脂",
     "startingExposure": "起始曝光",
@@ -690,7 +690,9 @@
     "sourceExisting": "现有配置",
     "wizardIntro": "本向导将引导你完成校准。",
     "wizardIntroDetail": "校准会以递增的曝光时间打印测试件。你选出最佳的一件后，其曝光时间会保存到树脂配置中。",
-    "promptTemplate": "请在下方选择要用于校准的模板配置"
+    "promptTemplate": "请在下方选择要用于校准的模板配置",
+    "startingExposureHelp": "第一件测试件的曝光时间。之后的每一件都会比前一件曝光略长。",
+    "exposureIncrementHelp": "每一件测试件比前一件多曝光多少。步长越大覆盖的曝光范围越广，步长越小越能分辨最佳结果。"
   },
   "editResin": {
     "profileSaved": "配置已保存",

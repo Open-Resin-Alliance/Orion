@@ -653,7 +653,7 @@
   "calibration": {
     "resinProfile": "レジンプロファイル",
     "promptResin": "下から較正するレジンプロファイルを選択してください",
-    "promptModel": "下から印刷する較正モデルを選択してください",
+    "promptModel": "印刷する較正モデルを選択してください",
     "loading": "読み込み中…",
     "selectResin": "レジン選択",
     "startingExposure": "初期露光",
@@ -690,7 +690,9 @@
     "sourceExisting": "既存のプロファイル",
     "wizardIntro": "このウィザードが較正を順番に案内します。",
     "wizardIntroDetail": "露光時間を変えながらテストピースを印刷します。最適なものを選ぶと、その露光時間がレジンプロファイルに保存されます。",
-    "promptTemplate": "下から較正に使用するテンプレートプロファイルを選択してください"
+    "promptTemplate": "下から較正に使用するテンプレートプロファイルを選択してください",
+    "startingExposureHelp": "最初のテストピースの露光時間です。以降のテストピースは前のものより少しずつ長く露光されます。",
+    "exposureIncrementHelp": "各テストピースを前のものよりどれだけ長く露光するかです。ステップを大きくすると露光範囲が広がり、小さくすると最適な結果を細かく見分けられます。"
   },
   "editResin": {
     "profileSaved": "プロファイル保存完了",

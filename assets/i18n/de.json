@@ -653,7 +653,7 @@
   "calibration": {
     "resinProfile": "Harzprofil",
     "promptResin": "Bitte wählen Sie unten das Harzprofil aus, das Sie kalibrieren möchten",
-    "promptModel": "Bitte wählen Sie unten das Kalibrierungsmodell aus, das Sie drucken möchten",
+    "promptModel": "Bitte wählen Sie das Kalibrierungsmodell aus, das Sie drucken möchten",
     "loading": "Lizenzen werden geladen...",
     "selectResin": "Harz auswählen",
     "startingExposure": "Startbelichtung",
@@ -690,7 +690,9 @@
     "sourceExisting": "Vorhandenes Profil",
     "wizardIntro": "Dieser Assistent führt Sie durch die Kalibrierung.",
     "wizardIntroDetail": "Es werden Teststücke mit steigender Belichtung gedruckt. Sie wählen das beste aus, dessen Belichtungszeit wird im Harzprofil gespeichert.",
-    "promptTemplate": "Bitte wählen Sie unten das Vorlagenprofil aus, das Sie für die Kalibrierung verwenden möchten"
+    "promptTemplate": "Bitte wählen Sie unten das Vorlagenprofil aus, das Sie für die Kalibrierung verwenden möchten",
+    "startingExposureHelp": "Die Belichtungszeit des ersten Teststücks. Jedes weitere Teststück wird etwas länger belichtet als das vorherige.",
+    "exposureIncrementHelp": "Um wie viel länger jedes Teststück belichtet wird als das vorherige. Ein größerer Schritt deckt mehr Belichtungsbereich ab, ein kleinerer löst das beste Ergebnis feiner auf."
   },
   "editResin": {
     "profileSaved": "Profil gespeichert",

@@ -69,16 +69,30 @@ class _FakeResinsProvider extends ResinsProvider {
   @override
   bool get isLoading => false;
 
-  static final locked = ResinProfile('Factory Profile',
-      path: '/profile/edit/simple/7',
-      meta: {'LayerHeight': 0.05},
-      locked: true);
+  static final locked = [
+    ResinProfile('Factory Profile',
+        path: '/profile/edit/simple/7',
+        meta: {'LayerHeight': 0.05},
+        locked: true),
+    ResinProfile('Factory Fast',
+        path: '/profile/edit/simple/8',
+        meta: {'LayerHeight': 0.10},
+        locked: true),
+    ResinProfile('Factory Fine',
+        path: '/profile/edit/simple/9',
+        meta: {'LayerHeight': 0.03},
+        locked: true),
+    ResinProfile('Factory Thick',
+        path: '/profile/edit/simple/10',
+        meta: {'LayerHeight': 0.15},
+        locked: true),
+  ];
 
   @override
   List<ResinProfile> get userResins => _resins;
 
   @override
-  List<ResinProfile> get resins => [..._resins, locked];
+  List<ResinProfile> get resins => [..._resins, ...locked];
 
   @override
   List<CalibrationModel> get calibrationModels => _models;
@@ -87,7 +101,7 @@ class _FakeResinsProvider extends ResinsProvider {
   CalibrationModel? get selectedCalibrationModel => _models.first;
 
   @override
-  String? calibrationImageUrl(int modelId) => null;
+  String? calibrationImageUrl(int modelId) => 'http://127.0.0.1:9/preview.png';
 
   @override
   Future<void> ensureCalibrationImage(int modelId, {bool notify = true}) async {}
@@ -105,7 +119,7 @@ class _FakeResinsProvider extends ResinsProvider {
 /// A printer whose profiles are all factory templates.
 class _TemplatesOnlyProvider extends _FakeResinsProvider {
   @override
-  List<ResinProfile> get resins => [_FakeResinsProvider.locked];
+  List<ResinProfile> get resins => _FakeResinsProvider.locked;
 
   @override
   ResinProfile? getRecommendedResin([CalibrationModel? model]) => null;
@@ -193,12 +207,10 @@ void main() {
           findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Back'), findsNothing);
-      expect(find.text('Select Resin'), findsOneWidget);
-
-      await tester.tap(find.text('Select Resin'));
-      await tester.pumpAndSettle();
+      expect(find.text('Select Resin'), findsNothing);
       expect(find.text('Factory Profile'), findsOneWidget);
       expect(find.text('Standard Resin'), findsNothing);
+
       await tester.tap(find.text('Factory Profile'));
       await tester.pumpAndSettle();
       expect(find.text('Factory Profile'), findsOneWidget);
@@ -210,6 +222,19 @@ void main() {
   testWidgets('calibration walks source, resin, model, exposure, increment',
       (WidgetTester tester) async {
     final harness = await _pumpCalibration(tester);
+
+    // The selected treatment is the resin list's: a green outline over a green
+    // wash.
+    BorderSide selectedBorder(String label) {
+      final container = tester.widget<Container>(find
+          .descendant(
+            of: find.widgetWithText(GlassCard, label),
+            matching: find.byType(Container),
+          )
+          .first);
+      return ((container.decoration as BoxDecoration).border as Border).top;
+    }
+
     try {
     // The tab introduces the wizard; the setup itself opens over the shell, so
     // it is not squeezed between the app bar and the bottom navigation.
@@ -249,6 +274,9 @@ void main() {
 
     await tester.tap(find.text('Existing Profile'));
     await tester.pumpAndSettle();
+    expect(selectedBorder('Existing Profile').color,
+        Colors.green.shade400.withValues(alpha: 0.55));
+    expect(selectedBorder('Existing Profile').width, 1.6);
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
 
@@ -316,19 +344,33 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
-    // The step's wording follows the pool too.
+    // The step's wording follows the pool too, and the templates are laid out
+    // inline: two columns, a row per pair, no picker.
     expect(
         find.text(
             'Please select the template profile you would like to use for calibration below'),
         findsOneWidget);
-    await tester.tap(find.text('Select Resin'));
-    await tester.pumpAndSettle();
-    expect(find.text('Factory Profile'), findsOneWidget);
+    expect(find.text('Select Resin'), findsNothing);
     expect(find.text('Standard Resin'), findsNothing);
     expect(find.text('Thin Resin'), findsNothing);
-    await tester.tap(find.text('Factory Profile'));
+    final templates = ['Factory Profile', 'Factory Fast', 'Factory Fine', 'Factory Thick']
+        .map((name) => tester.getRect(find.widgetWithText(GlassCard, name)))
+        .toList();
+    expect(templates, hasLength(4));
+    expect(templates[0].left, templates[2].left); // one left per column
+    expect(templates[1].left, templates[3].left);
+    expect(templates[0].left, lessThan(templates[1].left));
+    expect(templates[0].top, templates[1].top); // one top per row
+    expect(templates[2].top, templates[3].top);
+    expect(templates[0].top, lessThan(templates[2].top));
+    expect(templates[0].width, templates[1].width); // 1:1
+    expect(templates[0].height, templates[2].height);
+
+    await tester.tap(find.text('Factory Fast'));
     await tester.pumpAndSettle();
-    expect(find.text('Factory Profile'), findsOneWidget);
+    expect(find.text('Factory Fast'), findsOneWidget);
+    expect(selectedBorder('Factory Fast').color,
+        Colors.green.shade400.withValues(alpha: 0.55));
 
     await tester.tap(find.text('Next'));
     await tester.pump(const Duration(milliseconds: 100));
@@ -340,7 +382,7 @@ void main() {
         findsOneWidget);
     expect(
         find.text(
-            'Please select the calibration model you would like to print below'),
+            'Please select the calibration model you would like to print'),
         findsOneWidget);
     await tester.pumpAndSettle();
 
@@ -348,7 +390,7 @@ void main() {
     // picker rather than the selector.
     expect(
         find.text(
-            'Please select the calibration model you would like to print below'),
+            'Please select the calibration model you would like to print'),
         findsOneWidget);
     expect(
         find.text('The model sets how many test pieces the calibration prints.'),
@@ -356,10 +398,17 @@ void main() {
     expect(find.text('RERF'), findsOneWidget);
     expect(find.text('Next'), findsOneWidget);
     expect(find.text('Factory Profile'), findsNothing);
-    expect(find.byType(Image), findsNothing);
+    // The step owns the screen now, so the model's preview is back.
     final modelCard = tester.getRect(find.widgetWithText(GlassCard, 'RERF'));
-    expect(modelCard.height, 88);
+    expect(modelCard.height, greaterThan(200));
     expect(modelCard.width, closeTo(column.width, 0.5));
+    expect(
+      find.descendant(
+        of: find.widgetWithText(GlassCard, 'RERF'),
+        matching: find.byType(ClipRRect),
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
@@ -367,7 +416,10 @@ void main() {
     // Step 4 is the starting exposure: the header explains the one field, so
     // the card carries the value alone.
     expect(find.text('Please set the starting exposure'), findsOneWidget);
-    expect(find.text('Exposure time for the first test piece.'), findsOneWidget);
+    expect(
+        find.text(
+            'The exposure time of the first test piece. Every following piece is exposed a little longer than the one before it.'),
+        findsOneWidget);
     expect(find.text('Starting Exposure'), findsNothing);
     expect(find.text('1.00 seconds'), findsOneWidget);
     expect(find.text('Exposure Increment'), findsNothing);
@@ -386,7 +438,8 @@ void main() {
           .primary,
     );
     final hintText = tester
-        .widget<Text>(find.text('Exposure time for the first test piece.'));
+        .widget<Text>(find.text(
+            'The exposure time of the first test piece. Every following piece is exposed a little longer than the one before it.'));
     expect(hintText.style?.fontSize, 20);
     final backButton = tester.getRect(find.widgetWithText(GlassButton, 'Back'));
     final nextButton = tester.getRect(find.widgetWithText(GlassButton, 'Next'));
@@ -414,12 +467,13 @@ void main() {
         tester.getRect(find.widgetWithText(GlassButton, 'Next'));
     expect(shorterPrimary.top, primary.top);
     expect(shorterPrimary.bottom, primary.bottom);
-    final body = tester.getRect(find.byType(AnimatedSwitcher));
     final headerBottom = tester
-        .getRect(find.text('Exposure time for the first test piece.'))
+        .getRect(find.text(
+            'The exposure time of the first test piece. Every following piece is exposed a little longer than the one before it.'))
         .bottom;
+    // As much air above the control as the actions leave below it.
     expect(shorterSelector.top - headerBottom,
-        closeTo(body.bottom - shorterSelector.bottom, 0.5));
+        closeTo(shorterPrimary.top - shorterSelector.bottom, 0.5));
 
     // Back and the primary action split the column evenly.
     expect(
@@ -432,7 +486,9 @@ void main() {
 
     // Step 5 is the exposure increment, and it starts the print.
     expect(find.text('Please set the exposure increment'), findsOneWidget);
-    expect(find.text('How much exposure increases per test piece.'),
+    expect(
+        find.text(
+            'How much longer each test piece is exposed than the previous one. A bigger step covers more exposure range; a smaller one resolves the best result more finely.'),
         findsOneWidget);
     expect(find.text('0.20 seconds'), findsOneWidget);
     expect(
@@ -451,12 +507,12 @@ void main() {
     ));
     expect(lastPrimary.top, primary.top);
     expect(lastPrimary.bottom, primary.bottom);
-    final lastBody = tester.getRect(find.byType(AnimatedSwitcher));
     final lastHeaderBottom = tester
-        .getRect(find.text('How much exposure increases per test piece.'))
+        .getRect(find.text(
+            'How much longer each test piece is exposed than the previous one. A bigger step covers more exposure range; a smaller one resolves the best result more finely.'))
         .bottom;
     expect(lastSelector.top - lastHeaderBottom,
-        closeTo(lastBody.bottom - lastSelector.bottom, 0.5));
+        closeTo(lastPrimary.top - lastSelector.bottom, 0.5));
     expect(
       tester.getRect(find.widgetWithText(GlassButton, 'Back')).width,
       lastPrimary.width,

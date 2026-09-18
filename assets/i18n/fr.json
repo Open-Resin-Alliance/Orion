@@ -653,7 +653,7 @@
   "calibration": {
     "resinProfile": "Profil résine",
     "promptResin": "Sélectionnez ci-dessous le profil de résine que vous souhaitez calibrer",
-    "promptModel": "Sélectionnez ci-dessous le modèle de calibration que vous souhaitez imprimer",
+    "promptModel": "Sélectionnez le modèle de calibration que vous souhaitez imprimer",
     "loading": "Chargement des licences…",
     "selectResin": "Choisir la résine",
     "startingExposure": "Exposition initiale",
@@ -690,7 +690,9 @@
     "sourceExisting": "Profil existant",
     "wizardIntro": "Cet assistant vous guidera tout au long de la calibration.",
     "wizardIntroDetail": "Des pièces d'essai sont imprimées à des expositions croissantes. Vous choisissez la meilleure et son temps d'exposition est enregistré dans le profil de résine.",
-    "promptTemplate": "Sélectionnez ci-dessous le profil modèle que vous souhaitez utiliser pour la calibration"
+    "promptTemplate": "Sélectionnez ci-dessous le profil modèle que vous souhaitez utiliser pour la calibration",
+    "startingExposureHelp": "Le temps d'exposition de la première pièce d'essai. Chaque pièce suivante est exposée un peu plus longtemps que la précédente.",
+    "exposureIncrementHelp": "De combien chaque pièce d'essai est exposée plus longtemps que la précédente. Un pas plus grand couvre plus de plage d'exposition ; un plus petit distingue plus finement le meilleur résultat."
   },
   "editResin": {
     "profileSaved": "Profil enregistré",
