@@ -57,6 +57,24 @@ class EditResinScreenState extends State<EditResinScreen> {
   late double _waitAfterCure; // seconds
   late double _waitAfterLife; // seconds
 
+  /// Null when the profile doesn't carry the field: those live in the full
+  /// profile form (`Depth`, `CustomValues`) and writing a guess back would
+  /// change how the profile prints, so a null value is simply not saved.
+  double? _layerThickness; // microns
+  double? _temperature; // °C
+  bool? _peelDetection; // Smart Mode
+  double? _bottomLift; // mm, burn-in layers
+  double? _liftSpeed; // mm/min
+  double? _retractSpeed; // mm/min
+
+  /// Editable profile name (`Title`), Advanced page only.
+  late String _name;
+  late String _initialName;
+
+  /// General holds the profile's identity and layer timings, Motion the
+  /// travel distances, speeds and peel detection.
+  bool _motionPage = false;
+
   late Map<String, dynamic> _initial;
   bool _saving = false;
 
@@ -73,6 +91,12 @@ class EditResinScreenState extends State<EditResinScreen> {
     _burnInCount = settings.burnInCount;
     _waitAfterCure = settings.waitAfterCure;
     _waitAfterLife = settings.waitAfterLife;
+    _layerThickness = settings.layerThicknessUm;
+    _temperature = settings.resinTemperature;
+    _peelDetection = settings.peelDetection;
+    _bottomLift = settings.bottomLiftAfterPrint;
+    _liftSpeed = settings.liftSpeed;
+    _retractSpeed = settings.retractSpeed;
 
     if (setInitial) {
       _initial = settings.toNormalizedMap();
@@ -89,6 +113,8 @@ class EditResinScreenState extends State<EditResinScreen> {
     final meta = widget.resin?.meta ?? {};
     final fallbackSettings = _settingsFromMeta(meta);
     _applySettings(fallbackSettings, setInitial: true);
+    _name = widget.resin?.name ?? '';
+    _initialName = _name;
 
     // Fetch and normalize detailed profile data (model handles backend
     // specifics). This keeps the UI simple and backend-agnostic.
@@ -124,6 +150,13 @@ class EditResinScreenState extends State<EditResinScreen> {
       _burnInCount = _initial['burn_in_count'] as int;
       _waitAfterCure = (_initial['wait_after_cure'] as num).toDouble();
       _waitAfterLife = (_initial['wait_after_life'] as num).toDouble();
+      _layerThickness = (_initial['layer_thickness_um'] as num?)?.toDouble();
+      _temperature = (_initial['resin_temperature'] as num?)?.toDouble();
+      _peelDetection = _initial['peel_detection'] as bool?;
+      _bottomLift = (_initial['bottom_lift_after_print'] as num?)?.toDouble();
+      _liftSpeed = (_initial['lift_speed'] as num?)?.toDouble();
+      _retractSpeed = (_initial['retract_speed'] as num?)?.toDouble();
+      _name = _initialName;
     });
   }
 
@@ -178,6 +211,12 @@ class EditResinScreenState extends State<EditResinScreen> {
         burnInCount: _burnInCount,
         waitAfterCure: _waitAfterCure,
         waitAfterLife: _waitAfterLife,
+        layerThicknessUm: _layerThickness,
+        resinTemperature: _temperature,
+        peelDetection: _peelDetection,
+        bottomLiftAfterPrint: _bottomLift,
+        liftSpeed: _liftSpeed,
+        retractSpeed: _retractSpeed,
       );
       if (cloneName != null) {
         // Cloned save: create a new profile from the locked source, storing
@@ -187,7 +226,11 @@ class EditResinScreenState extends State<EditResinScreen> {
         fields['Title'] = cloneName;
         await svc.cloneProfile(profileId, fields);
       } else {
-        await svc.saveResinSettings(profileId, settings);
+        // Layer thickness and the CustomValues-backed settings have no
+        // controls on the simple form, so the whole profile is saved through
+        // the full form instead - which is also the only one carrying `Title`.
+        await svc.saveResinAdvancedSettings(profileId, settings,
+            title: _name.trim().isEmpty ? null : _name.trim());
       }
 
       // The write landed; let the owner re-read profiles now so the list is
@@ -465,7 +508,9 @@ class EditResinScreenState extends State<EditResinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.resin?.name ?? 'Edit Resin';
+    // The profile name is editable on the General page, so the bar names the
+    // task rather than repeating it.
+    final title = FlutterI18n.translate(context, 'editResin.editTitle');
 
     return GlassApp(
       child: Scaffold(
@@ -488,192 +533,375 @@ class EditResinScreenState extends State<EditResinScreen> {
             children: [
               Expanded(
                 child: Column(
+                  children: _gridRows(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Stretch so the toggle matches the Reset/Save height exactly.
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildCard(
-                              title: FlutterI18n.translate(
-                                  context, 'editResin.burnInCure'),
-                              value: '${_burnInTime.toStringAsFixed(2)} s',
-                              onTap: () => _editValue(
-                                title: FlutterI18n.translate(
-                                    context, 'editResin.burnInCure'),
-                                description: FlutterI18n.translate(
-                                    context, 'editResin.burnInDesc'),
-                                currentValue: _burnInTime.toDouble(),
-                                min: 0,
-                                max: 30,
-                                suffix: ' s',
-                                decimals: 2,
-                                step: 0.10,
-                                onSave: (v) => setState(() => _burnInTime = v),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildCard(
-                              title: FlutterI18n.translate(
-                                  context, 'editResin.burnInCount'),
-                              value: '$_burnInCount',
-                              onTap: () => _editValue(
-                                title: FlutterI18n.translate(
-                                    context, 'editResin.burnInCount'),
-                                description: FlutterI18n.translate(
-                                    context, 'editResin.burnInCountDesc'),
-                                currentValue: _burnInCount.toDouble(),
-                                min: 0,
-                                max: 20,
-                                suffix: '',
-                                decimals: 0,
-                                onSave: (v) =>
-                                    setState(() => _burnInCount = v.round()),
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: GlassButton(
+                        tint: GlassButtonTint.negative,
+                        onPressed: _reset,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 65),
+                        ),
+                        child: Text(
+                            FlutterI18n.translate(context, 'common.reset'),
+                            style: const TextStyle(fontSize: 22)),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildPageToggle(context)),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildCard(
-                              title: FlutterI18n.translate(
-                                  context, 'editResin.normalCure'),
-                              // Display two decimals but restrict edits to 0.1s
-                              value: '${_normalTime.toStringAsFixed(2)} s',
-                              onTap: () => _editValue(
-                                title: FlutterI18n.translate(
-                                    context, 'editResin.normalCure'),
-                                description: FlutterI18n.translate(
-                                    context, 'editResin.normalCureDesc'),
-                                currentValue: _normalTime.toDouble(),
-                                min: 0,
-                                max: 15,
-                                suffix: ' s',
-                                decimals: 2,
-                                step: 0.1,
-                                onSave: (v) => setState(() => _normalTime = v),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildCard(
-                              title: FlutterI18n.translate(
-                                  context, 'editResin.waitAfterCure'),
-                              value: '${_waitAfterCure.toStringAsFixed(2)} s',
-                              onTap: () => _editValue(
-                                title: FlutterI18n.translate(
-                                    context, 'editResin.waitAfterCure'),
-                                description: FlutterI18n.translate(
-                                    context, 'editResin.waitAfterCureDesc'),
-                                currentValue: _waitAfterCure.toDouble(),
-                                min: 0,
-                                max: 20,
-                                suffix: ' s',
-                                decimals: 2,
-                                step: 0.1,
-                                onSave: (v) =>
-                                    setState(() => _waitAfterCure = v),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildCard(
-                              title: FlutterI18n.translate(
-                                  context, 'editResin.liftAfterPrint'),
-                              value: '${_liftAfter.toStringAsFixed(1)} mm',
-                              onTap: () => _editValue(
-                                title: FlutterI18n.translate(
-                                    context, 'editResin.liftAfterPrint'),
-                                description: FlutterI18n.translate(
-                                    context, 'editResin.liftAfterPrintDesc'),
-                                currentValue: _liftAfter,
-                                min: 0,
-                                max: 20,
-                                suffix: ' mm',
-                                decimals: 2,
-                                step: 0.1,
-                                onSave: (v) => setState(() => _liftAfter = v),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildCard(
-                              title: FlutterI18n.translate(
-                                  context, 'editResin.waitAfterLift'),
-                              value: '${_waitAfterLife.toStringAsFixed(2)} s',
-                              onTap: () => _editValue(
-                                title: FlutterI18n.translate(
-                                    context, 'editResin.waitAfterLift'),
-                                description: FlutterI18n.translate(
-                                    context, 'editResin.waitAfterLiftDesc'),
-                                currentValue: _waitAfterLife.toDouble(),
-                                min: 0,
-                                max: 20,
-                                suffix: ' s',
-                                decimals: 2,
-                                step: 0.1,
-                                onSave: (v) =>
-                                    setState(() => _waitAfterLife = v),
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: GlassButton(
+                        tint: GlassButtonTint.positive,
+                        onPressed: _saving ? null : _save,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 65),
+                        ),
+                        child: _saving
+                            ? Text(
+                                FlutterI18n.translate(
+                                    context, 'editResin.saving'),
+                                style: const TextStyle(fontSize: 22))
+                            : Text(
+                                FlutterI18n.translate(context, 'common.save'),
+                                style: const TextStyle(fontSize: 22)),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: GlassButton(
-                      tint: GlassButtonTint.negative,
-                      onPressed: _reset,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(0, 65),
-                      ),
-                      child: Text(
-                          FlutterI18n.translate(context, 'common.reset'),
-                          style: TextStyle(fontSize: 22)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GlassButton(
-                      tint: GlassButtonTint.positive,
-                      onPressed: _saving ? null : _save,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(0, 65),
-                      ),
-                      child: _saving
-                          ? Text(
-                              FlutterI18n.translate(
-                                  context, 'editResin.saving'),
-                              style: TextStyle(fontSize: 22))
-                          : Text(FlutterI18n.translate(context, 'common.save'),
-                              style: TextStyle(fontSize: 22)),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// The parameter grid for the selected page, already spaced for the
+  /// surrounding [Column].
+  List<Widget> _gridRows() {
+    final rows = _motionPage ? _motionRows() : _generalRows();
+    return [
+      for (var i = 0; i < rows.length; i++) ...[
+        if (i > 0) const SizedBox(height: 12),
+        Expanded(child: rows[i]),
+      ],
+    ];
+  }
+
+  /// General: the profile's identity, temperature, and the layer timings.
+  List<Widget> _generalRows() {
+    return [
+      _cardRow(
+        _buildCard(
+          title: FlutterI18n.translate(context, 'editResin.resinName'),
+          value: _name,
+          onTap: _editName,
+        ),
+        _valueCard(
+          titleKey: 'editResin.resinTemperature',
+          descKey: 'editResin.resinTemperatureDesc',
+          value: _temperature == null
+              ? '—'
+              : '${_temperature!.toStringAsFixed(0)} °C',
+          currentValue: _temperature ?? 26,
+          min: 0,
+          max: 50,
+          suffix: ' °C',
+          decimals: 0,
+          step: 1,
+          onSave: (v) => setState(() => _temperature = v),
+        ),
+      ),
+      _cardRow(
+        _valueCard(
+          titleKey: 'editResin.layerThickness',
+          descKey: 'editResin.layerThicknessDesc',
+          value: _layerThickness == null
+              ? '—'
+              : '${_layerThickness!.toStringAsFixed(0)} µm',
+          currentValue: _layerThickness ?? 50,
+          min: 10,
+          max: 500,
+          suffix: ' µm',
+          decimals: 0,
+          step: 5,
+          onSave: (v) => setState(() => _layerThickness = v),
+        ),
+        _valueCard(
+          titleKey: 'editResin.normalCure',
+          descKey: 'editResin.normalCureDesc',
+          value: '${_normalTime.toStringAsFixed(2)} s',
+          currentValue: _normalTime,
+          min: 0,
+          max: 15,
+          suffix: ' s',
+          decimals: 2,
+          step: 0.1,
+          onSave: (v) => setState(() => _normalTime = v),
+        ),
+      ),
+      _cardRow(
+        _valueCard(
+          titleKey: 'editResin.burnInCount',
+          descKey: 'editResin.burnInCountDesc',
+          value: '$_burnInCount',
+          currentValue: _burnInCount.toDouble(),
+          min: 0,
+          max: 20,
+          suffix: '',
+          decimals: 0,
+          onSave: (v) => setState(() => _burnInCount = v.round()),
+        ),
+        _valueCard(
+          titleKey: 'editResin.burnInCure',
+          descKey: 'editResin.burnInDesc',
+          value: '${_burnInTime.toStringAsFixed(2)} s',
+          currentValue: _burnInTime,
+          min: 0,
+          max: 30,
+          suffix: ' s',
+          decimals: 2,
+          step: 0.10,
+          onSave: (v) => setState(() => _burnInTime = v),
+        ),
+      ),
+    ];
+  }
+
+  /// Motion: how far and how fast the plate travels, and peel detection.
+  List<Widget> _motionRows() {
+    return [
+      _cardRow(
+        _valueCard(
+          titleKey: 'editResin.bottomLiftDistance',
+          descKey: 'editResin.bottomLiftDistanceDesc',
+          value: _bottomLift == null
+              ? '—'
+              : '${_bottomLift!.toStringAsFixed(1)} mm',
+          currentValue: _bottomLift ?? 6,
+          min: 0,
+          max: 20,
+          suffix: ' mm',
+          decimals: 2,
+          step: 0.1,
+          onSave: (v) => setState(() => _bottomLift = v),
+        ),
+        _valueCard(
+          titleKey: 'editResin.normalLiftDistance',
+          descKey: 'editResin.normalLiftDistanceDesc',
+          value: '${_liftAfter.toStringAsFixed(1)} mm',
+          currentValue: _liftAfter,
+          min: 0,
+          max: 20,
+          suffix: ' mm',
+          decimals: 2,
+          step: 0.1,
+          onSave: (v) => setState(() => _liftAfter = v),
+        ),
+      ),
+      _cardRow(
+        _valueCard(
+          titleKey: 'editResin.liftSpeed',
+          descKey: 'editResin.liftSpeedDesc',
+          value: _liftSpeed == null
+              ? '—'
+              : '${_liftSpeed!.toStringAsFixed(0)} mm/min',
+          currentValue: _liftSpeed ?? 100,
+          min: 10,
+          max: 600,
+          suffix: ' mm/min',
+          decimals: 0,
+          step: 10,
+          onSave: (v) => setState(() => _liftSpeed = v),
+        ),
+        _valueCard(
+          titleKey: 'editResin.retractSpeed',
+          descKey: 'editResin.retractSpeedDesc',
+          value: _retractSpeed == null
+              ? '—'
+              : '${_retractSpeed!.toStringAsFixed(0)} mm/min',
+          currentValue: _retractSpeed ?? 300,
+          min: 10,
+          max: 900,
+          suffix: ' mm/min',
+          decimals: 0,
+          step: 10,
+          onSave: (v) => setState(() => _retractSpeed = v),
+        ),
+      ),
+      // Smart Mode is a flag, not a value, so it takes the whole row.
+      _cardRow(
+        _buildCard(
+          title: FlutterI18n.translate(context, 'editResin.smartMode'),
+          value: _peelDetection == null
+              ? '—'
+              : FlutterI18n.translate(context,
+                  _peelDetection! ? 'heater.enabled' : 'heater.disabled'),
+          onTap: () =>
+              setState(() => _peelDetection = !(_peelDetection ?? false)),
+        ),
+      ),
+    ];
+  }
+
+  /// Rename the profile. NanoDLP's `Title` only appears on the full profile
+  /// form, which is the one the save posts through.
+  Future<void> _editName() async {
+    final nameKey = GlobalKey<SpawnOrionTextFieldState>();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => GlassAlertDialog(
+        title: Text(FlutterI18n.translate(context, 'editResin.resinName')),
+        content: SizedBox(
+          width: MediaQuery.of(dialogContext).size.width * 0.5,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SpawnOrionTextField(
+                  key: nameKey,
+                  keyboardHint:
+                      FlutterI18n.translate(context, 'editResin.resinName'),
+                  locale: Localizations.localeOf(dialogContext).toString(),
+                  presetText: _name,
+                ),
+                OrionKbExpander(textFieldKey: nameKey),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          GlassButton(
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(FlutterI18n.translate(context, 'common.cancel'),
+                style: const TextStyle(fontSize: 20)),
+          ),
+          GlassButton(
+            tint: GlassButtonTint.positive,
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
+            onPressed: () {
+              final name = nameKey.currentState?.getCurrentText().trim() ?? '';
+              if (name.isEmpty) return;
+              Navigator.of(dialogContext).pop(name);
+            },
+            child: Text(FlutterI18n.translate(context, 'common.save'),
+                style: const TextStyle(fontSize: 20)),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result.isNotEmpty && mounted) {
+      setState(() => _name = result);
+    }
+  }
+
+  /// One row of the parameter grid. The second card is optional so a page with
+  /// an odd number of fields doesn't leave a hole.
+  Widget _cardRow(Widget left, [Widget? right]) {
+    return Row(
+      children: [
+        Expanded(child: left),
+        if (right != null) ...[
+          const SizedBox(width: 12),
+          Expanded(child: right),
+        ],
+      ],
+    );
+  }
+
+  /// A tappable value card wired to the shared slider dialog.
+  Widget _valueCard({
+    required String titleKey,
+    required String descKey,
+    required String value,
+    required double currentValue,
+    required double min,
+    required double max,
+    required String suffix,
+    required int decimals,
+    double? step,
+    required ValueChanged<double> onSave,
+  }) {
+    final title = FlutterI18n.translate(context, titleKey);
+    return _buildCard(
+      title: title,
+      value: value,
+      onTap: () => _editValue(
+        title: title,
+        description: FlutterI18n.translate(context, descKey),
+        currentValue: currentValue,
+        min: min,
+        max: max,
+        suffix: suffix,
+        decimals: decimals,
+        step: step,
+        onSave: onSave,
+      ),
+    );
+  }
+
+  /// General/Motion switch, sitting between Reset and Save.
+  ///
+  /// The pill takes its height from the buttons either side of it (the action
+  /// row stretches), so it can never sit proud of them - a fixed height did,
+  /// and wrapped labels made it worse.
+  Widget _buildPageToggle(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final idle = theme.colorScheme.onSurface.withValues(alpha: 0.7);
+
+    Widget half(String labelKey, bool active, VoidCallback onTap) {
+      return Expanded(
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            alignment: Alignment.center,
+            color: active ? primary.withValues(alpha: 0.18) : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  FlutterI18n.translate(context, labelKey),
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: active ? primary : idle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: theme.dividerColor.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          children: [
+            half('settings.general', !_motionPage,
+                () => setState(() => _motionPage = false)),
+            half('editResin.motion', _motionPage,
+                () => setState(() => _motionPage = true)),
+          ],
         ),
       ),
     );

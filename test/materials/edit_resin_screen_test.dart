@@ -61,12 +61,21 @@ class _FakeResinsBackend extends FakeBackendClient {
       'SupportLayerNumber': 12,
       'WaitAfterPrint': 5.5,
       'TopWait': 9.7,
+      'Depth': 50,
+      'SupportWaitHeight': 6,
+      'LiftSpeed': 100,
+      'RetractSpeed': 300,
+      'CustomValues': {
+        'ResinPreheatTemperature': '26',
+        'FssEnablePeeldetection': '0',
+      },
     },
   ];
 
   int saveCalls = 0;
   int cloneCalls = 0;
   Map<String, dynamic>? lastCloneFields;
+  ResinSettings? lastSavedSettings;
 
   @override
   Future<Map<String, dynamic>> listItems(
@@ -97,8 +106,24 @@ class _FakeResinsBackend extends FakeBackendClient {
   }
 
   @override
+  Future<ResinSettings?> getResinSettings(int profileId) async {
+    final profile = await getProfileJson(profileId);
+    if (profile.isEmpty) return null;
+    return ResinSettings.fromNormalizedMap(
+        NanoProfile.normalizeForEdit(profile));
+  }
+
+  @override
   Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
     saveCalls++;
+    lastSavedSettings = settings;
+  }
+
+  @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    saveCalls++;
+    lastSavedSettings = settings;
   }
 
   @override
@@ -225,9 +250,111 @@ void main() {
 
       expect(backend.saveCalls, 1);
       expect(backend.cloneCalls, 0);
+      // The save carries the parameters that live outside the simple form's
+      // controls, read back from the profile payload.
+      expect(backend.lastSavedSettings?.layerThicknessUm, 50);
+      expect(backend.lastSavedSettings?.resinTemperature, 26);
+      expect(backend.lastSavedSettings?.peelDetection, isFalse);
+      expect(backend.lastSavedSettings?.normalCureTime, 7.9);
       // The materials list must be refreshed as part of the save, otherwise
       // the user has to leave the page to see the change.
       expect(refreshes, 1);
+    } finally {
+      await harness.dispose(tester);
+    }
+  });
+
+  testWidgets('General leads with the everyday parameters, Motion holds the '
+      'identity and travel speeds', (tester) async {
+    final backend = _FakeResinsBackend();
+    BackendService.debugSetSharedDelegate(backend);
+
+    final harness = await _pumpEditScreen(
+      tester,
+      resin: ResinProfile('User Resin', meta: const {'ProfileID': 5}),
+      onSaved: () async {},
+    );
+    try {
+      // Row 1: name | temperature.
+      expect(find.text('Name'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(GlassCard), matching: find.text('User Resin')),
+        findsOneWidget,
+      );
+      expect(find.text('Resin Temperature'), findsOneWidget);
+      expect(find.text('26 °C'), findsOneWidget);
+      // Row 2: layer thickness | normal cure.
+      expect(find.text('Layer Thickness'), findsOneWidget);
+      expect(find.text('50 µm'), findsOneWidget);
+      expect(find.text('Normal Layer Cure Time'), findsOneWidget);
+      // Row 3: burn-in layers | burn-in cure.
+      expect(find.text('Burn-In Layer Count'), findsOneWidget);
+      expect(find.text('Burn-In Layer Cure Time'), findsOneWidget);
+      // The travel settings live on Motion.
+      expect(find.text('Smart Mode'), findsNothing);
+      expect(find.text('Lift Speed'), findsNothing);
+
+      double top(String label) => tester.getRect(find.text(label)).top;
+      double left(String label) => tester.getRect(find.text(label)).left;
+      expect(top('Name'), lessThan(top('Layer Thickness')));
+      expect(top('Layer Thickness'), lessThan(top('Burn-In Layer Count')));
+      expect(left('Name'), lessThan(left('Resin Temperature')));
+      expect(
+          left('Layer Thickness'), lessThan(left('Normal Layer Cure Time')));
+      expect(left('Burn-In Layer Count'),
+          lessThan(left('Burn-In Layer Cure Time')));
+
+      // The toggle shares the action row's height and baseline with the
+      // buttons either side of it.
+      final resetBox = tester.getRect(find
+          .ancestor(of: find.text('Reset'), matching: find.byType(GlassButton))
+          .first);
+      final toggleBox = tester.getRect(find
+          .ancestor(of: find.text('General'), matching: find.byType(ClipRRect))
+          .first);
+      expect(toggleBox.height, resetBox.height,
+          reason: 'the toggle must not sit taller than Reset/Save');
+      expect(toggleBox.center.dy, closeTo(resetBox.center.dy, 0.5));
+
+      await tester.tap(find.text('Motion'));
+      await tester.pumpAndSettle();
+
+      double cardWidth(String label) => tester
+          .getSize(find
+              .ancestor(of: find.text(label), matching: find.byType(GlassCard))
+              .first)
+          .width;
+
+      // Row 1: the two lift distances. Row 2: the two speeds.
+      expect(find.text('Bottom Lift Distance'), findsOneWidget);
+      expect(find.text('6.0 mm'), findsOneWidget);
+      expect(find.text('Normal Lift Distance'), findsOneWidget);
+      expect(find.text('8.9 mm'), findsOneWidget);
+      expect(find.text('Lift Speed'), findsOneWidget);
+      expect(find.text('100 mm/min'), findsOneWidget);
+      expect(find.text('Retract Speed'), findsOneWidget);
+      expect(find.text('300 mm/min'), findsOneWidget);
+      // Row 3: peel detection, spanning both columns.
+      expect(find.text('Smart Mode'), findsOneWidget);
+      expect(find.text('Disabled'), findsOneWidget);
+      expect(cardWidth('Smart Mode'),
+          greaterThan(cardWidth('Bottom Lift Distance') * 1.5),
+          reason: 'the flag occupies both columns');
+
+      expect(top('Bottom Lift Distance'), lessThan(top('Lift Speed')));
+      expect(top('Lift Speed'), lessThan(top('Smart Mode')));
+      expect(left('Bottom Lift Distance'),
+          lessThan(left('Normal Lift Distance')));
+      expect(left('Lift Speed'), lessThan(left('Retract Speed')));
+
+      expect(find.text('Layer Thickness'), findsNothing);
+      expect(find.text('Name'), findsNothing);
+
+      await tester.tap(find.text('General'));
+      await tester.pumpAndSettle();
+      expect(find.text('Layer Thickness'), findsOneWidget);
+      expect(find.text('Normal Lift Distance'), findsNothing);
     } finally {
       await harness.dispose(tester);
     }
