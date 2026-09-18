@@ -65,6 +65,12 @@ class FakeBackendClient implements BackendClient {
   }
 
   @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    return;
+  }
+
+  @override
   Future<Map<String, dynamic>> getConfig() => throw UnimplementedError();
 
   @override

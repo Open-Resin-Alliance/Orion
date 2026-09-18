@@ -247,8 +247,10 @@ void main() {
               // Updated exposure
               expect(request.bodyFields['CureTime'], '1.5');
 
-              // Existing values preserved
-              expect(request.bodyFields['SupportCureTime'], '10.0');
+              // Existing values preserved. Whole numbers go over the wire
+              // without a decimal point: the device rejects an integer field
+              // that carries one.
+              expect(request.bodyFields['SupportCureTime'], '10');
               expect(request.bodyFields['WaitHeight'], '1.8');
               expect(request.bodyFields['SupportLayerNumber'], '8');
               expect(request.bodyFields['TopWait'], '0.6');

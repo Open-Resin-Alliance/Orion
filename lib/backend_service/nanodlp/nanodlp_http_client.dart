@@ -578,6 +578,9 @@ class NanoDlpHttpClient implements BackendClient {
       burnInCount: existing.burnInCount,
       waitAfterCure: existing.waitAfterCure,
       waitAfterLife: existing.waitAfterLife,
+      layerThicknessUm: existing.layerThicknessUm,
+      resinTemperature: existing.resinTemperature,
+      peelDetection: existing.peelDetection,
     );
 
     await saveResinSettings(profileId, merged);
@@ -599,6 +602,41 @@ class NanoDlpHttpClient implements BackendClient {
         NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
     await _echoSimpleEditFields(profileId, backendFields);
     await editProfile(profileId, backendFields);
+  }
+
+  @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/profile/edit/$profileId');
+    final client = _createClient();
+    try {
+      final form = await client.get(uri);
+      if (form.statusCode != 200) {
+        throw Exception(
+            'Advanced profile form returned ${form.statusCode} for $profileId');
+      }
+      // `GET /profile/edit/<id>` renders the profile's current values, and the
+      // endpoint stores a value for every control it knows, so the whole form
+      // is echoed back with the edited fields overridden on top. Anything left
+      // out would be written as zero/empty.
+      final body = NanoFormControls.parse(form.body);
+      if (body.isEmpty) {
+        throw Exception(
+            'Advanced profile form had no controls for profile $profileId');
+      }
+      final overrides =
+          NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
+      if (title != null && title.isNotEmpty) overrides['Title'] = title;
+      overrides.forEach((key, value) {
+        if (value != null) body[key] = '$value';
+      });
+      _log.info('NanoDLP saveResinAdvancedSettings -> $uri '
+          'overrides=${overrides.keys.toList()} controls=${body.length}');
+      await _postProfileForm(uri, body, 'saveResinAdvancedSettings');
+    } finally {
+      client.close();
+    }
   }
 
   /// Copy the current values of [_simpleEditPreservedFields] into [fields]

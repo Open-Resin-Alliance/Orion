@@ -80,6 +80,20 @@ abstract class BackendClient {
         'Saving resin settings is not supported by this backend.');
   }
 
+  /// Save settings the simple edit form cannot write.
+  ///
+  /// `POST /profile/edit/simple/<id>` only stores the handful of controls its
+  /// own form carries and silently drops anything else, so layer thickness
+  /// (`Depth`) and the `CustomValues`-backed settings (resin preheat, peel
+  /// detection) have to go through the full profile form. Because that
+  /// endpoint stores a value for every control it knows about, the whole form
+  /// is echoed back with [settings] applied on top.
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    throw UnsupportedError(
+        'Advanced resin profile editing is not supported by this backend.');
+  }
+
   // Status-related
   Future<Map<String, dynamic>> getStatus();
 

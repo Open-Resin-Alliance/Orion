@@ -85,6 +85,12 @@ void main() {
         'burn_in_count': 5,
         'wait_after_cure': 1.4,
         'wait_after_life': 1.8,
+        'layer_thickness_um': 50.0,
+        'resin_temperature': 26.0,
+        'peel_detection': true,
+        'bottom_lift_after_print': 6.0,
+        'lift_speed': 100.0,
+        'retract_speed': 300.0,
       });
 
       expect(
@@ -92,10 +98,18 @@ void main() {
         equals({
           'SupportCureTime': 12.5,
           'CureTime': 2.8,
-          'WaitHeight': 6.0,
           'SupportLayerNumber': 5,
           'WaitAfterPrint': 1.4,
           'TopWait': 1.8,
+          // Whole numbers go over the wire without a decimal point - the
+          // device rejects the whole save when an integer field carries one.
+          'WaitHeight': '6',
+          'Depth': '50',
+          'ResinPreheatTemperature': '26',
+          'FssEnablePeeldetection': 1,
+          'SupportWaitHeight': '6',
+          'LiftSpeed': '100',
+          'RetractSpeed': '300',
         }),
       );
     });
@@ -108,6 +122,12 @@ void main() {
         'burn_in_count': 5,
         'wait_after_cure': 1.4,
         'wait_after_life': 1.8,
+        'layer_thickness_um': 50.0,
+        'resin_temperature': 26.0,
+        'peel_detection': true,
+        'bottom_lift_after_print': 6.0,
+        'lift_speed': 100.0,
+        'retract_speed': 300.0,
       };
 
       final backend = NanoProfile.denormalizeForBackend(normalized);

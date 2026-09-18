@@ -260,6 +260,11 @@ class BackendService implements BackendClient {
   Future<void> saveResinSettings(int profileId, ResinSettings settings) =>
       _delegate.saveResinSettings(profileId, settings);
 
+  @override
+  Future<void> saveResinAdvancedSettings(
+          int profileId, ResinSettings settings, {String? title}) =>
+      _delegate.saveResinAdvancedSettings(profileId, settings, title: title);
+
   /// Convenience method to check if the current backend supports a capability.
   /// Returns false if capability is not found or backend is not registered.
   bool supportsCapability(String capabilityName) {

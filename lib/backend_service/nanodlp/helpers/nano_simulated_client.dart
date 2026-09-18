@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/util/orion_config.dart';
@@ -454,6 +455,17 @@ class NanoDlpSimulatedClient implements BackendClient {
   @override
   Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
     await editProfile(profileId, settings.toNormalizedMap());
+  }
+
+  @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    // The simulated backend has no form to echo, so the overrides are merged
+    // straight onto the stored profile.
+    final fields =
+        NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
+    if (title != null && title.isNotEmpty) fields['Title'] = title;
+    await editProfile(profileId, fields);
   }
 
   @override
