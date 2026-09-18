@@ -23,6 +23,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:http/http.dart' as http;
+import 'package:orion/settings/debug_options_screen.dart';
 import 'package:orion/settings/machine_settings_screen.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
@@ -39,7 +40,6 @@ import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/orion_list_tile.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/providers/theme_provider.dart';
-import 'package:orion/util/thumbnail_cache.dart';
 import 'package:orion/widgets/selection_screens.dart';
 
 class GeneralCfgScreen extends StatefulWidget {
@@ -999,183 +999,20 @@ class GeneralCfgScreenState extends State<GeneralCfgScreen> {
               },
             ),
             const SizedBox(height: 20.0),
-            OrionListTile(
-              title: FlutterI18n.translate(context, 'update.rawForceSensor'),
-              icon: PhosphorIcons.scales(),
-              value: overrideRawForceSensorValues,
-              onChanged: (bool value) {
-                setState(() {
-                  overrideRawForceSensorValues = value;
-                  config.setFlag('overrideRawForceSensorValues',
-                      overrideRawForceSensorValues,
-                      category: 'developer');
-                });
-              },
-            ),
-            const SizedBox(height: 20.0),
-            OrionListTile(
-              title: FlutterI18n.translate(context, 'update.reuseCalPlate'),
-              icon: PhosphorIcons.flask(),
-              value: reuseCalibrationPlate,
-              onChanged: (bool value) {
-                setState(() {
-                  reuseCalibrationPlate = value;
-                  config.setFlag('reuseCalibrationPlate', value,
-                      category: 'developer');
-                });
-              },
-            ),
-            const SizedBox(height: 20.0),
-            OrionListTile(
+            _buildOffsetNavCard(
+              context: context,
+              leading: Icon(PhosphorIcons.bug()),
               title: FlutterI18n.translate(
-                  context, 'update.forceMechanicalSkew'),
-              icon: PhosphorIcons.warning(),
-              value: forceMechanicalSkew,
-              onChanged: (bool value) {
-                setState(() {
-                  forceMechanicalSkew = value;
-                  config.setFlag('forceMechanicalSkew', value,
-                      category: 'developer');
-                });
-              },
-            ),
-            const SizedBox(height: 20.0),
-            Row(
-              children: [
-                Expanded(
-                  child: GlassButton(
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(0, 60),
-                    ),
-                    tint: GlassButtonTint.warn,
-                    onPressed: () async {
-                      final nav = Navigator.of(context);
-                      final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => GlassAlertDialog(
-                              title: Text(FlutterI18n.translate(context,
-                                  'generalSettings.clearThumbnailCache')),
-                              content: Text(
-                                  FlutterI18n.translate(
-                                      context, 'generalSettings.cacheClearMsg'),
-                                  style: const TextStyle(fontSize: 20.0)),
-                              actions: [
-                                GlassButton(
-                                    style: ElevatedButton.styleFrom(
-                                      minimumSize: const Size(0, 60),
-                                    ),
-                                    tint: GlassButtonTint.neutral,
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(false),
-                                    child: Text(FlutterI18n.translate(
-                                        context, 'common.cancel'))),
-                                GlassButton(
-                                    tint: GlassButtonTint.warn,
-                                    style: ElevatedButton.styleFrom(
-                                      minimumSize: const Size(0, 60),
-                                    ),
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(true),
-                                    child: Text(FlutterI18n.translate(
-                                        context, 'common.clear'))),
-                              ],
-                            ),
-                          ) ??
-                          false;
-
-                      if (confirmed) {
-                        try {
-                          // Show clearing message
-                          final navCtx = nav.context;
-                          if (!navCtx.mounted) return;
-                          showDialog(
-                            context: navCtx,
-                            barrierDismissible: false,
-                            builder: (ctx) => GlassAlertDialog(
-                              title: Text(FlutterI18n.translate(
-                                  context, 'generalSettings.clearingCache')),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const CircularProgressIndicator(),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                      FlutterI18n.translate(context,
-                                          'generalSettings.cacheClearing'),
-                                      style: const TextStyle(fontSize: 20)),
-                                ],
-                              ),
-                            ),
-                          );
-
-                          // Clear the cache
-                          await ThumbnailCache.instance.clearAll();
-
-                          // Close progress dialog
-                          if (mounted) Navigator.of(context).pop();
-
-                          // Show success message
-                          if (mounted) {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => GlassAlertDialog(
-                                title: Text(FlutterI18n.translate(
-                                    context, 'common.success')),
-                                content: Text(
-                                    FlutterI18n.translate(context,
-                                        'generalSettings.cacheCleared'),
-                                    style: const TextStyle(fontSize: 20)),
-                                actions: [
-                                  GlassButton(
-                                    style: ElevatedButton.styleFrom(
-                                      minimumSize: const Size(0, 60),
-                                    ),
-                                    onPressed: () => Navigator.of(ctx).pop(),
-                                    child: Text(FlutterI18n.translate(
-                                        context, 'common.ok')),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          // Close progress dialog if still showing
-                          if (mounted) Navigator.of(context).pop();
-
-                          // Show error message
-                          if (mounted) {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => GlassAlertDialog(
-                                title: Text(FlutterI18n.translate(
-                                    context, 'common.error')),
-                                content: Text(
-                                    '${FlutterI18n.translate(context, 'generalSettings.failedToClearCache')}$e',
-                                    style: const TextStyle(fontSize: 20)),
-                                actions: [
-                                  GlassButton(
-                                    style: ElevatedButton.styleFrom(
-                                      minimumSize: const Size(0, 60),
-                                    ),
-                                    onPressed: () => Navigator.of(ctx).pop(),
-                                    child: Text(FlutterI18n.translate(
-                                        context, 'common.ok')),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    child: Text(
-                      FlutterI18n.translate(
-                          context, 'generalSettings.clearThumbnailCache'),
-                      style: const TextStyle(fontSize: 22),
-                    ),
+                  context, 'generalSettings.debugOptions'),
+              subtitle: FlutterI18n.translate(
+                  context, 'generalSettings.debugOptionsDesc'),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const DebugOptionsScreen(),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ],
         ),

@@ -347,6 +347,19 @@ class BackendService implements BackendClient {
     // workflow without a real printer or Athena connection.
     try {
       final cfg = OrionConfig();
+      // Developer fault injection: make the probe report an obstruction so
+      // the failure path can be exercised without physically blocking the
+      // plate.  Checked before simulated mode so it wins when both are on.
+      if (cfg.getFlag('forceObstruction', category: 'developer') &&
+          _isForceProbeEndpoint(endpoint)) {
+        _log.info('Forcing obstruction failure: endpoint=$endpoint');
+        return const ForceLevelingWorkflowResponse(
+          result: false,
+          error: 'Force-monitored approach triggered before probe start',
+          errorCode: ForceLevelingWorkflowResponse.errorCodeObstruction,
+          machineHomed: true,
+        );
+      }
       if (cfg.getFlag('simulated', category: 'developer')) {
         _log.info('Simulated force leveling workflow: endpoint=$endpoint');
         // Cycle through different Z values for corner probes so the deviation
@@ -409,6 +422,12 @@ class BackendService implements BackendClient {
       );
     }
   }
+
+  /// Whether [endpoint] drives the force-monitored approach — the only steps
+  /// an obstruction can stop.  Prepare/setup steps never lower the plate
+  /// under force monitoring, so they are excluded.
+  static bool _isForceProbeEndpoint(String endpoint) =>
+      endpoint.startsWith('probe_') && !endpoint.endsWith('_prepare');
 
   /// Show a corner alignment pattern on the projector via special screens.
   ///
