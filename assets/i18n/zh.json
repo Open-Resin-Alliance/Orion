@@ -77,7 +77,7 @@
     "disconnectTitle": "断开WiFi？",
     "disconnectMessage": "确定要断开当前网络？",
     "stayConnected": "保持连接",
-    "disconnect": "断开",
+    "hiddenNetwork": "<隐藏网络>",
     "failedIp": "获取IP失败",
     "enterPassword": "输入密码",
     "connectionFailed": "连接失败。",

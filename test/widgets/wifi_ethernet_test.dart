@@ -67,6 +67,38 @@ class FakeEthernetProvider extends WiFiProvider {
   }
 }
 
+/// Disconnected provider whose scan result stands in for a real one.
+class FakeScanProvider extends WiFiProvider {
+  FakeScanProvider() : super(startPolling: false);
+
+  @override
+  String get connectionType => 'none';
+
+  @override
+  String? get currentSSID => null;
+
+  @override
+  bool get isConnected => false;
+
+  @override
+  bool get isScanning => false;
+
+  @override
+  String get platform => 'linux';
+
+  @override
+  Future<List<Map<String, String>>> scanNetworks() async => _networks;
+
+  @override
+  List<Map<String, String>> get availableNetworks => _networks;
+
+  // `nmcli` reports a hidden network's SSID as `--`.
+  static const _networks = [
+    {'SSID': 'HomeNet', 'SIGNAL': '80', 'SECURITY': '(WPA2)'},
+    {'SSID': '--', 'SIGNAL': '40', 'SECURITY': '(WPA2)'},
+  ];
+}
+
 /// Pumps the Ethernet view. The screen reads its strings through
 /// [FlutterI18n], so the delegate has to be in the tree.
 Future<void> _pumpEthernet(
@@ -186,5 +218,43 @@ void main() {
     expect(attempts, 3);
     expect(find.text('Connected to Ethernet'), findsOneWidget);
     expect(find.text('MAC Address'), findsOneWidget);
+  });
+
+  testWidgets('a hidden network is listed by name, not as --',
+      (WidgetTester tester) async {
+    final fake = FakeScanProvider();
+
+    final delegate = FlutterI18nDelegate(
+      translationLoader: FileTranslationLoader(
+        useCountryCode: false,
+        fallbackFile: 'en',
+        basePath: 'assets/i18n',
+        decodeStrategies: [JsonDecodeStrategy()],
+      ),
+    );
+    await delegate.load(const Locale('en'));
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WiFiProvider>.value(value: fake),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: [delegate],
+          supportedLocales: const [Locale('en')],
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(400, 800)),
+            child: WifiScreen(isConnected: ValueNotifier<bool>(false)),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('HomeNet'), findsOneWidget);
+    expect(find.text('<Hidden Network>'), findsOneWidget);
+    expect(find.text('--'), findsNothing);
   });
 }

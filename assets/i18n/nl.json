@@ -77,7 +77,7 @@
     "disconnectTitle": "Verbinding met WiFi verbreken?",
     "disconnectMessage": "Verbinding met huidige WiFi verbreken?\nLopende afdrukken kunnen mislukken.",
     "stayConnected": "Verbonden blijven",
-    "disconnect": "Verbreken",
+    "hiddenNetwork": "<Verborgen netwerk>",
     "failedIp": "Kan IP-adres niet ophalen",
     "enterPassword": "Voer wachtwoord in",
     "connectionFailed": "Verbinding mislukt. Probeer opnieuw.",

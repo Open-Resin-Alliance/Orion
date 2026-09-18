@@ -77,7 +77,7 @@
     "disconnectTitle": "WLAN-Verbindung trennen?",
     "disconnectMessage": "Möchten Sie die Verbindung zum aktuellen WLAN-Netzwerk trennen?\nDies kann laufende Druckaufträge beeinträchtigen.",
     "stayConnected": "Verbunden bleiben",
-    "disconnect": "Trennen",
+    "hiddenNetwork": "<Verborgenes Netzwerk>",
     "failedIp": "Keine IP-Adresse",
     "enterPassword": "Passwort eingeben",
     "connectionFailed": "Verbindung fehlgeschlagen.",

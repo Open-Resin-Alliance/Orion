@@ -402,12 +402,22 @@ class WifiScreenState extends State<WifiScreen> {
                   itemCount: networks.length,
                   itemBuilder: (context, index) {
                     final network = networks[index];
+                    // `nmcli` prints `--` in the SSID column for a hidden
+                    // network (and the legacy backend can hand over an empty
+                    // one): neither is a name to show the user.
+                    final rawSsid = network['SSID'] ?? '';
+                    final isHidden = rawSsid.isEmpty || rawSsid == '--';
+                    final ssidLabel = isHidden
+                        ? FlutterI18n.translate(context, 'wifi.hiddenNetwork')
+                        : rawSsid;
                     return GlassCard(
                       elevation: 1,
                       outlined: true,
                       child: ListTile(
-                        key: ValueKey(network['SSID']),
-                        title: Text(network['SSID'] ?? '',
+                        // Hidden networks share their raw SSID, so the index
+                        // is what keeps the keys unique.
+                        key: ValueKey('$index:$rawSsid'),
+                        title: Text(ssidLabel,
                             style: const TextStyle(fontSize: 22)),
                         subtitle: Text(
                             '${FlutterI18n.translate(context, 'wifi.signalStrength')}: ${network['SIGNAL']} dBm',
@@ -423,8 +433,7 @@ class WifiScreenState extends State<WifiScreen> {
                                 title: Center(
                                     child: Text(FlutterI18n.translate(
                                             context, 'wifi.connectTo')
-                                        .replaceAll(
-                                            '%s', network['SSID'] ?? ''))),
+                                        .replaceAll('%s', ssidLabel))),
                                 content: SizedBox(
                                   width:
                                       MediaQuery.of(context).size.width * 0.5,

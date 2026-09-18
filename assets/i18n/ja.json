@@ -77,7 +77,7 @@
     "disconnectTitle": "WiFiを切断？",
     "disconnectMessage": "現在のネットワークから切断しますか？",
     "stayConnected": "接続維持",
-    "disconnect": "切断",
+    "hiddenNetwork": "<隠しネットワーク>",
     "failedIp": "IP取得失敗",
     "enterPassword": "パスワード",
     "connectionFailed": "接続失敗",

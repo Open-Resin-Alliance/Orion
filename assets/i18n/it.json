@@ -77,7 +77,7 @@
     "disconnectTitle": "Disconnettersi dal WiFi?",
     "disconnectMessage": "Disconnettersi dal WiFi attuale?\nLe stampe in corso potrebbero fallire.",
     "stayConnected": "Resta connesso",
-    "disconnect": "Disconnetti",
+    "hiddenNetwork": "<Rete nascosta>",
     "failedIp": "Impossibile ottenere indirizzo IP",
     "enterPassword": "Inserisci password",
     "connectionFailed": "Connessione fallita. Riprova.",

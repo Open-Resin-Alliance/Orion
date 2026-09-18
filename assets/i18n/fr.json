@@ -77,7 +77,7 @@
     "disconnectTitle": "Couper le WiFi ?",
     "disconnectMessage": "Couper le WiFi ?\nLes impressions en cours pourraient échouer.",
     "stayConnected": "Rester connecté",
-    "disconnect": "Déconnecter",
+    "hiddenNetwork": "<Réseau masqué>",
     "failedIp": "Pas d'adresse IP",
     "enterPassword": "Mot de passe",
     "connectionFailed": "Ã‰chec de connexion.",

@@ -77,7 +77,7 @@
     "disconnectTitle": "Disconnect from WiFi?",
     "disconnectMessage": "Are you sure you want to disconnect from the current network?",
     "stayConnected": "Stay Connected",
-    "disconnect": "Disconnect",
+    "hiddenNetwork": "<Hidden Network>",
     "failedIp": "Failed to get IP Address",
     "enterPassword": "Enter Password",
     "connectionFailed": "Connection failed. Try again.",

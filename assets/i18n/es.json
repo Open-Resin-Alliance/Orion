@@ -77,7 +77,7 @@
     "disconnectTitle": "¿Desconectar WiFi?",
     "disconnectMessage": "¿Desconectar WiFi?\nLas impresiones en curso pueden fallar.",
     "stayConnected": "Mantener conexión",
-    "disconnect": "Desconectar",
+    "hiddenNetwork": "<Red oculta>",
     "failedIp": "Sin IP",
     "enterPassword": "Contraseña",
     "connectionFailed": "Conexión fallida.",
