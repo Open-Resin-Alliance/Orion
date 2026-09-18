@@ -861,7 +861,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     // noisy probes.
     if (probeCommand != null &&
         probeCommand.forceDeltaGf.abs() >= _maxSuggestedForceDeltaGf) {
-      final gapMm = adjustmentGapMm(probeCorner!, zValues);
+      final gapMm = adjustmentGapMm(probeCorner, zValues);
       final gapExceeds = gapMm.abs() >= _mechanicalSkewGapThresholdMm;
       if (gapExceeds) {
         _consecutiveSkewHits++;
@@ -4255,8 +4255,7 @@ const _lcdSanitizedBody =
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M8196 5160C8196 5094.8308 8143.1696 5042 8078 5042 8012.8308 5042 7960 5094.8308 7960 5160 7960 5225.1696 8012.8308 5278 8078 5278 8143.1696 5278 8196 5225.1696 8196 5160"/>
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M2196 5160C2196 5094.8308 2143.1697 5042 2078 5042 2012.8305 5042 1960 5094.8308 1960 5160 1960 5225.1696 2012.8305 5278 2078 5278 2143.1697 5278 2196 5225.1696 2196 5160"/>
 <path transform="matrix(.12,0,0,-.12,0,842)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke="#000000" d="M6519 1830C6519 1764.8305 6466.1696 1712 6401 1712 6335.8308 1712 6283 1764.8305 6283 1830 6283 1895.1696 6335.8308 1948 6401 1948 6466.1696 1948 6519 1895.1696 6519 1830"/>''';
-const _spacerSanitizedBody =
-    '<g transform="matrix(.12,0,0,-.12,0,842)"><path d="M5668.5 3932C5668.5 3605.8758 5404.124 3341.5 5078 3341.5 4751.876 3341.5 4487.5 3605.8758 4487.5 3932 4487.5 4258.124 4751.876 4522.5 5078 4522.5 5404.124 4522.5 5668.5 4258.124 5668.5 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5692 3932C5692 3592.8973 5417.103 3318 5078 3318 4738.897 3318 4464 3592.8973 4464 3932 4464 4271.103 4738.897 4546 5078 4546 5417.103 4546 5692 4271.103 5692 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5904.5 3932C5904.5 3475.5367 5534.4636 3105.5 5078 3105.5 4621.5368 3105.5 4251.5 3475.5367 4251.5 3932 4251.5 4388.4636 4621.5368 4758.5 5078 4758.5 5534.4636 4758.5 5904.5 4388.4636 5904.5 3932" stroke="#FF8C00" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>';
+
 
 class _SpacerPlacementDiagram extends StatelessWidget {
   const _SpacerPlacementDiagram({required this.cornerIndex});
@@ -4304,13 +4303,6 @@ class _SpacerPlacementDiagram extends StatelessWidget {
       child: child,
     );
     // Spacer puck inside the inner LCD rect, near its corner
-    final vbParts2 = vb.split(' ').map(double.parse).toList();
-    final vx2 = vbParts2[0],
-        vy2 = vbParts2[1],
-        vw2 = vbParts2[2],
-        vh2 = vbParts2[3];
-    double sx2(double x) => (x - vx2) / vw2;
-    double sy2(double y) => (y - vy2) / vh2;
     const ix2 = 220.0, iy2 = 190.0, iw2 = 751.0, ih2 = 462.0;
     final isBottom2 = idx == 0 || idx == 1;
     final isLeft2 = idx == 0 || idx == 3;
@@ -6128,114 +6120,6 @@ class _AdjustmentFeedbackScreenState extends State<_AdjustmentFeedbackScreen>
 // ================================================================================================================================================================================================
 // Equilateral Screw Triangle
 // ================================================================================================================================================================================================
-
-class _TrianglePainter extends CustomPainter {
-  _TrianglePainter({
-    required this.accent,
-    required this.onSurface,
-    required this.fillBack,
-    required this.fillFl,
-    required this.fillFr,
-    this.pulse = 0.0,
-    this.rotationValue = 0.0,
-    this.rotationDirection = 0,
-  });
-
-  final Color accent;
-  final Color onSurface;
-  final bool fillBack;
-  final bool fillFl;
-  final bool fillFr;
-  final double pulse;
-  final double rotationValue;
-  final int rotationDirection;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // Equilateral triangle arrangement (just the dots, no lines).
-    const spacing = 62.0;
-    final triH = spacing * 0.866; // spacing * sqrt(3)/2
-
-    final backX = cx;
-    final backY = cy - triH / 2;
-    final flX = cx - spacing / 2;
-    final flY = cy + triH / 2;
-    final frX = cx + spacing / 2;
-    final frY = cy + triH / 2;
-
-    const r = 13.0;
-    _drawDot(canvas, backX, backY, r, fillBack);
-    _drawDot(canvas, flX, flY, r, fillFl);
-    _drawDot(canvas, frX, frY, r, fillFr);
-
-    // Rotating arc around the highlighted dot
-    if (fillFl || fillFr || fillBack) {
-      final dotX = fillBack ? backX : (fillFl ? flX : frX);
-      final dotY = fillBack ? backY : (fillFl ? flY : frY);
-      _drawRotatingArc(canvas, dotX, dotY, r + 10);
-    }
-  }
-
-  void _drawRotatingArc(Canvas canvas, double cx, double cy, double radius) {
-    final arcPaint = Paint()
-      ..color = accent.withValues(alpha: 0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
-
-    // Continuously rotate: CW for tighten (direction=1), CCW for loosen (direction=-1)
-    final angle = rotationValue * 2 * 3.14159265 * rotationDirection;
-    const arcSpan = 3.0;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-      angle - arcSpan / 2,
-      arcSpan,
-      false,
-      arcPaint,
-    );
-
-    // Bold dot at the leading tip (opposite end for CCW)
-    final tipAngle =
-        angle + (rotationDirection >= 0 ? arcSpan / 2 : -arcSpan / 2);
-    final tipX = cx + radius * cos(tipAngle);
-    final tipY = cy + radius * sin(tipAngle);
-
-    canvas.drawCircle(
-        Offset(tipX, tipY),
-        4.0,
-        Paint()
-          ..color = accent.withValues(alpha: 0.9)
-          ..style = PaintingStyle.fill);
-  }
-
-  void _drawDot(Canvas canvas, double cx, double cy, double r, bool filled) {
-    final paint = Paint()
-      ..style = filled ? PaintingStyle.fill : PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-    if (filled) {
-      // Pulse opacity: 0.5 \u2192 1.0 \u2192 0.5
-      paint.color = accent.withValues(alpha: 0.5 + pulse * 0.5);
-      // Bump radius so filled dot visually matches the outlined one
-      canvas.drawCircle(Offset(cx, cy), r + 1.5, paint);
-    } else {
-      paint.color = accent;
-      canvas.drawCircle(Offset(cx, cy), r, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_TrianglePainter oldDelegate) =>
-      oldDelegate.fillBack != fillBack ||
-      oldDelegate.fillFl != fillFl ||
-      oldDelegate.fillFr != fillFr ||
-      oldDelegate.pulse != pulse ||
-      oldDelegate.rotationValue != rotationValue ||
-      oldDelegate.rotationDirection != rotationDirection;
-}
 
 /// Pictogram for the adjust-X screen: reuses the Pro-Arm top-view SVG
 /// with the three screws at their real positions. Highlights the screw
