@@ -418,10 +418,10 @@ void main() {
     expect(find.text('Please set the starting exposure'), findsOneWidget);
     expect(
         find.text(
-            'The exposure time of the first test piece. Every following piece is exposed a little longer than the one before it.'),
+            'The exposure time of the first test piece. Each piece after it gets a little longer. For most resins, starting below 1.5 s is not recommended.'),
         findsOneWidget);
     expect(find.text('Starting Exposure'), findsNothing);
-    expect(find.text('1.00 seconds'), findsOneWidget);
+    expect(find.text('1.50 seconds'), findsOneWidget);
     expect(find.text('Exposure Increment'), findsNothing);
 
     // Header and buttons follow the leveling wizard's treatment: a bold
@@ -439,7 +439,7 @@ void main() {
     );
     final hintText = tester
         .widget<Text>(find.text(
-            'The exposure time of the first test piece. Every following piece is exposed a little longer than the one before it.'));
+            'The exposure time of the first test piece. Each piece after it gets a little longer. For most resins, starting below 1.5 s is not recommended.'));
     expect(hintText.style?.fontSize, 20);
     final backButton = tester.getRect(find.widgetWithText(GlassButton, 'Back'));
     final nextButton = tester.getRect(find.widgetWithText(GlassButton, 'Next'));
@@ -462,14 +462,14 @@ void main() {
     // The actions never move, and the control sits midway between the step's
     // header and them.
     final shorterSelector = tester.getRect(
-        find.widgetWithText(GlassCard, '1.00 seconds'));
+        find.widgetWithText(GlassCard, '1.50 seconds'));
     final shorterPrimary =
         tester.getRect(find.widgetWithText(GlassButton, 'Next'));
     expect(shorterPrimary.top, primary.top);
     expect(shorterPrimary.bottom, primary.bottom);
     final headerBottom = tester
         .getRect(find.text(
-            'The exposure time of the first test piece. Every following piece is exposed a little longer than the one before it.'))
+            'The exposure time of the first test piece. Each piece after it gets a little longer. For most resins, starting below 1.5 s is not recommended.'))
         .bottom;
     // As much air above the control as the actions leave below it.
     expect(shorterSelector.top - headerBottom,
@@ -488,7 +488,7 @@ void main() {
     expect(find.text('Please set the exposure increment'), findsOneWidget);
     expect(
         find.text(
-            'How much longer each test piece is exposed than the previous one. A bigger step covers more exposure range; a smaller one resolves the best result more finely.'),
+            'How much longer each piece is exposed than the one before. Bigger steps cover more range, smaller ones judge more finely.'),
         findsOneWidget);
     expect(find.text('0.20 seconds'), findsOneWidget);
     expect(
@@ -509,7 +509,7 @@ void main() {
     expect(lastPrimary.bottom, primary.bottom);
     final lastHeaderBottom = tester
         .getRect(find.text(
-            'How much longer each test piece is exposed than the previous one. A bigger step covers more exposure range; a smaller one resolves the best result more finely.'))
+            'How much longer each piece is exposed than the one before. Bigger steps cover more range, smaller ones judge more finely.'))
         .bottom;
     expect(lastSelector.top - lastHeaderBottom,
         closeTo(lastPrimary.top - lastSelector.bottom, 0.5));

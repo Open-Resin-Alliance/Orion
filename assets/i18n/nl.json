@@ -691,8 +691,8 @@
     "wizardIntro": "Deze wizard leidt je door de kalibratie.",
     "wizardIntroDetail": "Er worden teststukken geprint met oplopende belichting. Je kiest de beste en de bijbehorende belichtingstijd wordt opgeslagen in het harsprofiel.",
     "promptTemplate": "Selecteer hieronder het templateprofiel dat je voor de kalibratie wilt gebruiken",
-    "startingExposureHelp": "De belichtingstijd van het eerste teststuk. Elk volgend teststuk wordt iets langer belicht dan het vorige.",
-    "exposureIncrementHelp": "Hoeveel langer elk teststuk wordt belicht dan het vorige. Een grotere stap dekt meer belichtingsbereik; een kleinere onderscheidt het beste resultaat fijner."
+    "startingExposureHelp": "De belichtingstijd van het eerste teststuk. Elk volgend stuk wordt iets langer belicht. Voor de meeste harsen is starten onder 1.5 s niet aanbevolen.",
+    "exposureIncrementHelp": "Hoeveel langer elk stuk wordt belicht dan het vorige. Grotere stappen dekken meer bereik, kleinere beoordelen fijner."
   },
   "editResin": {
     "profileSaved": "Profiel opgeslagen",
@@ -768,7 +768,12 @@
     "fineTuneExposure": "Belichting fijnregelen",
     "selectValueBetween": "Kies waarde tussen %s en %s",
     "selectPieceGuide": "Kies het stuk dat overeenkomt met de gids.",
-    "previous": "Vorige"
+    "previous": "Vorige",
+    "cloneTitle": "Opslaan in een nieuw profiel",
+    "cloneMessage": "Templates zijn alleen-lezen, dus je gekalibreerde belichting wordt in een kopie opgeslagen.",
+    "cloneNameLabel": "Profielnaam",
+    "cloneFailed": "Kon geen profiel maken van dit template. Probeer het opnieuw via Materialen.",
+    "savedToNewProfile": "Opgeslagen in nieuw profiel: {name}"
   },
   "resins": {
     "failedLoad": "Kon harsen niet laden",

@@ -691,8 +691,8 @@
     "wizardIntro": "このウィザードが較正を順番に案内します。",
     "wizardIntroDetail": "露光時間を変えながらテストピースを印刷します。最適なものを選ぶと、その露光時間がレジンプロファイルに保存されます。",
     "promptTemplate": "下から較正に使用するテンプレートプロファイルを選択してください",
-    "startingExposureHelp": "最初のテストピースの露光時間です。以降のテストピースは前のものより少しずつ長く露光されます。",
-    "exposureIncrementHelp": "各テストピースを前のものよりどれだけ長く露光するかです。ステップを大きくすると露光範囲が広がり、小さくすると最適な結果を細かく見分けられます。"
+    "startingExposureHelp": "最初のテストピースの露光時間です。以降のピースは少しずつ長く露光されます。多くのレジンでは 1.5 秒未満からの開始はおすすめできません。",
+    "exposureIncrementHelp": "各ピースを前のものよりどれだけ長く露光するかです。大きいほど範囲が広がり、小さいほど細かく見分けられます。"
   },
   "editResin": {
     "profileSaved": "プロファイル保存完了",
@@ -768,7 +768,12 @@
     "fineTuneExposure": "微調整",
     "selectValueBetween": "%s〜%sの値を選択",
     "selectPieceGuide": "ガイドに合うテスト片を選択。",
-    "previous": "前回"
+    "previous": "前回",
+    "cloneTitle": "新しいプロファイルに保存",
+    "cloneMessage": "テンプレートは読み取り専用のため、較正した露光時間はそのコピーに保存されます。",
+    "cloneNameLabel": "プロファイル名",
+    "cloneFailed": "このテンプレートからプロファイルを作成できませんでした。マテリアルからもう一度お試しください。",
+    "savedToNewProfile": "新しいプロファイルに保存しました：{name}"
   },
   "resins": {
     "failedLoad": "レジン読込失敗",

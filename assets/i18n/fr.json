@@ -691,8 +691,8 @@
     "wizardIntro": "Cet assistant vous guidera tout au long de la calibration.",
     "wizardIntroDetail": "Des pièces d'essai sont imprimées à des expositions croissantes. Vous choisissez la meilleure et son temps d'exposition est enregistré dans le profil de résine.",
     "promptTemplate": "Sélectionnez ci-dessous le profil modèle que vous souhaitez utiliser pour la calibration",
-    "startingExposureHelp": "Le temps d'exposition de la première pièce d'essai. Chaque pièce suivante est exposée un peu plus longtemps que la précédente.",
-    "exposureIncrementHelp": "De combien chaque pièce d'essai est exposée plus longtemps que la précédente. Un pas plus grand couvre plus de plage d'exposition ; un plus petit distingue plus finement le meilleur résultat."
+    "startingExposureHelp": "Le temps d'exposition de la première pièce. Chaque pièce suivante est exposée un peu plus longtemps. Pour la plupart des résines, commencer en dessous de 1.5 s n'est pas recommandé.",
+    "exposureIncrementHelp": "De combien chaque pièce est exposée plus longtemps que la précédente. Un pas plus grand couvre plus de plage, un plus petit juge plus finement."
   },
   "editResin": {
     "profileSaved": "Profil enregistré",
@@ -768,7 +768,12 @@
     "fineTuneExposure": "Ajustement fin",
     "selectValueBetween": "Valeur entre %s et %s",
     "selectPieceGuide": "Choisir la pièce correspondante.",
-    "previous": "Précédent"
+    "previous": "Précédent",
+    "cloneTitle": "Enregistrer dans un nouveau profil",
+    "cloneMessage": "Les modèles sont en lecture seule : votre exposition calibrée est enregistrée dans une copie.",
+    "cloneNameLabel": "Nom du profil",
+    "cloneFailed": "Impossible de créer un profil à partir de ce modèle. Réessayez depuis Matériaux.",
+    "savedToNewProfile": "Enregistré dans le nouveau profil : {name}"
   },
   "resins": {
     "failedLoad": "Résines indisponibles",

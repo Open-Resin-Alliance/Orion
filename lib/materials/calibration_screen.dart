@@ -163,7 +163,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
   CalibrationModel? _selectedModel;
   ResinProfile? _selectedResin;
   int? _lastImageFetchRequestModelId;
-  double _startingExposure = 1.0; // seconds
+  double _startingExposure = 1.5; // seconds
   double _exposureIncrement = 0.2; // seconds
 
   int _currentTestPiecesCount() {
@@ -180,8 +180,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
     final hasExisting = resins.any((r) => !r.locked);
     _sourceSkipped = hasTemplates != hasExisting;
     if (!_sourceSkipped) return;
-    _setSource(
-        hasTemplates ? _ResinSource.template : _ResinSource.existing);
+    _setSource(hasTemplates ? _ResinSource.template : _ResinSource.existing);
     if (_step == _CalibrationStep.source) {
       _step = _CalibrationStep.resin;
     }
@@ -401,7 +400,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
           titleKey: 'calibration.startingExposure',
           descriptionKey: 'calibration.exposureDesc',
           value: _startingExposure,
-          min: 0.5,
+          min: 1.2,
           max: 10,
           decimals: 1,
           onSave: (v) => setState(() => _startingExposure = v),
@@ -609,8 +608,8 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
   }
 
   Widget _buildTemplateCard(ResinProfile resin) {
-    final selected =
-        _selectedResin != null && _resinKey(_selectedResin!) == _resinKey(resin);
+    final selected = _selectedResin != null &&
+        _resinKey(_selectedResin!) == _resinKey(resin);
     final success = Colors.green.shade400;
     final layerHeightUm = resin.layerHeightUm;
 
@@ -645,10 +644,9 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
                   ResinChip(
                     icon: PhosphorIcons.stack(),
                     label: FlutterI18n.translate(
-                        context, 'resins.layerHeightChip',
-                        translationParams: {
-                          'value': formatResinChipNumber(layerHeightUm)
-                        }),
+                        context, 'resins.layerHeightChip', translationParams: {
+                      'value': formatResinChipNumber(layerHeightUm)
+                    }),
                   ),
                 ],
               ],
@@ -725,7 +723,8 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
             : Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
         child: InkWell(
           borderRadius: BorderRadius.circular(glassCornerRadius),
-          onTap: isModelsLoading ? () {} : () => _selectCalibrationModel(models),
+          onTap:
+              isModelsLoading ? () {} : () => _selectCalibrationModel(models),
           child: Padding(
             padding: OrionSpacing.cardPadding,
             child: Column(
@@ -735,9 +734,8 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: isModelsLoading
-                        ? _buildModelPreviewPlaceholder(
-                            FlutterI18n.translate(
-                                context, 'calibration.loadingModels'))
+                        ? _buildModelPreviewPlaceholder(FlutterI18n.translate(
+                            context, 'calibration.loadingModels'))
                         : imageUrl == null
                             ? _buildModelPreviewPlaceholder(
                                 FlutterI18n.translate(
@@ -1152,6 +1150,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
                   profileId: resolvedProfileId,
                   calibrationModelId: _selectedModel!.id,
                   evaluationGuideUrl: _selectedModel!.evaluationGuideUrl,
+                  profileIsTemplate: _selectedResin?.locked ?? false,
                 ),
               );
         }

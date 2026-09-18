@@ -691,8 +691,8 @@
         "wizardIntro": "This wizard will guide you through calibration.",
         "wizardIntroDetail": "Test pieces are printed at increasing exposures. You pick the best one, and its exposure time is saved to the resin profile.",
         "promptTemplate": "Please select the template profile you would like to use for calibration below",
-        "startingExposureHelp": "The exposure time of the first test piece. Every following piece is exposed a little longer than the one before it.",
-        "exposureIncrementHelp": "How much longer each test piece is exposed than the previous one. A bigger step covers more exposure range; a smaller one resolves the best result more finely."
+        "startingExposureHelp": "The exposure time of the first test piece. Each piece after it gets a little longer. For most resins, starting below 1.5 s is not recommended.",
+        "exposureIncrementHelp": "How much longer each piece is exposed than the one before. Bigger steps cover more range, smaller ones judge more finely."
     },
     "editResin": {
         "profileSaved": "Profile Saved",
@@ -768,7 +768,12 @@
         "fineTuneExposure": "Fine-Tune Exposure",
         "selectValueBetween": "Select a value between %s and %s",
         "selectPieceGuide": "Select the piece matching the guide.",
-        "previous": "Previous"
+        "previous": "Previous",
+        "cloneTitle": "Save to a new profile",
+        "cloneMessage": "Templates are read-only, so your calibrated exposure is saved to a copy of it.",
+        "cloneNameLabel": "Profile name",
+        "cloneFailed": "Could not create a profile from this template. Please try again from Materials.",
+        "savedToNewProfile": "Saved to new profile: {name}"
     },
     "resins": {
         "failedLoad": "Failed to load resins",

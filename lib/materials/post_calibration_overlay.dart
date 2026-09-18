@@ -26,6 +26,7 @@ import 'package:provider/provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/profile_name_prompt.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 /// Overlay shown after a calibration print completes
@@ -38,6 +39,10 @@ class PostCalibrationOverlay extends StatefulWidget {
   final int profileId;
   final int calibrationModelId;
   final String? evaluationGuideUrl;
+
+  /// True when [profileId] is a factory template. A template cannot be written
+  /// to, so the exposure is saved to a copy of it, named by the user.
+  final bool profileIsTemplate;
   final VoidCallback onComplete;
 
   const PostCalibrationOverlay({
@@ -49,6 +54,7 @@ class PostCalibrationOverlay extends StatefulWidget {
     required this.profileId,
     required this.calibrationModelId,
     this.evaluationGuideUrl,
+    this.profileIsTemplate = false,
     required this.onComplete,
   });
 
@@ -57,6 +63,11 @@ class PostCalibrationOverlay extends StatefulWidget {
 }
 
 class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
+  /// Set once a template has been copied, so every later save in this session
+  /// lands on the copy rather than on the template.
+  int? clonedProfileId;
+  String? clonedProfileName;
+
   final _logger = Logger('PostCalibrationOverlay');
   final _backendService = BackendService();
   final _config = OrionConfig();
@@ -654,6 +665,77 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     );
   }
 
+  /// The profile the exposure is written to.
+  ///
+  /// A factory template cannot be written to: the user names a copy of it, the
+  /// copy is created, and every later save lands on that copy instead.
+  Future<int?> _targetProfileId() async {
+    if (clonedProfileId != null) return clonedProfileId;
+    if (!widget.profileIsTemplate) return widget.profileId;
+
+    final name = await _askForProfileName();
+    if (name == null) return null;
+
+    try {
+      final created =
+          await _backendService.cloneProfile(widget.profileId, {'Title': name});
+      final id = created['ProfileID'];
+      if (id is! int) {
+        _logger.warning('Cloning template ${widget.profileId} gave no profile '
+            'id (got $created)');
+        _showCloneFailed();
+        return null;
+      }
+      _logger.info(
+          'Cloned template ${widget.profileId} to profile $id ("$name")');
+      if (mounted) {
+        setState(() {
+          clonedProfileId = id;
+          clonedProfileName = name;
+        });
+      }
+      return id;
+    } catch (e) {
+      _logger.warning('Failed to clone template ${widget.profileId}: $e');
+      _showCloneFailed();
+      return null;
+    }
+  }
+
+  /// Asks what the calibrated copy of a template should be called, with the
+  /// same on-screen keyboard field the resin editor uses.
+  Future<String?> _askForProfileName() {
+    return promptForProfileName(
+      context,
+      titleKey: 'postCal.cloneTitle',
+      hintKey: 'postCal.cloneNameLabel',
+      suggestedName: '${widget.resinProfileName ?? ''} (calibrated)',
+    );
+  }
+
+  void _showCloneFailed() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => GlassAlertDialog(
+        title: Text(FlutterI18n.translate(context, 'common.error'),
+            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+        content: Text(
+          FlutterI18n.translate(context, 'postCal.cloneFailed'),
+          style: const TextStyle(fontSize: 20),
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.positive,
+            style: ElevatedButton.styleFrom(minimumSize: const Size(120, 65)),
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(FlutterI18n.translate(context, 'common.done')),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _saveOptimalExposure() async {
     if (_selectedPieces.isEmpty) return;
     final nav = Navigator.of(context);
@@ -669,17 +751,21 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     final optimalExposure =
         widget.startExposure + (widget.exposureIncrement * (pieceNumber - 1));
 
+    // A template is copied first, and the exposure goes to the copy.
+    final targetId = await _targetProfileId();
+    if (targetId == null) return;
+
     // Fetch current profile to get the actual previous exposure time
     // and build a full settings merge so we can use saveResinSettings
     // (the same reliable path the edit resin screen uses).
     double previousExposure = widget.startExposure;
     bool saved = false;
     try {
-      final settings = await _backendService.getResinSettings(widget.profileId);
+      final settings = await _backendService.getResinSettings(targetId);
       if (settings != null) {
         previousExposure = settings.normalCureTime;
         await _backendService.saveResinSettings(
-          widget.profileId,
+          targetId,
           ResinSettings(
             burnInCureTime: settings.burnInCureTime,
             normalCureTime: optimalExposure,
@@ -693,8 +779,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
         _logger.info('Successfully saved optimal exposure to profile');
       } else {
         // Fallback: try the single-field convenience method.
-        await _backendService.saveResinExposure(
-            widget.profileId, optimalExposure);
+        await _backendService.saveResinExposure(targetId, optimalExposure);
         saved = true;
         _logger.info('Saved via saveResinExposure fallback');
       }
@@ -744,7 +829,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.resinProfileName ??
+              clonedProfileName ??
+                  widget.resinProfileName ??
                   FlutterI18n.translate(context, 'calibration.resinProfile'),
               style: TextStyle(
                 fontSize: 22,
@@ -809,11 +895,17 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             ),
             const SizedBox(height: 16),
             Text(
-              FlutterI18n.translate(context, 'postCal.layerExposureUpdated'),
+              clonedProfileName == null
+                  ? FlutterI18n.translate(
+                      context, 'postCal.layerExposureUpdated')
+                  : FlutterI18n.translate(
+                      context, 'postCal.savedToNewProfile',
+                      translationParams: {'name': clonedProfileName!}),
               style: TextStyle(
                 fontSize: 20,
                 color: Colors.grey.shade500,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -916,17 +1008,22 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                     return;
                   }
 
+                  // A template is copied first, and the exposure goes to the
+                  // copy.
+                  final fineTuneTargetId = await _targetProfileId();
+                  if (fineTuneTargetId == null) return;
+
                   // Fetch current profile and save via saveResinSettings
                   // (the same reliable path the edit resin screen uses).
                   double previousExposure = widget.startExposure;
                   bool saved = false;
                   try {
                     final settings = await _backendService
-                        .getResinSettings(widget.profileId);
+                        .getResinSettings(fineTuneTargetId);
                     if (settings != null) {
                       previousExposure = settings.normalCureTime;
                       await _backendService.saveResinSettings(
-                        widget.profileId,
+                        fineTuneTargetId,
                         ResinSettings(
                           burnInCureTime: settings.burnInCureTime,
                           normalCureTime: value,
@@ -939,7 +1036,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                       saved = true;
                     } else {
                       await _backendService.saveResinExposure(
-                          widget.profileId, value);
+                          fineTuneTargetId, value);
                       saved = true;
                     }
                   } catch (e) {
@@ -991,7 +1088,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            widget.resinProfileName ??
+                            clonedProfileName ??
+                                widget.resinProfileName ??
                                 FlutterI18n.translate(
                                     context, 'calibration.resinProfile'),
                             style: TextStyle(
@@ -1061,12 +1159,19 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            FlutterI18n.translate(
-                                context, 'calibration.layerExposureUpdated'),
+                            clonedProfileName == null
+                                ? FlutterI18n.translate(
+                                    context, 'calibration.layerExposureUpdated')
+                                : FlutterI18n.translate(
+                                    context, 'postCal.savedToNewProfile',
+                                    translationParams: {
+                                      'name': clonedProfileName!
+                                    }),
                             style: TextStyle(
                               fontSize: 20,
                               color: Colors.grey.shade500,
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),

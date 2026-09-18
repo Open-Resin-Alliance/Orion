@@ -22,8 +22,7 @@ import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
-import 'package:orion/util/orion_kb/orion_keyboard_expander.dart';
-import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
+import 'package:orion/util/profile_name_prompt.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
 import 'package:orion/util/orion_spacing.dart';
@@ -383,54 +382,11 @@ class EditResinScreenState extends State<EditResinScreen> {
   /// profile. Returns the chosen name, or null when the dialog is
   /// cancelled or left empty.
   Future<String?> _promptCloneName() {
-    final nameKey = GlobalKey<SpawnOrionTextFieldState>();
-    final defaultName = '${widget.resin?.name ?? 'Resin Profile'} copy';
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) => GlassAlertDialog(
-        title: Text(FlutterI18n.translate(context, 'editResin.cloneNameTitle')),
-        content: SizedBox(
-          width: MediaQuery.of(dialogContext).size.width * 0.5,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SpawnOrionTextField(
-                  key: nameKey,
-                  keyboardHint:
-                      FlutterI18n.translate(context, 'editResin.cloneNameHint'),
-                  locale: Localizations.localeOf(dialogContext).toString(),
-                  presetText: defaultName,
-                ),
-                OrionKbExpander(textFieldKey: nameKey),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          GlassButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(0, 60),
-            ),
-            child: Text(FlutterI18n.translate(context, 'common.cancel'),
-                style: const TextStyle(fontSize: 20)),
-          ),
-          GlassButton(
-            tint: GlassButtonTint.positive,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(0, 60),
-            ),
-            onPressed: () {
-              final name = nameKey.currentState?.getCurrentText().trim() ?? '';
-              if (name.isEmpty) return;
-              Navigator.of(dialogContext).pop(name);
-            },
-            child: Text(FlutterI18n.translate(context, 'common.save'),
-                style: const TextStyle(fontSize: 20)),
-          ),
-        ],
-      ),
+    return promptForProfileName(
+      context,
+      titleKey: 'editResin.cloneNameTitle',
+      hintKey: 'editResin.cloneNameHint',
+      suggestedName: '${widget.resin?.name ?? 'Resin Profile'} copy',
     );
   }
 
@@ -755,51 +711,13 @@ class EditResinScreenState extends State<EditResinScreen> {
   /// Rename the profile. NanoDLP's `Title` only appears on the full profile
   /// form, which is the one the save posts through.
   Future<void> _editName() async {
-    final nameKey = GlobalKey<SpawnOrionTextFieldState>();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => GlassAlertDialog(
-        title: Text(FlutterI18n.translate(context, 'editResin.resinName')),
-        content: SizedBox(
-          width: MediaQuery.of(dialogContext).size.width * 0.5,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SpawnOrionTextField(
-                  key: nameKey,
-                  keyboardHint:
-                      FlutterI18n.translate(context, 'editResin.resinName'),
-                  locale: Localizations.localeOf(dialogContext).toString(),
-                  presetText: _name,
-                ),
-                OrionKbExpander(textFieldKey: nameKey),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          GlassButton(
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(FlutterI18n.translate(context, 'common.cancel'),
-                style: const TextStyle(fontSize: 20)),
-          ),
-          GlassButton(
-            tint: GlassButtonTint.positive,
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 60)),
-            onPressed: () {
-              final name = nameKey.currentState?.getCurrentText().trim() ?? '';
-              if (name.isEmpty) return;
-              Navigator.of(dialogContext).pop(name);
-            },
-            child: Text(FlutterI18n.translate(context, 'common.save'),
-                style: const TextStyle(fontSize: 20)),
-          ),
-        ],
-      ),
+    final result = await promptForProfileName(
+      context,
+      titleKey: 'editResin.resinName',
+      hintKey: 'editResin.resinName',
+      suggestedName: _name,
     );
-    if (result != null && result.isNotEmpty && mounted) {
+    if (result != null && mounted) {
       setState(() => _name = result);
     }
   }

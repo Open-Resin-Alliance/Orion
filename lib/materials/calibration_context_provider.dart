@@ -111,6 +111,10 @@ class CalibrationContext {
   final int calibrationModelId;
   final String? evaluationGuideUrl;
 
+  /// True when [profileId] is a factory template, which cannot be written to:
+  /// the calibrated exposure is saved to a copy of it instead.
+  final bool profileIsTemplate;
+
   CalibrationContext({
     required this.calibrationModelName,
     required this.resinProfileName,
@@ -119,6 +123,7 @@ class CalibrationContext {
     required this.profileId,
     required this.calibrationModelId,
     this.evaluationGuideUrl,
+    this.profileIsTemplate = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -130,6 +135,7 @@ class CalibrationContext {
       'profileId': profileId,
       'calibrationModelId': calibrationModelId,
       'evaluationGuideUrl': evaluationGuideUrl,
+      'profileIsTemplate': profileIsTemplate,
     };
   }
 
@@ -142,6 +148,7 @@ class CalibrationContext {
       profileId: json['profileId'] ?? 0,
       calibrationModelId: json['calibrationModelId'] ?? 0,
       evaluationGuideUrl: json['evaluationGuideUrl'],
+      profileIsTemplate: json['profileIsTemplate'] == true,
     );
   }
 }

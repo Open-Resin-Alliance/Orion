@@ -691,8 +691,8 @@
     "wizardIntro": "Questa procedura guidata ti accompagna nella calibrazione.",
     "wizardIntroDetail": "Vengono stampati pezzi di prova con esposizioni crescenti. Scegli il migliore e il suo tempo di esposizione viene salvato nel profilo della resina.",
     "promptTemplate": "Seleziona qui sotto il profilo template che vuoi usare per la calibrazione",
-    "startingExposureHelp": "Il tempo di esposizione del primo pezzo di prova. Ogni pezzo successivo viene esposto un po' più a lungo del precedente.",
-    "exposureIncrementHelp": "Quanto più a lungo viene esposto ogni pezzo di prova rispetto al precedente. Un passo maggiore copre più intervallo di esposizione; uno minore distingue meglio il risultato migliore."
+    "startingExposureHelp": "Il tempo di esposizione del primo pezzo. Ogni pezzo successivo viene esposto un po' più a lungo. Per la maggior parte delle resine non è consigliabile partire sotto 1.5 s.",
+    "exposureIncrementHelp": "Quanto più a lungo viene esposto ogni pezzo rispetto al precedente. Passi maggiori coprono più intervallo, minori distinguono meglio."
   },
   "editResin": {
     "profileSaved": "Profilo salvato",
@@ -768,7 +768,12 @@
     "fineTuneExposure": "Regolazione fine",
     "selectValueBetween": "Valore tra %s e %s",
     "selectPieceGuide": "Scegli il pezzo corrispondente.",
-    "previous": "Precedente"
+    "previous": "Precedente",
+    "cloneTitle": "Salva in un nuovo profilo",
+    "cloneMessage": "I template sono di sola lettura, quindi l'esposizione calibrata viene salvata in una copia.",
+    "cloneNameLabel": "Nome del profilo",
+    "cloneFailed": "Impossibile creare un profilo da questo template. Riprova da Materiali.",
+    "savedToNewProfile": "Salvato nel nuovo profilo: {name}"
   },
   "resins": {
     "failedLoad": "Impossibile caricare le resine",

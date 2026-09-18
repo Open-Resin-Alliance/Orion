@@ -691,8 +691,8 @@
     "wizardIntro": "Dieser Assistent führt Sie durch die Kalibrierung.",
     "wizardIntroDetail": "Es werden Teststücke mit steigender Belichtung gedruckt. Sie wählen das beste aus, dessen Belichtungszeit wird im Harzprofil gespeichert.",
     "promptTemplate": "Bitte wählen Sie unten das Vorlagenprofil aus, das Sie für die Kalibrierung verwenden möchten",
-    "startingExposureHelp": "Die Belichtungszeit des ersten Teststücks. Jedes weitere Teststück wird etwas länger belichtet als das vorherige.",
-    "exposureIncrementHelp": "Um wie viel länger jedes Teststück belichtet wird als das vorherige. Ein größerer Schritt deckt mehr Belichtungsbereich ab, ein kleinerer löst das beste Ergebnis feiner auf."
+    "startingExposureHelp": "Die Belichtungszeit des ersten Teststücks. Jedes weitere wird etwas länger belichtet. Bei den meisten Harzen sind weniger als 1.5 s nicht empfehlenswert.",
+    "exposureIncrementHelp": "Um wie viel länger jedes Teststück belichtet wird als das vorherige. Größere Schritte decken mehr Bereich ab, kleinere urteilen feiner."
   },
   "editResin": {
     "profileSaved": "Profil gespeichert",
@@ -768,7 +768,12 @@
     "fineTuneExposure": "Belichtung feinjustieren",
     "selectValueBetween": "Wert zwischen %s und %s wählen",
     "selectPieceGuide": "Passendes Stück aus der Anleitung wählen.",
-    "previous": "Vorherige"
+    "previous": "Vorherige",
+    "cloneTitle": "In neuem Profil speichern",
+    "cloneMessage": "Vorlagen sind schreibgeschützt. Ihre kalibrierte Belichtung wird daher in einer Kopie gespeichert.",
+    "cloneNameLabel": "Profilname",
+    "cloneFailed": "Aus dieser Vorlage konnte kein Profil erstellt werden. Bitte versuchen Sie es erneut unter Materialien.",
+    "savedToNewProfile": "In neuem Profil gespeichert: {name}"
   },
   "resins": {
     "failedLoad": "Fehler beim Laden der Harze",

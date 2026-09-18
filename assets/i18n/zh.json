@@ -691,8 +691,8 @@
     "wizardIntro": "本向导将引导你完成校准。",
     "wizardIntroDetail": "校准会以递增的曝光时间打印测试件。你选出最佳的一件后，其曝光时间会保存到树脂配置中。",
     "promptTemplate": "请在下方选择要用于校准的模板配置",
-    "startingExposureHelp": "第一件测试件的曝光时间。之后的每一件都会比前一件曝光略长。",
-    "exposureIncrementHelp": "每一件测试件比前一件多曝光多少。步长越大覆盖的曝光范围越广，步长越小越能分辨最佳结果。"
+    "startingExposureHelp": "第一件测试件的曝光时间。之后的每一件都会略久一些。大多数树脂不建议从 1.5 秒以下开始。",
+    "exposureIncrementHelp": "每一件比前一件多曝光多少。步长越大覆盖范围越广，越小则分辨越细。"
   },
   "editResin": {
     "profileSaved": "配置已保存",
@@ -768,7 +768,12 @@
     "fineTuneExposure": "微调",
     "selectValueBetween": "选择%s到%s之间的值",
     "selectPieceGuide": "选择对应的测试件。",
-    "previous": "上次"
+    "previous": "上次",
+    "cloneTitle": "保存到新配置",
+    "cloneMessage": "模板为只读，因此校准后的曝光时间会保存到它的副本中。",
+    "cloneNameLabel": "配置名称",
+    "cloneFailed": "无法从此模板创建配置。请在“材料”页面重试。",
+    "savedToNewProfile": "已保存到新配置：{name}"
   },
   "resins": {
     "failedLoad": "树脂加载失败",
