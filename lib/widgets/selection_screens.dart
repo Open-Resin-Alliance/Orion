@@ -16,14 +16,12 @@
 */
 
 import 'package:flutter/material.dart';
-import 'package:flutter_i18n/flutter_i18n.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/widgets/resin_chip.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
+import 'package:orion/widgets/resin_row.dart';
 
 class DetailedSelectionScreen extends StatelessWidget {
   final String title;
@@ -133,125 +131,15 @@ class ResinProfileSelectionScreen extends StatelessWidget {
     return ListSelectionScreen<ResinProfile>(
       title: title,
       items: resins,
-      separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-      itemBuilder: (context, resin) => ResinProfileTile(
+      // Same shell as the materials list: it compensates for the cards' own
+      // 4pt margin, so the rows land on the standard screen inset.
+      padding: OrionSpacing.settingsScreenPaddingTightTop,
+      separatorBuilder: (ctx, i) =>
+          const SizedBox(height: OrionSpacing.compactListGap),
+      itemBuilder: (context, resin) => ResinRow(
         resin: resin,
-        isSelected: selectedResinKey == (resin.path ?? resin.name),
+        highlighted: selectedResinKey == (resin.path ?? resin.name),
         onTap: () => onSelected(resin),
-      ),
-    );
-  }
-}
-
-/// One resin profile row. Shared by the picker screen and the calibration
-/// workflow so the two cannot drift apart.
-class ResinProfileTile extends StatelessWidget {
-  const ResinProfileTile({
-    super.key,
-    required this.resin,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final ResinProfile resin;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final layerHeightUm = resin.layerHeightUm;
-    final exposureS = resin.normalExposureSeconds;
-    final accent = Theme.of(context).colorScheme.primary;
-
-    return GlassCard(
-      elevation: isSelected ? 2.0 : 1.0,
-      outlined: true,
-      color: isSelected
-          ? Theme.of(context)
-              .colorScheme
-              .primaryContainer
-              .withValues(alpha: 0.3)
-          : null,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: (isSelected ? accent : Colors.blueGrey)
-                      .withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  isSelected ? Icons.check_circle : Icons.science,
-                  color: isSelected ? accent : Colors.blueGrey.shade300,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  resin.name,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color:
-                        isSelected ? Theme.of(context).colorScheme.primary : null,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              // Material parameters, as on the materials page.
-              if (layerHeightUm != null) ...[
-                const SizedBox(width: 10),
-                ResinChip(
-                  icon: PhosphorIcons.stack(),
-                  label: FlutterI18n.translate(
-                      context, 'resins.layerHeightChip',
-                      translationParams: {
-                        'value': formatResinChipNumber(layerHeightUm)
-                      }),
-                ),
-              ],
-              if (exposureS != null) ...[
-                const SizedBox(width: 6),
-                ResinChip(
-                  icon: PhosphorIcons.timer(),
-                  label: FlutterI18n.translate(context, 'resins.exposureChip',
-                      translationParams: {
-                        'value': formatResinChipNumber(exposureS)
-                      }),
-                ),
-              ],
-              const SizedBox(width: 10),
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.transparent,
-                  border: isSelected
-                      ? null
-                      : Border.all(
-                          color: Theme.of(context).dividerColor,
-                          width: 2,
-                        ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: isSelected
-                    ? const Icon(Icons.check, color: Colors.white, size: 16)
-                    : null,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -684,7 +684,12 @@
     "processingFile": "Bestandsmetadata verwerken…",
     "promptStartingExposure": "Stel de startbelichting in",
     "promptExposureIncrement": "Stel de belichtingstoename in",
-    "secondsUnit": "seconden"
+    "secondsUnit": "seconden",
+    "promptSource": "Starten vanaf een template of een bestaand profiel?",
+    "helpSource": "Templates zijn de fabrieksprofielen.",
+    "sourceExisting": "Bestaand profiel",
+    "wizardIntro": "Deze wizard leidt je door de kalibratie.",
+    "wizardIntroDetail": "Er worden teststukken geprint met oplopende belichting. Je kiest de beste en de bijbehorende belichtingstijd wordt opgeslagen in het harsprofiel."
   },
   "editResin": {
     "profileSaved": "Profiel opgeslagen",

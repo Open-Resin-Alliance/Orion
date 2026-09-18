@@ -684,7 +684,12 @@
     "processingFile": "处理文件元数据…",
     "promptStartingExposure": "请设置起始曝光时间",
     "promptExposureIncrement": "请设置曝光增量",
-    "secondsUnit": "秒"
+    "secondsUnit": "秒",
+    "promptSource": "要从模板开始，还是从现有配置开始？",
+    "helpSource": "模板是出厂配置。",
+    "sourceExisting": "现有配置",
+    "wizardIntro": "本向导将引导你完成校准。",
+    "wizardIntroDetail": "校准会以递增的曝光时间打印测试件。你选出最佳的一件后，其曝光时间会保存到树脂配置中。"
   },
   "editResin": {
     "profileSaved": "配置已保存",

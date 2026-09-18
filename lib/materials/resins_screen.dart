@@ -23,11 +23,10 @@ import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:orion/glasser/glasser.dart';
-import 'package:orion/widgets/resin_chip.dart';
+import 'package:orion/widgets/resin_row.dart';
 // error dialog util removed (delete flow not present); import kept out for now
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/util/orion_spacing.dart';
-import 'package:orion/util/providers/theme_provider.dart';
 
 class ResinsScreen extends StatefulWidget {
   const ResinsScreen({super.key});
@@ -205,219 +204,61 @@ class ResinsScreenState extends State<ResinsScreen> {
   }
 
   Widget _buildResinCard(ResinProfile resin, ResinsProvider provider) {
-    final depthUm = resin.layerHeightUm;
-    final exposureS = resin.normalExposureSeconds;
-
     final key = resin.path ?? resin.name;
     final isDefault =
         provider.activeResinKey != null && provider.activeResinKey == key;
+
+    return ResinRow(
+      resin: resin,
+      highlighted: isDefault,
+      onTap: () => _onSelectResin(resin, provider),
+      trailing: _buildEditAffordance(resin, provider),
+    );
+  }
+
+  /// The materials list's edit affordance: edit in place, or offer to open a
+  /// locked (manufacturer) profile as a clone instead.
+
+  Widget _buildEditAffordance(ResinProfile resin, ResinsProvider provider) {
     final isLocked = resin.locked;
-    final templatePrefix = RegExp(r'^\s*\[template\]\s*', caseSensitive: false);
-    final isTemplate = templatePrefix.hasMatch(resin.name);
-    final cleanedName = resin.name.replaceFirst(templatePrefix, '').trim();
-    final displayName = cleanedName.isEmpty ? resin.name : cleanedName;
-
-    final outlineColor = isDefault
-        ? Colors.green.shade400.withValues(alpha: 0.55)
-        : Theme.of(context).dividerColor.withValues(alpha: 0.35);
-
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final isGlassMode =
-        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
-
-    final fillColor = isDefault && !isGlassMode
-        ? Colors.green.shade400.withValues(alpha: 0.08)
-        : (isDarkMode
-            ? Color.alphaBlend(
-                Colors.white.withValues(alpha: 0.05),
-                Theme.of(context).colorScheme.surface,
-              )
-            : null);
-
-    final accentColorForCard =
-        isDefault && isGlassMode ? Colors.green.shade400 : null;
-
-    return GlassCard(
-      elevation: isDefault ? 2 : 1,
-      outlined: false,
-      color: fillColor,
-      accentColor: accentColorForCard,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _onSelectResin(resin, provider),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: outlineColor,
-              width: isDefault ? 1.6 : 1.0,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 10,
-            ),
-            child: Row(
-              children: [
-                if (isDefault) ...[
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade400.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.green.shade400.withValues(alpha: 0.55),
-                        width: 1,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 14,
-                      color: Colors.green.shade300,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                // Name + meta
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (isLocked) ...[
-                            // Deliberately not a Tooltip: Tooltip uses an
-                            // OverlayPortal whose semantics graft trips a
-                            // Windows engine AXTree bug when it sits inside a
-                            // scrollable viewport (flutter/flutter#182444).
-                            // The icon keeps the same accessibility label.
-                            Icon(
-                              Icons.lock_outline,
-                              size: 16,
-                              color:
-                                  Theme.of(context).textTheme.bodySmall?.color,
-                              semanticLabel: FlutterI18n.translate(
-                                  context, 'resins.locked'),
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          if (isTemplate) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 9, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surface
-                                    .withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: Theme.of(context)
-                                      .dividerColor
-                                      .withValues(alpha: 0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                FlutterI18n.translate(
-                                    context, 'resins.template'),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.color,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Expanded(
-                            child: Text(
-                              displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: isDefault ? Colors.green.shade400 : null,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+    // Edit affordance. Locked (manufacturer) profiles stay
+    // tappable: tapping one explains the lock and offers to
+    // open it as a clone instead of editing it in place.
+    // No Tooltip wrapper here on purpose: Tooltip's OverlayPortal
+    // semantics graft trips the Windows AXTree bug inside this
+    // ListView (flutter/flutter#182444). The visible "Edit" text
+    // and the icon's semantic label carry the meaning instead.
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: isLocked
+          ? () => _showClonePrompt(resin, provider)
+          : () => _onEditResin(resin, provider),
+      child: SizedBox(
+        width: 110,
+        height: 46,
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PhosphorIcon(
+                PhosphorIcons.pencil(),
+                size: 21,
+                color: Colors.grey.shade200,
+                semanticLabel: isLocked
+                    ? FlutterI18n.translate(
+                        context, 'resins.locked')
+                    : FlutterI18n.translate(context, 'resins.edit'),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                FlutterI18n.translate(context, 'resins.edit'),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade200,
                 ),
-                // Material parameters, immediately left of the edit
-                // affordance so they read as one cluster.
-                if (depthUm != null)
-                  ResinChip(
-                    icon: PhosphorIcons.stack(),
-                    label: FlutterI18n.translate(
-                        context, 'resins.layerHeightChip',
-                        translationParams: {
-                          'value': formatResinChipNumber(depthUm)
-                        }),
-                  ),
-                if (depthUm != null) const SizedBox(width: 6),
-                if (exposureS != null)
-                  ResinChip(
-                    icon: PhosphorIcons.timer(),
-                    label: FlutterI18n.translate(
-                        context, 'resins.exposureChip',
-                        translationParams: {
-                          'value': formatResinChipNumber(exposureS)
-                        }),
-                  ),
-                if (exposureS != null) const SizedBox(width: 10),
-                // Edit affordance. Locked (manufacturer) profiles stay
-                // tappable: tapping one explains the lock and offers to
-                // open it as a clone instead of editing it in place.
-                // No Tooltip wrapper here on purpose: Tooltip's OverlayPortal
-                // semantics graft trips the Windows AXTree bug inside this
-                // ListView (flutter/flutter#182444). The visible "Edit" text
-                // and the icon's semantic label carry the meaning instead.
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: isLocked
-                      ? () => _showClonePrompt(resin, provider)
-                      : () => _onEditResin(resin, provider),
-                  child: SizedBox(
-                    width: 110,
-                    height: 46,
-                    child: Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          PhosphorIcon(
-                            PhosphorIcons.pencil(),
-                            size: 21,
-                            color: Colors.grey.shade200,
-                            semanticLabel: isLocked
-                                ? FlutterI18n.translate(
-                                    context, 'resins.locked')
-                                : FlutterI18n.translate(context, 'resins.edit'),
-                          ),
-                          const SizedBox(width: 7),
-                          Text(
-                            FlutterI18n.translate(context, 'resins.edit'),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade200,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

@@ -684,7 +684,12 @@
     "processingFile": "Elaborazione metadati…",
     "promptStartingExposure": "Imposta l'esposizione iniziale",
     "promptExposureIncrement": "Imposta l'incremento di esposizione",
-    "secondsUnit": "secondi"
+    "secondsUnit": "secondi",
+    "promptSource": "Partire da un template o da un profilo esistente?",
+    "helpSource": "I template sono i profili di fabbrica.",
+    "sourceExisting": "Profilo esistente",
+    "wizardIntro": "Questa procedura guidata ti accompagna nella calibrazione.",
+    "wizardIntroDetail": "Vengono stampati pezzi di prova con esposizioni crescenti. Scegli il migliore e il suo tempo di esposizione viene salvato nel profilo della resina."
   },
   "editResin": {
     "profileSaved": "Profilo salvato",

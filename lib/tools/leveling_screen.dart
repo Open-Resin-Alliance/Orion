@@ -21,6 +21,7 @@ import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
+import 'package:orion/util/overlay_route.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
 import 'package:orion/tools/athena/leveling_settings_screen.dart';
 import 'package:orion/tools/athena/verify_leveling_screen.dart'
@@ -78,7 +79,7 @@ class LevelingScreen extends StatelessWidget {
                               context, 'leveling.notAvailable'),
                       onPressed: assistedEnabled
                           ? () => Navigator.of(context).push(
-                                _buildOverlayRoute(
+                                buildOverlayRoute(
                                   Athena2LevelingWizard(
                                       config: levelingConfig),
                                 ),
@@ -98,7 +99,7 @@ class LevelingScreen extends StatelessWidget {
                       enabled: isPrinterLeveled(),
                       tint: GlassButtonTint.neutral,
                       onPressed: () => Navigator.of(context).push(
-                        _buildOverlayRoute(const VerifyLevelingScreen()),
+                        buildOverlayRoute(const VerifyLevelingScreen()),
                       ),
                     ),
                   ),
@@ -285,7 +286,7 @@ class LevelingScreen extends StatelessWidget {
         }
         if (!context.mounted) return;
         Navigator.of(context).push(
-          _buildOverlayRoute(const ManualLevelingScreen()),
+          buildOverlayRoute(const ManualLevelingScreen()),
         );
       },
       style: ElevatedButton.styleFrom(
@@ -310,7 +311,7 @@ class LevelingScreen extends StatelessWidget {
       tint: GlassButtonTint.neutral,
       onPressed: () {
         Navigator.of(context).push(
-          _buildOverlayRoute(const LevelingSettingsScreen()),
+          buildOverlayRoute(const LevelingSettingsScreen()),
         );
       },
       style: ElevatedButton.styleFrom(
@@ -331,19 +332,3 @@ class LevelingScreen extends StatelessWidget {
   }
 }
 
-PageRouteBuilder<T> _buildOverlayRoute<T>(Widget child) {
-  return PageRouteBuilder<T>(
-    opaque: false,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.35),
-    transitionDuration: const Duration(milliseconds: 300),
-    reverseTransitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (_, __, ___) => child,
-    transitionsBuilder: (_, animation, __, child) {
-      return FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        child: child,
-      );
-    },
-  );
-}

@@ -684,7 +684,12 @@
     "processingFile": "Datei-Metadaten werden verarbeitet…",
     "promptStartingExposure": "Bitte legen Sie die Startbelichtung fest",
     "promptExposureIncrement": "Bitte legen Sie die Belichtungssteigerung fest",
-    "secondsUnit": "Sekunden"
+    "secondsUnit": "Sekunden",
+    "promptSource": "Möchten Sie mit einer Vorlage oder einem vorhandenen Profil starten?",
+    "helpSource": "Vorlagen sind die Werksprofile.",
+    "sourceExisting": "Vorhandenes Profil",
+    "wizardIntro": "Dieser Assistent führt Sie durch die Kalibrierung.",
+    "wizardIntroDetail": "Es werden Teststücke mit steigender Belichtung gedruckt. Sie wählen das beste aus, dessen Belichtungszeit wird im Harzprofil gespeichert."
   },
   "editResin": {
     "profileSaved": "Profil gespeichert",

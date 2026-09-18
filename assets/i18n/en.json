@@ -684,7 +684,12 @@
         "processingFile": "Processing file metadata...",
         "promptStartingExposure": "Please set the starting exposure",
         "promptExposureIncrement": "Please set the exposure increment",
-        "secondsUnit": "seconds"
+        "secondsUnit": "seconds",
+        "promptSource": "Start from a template or an existing profile?",
+        "helpSource": "Templates are the factory profiles.",
+        "sourceExisting": "Existing Profile",
+        "wizardIntro": "This wizard will guide you through calibration.",
+        "wizardIntroDetail": "Test pieces are printed at increasing exposures. You pick the best one, and its exposure time is saved to the resin profile."
     },
     "editResin": {
         "profileSaved": "Profile Saved",

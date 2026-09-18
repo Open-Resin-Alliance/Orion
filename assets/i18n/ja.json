@@ -684,7 +684,12 @@
     "processingFile": "ファイルメタデータ処理中…",
     "promptStartingExposure": "開始露光時間を設定してください",
     "promptExposureIncrement": "露光時間の増加量を設定してください",
-    "secondsUnit": "秒"
+    "secondsUnit": "秒",
+    "promptSource": "テンプレートから始めますか、それとも既存のプロファイルから始めますか？",
+    "helpSource": "テンプレートは工場出荷時のプロファイルです。",
+    "sourceExisting": "既存のプロファイル",
+    "wizardIntro": "このウィザードが較正を順番に案内します。",
+    "wizardIntroDetail": "露光時間を変えながらテストピースを印刷します。最適なものを選ぶと、その露光時間がレジンプロファイルに保存されます。"
   },
   "editResin": {
     "profileSaved": "プロファイル保存完了",

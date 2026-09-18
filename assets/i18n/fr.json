@@ -684,7 +684,12 @@
     "processingFile": "Traitement des métadonnées…",
     "promptStartingExposure": "Définissez l'exposition de départ",
     "promptExposureIncrement": "Définissez l'incrément d'exposition",
-    "secondsUnit": "secondes"
+    "secondsUnit": "secondes",
+    "promptSource": "Partir d'un modèle ou d'un profil existant ?",
+    "helpSource": "Les modèles sont les profils d'usine.",
+    "sourceExisting": "Profil existant",
+    "wizardIntro": "Cet assistant vous guidera tout au long de la calibration.",
+    "wizardIntroDetail": "Des pièces d'essai sont imprimées à des expositions croissantes. Vous choisissez la meilleure et son temps d'exposition est enregistré dans le profil de résine."
   },
   "editResin": {
     "profileSaved": "Profil enregistré",

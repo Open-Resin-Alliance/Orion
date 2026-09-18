@@ -29,66 +29,114 @@ import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/calibration_progress_overlay.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/util/overlay_route.dart';
 import 'package:orion/widgets/selection_screens.dart';
 import 'package:orion/widgets/zoom_value_editor_dialog.dart';
 import 'package:orion/util/orion_config.dart';
 
-class CalibrationScreen extends StatefulWidget {
+/// The calibration tab: what the wizard is for, and the way into it. The setup
+/// itself is presented over the shell (see [buildOverlayRoute]), so it gets the
+/// whole screen instead of the shell's app bar and bottom navigation.
+class CalibrationScreen extends StatelessWidget {
   const CalibrationScreen({super.key});
 
   @override
-  CalibrationScreenState createState() => CalibrationScreenState();
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 20),
+              Text(
+                FlutterI18n.translate(context, 'calibration.wizardIntro'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                FlutterI18n.translate(context, 'calibration.wizardIntroDetail'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  height: 1.4,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                ),
+              ),
+              const SizedBox(height: OrionSpacing.controlGap + 12),
+              SizedBox(
+                width: 320,
+                child: GlassButton(
+                  tint: GlassButtonTint.positive,
+                  onPressed: () => Navigator.of(context).push(
+                    buildOverlayRoute(const CalibrationWizardScreen()),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 65),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        PhosphorIcon(PhosphorIcons.arrowRight(), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          FlutterI18n.translate(context, 'calibration.start'),
+                          style: const TextStyle(
+                              fontSize: 21, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The calibration setup, presented over the shell by [CalibrationScreen].
+class CalibrationWizardScreen extends StatefulWidget {
+  const CalibrationWizardScreen({super.key});
+
+  @override
+  State<CalibrationWizardScreen> createState() =>
+      _CalibrationWizardScreenState();
 }
 
 /// The calibration workflow: pick the resin, pick the model, set the exposure.
-enum _CalibrationStep { resin, model, startingExposure, exposureIncrement }
+enum _CalibrationStep {
+  source,
+  resin,
+  model,
+  startingExposure,
+  exposureIncrement
+}
 
-class CalibrationScreenState extends State<CalibrationScreen> {
+/// Where the profile being calibrated comes from: a factory template, or one of
+/// the user's own profiles.
+enum _ResinSource { template, existing }
+
+class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
   final _log = Logger('CalibrationScreen');
-  _CalibrationStep _step = _CalibrationStep.resin;
+  _CalibrationStep _step = _CalibrationStep.source;
 
+  /// Null until the first step is answered.
+  _ResinSource? _resinSource;
 
   /// The height every step's control occupies.
   static const double _controlHeight = 88.0;
-
-  /// The changing part of a step: its header and its control, cross-faded the
-  /// way the rest of Orion cross-fades a step change. The actions below stay
-  /// outside it, so they hold still.
-  Widget _buildStepBody(
-    ResinsProvider provider,
-    List<ResinProfile> resins,
-    bool isResinsLoading,
-    Size slot,
-  ) {
-    // The header holds the top of the step and scales down rather than pushing
-    // the control or the actions out of the window; the control then centres
-    // itself in whatever room is left between the header and the actions.
-    final headerMaxHeight =
-        (slot.height - _controlHeight).clamp(0.0, double.infinity);
-    return Column(
-      key: ValueKey(_step),
-      children: [
-        // Breathing room under the app bar before the step's own text.
-        const SizedBox(height: 12),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: headerMaxHeight),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.topCenter,
-            child: SizedBox(
-              width: slot.width,
-              child: _buildStepHeader(),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Center(
-            child: _buildStepContent(provider, resins, isResinsLoading),
-          ),
-        ),
-      ],
-    );
-  }
 
   /// The 80%-wide guide column, anchored so tests can assert that the steps do
   /// not shift under each other.
@@ -144,9 +192,9 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   @override
   Widget build(BuildContext context) {
     final resinsProvider = Provider.of<ResinsProvider>(context);
-    // Use provider's user-visible resin list so locked/vendor profiles
-    // (e.g. NanoDLP AFP templates) are hidden from calibration flows.
-    final resins = resinsProvider.userResins;
+    // Locked (factory) profiles are offered here too: they can be calibrated
+    // even though they cannot be edited.
+    final resins = resinsProvider.resins;
     final hasResins = resins.isNotEmpty;
     final isResinsLoading = resinsProvider.isLoading && !hasResins;
 
@@ -165,20 +213,21 @@ class CalibrationScreenState extends State<CalibrationScreen> {
       }
     }
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Padding(
-        padding: EdgeInsets.only(
-          left: OrionSpacing.screenHorizontal - 4.0,
-          right: OrionSpacing.screenHorizontal - 4.0,
-          top: OrionSpacing.settingsScreenPaddingTightTop.top,
-          bottom: OrionSpacing.screenBottomNavClearance,
-        ),
-        child: Center(
-          child: FractionallySizedBox(
+    // Opaque, as the leveling wizard is: the shell stays behind the barrier but
+    // nothing of it shows through the wizard's own surface.
+    final isGlass =
+        Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
+    return GlassApp(
+      child: Scaffold(
+        backgroundColor: isGlass
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.surface,
+        body: Padding(
+          // Matching the pre-flight page the wizard hands over to.
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: LayoutBuilder(
             key: _guideColumnKey,
-            widthFactor: 0.80,
-            child: LayoutBuilder(builder: (context, constraints) {
+            builder: (context, constraints) {
               return Column(
                 children: [
                   Expanded(
@@ -193,23 +242,62 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                           isResinsLoading, constraints.biggest),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _buildStepActions(),
-                  const SizedBox(height: 12),
                 ],
               );
-            }),
+            },
           ),
         ),
       ),
     );
   }
 
+  /// The changing part of a step: its header and its control, cross-faded the
+  /// way the rest of Orion cross-fades a step change. The actions below stay
+  /// outside it, so they hold still.
+  Widget _buildStepBody(
+    ResinsProvider provider,
+    List<ResinProfile> resins,
+    bool isResinsLoading,
+    Size slot,
+  ) {
+    // The header holds the top of the step and scales down rather than pushing
+    // the control or the actions out of the window; the control then centres
+    // itself in whatever room is left between the header and the actions.
+    final headerMaxHeight =
+        (slot.height - _controlHeight).clamp(0.0, double.infinity);
+    return Column(
+      key: ValueKey(_step),
+      children: [
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: headerMaxHeight),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: slot.width,
+              child: _buildStepHeader(),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: _buildStepContent(provider, resins, isResinsLoading),
+          ),
+        ),
+      ],
+    );
+  }
+
   /// The step's header: what to do, then why it matters.
   Widget _buildStepHeader() {
     final (promptKey, helpKey) = switch (_step) {
-      // Only the exposure steps carry an explainer: the ones that set a value
-      // the user has to understand.
+      // Only the steps that need it carry an explainer.
+      _CalibrationStep.source => (
+          'calibration.promptSource',
+          'calibration.helpSource'
+        ),
       _CalibrationStep.resin => ('calibration.promptResin', null),
       _CalibrationStep.model => ('calibration.promptModel', null),
       _CalibrationStep.startingExposure => (
@@ -228,21 +316,23 @@ class CalibrationScreenState extends State<CalibrationScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 24,
-            fontWeight: FontWeight.w600,
-            height: 1.3,
-            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
         if (helpKey != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             FlutterI18n.translate(context, helpKey),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 17,
-              height: 1.35,
-              color:
-                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 20,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
             ),
           ),
         ],
@@ -251,9 +341,11 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   }
 
   /// The control the current step asks for.
-  Widget _buildStepContent(
-      ResinsProvider provider, List<ResinProfile> resins, bool isResinsLoading) {
+  Widget _buildStepContent(ResinsProvider provider, List<ResinProfile> resins,
+      bool isResinsLoading) {
     switch (_step) {
+      case _CalibrationStep.source:
+        return _buildSourceStep(resins);
       case _CalibrationStep.resin:
         return _buildResinStep(resins, isResinsLoading);
       case _CalibrationStep.model:
@@ -311,6 +403,94 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     );
   }
 
+  /// The profiles the chosen source offers: factory templates, or the user's
+  /// own profiles.
+  List<ResinProfile> _sourceResins(List<ResinProfile> resins) {
+    final templates = _resinSource == _ResinSource.template;
+    return resins.where((r) => r.locked == templates).toList();
+  }
+
+  /// Step 1: which pool of profiles to pick from next.
+  Widget _buildSourceStep(List<ResinProfile> resins) {
+    return SizedBox(
+      height: _controlHeight,
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildSourceCard(
+              icon: PhosphorIcons.factory(),
+              label: FlutterI18n.translate(context, 'resins.template'),
+              source: _ResinSource.template,
+              enabled: resins.any((r) => r.locked),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSourceCard(
+              icon: PhosphorIcons.flask(),
+              label:
+                  FlutterI18n.translate(context, 'calibration.sourceExisting'),
+              source: _ResinSource.existing,
+              enabled: resins.any((r) => !r.locked),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSourceCard({
+    required IconData icon,
+    required String label,
+    required _ResinSource source,
+    required bool enabled,
+  }) {
+    final selected = _resinSource == source;
+    final accent = selected ? Colors.green.shade400 : null;
+    return GlassCard(
+      outlined: true,
+      margin: EdgeInsets.zero,
+      color: selected ? Colors.green.withValues(alpha: 0.10) : null,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: !enabled
+            ? null
+            : () => setState(() {
+                  _resinSource = source;
+                  // A profile from the other pool is no longer on offer.
+                  if (_selectedResin != null &&
+                      _selectedResin!.locked !=
+                          (source == _ResinSource.template)) {
+                    _selectedResin = null;
+                  }
+                }),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PhosphorIcon(
+                icon,
+                size: 22,
+                color: enabled ? (accent ?? Colors.grey.shade400) : Colors.grey,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: enabled ? accent : Colors.grey.shade600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// The unit the exposure cards and their editors use.
   String get _secondsUnit =>
       FlutterI18n.translate(context, 'calibration.secondsUnit');
@@ -331,8 +511,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
             ? null
             : ResinChip(
                 icon: PhosphorIcons.stack(),
-                label: FlutterI18n.translate(
-                    context, 'resins.layerHeightChip',
+                label: FlutterI18n.translate(context, 'resins.layerHeightChip',
                     translationParams: {
                       'value': formatResinChipNumber(layerHeightUm)
                     }),
@@ -350,7 +529,7 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         fullscreenDialog: true,
         builder: (context) => ResinProfileSelectionScreen(
           title: FlutterI18n.translate(context, 'calibration.selectResin'),
-          resins: resins,
+          resins: _sourceResins(resins),
           selectedResinKey: _selectedResin == null
               ? null
               : _selectedResin!.path ?? _selectedResin!.name,
@@ -384,9 +563,18 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   /// wrapping, so a long translation cannot move the layout either.
   Widget _buildStepActions() {
     final isLast = _step == _CalibrationStep.exposureIncrement;
+    // Every step has to be answered before it lets go.
+    final canAdvance = switch (_step) {
+      _CalibrationStep.source => _resinSource != null,
+      _CalibrationStep.resin ||
+      _CalibrationStep.exposureIncrement =>
+        _selectedResin != null,
+      _CalibrationStep.model || _CalibrationStep.startingExposure => true,
+    };
 
     Widget actionButton({
       required GlassButtonTint tint,
+      required IconData icon,
       required VoidCallback? onPressed,
       required String label,
     }) {
@@ -399,38 +587,53 @@ class CalibrationScreenState extends State<CalibrationScreen> {
         ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text(label, style: const TextStyle(fontSize: 22)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PhosphorIcon(icon, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     final primary = actionButton(
       tint: GlassButtonTint.positive,
-      onPressed: isLast
-          ? (_selectedResin == null ? null : _startCalibration)
-          : _advanceStep,
+      icon: isLast ? PhosphorIcons.checkCircle() : PhosphorIcons.arrowRight(),
+      onPressed:
+          canAdvance ? (isLast ? _startCalibration : _advanceStep) : null,
       label: FlutterI18n.translate(
           context, isLast ? 'calibration.start' : 'common.next'),
     );
 
-    if (_step == _CalibrationStep.resin) {
-      return primary;
-    }
+    // The first step has nothing to go back to, so it leaves the wizard.
+    final isFirst = _step.index == 0;
 
     return Row(
       children: [
         Expanded(
           child: actionButton(
-            tint: GlassButtonTint.negative,
-            onPressed: _previousStep,
-            label: FlutterI18n.translate(context, 'common.back'),
+            tint: isFirst ? GlassButtonTint.negative : GlassButtonTint.neutral,
+            icon: isFirst ? PhosphorIcons.x() : PhosphorIcons.arrowLeft(),
+            onPressed: isFirst ? _cancelWizard : _previousStep,
+            label: FlutterI18n.translate(
+                context, isFirst ? 'common.cancel' : 'common.back'),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(child: primary),
       ],
     );
   }
+
+  /// Leaves the wizard without starting anything.
+  void _cancelWizard() => Navigator.of(context).maybePop();
 
   void _advanceStep() {
     if (_step == _CalibrationStep.exposureIncrement) return;
