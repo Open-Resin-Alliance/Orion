@@ -689,7 +689,8 @@
     "helpSource": "I template sono i profili di fabbrica.",
     "sourceExisting": "Profilo esistente",
     "wizardIntro": "Questa procedura guidata ti accompagna nella calibrazione.",
-    "wizardIntroDetail": "Vengono stampati pezzi di prova con esposizioni crescenti. Scegli il migliore e il suo tempo di esposizione viene salvato nel profilo della resina."
+    "wizardIntroDetail": "Vengono stampati pezzi di prova con esposizioni crescenti. Scegli il migliore e il suo tempo di esposizione viene salvato nel profilo della resina.",
+    "promptTemplate": "Seleziona qui sotto il profilo template che vuoi usare per la calibrazione"
   },
   "editResin": {
     "profileSaved": "Profilo salvato",

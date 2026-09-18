@@ -689,7 +689,8 @@
     "helpSource": "模板是出厂配置。",
     "sourceExisting": "现有配置",
     "wizardIntro": "本向导将引导你完成校准。",
-    "wizardIntroDetail": "校准会以递增的曝光时间打印测试件。你选出最佳的一件后，其曝光时间会保存到树脂配置中。"
+    "wizardIntroDetail": "校准会以递增的曝光时间打印测试件。你选出最佳的一件后，其曝光时间会保存到树脂配置中。",
+    "promptTemplate": "请在下方选择要用于校准的模板配置"
   },
   "editResin": {
     "profileSaved": "配置已保存",

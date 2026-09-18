@@ -689,7 +689,8 @@
     "helpSource": "Las plantillas son los perfiles de fábrica.",
     "sourceExisting": "Perfil existente",
     "wizardIntro": "Este asistente le guiará por la calibración.",
-    "wizardIntroDetail": "Se imprimen piezas de prueba con exposiciones crecientes. Usted elige la mejor y su tiempo de exposición se guarda en el perfil de resina."
+    "wizardIntroDetail": "Se imprimen piezas de prueba con exposiciones crecientes. Usted elige la mejor y su tiempo de exposición se guarda en el perfil de resina.",
+    "promptTemplate": "Seleccione abajo el perfil de plantilla que desea usar para la calibración"
   },
   "editResin": {
     "profileSaved": "Perfil guardado",

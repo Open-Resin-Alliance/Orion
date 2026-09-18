@@ -689,7 +689,8 @@
     "helpSource": "Vorlagen sind die Werksprofile.",
     "sourceExisting": "Vorhandenes Profil",
     "wizardIntro": "Dieser Assistent führt Sie durch die Kalibrierung.",
-    "wizardIntroDetail": "Es werden Teststücke mit steigender Belichtung gedruckt. Sie wählen das beste aus, dessen Belichtungszeit wird im Harzprofil gespeichert."
+    "wizardIntroDetail": "Es werden Teststücke mit steigender Belichtung gedruckt. Sie wählen das beste aus, dessen Belichtungszeit wird im Harzprofil gespeichert.",
+    "promptTemplate": "Bitte wählen Sie unten das Vorlagenprofil aus, das Sie für die Kalibrierung verwenden möchten"
   },
   "editResin": {
     "profileSaved": "Profil gespeichert",

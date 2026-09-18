@@ -135,6 +135,20 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
   /// Null until the first step is answered.
   _ResinSource? _resinSource;
 
+  /// Set while the printer holds only one kind of profile: there is nothing to
+  /// ask, so the source step is not part of the walk.
+  bool _sourceSkipped = false;
+
+  /// The steps this session walks.
+  List<_CalibrationStep> get _steps => _sourceSkipped
+      ? const [
+          _CalibrationStep.resin,
+          _CalibrationStep.model,
+          _CalibrationStep.startingExposure,
+          _CalibrationStep.exposureIncrement,
+        ]
+      : _CalibrationStep.values;
+
   /// The height every step's control occupies.
   static const double _controlHeight = 88.0;
 
@@ -152,6 +166,21 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
     final count =
         _selectedModel?.testPiecesCount ?? _selectedModel?.models ?? 6;
     return count > 0 ? count : 6;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final resins = Provider.of<ResinsProvider>(context).resins;
+    final hasTemplates = resins.any((r) => r.locked);
+    final hasExisting = resins.any((r) => !r.locked);
+    _sourceSkipped = hasTemplates != hasExisting;
+    if (!_sourceSkipped) return;
+    _setSource(
+        hasTemplates ? _ResinSource.template : _ResinSource.existing);
+    if (_step == _CalibrationStep.source) {
+      _step = _CalibrationStep.resin;
+    }
   }
 
   @override
@@ -298,7 +327,13 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
           'calibration.promptSource',
           'calibration.helpSource'
         ),
-      _CalibrationStep.resin => ('calibration.promptResin', null),
+      // The resin step says which pool it is drawing from.
+      _CalibrationStep.resin => (
+          _resinSource == _ResinSource.template
+              ? 'calibration.promptTemplate'
+              : 'calibration.promptResin',
+          null
+        ),
       _CalibrationStep.model => ('calibration.promptModel', null),
       _CalibrationStep.startingExposure => (
           'calibration.promptStartingExposure',
@@ -403,6 +438,15 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
     );
   }
 
+  /// Switches pools, dropping a selection the new pool does not hold.
+  void _setSource(_ResinSource source) {
+    _resinSource = source;
+    if (_selectedResin != null &&
+        _selectedResin!.locked != (source == _ResinSource.template)) {
+      _selectedResin = null;
+    }
+  }
+
   /// The profiles the chosen source offers: factory templates, or the user's
   /// own profiles.
   List<ResinProfile> _sourceResins(List<ResinProfile> resins) {
@@ -453,17 +497,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
       color: selected ? Colors.green.withValues(alpha: 0.10) : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: !enabled
-            ? null
-            : () => setState(() {
-                  _resinSource = source;
-                  // A profile from the other pool is no longer on offer.
-                  if (_selectedResin != null &&
-                      _selectedResin!.locked !=
-                          (source == _ResinSource.template)) {
-                    _selectedResin = null;
-                  }
-                }),
+        onTap: !enabled ? null : () => setState(() => _setSource(source)),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -562,7 +596,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
   /// alone. Both are a fixed 65pt tall and scale their label down rather than
   /// wrapping, so a long translation cannot move the layout either.
   Widget _buildStepActions() {
-    final isLast = _step == _CalibrationStep.exposureIncrement;
+    final isLast = _steps.last == _step;
     // Every step has to be answered before it lets go.
     final canAdvance = switch (_step) {
       _CalibrationStep.source => _resinSource != null,
@@ -613,7 +647,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
     );
 
     // The first step has nothing to go back to, so it leaves the wizard.
-    final isFirst = _step.index == 0;
+    final isFirst = _steps.first == _step;
 
     return Row(
       children: [
@@ -636,13 +670,17 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
   void _cancelWizard() => Navigator.of(context).maybePop();
 
   void _advanceStep() {
-    if (_step == _CalibrationStep.exposureIncrement) return;
-    setState(() => _step = _CalibrationStep.values[_step.index + 1]);
+    final steps = _steps;
+    final i = steps.indexOf(_step);
+    if (i < 0 || i >= steps.length - 1) return;
+    setState(() => _step = steps[i + 1]);
   }
 
   void _previousStep() {
-    if (_step.index == 0) return;
-    setState(() => _step = _CalibrationStep.values[_step.index - 1]);
+    final steps = _steps;
+    final i = steps.indexOf(_step);
+    if (i <= 0) return;
+    setState(() => _step = steps[i - 1]);
   }
 
   /// One tappable value card. With no [title] the value stands alone, centred —

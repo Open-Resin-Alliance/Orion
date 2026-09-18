@@ -689,7 +689,8 @@
     "helpSource": "Templates zijn de fabrieksprofielen.",
     "sourceExisting": "Bestaand profiel",
     "wizardIntro": "Deze wizard leidt je door de kalibratie.",
-    "wizardIntroDetail": "Er worden teststukken geprint met oplopende belichting. Je kiest de beste en de bijbehorende belichtingstijd wordt opgeslagen in het harsprofiel."
+    "wizardIntroDetail": "Er worden teststukken geprint met oplopende belichting. Je kiest de beste en de bijbehorende belichtingstijd wordt opgeslagen in het harsprofiel.",
+    "promptTemplate": "Selecteer hieronder het templateprofiel dat je voor de kalibratie wilt gebruiken"
   },
   "editResin": {
     "profileSaved": "Profiel opgeslagen",

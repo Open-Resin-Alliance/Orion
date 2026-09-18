@@ -689,7 +689,8 @@
     "helpSource": "Les modèles sont les profils d'usine.",
     "sourceExisting": "Profil existant",
     "wizardIntro": "Cet assistant vous guidera tout au long de la calibration.",
-    "wizardIntroDetail": "Des pièces d'essai sont imprimées à des expositions croissantes. Vous choisissez la meilleure et son temps d'exposition est enregistré dans le profil de résine."
+    "wizardIntroDetail": "Des pièces d'essai sont imprimées à des expositions croissantes. Vous choisissez la meilleure et son temps d'exposition est enregistré dans le profil de résine.",
+    "promptTemplate": "Sélectionnez ci-dessous le profil modèle que vous souhaitez utiliser pour la calibration"
   },
   "editResin": {
     "profileSaved": "Profil enregistré",

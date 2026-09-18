@@ -689,7 +689,8 @@
         "helpSource": "Templates are the factory profiles.",
         "sourceExisting": "Existing Profile",
         "wizardIntro": "This wizard will guide you through calibration.",
-        "wizardIntroDetail": "Test pieces are printed at increasing exposures. You pick the best one, and its exposure time is saved to the resin profile."
+        "wizardIntroDetail": "Test pieces are printed at increasing exposures. You pick the best one, and its exposure time is saved to the resin profile.",
+        "promptTemplate": "Please select the template profile you would like to use for calibration below"
     },
     "editResin": {
         "profileSaved": "Profile Saved",

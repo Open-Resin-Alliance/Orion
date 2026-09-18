@@ -69,7 +69,7 @@ class _FakeResinsProvider extends ResinsProvider {
   @override
   bool get isLoading => false;
 
-  static final _locked = ResinProfile('Factory Profile',
+  static final locked = ResinProfile('Factory Profile',
       path: '/profile/edit/simple/7',
       meta: {'LayerHeight': 0.05},
       locked: true);
@@ -78,7 +78,7 @@ class _FakeResinsProvider extends ResinsProvider {
   List<ResinProfile> get userResins => _resins;
 
   @override
-  List<ResinProfile> get resins => [..._resins, _locked];
+  List<ResinProfile> get resins => [..._resins, locked];
 
   @override
   List<CalibrationModel> get calibrationModels => _models;
@@ -102,6 +102,15 @@ class _FakeResinsProvider extends ResinsProvider {
   void setSelectedCalibrationModelId(int? id) {}
 }
 
+/// A printer whose profiles are all factory templates.
+class _TemplatesOnlyProvider extends _FakeResinsProvider {
+  @override
+  List<ResinProfile> get resins => [_FakeResinsProvider.locked];
+
+  @override
+  ResinProfile? getRecommendedResin([CalibrationModel? model]) => null;
+}
+
 final _backend = _StubBackend();
 
 /// Disposes the app-bar providers and drains their polling timers, which the
@@ -122,7 +131,8 @@ class _Harness {
   }
 }
 
-Future<_Harness> _pumpCalibration(WidgetTester tester) async {
+Future<_Harness> _pumpCalibration(WidgetTester tester,
+    {ResinsProvider? provider}) async {
   BackendService.debugSetSharedDelegate(_backend);
   final status = StatusProvider(client: _backend);
   final analytics = AnalyticsProvider(client: _backend);
@@ -141,7 +151,7 @@ Future<_Harness> _pumpCalibration(WidgetTester tester) async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider<ResinsProvider>(
-            create: (_) => _FakeResinsProvider()),
+            create: (_) => provider ?? _FakeResinsProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider<StatusProvider>.value(value: status),
         ChangeNotifierProvider<AnalyticsProvider>.value(value: analytics),
@@ -165,6 +175,38 @@ Future<_Harness> _pumpCalibration(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('calibration skips the source step when only templates exist',
+      (WidgetTester tester) async {
+    final harness = await _pumpCalibration(tester,
+        provider: _TemplatesOnlyProvider());
+    try {
+      await tester.tap(find.text('Start Calibration'));
+      await tester.pumpAndSettle();
+
+      // Nothing to ask: the wizard opens on the resin step, asking for a
+      // template, and the first step still offers a way out.
+      expect(find.text('Start from a template or an existing profile?'),
+          findsNothing);
+      expect(
+          find.text(
+              'Please select the template profile you would like to use for calibration below'),
+          findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Back'), findsNothing);
+      expect(find.text('Select Resin'), findsOneWidget);
+
+      await tester.tap(find.text('Select Resin'));
+      await tester.pumpAndSettle();
+      expect(find.text('Factory Profile'), findsOneWidget);
+      expect(find.text('Standard Resin'), findsNothing);
+      await tester.tap(find.text('Factory Profile'));
+      await tester.pumpAndSettle();
+      expect(find.text('Factory Profile'), findsOneWidget);
+    } finally {
+      await harness.dispose(tester);
+    }
+  });
+
   testWidgets('calibration walks source, resin, model, exposure, increment',
       (WidgetTester tester) async {
     final harness = await _pumpCalibration(tester);
@@ -274,7 +316,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
-    expect(find.text('Select Resin'), findsOneWidget);
+    // The step's wording follows the pool too.
+    expect(
+        find.text(
+            'Please select the template profile you would like to use for calibration below'),
+        findsOneWidget);
     await tester.tap(find.text('Select Resin'));
     await tester.pumpAndSettle();
     expect(find.text('Factory Profile'), findsOneWidget);
@@ -286,10 +332,11 @@ void main() {
 
     await tester.tap(find.text('Next'));
     await tester.pump(const Duration(milliseconds: 100));
-    // Mid-transition both pages are on screen, cross-fading.
+    // Mid-transition both pages are on screen, cross-fading. The resin step
+    // was reached from the template pool, so it asks for a template.
     expect(
         find.text(
-            'Please select the resin profile you would like to calibrate below'),
+            'Please select the template profile you would like to use for calibration below'),
         findsOneWidget);
     expect(
         find.text(
