@@ -48,6 +48,9 @@ class CalibrationScreenState extends State<CalibrationScreen> {
   _CalibrationStep _step = _CalibrationStep.resin;
 
 
+  /// The height every step's control occupies.
+  static const double _controlHeight = 88.0;
+
   /// The changing part of a step: its header and its control, cross-faded the
   /// way the rest of Orion cross-fades a step change. The actions below stay
   /// outside it, so they hold still.
@@ -55,30 +58,34 @@ class CalibrationScreenState extends State<CalibrationScreen> {
     ResinsProvider provider,
     List<ResinProfile> resins,
     bool isResinsLoading,
-    double headerWidth,
+    Size slot,
   ) {
+    // The header holds the top of the step and scales down rather than pushing
+    // the control or the actions out of the window; the control then centres
+    // itself in whatever room is left between the header and the actions.
+    final headerMaxHeight =
+        (slot.height - _controlHeight).clamp(0.0, double.infinity);
     return Column(
       key: ValueKey(_step),
       children: [
-        // The header is the only part that changes size between steps and it
-        // takes whatever room the control below leaves, scaling its text down
-        // rather than overflowing. So the selector and the actions sit at the
-        // same place on every step, in any window.
-        Expanded(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.bottomCenter,
-              child: SizedBox(
-                width: headerWidth,
-                child: _buildStepHeader(),
-              ),
+        // Breathing room under the app bar before the step's own text.
+        const SizedBox(height: 12),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: headerMaxHeight),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: slot.width,
+              child: _buildStepHeader(),
             ),
           ),
         ),
-        const SizedBox(height: 24),
-        _buildStepContent(provider, resins, isResinsLoading),
+        Expanded(
+          child: Center(
+            child: _buildStepContent(provider, resins, isResinsLoading),
+          ),
+        ),
       ],
     );
   }
@@ -183,12 +190,12 @@ class CalibrationScreenState extends State<CalibrationScreen> {
                         return FadeTransition(opacity: animation, child: child);
                       },
                       child: _buildStepBody(resinsProvider, resins,
-                          isResinsLoading, constraints.maxWidth),
+                          isResinsLoading, constraints.biggest),
                     ),
                   ),
                   const SizedBox(height: 24),
                   _buildStepActions(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
                 ],
               );
             }),

@@ -218,15 +218,21 @@ void main() {
     await tester.tap(find.text('Next'));
     await tester.pump(const Duration(milliseconds: 100));
     // Mid-transition both pages are on screen, cross-fading.
-    expect(find.text('Please select the resin profile you would like to calibrate below'),
+    expect(
+        find.text(
+            'Please select the resin profile you would like to calibrate below'),
         findsOneWidget);
-    expect(find.text('Select the calibration model you would like to print below'),
+    expect(
+        find.text(
+            'Please select the calibration model you would like to print below'),
         findsOneWidget);
     await tester.pumpAndSettle();
 
     // Step 2 is the model: the same compact card, with the preview left to the
     // picker rather than the selector.
-    expect(find.text('Select the calibration model you would like to print below'),
+    expect(
+        find.text(
+            'Please select the calibration model you would like to print below'),
         findsOneWidget);
     // Only the exposure steps explain themselves.
     expect(find.text('The model sets how many test pieces the calibration prints.'),
@@ -250,15 +256,21 @@ void main() {
     expect(find.text('1.00 seconds'), findsOneWidget);
     expect(find.text('Exposure Increment'), findsNothing);
 
-    // A shorter header must not shift anything below it: the selector and the
-    // actions hold the position they had on step 1.
+    // The actions never move, and the control sits midway between the step's
+    // header and them.
     final shorterSelector = tester.getRect(
         find.widgetWithText(GlassCard, '1.00 seconds'));
-    final shorterPrimary = tester.getRect(find.widgetWithText(GlassButton, 'Next'));
-    expect(shorterSelector.top, selector.top);
-    expect(shorterSelector.bottom, selector.bottom);
+    final shorterPrimary =
+        tester.getRect(find.widgetWithText(GlassButton, 'Next'));
     expect(shorterPrimary.top, primary.top);
     expect(shorterPrimary.bottom, primary.bottom);
+    final body = tester.getRect(find.byType(AnimatedSwitcher));
+    // The explainer is the header's last line.
+    final headerBottom = tester
+        .getRect(find.text('Exposure time for the first test piece.'))
+        .bottom;
+    expect(shorterSelector.top - headerBottom,
+        closeTo(body.bottom - shorterSelector.bottom, 0.5));
 
     // Back and the primary action split the column evenly.
     expect(
@@ -269,13 +281,18 @@ void main() {
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
 
-    final lastSelector = tester.getRect(find.widgetWithText(GlassCard, '0.20 seconds'));
+    final lastSelector =
+        tester.getRect(find.widgetWithText(GlassCard, '0.20 seconds'));
     final lastPrimary = tester.getRect(
         find.widgetWithText(GlassButton, 'Start Calibration'));
-    expect(lastSelector.top, selector.top);
-    expect(lastSelector.bottom, selector.bottom);
     expect(lastPrimary.top, primary.top);
     expect(lastPrimary.bottom, primary.bottom);
+    final lastBody = tester.getRect(find.byType(AnimatedSwitcher));
+    final lastHeaderBottom = tester
+        .getRect(find.text('How much exposure increases per test piece.'))
+        .bottom;
+    expect(lastSelector.top - lastHeaderBottom,
+        closeTo(lastBody.bottom - lastSelector.bottom, 0.5));
 
     // Step 4 is the exposure increment, and it starts the print.
     expect(find.text('Please set the exposure increment'), findsOneWidget);
