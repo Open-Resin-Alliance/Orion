@@ -1214,44 +1214,66 @@ class NanoDlpHttpClient implements BackendClient {
 
   @override
   Future<Map<String, dynamic>> emergencyStop() async {
-    // Temporary fix: issue M112 via the manual gcode command instead of the
-    // backend /printer/force-stop endpoint.
-    try {
-      final result = await manualCommand('M112');
-      // Restart the firmware after the emergency stop so the board comes back
-      // up cleanly. Best-effort: the M112 shutdown may already have dropped the
-      // link, but the stop itself has happened, so a failed restart must not
-      // turn a successful emergency stop into a reported failure.
+    // A hard stop is three commands, in this order:
+    //
+    //   1. M112 — the firmware halt. It also drops the Klipper link, so
+    //      anything after it is best-effort;
+    //   2. GET /printer/force-stop — NanoDLP's own stop, which lands even when
+    //      the firmware link is already gone;
+    //   3. FIRMWARE_STOP — leaves the board in a known stopped state.
+    //
+    // Every step is attempted even when an earlier one fails, since a stop is
+    // the one command that must not be abandoned half-issued. Only a run where
+    // all three failed is reported as a failure.
+    Object? firstError;
+    StackTrace? firstStack;
+    Map<String, dynamic>? result;
+
+    Future<void> step(String what, Future<void> Function() run) async {
       try {
-        await manualCommand('FIRMWARE_RESTART');
+        await run();
       } catch (e, st) {
-        _log.warning('NanoDLP emergencyStop FIRMWARE_RESTART error', e, st);
+        _log.warning('NanoDLP emergencyStop $what error', e, st);
+        firstError ??= e;
+        firstStack ??= st;
       }
-      return result;
-    } catch (e, st) {
-      _log.warning('NanoDLP emergencyStop error', e, st);
-      rethrow;
     }
 
+    await step('M112', () async {
+      result = await manualCommand('M112');
+    });
+    await step('force-stop endpoint', () async {
+      // Always issued: it is the stop that lands when M112 already killed the
+      // firmware link. Its result is only the fallback for the return value.
+      final endpointResult = await _commandForceStopEndpoint();
+      result ??= endpointResult;
+    });
+    await step('FIRMWARE_STOP', () async {
+      await manualCommand('FIRMWARE_STOP');
+    });
+
+    final error = firstError;
+    if (result == null && error != null) {
+      Error.throwWithStackTrace(error, firstStack!);
+    }
+    return result ?? NanoManualResult(ok: true).toMap();
   }
 
   /// Command the backend's legacy `/printer/force-stop` endpoint, which hard
-  /// stops the printer. Unlike [emergencyStop] this issues no M112 and does not
-  /// restart the firmware.
+  /// stops the printer without needing the firmware link.
   ///
   /// A non-200 response still means the stop was dispatched, so it is treated
   /// as success rather than a failure.
-  @override
-  Future<Map<String, dynamic>> forceStop() async {
+  Future<Map<String, dynamic>> _commandForceStopEndpoint() async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/printer/force-stop');
-    _log.info('NanoDLP forceStop commanded: $uri');
+    _log.info('NanoDLP force-stop endpoint commanded: $uri');
     final client = _createClient();
     try {
       final resp = await client.get(uri);
       if (resp.statusCode != 200) {
         _log.warning(
-            'NanoDLP forceStop failed as expected: ${resp.statusCode} ${resp.body}');
+            'NanoDLP force-stop endpoint status: ${resp.statusCode} ${resp.body}');
         return NanoManualResult(ok: true).toMap();
       }
       try {
@@ -1265,6 +1287,11 @@ class NanoDlpHttpClient implements BackendClient {
       client.close();
     }
   }
+
+  /// The same hard stop as [emergencyStop] — the caller means the harder stop,
+  /// and the emergency stop already runs the force-stop endpoint.
+  @override
+  Future<Map<String, dynamic>> forceStop() => emergencyStop();
 
   @override
   Future<Map<String, dynamic>> manualHome() async => () async {

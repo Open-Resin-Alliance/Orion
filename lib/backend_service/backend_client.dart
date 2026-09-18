@@ -143,9 +143,11 @@ abstract class BackendClient {
   Future<Map<String, dynamic>> manualCommand(String command);
   Future<Map<String, dynamic>> emergencyStop();
 
-  /// Hard stop the printer through the backend's dedicated force-stop path.
-  /// NanoDLP issues GET /printer/force-stop; backends without such an endpoint
-  /// fall back to a firmware-level halt.
+  /// Hard stop the printer. Callers reach for this when they mean the harder
+  /// stop; it is the same halt as [emergencyStop], which already runs any
+  /// backend-specific force-stop path (NanoDLP's emergency stop issues M112,
+  /// GET /printer/force-stop and FIRMWARE_STOP). Backends may implement it as
+  /// a plain alias.
   Future<Map<String, dynamic>> forceStop();
 
   Future<void> displayTest(String test);

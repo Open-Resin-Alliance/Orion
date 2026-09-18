@@ -230,25 +230,9 @@ class ManualProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> forceStop() async {
-    _log.info('forceStop');
-    // Force stop should override busy state
-    _busy = true;
-    _error = null;
-    notifyListeners();
-    try {
-      await _client.forceStop();
-      _busy = false;
-      notifyListeners();
-      return true;
-    } catch (e, st) {
-      _log.severe('forceStop failed', e, st);
-      _error = e;
-      _busy = false;
-      notifyListeners();
-      return true; // Return true even on error to avoid blocking UI
-    }
-  }
+  /// The Force Stop button in the status screen: the same hard stop as
+  /// [emergencyStop], which is where the sequence lives.
+  Future<bool> forceStop() => emergencyStop();
 
   Future<bool> displayTest(String test) async {
     _log.info('displayTest: $test');
