@@ -1217,7 +1217,17 @@ class NanoDlpHttpClient implements BackendClient {
     // Temporary fix: issue M112 via the manual gcode command instead of the
     // backend /printer/force-stop endpoint.
     try {
-      return await manualCommand('M112');
+      final result = await manualCommand('M112');
+      // Restart the firmware after the emergency stop so the board comes back
+      // up cleanly. Best-effort: the M112 shutdown may already have dropped the
+      // link, but the stop itself has happened, so a failed restart must not
+      // turn a successful emergency stop into a reported failure.
+      try {
+        await manualCommand('FIRMWARE_RESTART');
+      } catch (e, st) {
+        _log.warning('NanoDLP emergencyStop FIRMWARE_RESTART error', e, st);
+      }
+      return result;
     } catch (e, st) {
       _log.warning('NanoDLP emergencyStop error', e, st);
       rethrow;
