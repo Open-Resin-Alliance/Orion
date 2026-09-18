@@ -79,10 +79,10 @@ void main() {
     final header = tester.getRect(find.text('EVALUATION GUIDE'));
     expect(header.top, closeTo(guide.top + 4 + 20, 1.0));
 
-    // ...and the body centres in the space below it.
+    // ...and the body centres on the card as a whole, not on the space the
+    // header leaves behind.
     final first = tester.getRect(find.textContaining('Use the evaluation'));
     final last = tester.getRect(find.textContaining('Read it before'));
-    final availableCentre = (header.bottom + guide.bottom) / 2;
-    expect((first.top + last.bottom) / 2, closeTo(availableCentre, 4.0));
+    expect((first.top + last.bottom) / 2, closeTo(guide.center.dy, 4.0));
   });
 }

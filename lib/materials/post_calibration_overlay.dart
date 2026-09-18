@@ -432,62 +432,59 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 outlined: true,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // The header is an overlay, so the body centres on the card
+                  // as a whole rather than on the space the header leaves.
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Text(
-                        FlutterI18n.translate(
-                            context, 'postCal.evaluationGuide'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: onSurface.withValues(alpha: 0.55),
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // The body centres in whatever space the header leaves,
-                      // and scrolls rather than clipping if a longer
-                      // translation overflows it.
-                      Expanded(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) =>
-                              SingleChildScrollView(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                  minHeight: constraints.maxHeight),
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      FlutterI18n.translate(
-                                          context, 'postCal.guideDesc'),
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color:
-                                            onSurface.withValues(alpha: 0.75),
-                                        height: 1.55,
-                                      ),
+                      LayoutBuilder(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    FlutterI18n.translate(
+                                        context, 'postCal.guideDesc'),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: onSurface.withValues(alpha: 0.75),
+                                      height: 1.55,
                                     ),
-                                    const SizedBox(height: 20),
-                                    _buildGuideItem(
-                                      context,
-                                      FlutterI18n.translate(
-                                          context, 'postCal.scanQr'),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _buildGuideItem(
-                                      context,
-                                      FlutterI18n.translate(
-                                          context, 'postCal.readGuide'),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  _buildGuideItem(
+                                    context,
+                                    FlutterI18n.translate(
+                                        context, 'postCal.scanQr'),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _buildGuideItem(
+                                    context,
+                                    FlutterI18n.translate(
+                                        context, 'postCal.readGuide'),
+                                  ),
+                                ],
                               ),
                             ),
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Text(
+                          FlutterI18n.translate(
+                              context, 'postCal.evaluationGuide'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: onSurface.withValues(alpha: 0.55),
+                            letterSpacing: 1.2,
                           ),
                         ),
                       ),
