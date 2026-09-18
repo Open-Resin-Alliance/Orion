@@ -1214,30 +1214,40 @@ class NanoDlpHttpClient implements BackendClient {
 
   @override
   Future<Map<String, dynamic>> emergencyStop() async {
-    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
-    final uri = Uri.parse('$baseNoSlash/printer/force-stop');
-    _log.info('NanoDLP emergencyStop commanded: $uri');
-    final client = _createClient();
+    // Temporary fix: issue M112 via the manual gcode command instead of the
+    // backend /printer/force-stop endpoint.
     try {
-      final resp = await client.get(uri);
-      if (resp.statusCode != 200) {
-        _log.warning(
-            'NanoDLP emergencyStop failed as expected: ${resp.statusCode} ${resp.body}');
-        // throw Exception('NanoDLP emergencyStop failed: ${resp.statusCode}');
-        client.close();
-        return NanoManualResult(ok: true)
-            .toMap(); // treat non-200 as success, emergency stop should have occurred.
-      }
-      try {
-        final decoded = json.decode(resp.body);
-        final nm = NanoManualResult.fromDynamic(decoded);
-        return nm.toMap();
-      } catch (_) {
-        return NanoManualResult(ok: true).toMap();
-      }
-    } finally {
-      client.close();
+      return await manualCommand('M112');
+    } catch (e, st) {
+      _log.warning('NanoDLP emergencyStop error', e, st);
+      rethrow;
     }
+
+    // Old backend force-stop call, kept for reference in case this needs reverting.
+    // final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    // final uri = Uri.parse('$baseNoSlash/printer/force-stop');
+    // _log.info('NanoDLP emergencyStop commanded: $uri');
+    // final client = _createClient();
+    // try {
+    //   final resp = await client.get(uri);
+    //   if (resp.statusCode != 200) {
+    //     _log.warning(
+    //         'NanoDLP emergencyStop failed as expected: ${resp.statusCode} ${resp.body}');
+    //     // throw Exception('NanoDLP emergencyStop failed: ${resp.statusCode}');
+    //     client.close();
+    //     return NanoManualResult(ok: true)
+    //         .toMap(); // treat non-200 as success, emergency stop should have occurred.
+    //   }
+    //   try {
+    //     final decoded = json.decode(resp.body);
+    //     final nm = NanoManualResult.fromDynamic(decoded);
+    //     return nm.toMap();
+    //   } catch (_) {
+    //     return NanoManualResult(ok: true).toMap();
+    //   }
+    // } finally {
+    //   client.close();
+    // }
   }
 
   @override
