@@ -596,6 +596,8 @@
     "errorBusy": "工作流忙碌中。请稍候重试。",
     "errorSensorUnavailable": "力传感器不可用。请检查传感器后重试。",
     "errorConnectionFailed": "无法连接Athena IoT工作流服务。请检查连接。",
+    "obstructionTitle": "检测到障碍物",
+    "errorObstruction": "请清除打印机上可能阻碍平台移动的异物（如工具、调平垫片或碎屑），然后重试。",
     "errorGeneric": "调平步骤失败。请检查打印机后重试。",
     "measurementsPending": "测量值将在探测完成后显示。",
     "prepareNoMeasurements": "此准备步骤不产生探测测量值。",

@@ -106,6 +106,7 @@ class ForceLevelingWorkflowResponse {
   const ForceLevelingWorkflowResponse({
     required this.result,
     required this.error,
+    this.errorCode,
     this.machineHomed,
     this.measurements,
     this.zOffsetApplied,
@@ -117,8 +118,13 @@ class ForceLevelingWorkflowResponse {
     this.statusCode,
   });
 
+  /// Machine-readable failure identifier, when the backend supplies one
+  /// (e.g. [errorCodeObstruction]).  Empty/null for legacy responses.
+  static const String errorCodeObstruction = 'obstruction';
+
   final bool result;
   final String error;
+  final String? errorCode;
   final bool? machineHomed;
   final ForceProbeMeasurements? measurements;
   final double? zOffsetApplied;
@@ -130,6 +136,10 @@ class ForceLevelingWorkflowResponse {
   final int? statusCode;
 
   bool get hasMeasurements => measurements != null;
+
+  /// The force-monitored approach hit something before the probe started —
+  /// an obstruction on or around the plate, not a leveling problem.
+  bool get isObstruction => errorCode == errorCodeObstruction;
 
   factory ForceLevelingWorkflowResponse.fromJson(
     Map<String, dynamic> json, {
@@ -152,6 +162,7 @@ class ForceLevelingWorkflowResponse {
     return ForceLevelingWorkflowResponse(
       result: toBool(json['result']) ?? false,
       error: json['error']?.toString() ?? '',
+      errorCode: json['error_code']?.toString(),
       machineHomed: toBool(json['machine_homed']),
       measurements: measurementsRaw is Map
           ? ForceProbeMeasurements.fromJson(
@@ -194,6 +205,7 @@ class ForceLevelingWorkflowResponse {
   ForceLevelingWorkflowResponse copyWith({
     bool? result,
     String? error,
+    String? errorCode,
     bool? machineHomed,
     ForceProbeMeasurements? measurements,
     double? zOffsetApplied,
@@ -207,6 +219,7 @@ class ForceLevelingWorkflowResponse {
     return ForceLevelingWorkflowResponse(
       result: result ?? this.result,
       error: error ?? this.error,
+      errorCode: errorCode ?? this.errorCode,
       machineHomed: machineHomed ?? this.machineHomed,
       measurements: measurements ?? this.measurements,
       zOffsetApplied: zOffsetApplied ?? this.zOffsetApplied,
@@ -222,6 +235,7 @@ class ForceLevelingWorkflowResponse {
   Map<String, dynamic> toJson() => {
         'result': result,
         'error': error,
+        'error_code': errorCode,
         'machine_homed': machineHomed,
         'measurements': measurements?.toJson(),
         'z_offset_applied': zOffsetApplied,

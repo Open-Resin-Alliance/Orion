@@ -3965,6 +3965,62 @@ class _IsoMovementWarningState extends State<_IsoMovementWarning>
   }
 }
 
+/// Warning diamond shown when a probe is blocked by an obstruction.  Same
+/// glyph and colour as the update-in-progress screen's warning
+/// ([PhosphorIcons.warningDiamond] in red), but flashing between dim and
+/// bright instead of the overlay's gentle scale pulse — the error needs to
+/// pull the eye from across the room.
+class _ObstructionWarning extends StatefulWidget {
+  const _ObstructionWarning();
+
+  /// Matches the update overlay's warning colour; also used for the heading.
+  static const Color color = Colors.redAccent;
+
+  /// Tuned to read like Keep Clear's pictogram (an SVG declared at width
+  /// 140): the Phosphor glyph carries em padding, so the numeral has to be
+  /// larger than the SVG's to land at the same visual weight.
+  static const double size = 170;
+
+  @override
+  State<_ObstructionWarning> createState() => _ObstructionWarningState();
+}
+
+class _ObstructionWarningState extends State<_ObstructionWarning>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _flash;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+    _flash = Tween<double>(begin: 0.25, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _flash,
+      child: Icon(
+        PhosphorIcons.warningDiamond(),
+        size: _ObstructionWarning.size,
+        color: _ObstructionWarning.color,
+      ),
+    );
+  }
+}
+
 /// Top view of the LCD with the Pro Arm, highlighting the two front
 /// edges that must be made parallel. Base line art is the cropped
 /// a2_lcd_pro_arm top view, dimmed via ColorFilter; the two edge
@@ -4537,25 +4593,37 @@ class _WorkflowPane extends StatelessWidget {
         engine.status != LevelingWorkflowStatus.stepComplete) {
       return const Center(child: SizedBox.shrink());
     }
-    final content = effectivelyRunning
-        ? _buildRunningView(context, primary, step)
-        : isLoosenScrews
-            ? _buildLoosenScrewsView(context, primary)
-            : isAlignPlate
-                ? _buildAlignPlateView(context, primary)
-                : isHexLongEnd
-                    ? _buildHexLongEndView(context, primary)
-                    : isTightenScrews
-                        ? _buildTightenScrewsView(context, primary)
-                        : isAllCornersMeasured
-                            ? _buildAllCornersMeasuredView(context, primary)
-                            : isRemovePuck
-                                ? _buildRemovePuckView(context, primary)
-                                : _buildStepView(context, theme, primary, step);
+    // A probe stopped by an obstruction gets its own alarm screen rather
+    // than the plain step view.
+    final isObstruction = engine.status == LevelingWorkflowStatus.failed &&
+        (engine.lastResponse?.isObstruction ?? false);
+
+    final Widget content;
+    if (isObstruction) {
+      content = _buildObstructionView(context);
+    } else if (effectivelyRunning) {
+      content = _buildRunningView(context, primary, step);
+    } else if (isLoosenScrews) {
+      content = _buildLoosenScrewsView(context, primary);
+    } else if (isAlignPlate) {
+      content = _buildAlignPlateView(context, primary);
+    } else if (isHexLongEnd) {
+      content = _buildHexLongEndView(context, primary);
+    } else if (isTightenScrews) {
+      content = _buildTightenScrewsView(context, primary);
+    } else if (isAllCornersMeasured) {
+      content = _buildAllCornersMeasuredView(context, primary);
+    } else if (isRemovePuck) {
+      content = _buildRemovePuckView(context, primary);
+    } else {
+      content = _buildStepView(context, theme, primary, step);
+    }
     // Unique key per pictogram so Loosen->Align->HexLong->Tighten cross-fades
     // even when they share the same underlying step id (all depend on status==stepComplete).
     final String viewId;
-    if (isLoosenScrews) {
+    if (isObstruction) {
+      viewId = 'obstruction';
+    } else if (isLoosenScrews) {
       viewId = 'loosen';
     } else if (isAlignPlate) {
       viewId = 'align';
@@ -5317,6 +5385,9 @@ class _WorkflowPane extends StatelessWidget {
         step.stepTitle ?? FlutterI18n.translate(context, step.titleKey);
     final instructionStr = step.stepInstruction ??
         FlutterI18n.translate(context, step.instructionKey);
+    final failureNotice = engine.status == LevelingWorkflowStatus.failed
+        ? _buildFailureNotice(context)
+        : null;
 
     // "Place Leveling Spacer" steps get a corner-focused pictogram:
     // bottom half + left 2/3 = FL, bottom+right = FR, top+right = BR,
@@ -5389,6 +5460,7 @@ class _WorkflowPane extends StatelessWidget {
               },
             ),
           ),
+          if (failureNotice != null) failureNotice,
         ],
       );
     }
@@ -5436,8 +5508,81 @@ class _WorkflowPane extends StatelessWidget {
             ),
           ),
         ),
+        if (failureNotice != null) failureNotice,
       ],
     );
+  }
+
+  Widget _buildObstructionView(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _ObstructionWarning(),
+        const SizedBox(height: 32),
+        Text(
+          FlutterI18n.translate(
+              context, 'levelingWorkflow.obstructionTitle'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: _ObstructionWarning.color,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            FlutterI18n.translate(
+                context, 'levelingWorkflow.errorObstruction'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              height: 1.4,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.72),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFailureNotice(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 20, 32, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(PhosphorIcons.warning(), size: 34, color: Colors.orangeAccent),
+          const SizedBox(height: 10),
+          Text(
+            _localizedFailure(context, engine.errorMessage),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.3,
+              color: onSurface.withValues(alpha: 0.78),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The engine reports failures either as an i18n key
+  /// (`levelingWorkflow.*`) or as a raw backend error string; translate the
+  /// former and show the latter verbatim.
+  String _localizedFailure(BuildContext context, String? message) {
+    if (message == null || message.isEmpty) {
+      return FlutterI18n.translate(context, 'levelingWorkflow.errorGeneric');
+    }
+    return message.startsWith('levelingWorkflow.')
+        ? FlutterI18n.translate(context, message)
+        : message;
   }
 }
 

@@ -228,6 +228,7 @@ class LevelingWorkflowEngine extends ChangeNotifier {
         'Leveling step failed: endpoint=${step.endpoint} '
         'busy=${response.busy} sensorUnavailable=${response.sensorUnavailable} '
         'connectionFailed=${response.connectionFailed} status=${response.statusCode} '
+        'errorCode=${response.errorCode} '
         'uiMessage=$_errorMessage rawError="${response.error}"',
       );
     }
@@ -242,6 +243,9 @@ class LevelingWorkflowEngine extends ChangeNotifier {
     if (response.busy) return 'levelingWorkflow.errorBusy';
     if (response.sensorUnavailable) {
       return 'levelingWorkflow.errorSensorUnavailable';
+    }
+    if (response.isObstruction) {
+      return 'levelingWorkflow.errorObstruction';
     }
     if (response.error.trim().isNotEmpty) return response.error;
     return 'levelingWorkflow.errorGeneric';

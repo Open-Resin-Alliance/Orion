@@ -596,6 +596,8 @@
     "errorBusy": "Flujo de trabajo ocupado. Espere y reintente.",
     "errorSensorUnavailable": "Sensor de fuerza no disponible. Verifique el sensor e intente de nuevo.",
     "errorConnectionFailed": "No se puede contactar el servicio Athena IoT. Verifique la conexión.",
+    "obstructionTitle": "Obstrucción detectada",
+    "errorObstruction": "Despeje la impresora de cualquier objeto extraño que pueda obstruir el movimiento de la placa, como herramientas, el separador de nivelación o residuos, y vuelva a intentarlo.",
     "errorGeneric": "Paso de nivelación fallido. Verifique la impresora y reintente.",
     "measurementsPending": "Las mediciones aparecerán después de completar esta sonda.",
     "prepareNoMeasurements": "Este paso de preparación no produce mediciones.",

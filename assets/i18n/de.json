@@ -596,6 +596,8 @@
     "errorBusy": "Workflow beschäftigt. Bitte warten und erneut versuchen.",
     "errorSensorUnavailable": "Kraftsensor nicht verfügbar. Sensor prüfen und erneut versuchen.",
     "errorConnectionFailed": "Athena IoT Workflow-Dienst nicht erreichbar. Verbindung prüfen.",
+    "obstructionTitle": "Hindernis erkannt",
+    "errorObstruction": "Befreien Sie den Drucker von allen Fremdkörpern, die die Bewegung der Bauplatte behindern könnten – zum Beispiel Werkzeuge, das Nivellier-Distanzstück oder Verunreinigungen – und versuchen Sie es danach erneut.",
     "errorGeneric": "Nivellierschritt fehlgeschlagen. Drucker prüfen und erneut versuchen.",
     "measurementsPending": "Messwerte erscheinen nach Abschluss dieser Messung.",
     "prepareNoMeasurements": "Dieser Vorbereitungsschritt erzeugt keine Messwerte.",

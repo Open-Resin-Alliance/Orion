@@ -596,6 +596,8 @@
     "errorBusy": "Workflow occupato. Attendere e riprovare.",
     "errorSensorUnavailable": "Sensore di forza non disponibile. Controllare il sensore e riprovare.",
     "errorConnectionFailed": "Impossibile contattare il servizio Athena IoT. Verificare la connessione.",
+    "obstructionTitle": "Ostruzione rilevata",
+    "errorObstruction": "Liberare la stampante da qualsiasi corpo estraneo che possa ostacolare il movimento della piastra, come utensili, il distanziale di livellamento o detriti, poi riprovare.",
     "errorGeneric": "Passo di livellamento fallito. Verificare la stampante e riprovare.",
     "measurementsPending": "Le misurazioni appariranno dopo il completamento di questa sonda.",
     "prepareNoMeasurements": "Questo passo di preparazione non produce misurazioni.",

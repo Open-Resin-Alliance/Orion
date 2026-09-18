@@ -193,6 +193,37 @@ void main() {
       expect(engine.currentStepIndex, 0);
     });
 
+    test('surfaces an obstruction error code as a localized message',
+        () async {
+      final engine = LevelingWorkflowEngine(
+        runner: (_, {screenType}) async =>
+            ForceLevelingWorkflowResponse.fromJson({
+          'result': false,
+          'error_code': 'obstruction',
+          'error': 'Force-monitored approach triggered before probe start',
+          'machine_homed': true,
+          'triggered': true,
+          'stop_z_mm': 45.2,
+          'target_z_mm': 10.0,
+          'measurements': {
+            'second_stage_trigger_z': null,
+          },
+        }),
+      );
+      final variant = getLevelingConfigForMachine('Athena2')!
+          .variants
+          .firstWhere((v) => v.id == 'pro');
+
+      engine.selectVariant(variant);
+      await engine.runCurrentStep();
+
+      expect(engine.isFailed, isTrue);
+      expect(engine.errorMessage, 'levelingWorkflow.errorObstruction');
+      // The wizard keys its dedicated obstruction screen off this.
+      expect(engine.lastResponse?.isObstruction, isTrue);
+      expect(engine.currentStepIndex, 0);
+    });
+
     test('records offset from the single final recalibration', () async {
       // The Pro variant only calls probe_offset once — as the final
       // recalibration after corner leveling. The initial calibration

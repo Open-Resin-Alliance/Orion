@@ -596,6 +596,8 @@
     "errorBusy": "ワークフローがビジーです。しばらく待ってから再試行してください。",
     "errorSensorUnavailable": "力センサーが利用できません。センサーを確認して再試行してください。",
     "errorConnectionFailed": "Athena IoTワークフローサービスに接続できません。接続を確認してください。",
+    "obstructionTitle": "障害物を検出しました",
+    "errorObstruction": "ビルドプレートの動作を妨げる可能性のある異物（工具、レベリングスペーサー、樹脂の付着やゴミなど）を取り除いてから、再試行してください。",
     "errorGeneric": "レベリングステップが失敗しました。プリンターを確認して再試行してください。",
     "measurementsPending": "この探査が完了すると測定値が表示されます。",
     "prepareNoMeasurements": "この準備ステップは測定値を生成しません。",

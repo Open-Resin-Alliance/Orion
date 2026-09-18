@@ -596,6 +596,8 @@
     "errorBusy": "Workflow occupé. Veuillez patienter puis réessayer.",
     "errorSensorUnavailable": "Capteur de force indisponible. Vérifiez le capteur et réessayez.",
     "errorConnectionFailed": "Impossible de contacter le service Athena IoT. Vérifiez la connexion.",
+    "obstructionTitle": "Obstruction détectée",
+    "errorObstruction": "Dégagez l'imprimante de tout corps étranger susceptible de gêner le déplacement du plateau, comme des outils, la cale de mise à niveau ou des débris, puis réessayez.",
     "errorGeneric": "Étape de nivellement échouée. Vérifiez l'imprimante et réessayez.",
     "measurementsPending": "Les mesures apparaîtront après la fin de cette sonde.",
     "prepareNoMeasurements": "Cette étape de préparation ne produit pas de mesures.",
