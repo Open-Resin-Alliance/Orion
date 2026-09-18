@@ -574,6 +574,12 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>> forceStop() async {
+    await cancelPrint();
+    return {'stopped': true};
+  }
+
+  @override
   Future<void> displayTest(String test) async {}
 
   @override

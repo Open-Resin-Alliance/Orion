@@ -539,6 +539,9 @@ class BackendService implements BackendClient {
   Future<Map<String, dynamic>> emergencyStop() => _delegate.emergencyStop();
 
   @override
+  Future<Map<String, dynamic>> forceStop() => _delegate.forceStop();
+
+  @override
   Future<void> displayTest(String test) => _delegate.displayTest(test);
 
   @override

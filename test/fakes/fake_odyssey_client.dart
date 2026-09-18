@@ -28,6 +28,7 @@ class FakeBackendClient implements BackendClient {
   bool manualHomeCalled = false;
   bool manualCureCalled = false;
   bool displayTestCalled = false;
+  bool forceStopCalled = false;
   String? lastCommand;
 
   bool throwOnMove = false;
@@ -173,6 +174,12 @@ class FakeBackendClient implements BackendClient {
   @override
   Future<Map<String, dynamic>> emergencyStop() async {
     lastCommand = 'M112';
+    return {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> forceStop() async {
+    forceStopCalled = true;
     return {};
   }
 

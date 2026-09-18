@@ -1233,31 +1233,37 @@ class NanoDlpHttpClient implements BackendClient {
       rethrow;
     }
 
-    // Old backend force-stop call, kept for reference in case this needs reverting.
-    // final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
-    // final uri = Uri.parse('$baseNoSlash/printer/force-stop');
-    // _log.info('NanoDLP emergencyStop commanded: $uri');
-    // final client = _createClient();
-    // try {
-    //   final resp = await client.get(uri);
-    //   if (resp.statusCode != 200) {
-    //     _log.warning(
-    //         'NanoDLP emergencyStop failed as expected: ${resp.statusCode} ${resp.body}');
-    //     // throw Exception('NanoDLP emergencyStop failed: ${resp.statusCode}');
-    //     client.close();
-    //     return NanoManualResult(ok: true)
-    //         .toMap(); // treat non-200 as success, emergency stop should have occurred.
-    //   }
-    //   try {
-    //     final decoded = json.decode(resp.body);
-    //     final nm = NanoManualResult.fromDynamic(decoded);
-    //     return nm.toMap();
-    //   } catch (_) {
-    //     return NanoManualResult(ok: true).toMap();
-    //   }
-    // } finally {
-    //   client.close();
-    // }
+  }
+
+  /// Command the backend's legacy `/printer/force-stop` endpoint, which hard
+  /// stops the printer. Unlike [emergencyStop] this issues no M112 and does not
+  /// restart the firmware.
+  ///
+  /// A non-200 response still means the stop was dispatched, so it is treated
+  /// as success rather than a failure.
+  @override
+  Future<Map<String, dynamic>> forceStop() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/printer/force-stop');
+    _log.info('NanoDLP forceStop commanded: $uri');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.warning(
+            'NanoDLP forceStop failed as expected: ${resp.statusCode} ${resp.body}');
+        return NanoManualResult(ok: true).toMap();
+      }
+      try {
+        final decoded = json.decode(resp.body);
+        final nm = NanoManualResult.fromDynamic(decoded);
+        return nm.toMap();
+      } catch (_) {
+        return NanoManualResult(ok: true).toMap();
+      }
+    } finally {
+      client.close();
+    }
   }
 
   @override

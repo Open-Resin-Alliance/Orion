@@ -259,6 +259,11 @@ class OdysseyHttpClient implements BackendClient {
     return await manualCommand('M112');
   }
 
+  /// Odyssey exposes no dedicated force-stop endpoint, so the firmware-level
+  /// halt issued by [emergencyStop] is the closest equivalent.
+  @override
+  Future<Map<String, dynamic>> forceStop() => emergencyStop();
+
   @override
   Future<Uint8List> getFileThumbnail(
       String location, String filePath, String size) async {

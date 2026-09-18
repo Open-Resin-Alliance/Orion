@@ -330,6 +330,7 @@ class StatusScreenState extends State<StatusScreen> {
                 profileId: calibrationContext.profileId,
                 calibrationModelId: calibrationContext.calibrationModelId,
                 evaluationGuideUrl: calibrationContext.evaluationGuideUrl,
+                profileIsTemplate: calibrationContext.profileIsTemplate,
                 onComplete: () {
                   // Pop everything: overlay, StatusScreen, CalibrationScreen, progress overlay
                   nav.popUntil((route) => route.isFirst);
@@ -1637,7 +1638,7 @@ class StatusScreenState extends State<StatusScreen> {
                                   onPressed: () async {
                                     Navigator.pop(ctx);
                                     final manualProvider = ManualProvider();
-                                    await manualProvider.emergencyStop();
+                                    await manualProvider.forceStop();
                                   },
                                   child: Text(
                                     FlutterI18n.translate(

@@ -142,6 +142,12 @@ abstract class BackendClient {
   Future<Map<String, dynamic>> manualHome();
   Future<Map<String, dynamic>> manualCommand(String command);
   Future<Map<String, dynamic>> emergencyStop();
+
+  /// Hard stop the printer through the backend's dedicated force-stop path.
+  /// NanoDLP issues GET /printer/force-stop; backends without such an endpoint
+  /// fall back to a firmware-level halt.
+  Future<Map<String, dynamic>> forceStop();
+
   Future<void> displayTest(String test);
 
   /// Fetch a specific 2D layer PNG from a NanoDLP-style plates endpoint.

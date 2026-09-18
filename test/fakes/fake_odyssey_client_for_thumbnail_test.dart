@@ -184,6 +184,11 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>> forceStop() {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<String> getBackendVersion() {
     throw UnimplementedError();
   }
