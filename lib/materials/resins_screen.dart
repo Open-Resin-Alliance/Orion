@@ -204,16 +204,8 @@ class ResinsScreenState extends State<ResinsScreen> {
   }
 
   Widget _buildResinCard(ResinProfile resin, ResinsProvider provider) {
-    final meta = resin.meta;
-    final parts = <String>[];
-    if (meta['viscosity'] != null) {
-      parts.add(FlutterI18n.translate(context, 'resins.viscosity',
-          translationParams: {'value': '${meta['viscosity']}'}));
-    }
-    if (meta['exposure'] != null) {
-      parts.add(FlutterI18n.translate(context, 'resins.exposureLabel',
-          translationParams: {'value': '${meta['exposure']}'}));
-    }
+    final depthUm = resin.layerHeightUm;
+    final exposureS = resin.normalExposureSeconds;
 
     final key = resin.path ?? resin.name;
     final isDefault =
@@ -356,23 +348,31 @@ class ResinsScreenState extends State<ResinsScreen> {
                           ),
                         ],
                       ),
-                      if (parts.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2.0),
-                          child: Text(
-                            parts.join(' • '),
-                            style: TextStyle(
-                              fontSize: 13,
-                              color:
-                                  Theme.of(context).textTheme.bodySmall?.color,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
                     ],
                   ),
                 ),
+                // Material parameters, immediately left of the edit
+                // affordance so they read as one cluster.
+                if (depthUm != null)
+                  _ResinChip(
+                    icon: PhosphorIcons.stack(),
+                    label: FlutterI18n.translate(
+                        context, 'resins.layerHeightChip',
+                        translationParams: {
+                          'value': _formatChipNumber(depthUm)
+                        }),
+                  ),
+                if (depthUm != null) const SizedBox(width: 6),
+                if (exposureS != null)
+                  _ResinChip(
+                    icon: PhosphorIcons.timer(),
+                    label: FlutterI18n.translate(
+                        context, 'resins.exposureChip',
+                        translationParams: {
+                          'value': _formatChipNumber(exposureS)
+                        }),
+                  ),
+                if (exposureS != null) const SizedBox(width: 10),
                 // Edit affordance. Locked (manufacturer) profiles stay
                 // tappable: tapping one explains the lock and offers to
                 // open it as a clone instead of editing it in place.
@@ -421,6 +421,15 @@ class ResinsScreenState extends State<ResinsScreen> {
         ),
       ),
     );
+  }
+
+  /// 2 -> "2", 2.5 -> "2.5", 0.05 -> "0.05".
+  static String _formatChipNumber(double value) {
+    final text = value.toStringAsFixed(2);
+    if (!text.contains('.')) return text;
+    return text
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
   }
 
   void _onAddResin(BuildContext context) {
@@ -519,4 +528,45 @@ class ResinsScreenState extends State<ResinsScreen> {
   }
 
   // Delete flow removed from UI; keep deletion logic out until needed.
+}
+
+/// Compact parameter pill (layer height, cure time) shown on a resin row.
+/// Mirrors the "Template" pill's shape so the row reads as one family.
+class _ResinChip extends StatelessWidget {
+  const _ResinChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.color;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PhosphorIcon(icon, size: 16, color: muted),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

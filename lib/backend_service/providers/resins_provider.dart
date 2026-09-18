@@ -14,6 +14,56 @@ class ResinProfile {
       {this.path, this.meta = const {}, this.locked = false});
 }
 
+/// Reads parameters out of a profile's backend payload.
+///
+/// [ResinProfile.meta] is whatever the backend's list endpoint returned.
+/// NanoDLP nests its merged payload (top level plus `CustomValues`) under a
+/// `meta` key; other backends hand over a flat map, so both levels are
+/// searched. Key comparison ignores case and separators because backends
+/// spell the same field differently (`CureTime`, `cure_time`).
+extension ResinMetaReader on ResinProfile {
+  dynamic metaValue(List<String> keys) {
+    String norm(String s) => s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final wanted = keys.map(norm).toSet();
+    final maps = <Map<String, dynamic>>[
+      if (meta['meta'] is Map) Map<String, dynamic>.from(meta['meta'] as Map),
+      meta,
+    ];
+    for (final map in maps) {
+      for (final entry in map.entries) {
+        if (entry.value != null && wanted.contains(norm(entry.key))) {
+          return entry.value;
+        }
+      }
+    }
+    return null;
+  }
+
+  double? metaNumber(List<String> keys) {
+    final raw = metaValue(keys);
+    if (raw is num) return raw.toDouble();
+    return double.tryParse('$raw');
+  }
+
+  /// Profile layer height in microns. NanoDLP stores it as `Depth` in
+  /// microns; anything below 1 is assumed to be millimetres from a backend
+  /// that reports the plate resolution instead.
+  double? get layerHeightUm {
+    final value = metaNumber(const [
+      'Depth',
+      'LayerHeight',
+      'LayerThickness',
+      'ZRes',
+    ]);
+    if (value == null || value <= 0) return null;
+    return value < 1 ? value * 1000 : value;
+  }
+
+  /// Normal (per-layer) cure time in seconds.
+  double? get normalExposureSeconds =>
+      metaNumber(const ['CureTime', 'NormalCureTime', 'Exposure']);
+}
+
 class CalibrationModel {
   final int id;
   final String name;
