@@ -37,6 +37,9 @@ import 'package:orion/pubspec.dart';
 /// will show a modal update overlay while an update is in progress.
 
 class OrionUpdateProvider extends ChangeNotifier {
+  /// GitHub sometimes accepts a connection and then says nothing. Without a
+  /// bound the update check never returns, and startup waits on it forever.
+  static const Duration _httpTimeout = Duration(seconds: 5);
   final Logger _logger = Logger('OrionUpdateProvider');
   final OrionConfig _config = OrionConfig();
 
@@ -147,7 +150,7 @@ class OrionUpdateProvider extends ChangeNotifier {
 
     while (retryCount < maxRetries) {
       try {
-        final response = await http.get(Uri.parse(url));
+        final response = await http.get(Uri.parse(url)).timeout(_httpTimeout);
         if (response.statusCode == 200) {
           final jsonResponse = json.decode(response.body);
           final String tag = jsonResponse['tag_name'].replaceAll('v', '');
@@ -192,7 +195,7 @@ class OrionUpdateProvider extends ChangeNotifier {
     String url = 'https://api.github.com/repos/$repo/orion/releases';
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url)).timeout(_httpTimeout);
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body) as List;
         final releaseItem = jsonResponse.firstWhere(
@@ -203,7 +206,7 @@ class OrionUpdateProvider extends ChangeNotifier {
           final String commitSha = releaseItem['target_commitish'];
           final commitUrl =
               'https://api.github.com/repos/$repo/orion/commits/$commitSha';
-          final commitResponse = await http.get(Uri.parse(commitUrl));
+          final commitResponse = await http.get(Uri.parse(commitUrl)).timeout(_httpTimeout);
 
           if (commitResponse.statusCode == 200) {
             final commitJson = json.decode(commitResponse.body);
@@ -221,7 +224,7 @@ class OrionUpdateProvider extends ChangeNotifier {
             try {
               final pubspecUrl =
                   'https://raw.githubusercontent.com/$repo/orion/$commitSha/pubspec.yaml';
-              final pubspecResp = await http.get(Uri.parse(pubspecUrl));
+              final pubspecResp = await http.get(Uri.parse(pubspecUrl)).timeout(_httpTimeout);
               if (pubspecResp.statusCode == 200) {
                 final content = pubspecResp.body;
                 final match =
