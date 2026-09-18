@@ -144,13 +144,21 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   static const double _frontBaselineSeed = -3.0e-4;
   static const double _backBaselineSeed = -2.0e-4;
 
-  /// If the suggested screw adjustment exceeds this force delta (gf), the
-  /// arm itself is mechanically skewed — no screw turn can physically apply
-  /// that much.  Surface an error instead of sending the user to the gauge.
-  /// Threshold is 2500 gf (gauge ceiling) — only triggers when the command
-  /// would clamp. Gap gate + two-strike debounce (see _enterAdjustmentMode
-  /// / _runAdjustmentProbe) keep single noisy probes from surfacing.
-  static const double _maxSuggestedForceDeltaGf = 2500;
+  /// Mechanical-skew guards.  The arm is only declared skewed when BOTH
+  /// fire on the same pick, twice in a row (see _enterAdjustmentMode /
+  /// _runAdjustmentProbe):
+  ///
+  /// * Weight: the suggested force delta is at least 2300 gf — above the
+  ///   +/-2000 gf gauge full scale, so the command would peg the on-screen
+  ///   gauge and the operator could not read or follow it.  The small
+  ///   margin above full scale keeps gauge/anchor error from tripping it
+  ///   alone.  The force delta is only the commanded correction — a
+  ///   coupling-derived delta, not absolute torque — so it is never
+  ///   sufficient on its own.
+  /// * Distance: the underlying Z gap is at least 0.50 mm, 5x the 0.10 mm
+  ///   pass band.  Without this, a small gap whose command happens to be
+  ///   large (soft coupling) would flag a healthy arm.
+  static const double _maxSuggestedForceDeltaGf = 2300;
   static const double _mechanicalSkewGapThresholdMm = 0.50;
   static Map<int, ScrewController> _freshControllers() => {
         0: ScrewController(seedCouplingMmPerGf: _frontBaselineSeed),
@@ -847,9 +855,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     // A suggested delta larger than the screws can physically apply means
     // the arm itself is mechanically skewed — no screw turn will fix it.
-    // Two-strike debounce + gap gate: require |forceDelta| >= 3000,
-    // |gap| >= 0.90 mm, and two consecutive hits (pre-gauge + re-probe
-    // or two adjustment cycles) to filter single noisy probes.
+    // Two-strike debounce + distance gate: require |forceDelta| >= 2300 gf
+    // (above the gauge full scale), |gap| >= 0.50 mm, and two consecutive
+    // hits (pre-gauge + re-probe or two adjustment cycles) to filter single
+    // noisy probes.
     if (probeCommand != null &&
         probeCommand.forceDeltaGf.abs() >= _maxSuggestedForceDeltaGf) {
       final gapMm = adjustmentGapMm(probeCorner!, zValues);
