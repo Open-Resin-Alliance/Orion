@@ -403,7 +403,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     switch (widget.calibrationModelId) {
       case 1:
         evaluationGuideUrl =
-            'https://docs.google.com/document/d/1aoMSE6GBGMcoYXNGfPP9s_Jg8vr1wQmmZuvqP3suago/edit?tab=t.0#heading=h.bvm0ca3vxmwr';
+            'https://help.concepts3d.ca/en-US/exposure-calibration-guide-8083022';
         break;
       case 2:
         evaluationGuideUrl =
@@ -422,7 +422,9 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
         final onSurface = Theme.of(context).colorScheme.onSurface;
 
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          // Both cards fill the body: the guide card used to shrink to its
+          // text and sit visibly shorter than the QR card beside it.
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
               child: GlassCard(
@@ -430,42 +432,66 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 outlined: true,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          FlutterI18n.translate(
-                              context, 'postCal.evaluationGuide'),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: onSurface.withValues(alpha: 0.55),
-                            letterSpacing: 1.2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'postCal.evaluationGuide'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: onSurface.withValues(alpha: 0.55),
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // The body centres in whatever space the header leaves,
+                      // and scrolls rather than clipping if a longer
+                      // translation overflows it.
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) =>
+                              SingleChildScrollView(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      FlutterI18n.translate(
+                                          context, 'postCal.guideDesc'),
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color:
+                                            onSurface.withValues(alpha: 0.75),
+                                        height: 1.55,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildGuideItem(
+                                      context,
+                                      FlutterI18n.translate(
+                                          context, 'postCal.scanQr'),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    _buildGuideItem(
+                                      context,
+                                      FlutterI18n.translate(
+                                          context, 'postCal.readGuide'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          FlutterI18n.translate(context, 'postCal.guideDesc'),
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: onSurface.withValues(alpha: 0.75),
-                            height: 1.55,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        _buildGuideItem(
-                          context,
-                          FlutterI18n.translate(context, 'postCal.scanQr'),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildGuideItem(
-                          context,
-                          FlutterI18n.translate(context, 'postCal.readGuide'),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -948,8 +974,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                               Navigator.of(context).pop();
                               widget.onComplete();
                             },
-                            child: Text(FlutterI18n.translate(
-                                context, 'common.done')),
+                            child: Text(
+                                FlutterI18n.translate(context, 'common.done')),
                           ),
                         ],
                       ),
