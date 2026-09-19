@@ -656,8 +656,10 @@ class OnboardingPages {
   /// Used by the leveling check and the resin calibration, so both steps read
   /// as the same kind of offer.
   ///
-  /// [onAction] is null when the machine cannot run the wizard, which leaves
-  /// only the decline.
+  /// [onAction] is null when the wizard cannot be offered at all — no leveling
+  /// data to check, say. The button is then left out rather than shown dead, and
+  /// the step becomes the notice the heading and detail describe, with
+  /// [secondaryKey] carrying the way on.
   static Widget buildWizardOfferPage(
     BuildContext context, {
     required String headingKey,
@@ -666,6 +668,7 @@ class OnboardingPages {
     required IconData actionIcon,
     required VoidCallback? onAction,
     required VoidCallback onDecline,
+    String secondaryKey = 'common.decline',
   }) {
     final theme = Theme.of(context);
     return GlassApp(
@@ -697,42 +700,48 @@ class OnboardingPages {
                   ),
                 ),
                 const SizedBox(height: OrionSpacing.controlGap + 24),
-                SizedBox(
-                  width: 320,
-                  child: GlassButton(
-                    tint: GlassButtonTint.positive,
-                    onPressed: onAction,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 65),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(actionIcon, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            FlutterI18n.translate(context, actionKey),
-                            style: const TextStyle(
-                                fontSize: 21, fontWeight: FontWeight.w700),
-                          ),
-                        ],
+                if (onAction != null) ...[
+                  SizedBox(
+                    width: 320,
+                    child: GlassButton(
+                      tint: GlassButtonTint.positive,
+                      onPressed: onAction,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 65),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(actionIcon, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              FlutterI18n.translate(context, actionKey),
+                              style: const TextStyle(
+                                  fontSize: 21, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: OrionSpacing.controlGap),
+                  const SizedBox(height: OrionSpacing.controlGap),
+                ],
                 SizedBox(
                   width: 320,
                   child: GlassButton(
-                    tint: GlassButtonTint.neutral,
+                    // With nothing to offer this is the only way on, so it
+                    // carries the action tint and the way-on label.
+                    tint: onAction == null
+                        ? GlassButtonTint.positive
+                        : GlassButtonTint.neutral,
                     onPressed: onDecline,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 55),
                     ),
                     child: Text(
-                      FlutterI18n.translate(context, 'common.decline'),
+                      FlutterI18n.translate(context, secondaryKey),
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w600),
                     ),

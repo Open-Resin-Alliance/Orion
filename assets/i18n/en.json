@@ -44,6 +44,8 @@
         "verifyLevelingTitle": "Verify Leveling",
         "levelingIntro": "Your printer was leveled at the factory.",
         "levelingIntroDetail": "Verify the level now to be sure your first prints come out right.\nIt only takes a few minutes.",
+        "levelingNotLeveled": "Your machine is not leveled yet",
+        "levelingNotLeveledHint": "Leveling is normally done at the factory. Finish the setup first, then run an assisted leveling session before your first print.",
         "calibrationTitle": "Resin Calibration",
         "calibrationIntro": "Calibration finds the right exposure for your resin.",
         "completeTitle": ""

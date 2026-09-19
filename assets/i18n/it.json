@@ -44,6 +44,8 @@
     "verifyLevelingTitle": "Verifica livellamento",
     "levelingIntro": "La tua stampante è stata livellata in fabbrica.",
     "levelingIntroDetail": "Verifica il livellamento ora per essere sicuro che le prime stampe vengano bene.\nBastano pochi minuti.",
+    "levelingNotLeveled": "La tua stampante non è ancora livellata",
+    "levelingNotLeveledHint": "Il livellamento avviene di norma in fabbrica. Completa prima la configurazione, poi esegui un livellamento guidato prima della prima stampa.",
     "calibrationTitle": "Calibrazione resina",
     "calibrationIntro": "La calibrazione trova l'esposizione giusta per la tua resina.",
     "completeTitle": ""

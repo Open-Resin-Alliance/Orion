@@ -36,6 +36,7 @@ import 'package:orion/settings/wifi_screen.dart';
 import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
 import 'package:orion/materials/calibration_screen.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
+import 'package:orion/tools/athena/verify_leveling_screen.dart';
 import 'package:orion/util/overlay_route.dart';
 import 'package:orion/util/locales/all_countries.dart';
 import 'package:orion/util/locales/available_languages.dart';
@@ -488,14 +489,22 @@ class OnboardingScreenState extends State<OnboardingScreen>
         return OnboardingPages.buildWifiPage(
             context, _wifiScreenKey, isConnected, _wifiInitialized);
       case 7:
+        // The same guard the leveling menu puts on Verify Leveling: with no
+        // leveling state on the printer there is nothing to re-check, so the
+        // step explains itself instead of offering the wizard.
+        final canVerify = _canRecheckLeveling && isPrinterLeveled();
         return OnboardingPages.buildWizardOfferPage(
           context,
-          headingKey: 'setup.levelingIntro',
-          detailKey: 'setup.levelingIntroDetail',
+          headingKey:
+              canVerify ? 'setup.levelingIntro' : 'setup.levelingNotLeveled',
+          detailKey: canVerify
+              ? 'setup.levelingIntroDetail'
+              : 'setup.levelingNotLeveledHint',
           actionKey: 'leveling.recheckLeveling',
           actionIcon: PhosphorIcons.arrowsCounterClockwise(),
-          onAction: _canRecheckLeveling ? _startLevelingRecheck : null,
+          onAction: canVerify ? _startLevelingRecheck : null,
           onDecline: () => _handlePageChange(_currentPage + 1),
+          secondaryKey: canVerify ? 'common.decline' : 'common.continue_',
         );
       case 8:
         return OnboardingPages.buildWizardOfferPage(
@@ -743,7 +752,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
   }
 
   /// Whether this machine has a leveling configuration to re-check. Without
-  /// one the offer cannot be honoured, so the page keeps only its decline.
+  /// one the offer cannot be honoured, so the step explains itself instead.
   bool get _canRecheckLeveling =>
       getLevelingConfigForMachine(config.getMachineModelName()) != null;
 

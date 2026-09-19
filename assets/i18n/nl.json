@@ -44,6 +44,8 @@
     "verifyLevelingTitle": "Nivellering verifiëren",
     "levelingIntro": "Je printer is in de fabriek genivelleerd.",
     "levelingIntroDetail": "Verifieer de nivellering nu zodat je eerste prints goed uitkomen.\nHet duurt maar een paar minuten.",
+    "levelingNotLeveled": "Je printer is nog niet genivelleerd",
+    "levelingNotLeveledHint": "Nivellering gebeurt normaal in de fabriek. Rond eerst de installatie af en voer daarna een begeleide nivellering uit voordat je je eerste print maakt.",
     "calibrationTitle": "Harskalibratie",
     "calibrationIntro": "Kalibratie bepaalt de juiste belichting voor je hars.",
     "completeTitle": ""

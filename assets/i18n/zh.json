@@ -44,6 +44,8 @@
     "verifyLevelingTitle": "验证调平",
     "levelingIntro": "您的打印机已在工厂完成调平。",
     "levelingIntroDetail": "请现在验证调平，以确保首次打印效果良好。\n只需几分钟。",
+    "levelingNotLeveled": "您的打印机尚未调平",
+    "levelingNotLeveledHint": "调平通常在工厂完成。请先完成设置，然后在首次打印前执行引导式调平。",
     "calibrationTitle": "树脂校准",
     "calibrationIntro": "校准可确定适合您树脂的曝光时间。",
     "completeTitle": ""

@@ -44,6 +44,8 @@
     "verifyLevelingTitle": "Nivellierung prüfen",
     "levelingIntro": "Ihr Drucker wurde im Werk nivelliert.",
     "levelingIntroDetail": "Prüfen Sie die Nivellierung jetzt, damit Ihre ersten Drucke korrekt ausfallen.\nEs dauert nur wenige Minuten.",
+    "levelingNotLeveled": "Ihre Maschine ist noch nicht nivelliert",
+    "levelingNotLeveledHint": "Die Nivellierung erfolgt normalerweise im Werk. Schließen Sie zuerst die Einrichtung ab und führen Sie dann vor dem ersten Druck eine geführte Nivellierung durch.",
     "calibrationTitle": "Harz-Kalibrierung",
     "calibrationIntro": "Die Kalibrierung ermittelt die richtige Belichtungszeit für Ihr Harz.",
     "completeTitle": ""

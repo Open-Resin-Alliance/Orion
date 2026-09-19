@@ -44,6 +44,8 @@
     "verifyLevelingTitle": "Verificar nivelación",
     "levelingIntro": "Su impresora se niveló en fábrica.",
     "levelingIntroDetail": "Verifique la nivelación ahora para asegurar que sus primeras impresiones salgan correctas.\nSolo tarda unos minutos.",
+    "levelingNotLeveled": "Su máquina aún no está nivelada",
+    "levelingNotLeveledHint": "La nivelación se realiza normalmente en fábrica. Complete primero la configuración y, antes de la primera impresión, realice una nivelación guiada.",
     "calibrationTitle": "Calibración de resina",
     "calibrationIntro": "La calibración determina la exposición correcta para su resina.",
     "completeTitle": ""

@@ -31,6 +31,7 @@ import 'package:orion/home/onboarding_screen.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/materials/calibration_screen.dart';
 import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
+import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/providers/locale_provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/util/providers/wifi_provider.dart';
@@ -101,7 +102,8 @@ void main() {
     await pumpFor(tester, 6000);
 
     for (var i = 0; i < 14; i++) {
-      if (find.text(t('setup.levelingIntro')).evaluate().isNotEmpty) break;
+      // The step's title is on the app bar whichever body it shows.
+      if (find.text(t('setup.verifyLevelingTitle')).evaluate().isNotEmpty) break;
       final hasNext = find.text(t('common.next')).evaluate().isNotEmpty;
       final hasSkip = find.text(t('common.skip')).evaluate().isNotEmpty;
       // The first three steps hide their floating button, so drive them by the
@@ -131,57 +133,66 @@ void main() {
       await pumpFor(tester, 2500);
     }
 
-    expect(find.text(t('setup.levelingIntro')), findsOneWidget);
-    expect(find.text(t('setup.levelingIntroDetail')), findsOneWidget);
     expect(find.text(t('setup.verifyLevelingTitle')), findsOneWidget);
   }
 
-  /// Declines the step on screen and waits for the next one.
-  Future<void> decline(WidgetTester tester, String key) async {
-    String t(String k) =>
-        FlutterI18n.translate(tester.element(find.byType(Scaffold).first), k);
-    expect(find.text(t('common.decline')), findsOneWidget);
-    await tester.tap(find.widgetWithText(GlassButton, t('common.decline')));
-    await pumpFor(tester, 2500);
-    expect(find.text(t(key)), findsOneWidget);
+  /// The leveling state the leveling menu guards Verify Leveling with, and that
+  /// this step is guarded by.
+  void setLeveled(bool value) {
+    final config = OrionConfig();
+    final before = config.isLeveled();
+    config.setLeveled(value);
+    addTearDown(() => config.setLeveled(before));
   }
 
-  testWidgets('both wizard offers can be declined', (WidgetTester tester) async {
+  testWidgets('with no leveling data the step explains itself',
+      (WidgetTester tester) async {
+    setLeveled(false);
     await pumpOnboarding(tester);
     await walkToLevelingStep(tester);
 
     String t(String key) =>
         FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
 
-    expect(find.text(t('leveling.recheckLeveling')), findsWidgets);
+    // Nothing to check, so no offer -- the step says so instead.
+    expect(find.text(t('setup.levelingNotLeveled')), findsOneWidget);
+    expect(find.text(t('setup.levelingNotLeveledHint')), findsOneWidget);
+    expect(find.text(t('leveling.recheckLeveling')), findsNothing);
+    expect(find.text(t('common.decline')), findsNothing);
 
-    // The step owns both of its buttons, so the floating Next is inert: the
-    // faded button is still in the tree, but tapping it must change nothing.
+    // The step owns its button, so the floating Next is inert: the faded button
+    // is still in the tree, but tapping it must change nothing.
     await tester.tap(find.text(t('common.next')).first, warnIfMissed: false);
     await pumpFor(tester, 1500);
-    expect(find.text(t('setup.levelingIntro')), findsOneWidget);
+    expect(find.text(t('setup.levelingNotLeveled')), findsOneWidget);
     expect(find.text(t('common.completeSetup')), findsNothing);
 
-    // Leveling -> the calibration offer, built the same way.
-    await decline(tester, 'setup.calibrationIntro');
-    expect(find.text(t('setup.calibrationTitle')), findsOneWidget);
-    expect(find.text(t('calibration.wizardIntroDetail')), findsOneWidget);
+    // Continue -> the calibration offer, built the same way.
+    await tester.tap(find.widgetWithText(GlassButton, t('common.continue_')));
+    await pumpFor(tester, 2500);
+    expect(find.text(t('setup.calibrationIntro')), findsOneWidget);
     expect(find.text(t('calibration.start')), findsOneWidget);
 
-    // Calibration -> the completion step.
+    // Its decline -> the completion step.
     await tester.tap(find.widgetWithText(GlassButton, t('common.decline')));
     await pumpFor(tester, 2500);
     expect(find.textContaining(t('complete.completionMessage')), findsOneWidget);
     expect(find.text(t('common.completeSetup')), findsOneWidget);
   });
 
-  testWidgets('the leveling offer opens the re-check wizard',
+  testWidgets('a leveled printer is offered the re-check',
       (WidgetTester tester) async {
+    setLeveled(true);
     await pumpOnboarding(tester);
     await walkToLevelingStep(tester);
 
     String t(String key) =>
         FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
+
+    expect(find.text(t('setup.levelingIntro')), findsOneWidget);
+    expect(find.text(t('setup.levelingIntroDetail')), findsOneWidget);
+    expect(find.text(t('leveling.recheckLeveling')), findsWidgets);
+    expect(find.text(t('common.decline')), findsOneWidget);
 
     await tester
         .tap(find.widgetWithText(GlassButton, t('leveling.recheckLeveling')));
@@ -197,13 +208,16 @@ void main() {
 
   testWidgets('the calibration offer opens the calibration wizard',
       (WidgetTester tester) async {
+    setLeveled(false);
     await pumpOnboarding(tester);
     await walkToLevelingStep(tester);
 
     String t(String key) =>
         FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
 
-    await decline(tester, 'setup.calibrationIntro');
+    await tester.tap(find.widgetWithText(GlassButton, t('common.continue_')));
+    await pumpFor(tester, 2500);
+    expect(find.text(t('setup.calibrationIntro')), findsOneWidget);
 
     await tester.tap(find.widgetWithText(GlassButton, t('calibration.start')));
     await pumpFor(tester, 2500);
