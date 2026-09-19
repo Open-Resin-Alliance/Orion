@@ -230,6 +230,10 @@ class ManualProvider extends ChangeNotifier {
     }
   }
 
+  /// The Force Stop button in the status screen: the same hard stop as
+  /// [emergencyStop], which is where the sequence lives.
+  Future<bool> forceStop() => emergencyStop();
+
   Future<bool> displayTest(String test) async {
     _log.info('displayTest: $test');
     if (_busy) return false;

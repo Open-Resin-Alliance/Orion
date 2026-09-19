@@ -24,6 +24,8 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/settings/update_progress.dart';
+import 'package:orion/tools/athena/leveling_log_service.dart';
+import 'package:orion/tools/athena/screw_calibration_store.dart';
 import 'package:orion/util/install_locator.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/pubspec.dart';
@@ -35,8 +37,23 @@ import 'package:orion/pubspec.dart';
 /// will show a modal update overlay while an update is in progress.
 
 class OrionUpdateProvider extends ChangeNotifier {
+  /// GitHub sometimes accepts a connection and then says nothing. Without a
+  /// bound the update check never returns, and startup waits on it forever.
+  static const Duration _httpTimeout = Duration(seconds: 5);
   final Logger _logger = Logger('OrionUpdateProvider');
   final OrionConfig _config = OrionConfig();
+
+  /// Files Orion keeps next to `orion.cfg` that hold user/machine state.
+  ///
+  /// The update script replaces the whole install directory — which is also
+  /// the config directory on most installs — so every one of these has to be
+  /// copied back from the backup. Anything missing here is destroyed by an
+  /// update (a lost leveling log reads back as "printer not leveled").
+  static const List<String> persistedStateFiles = <String>[
+    'orion.cfg',
+    LevelingLogService.fileName,
+    ScrewCalibrationStore.fileName,
+  ];
 
   final ValueNotifier<double> progress = ValueNotifier<double>(0.0);
   final ValueNotifier<String> message = ValueNotifier<String>('');
@@ -133,7 +150,7 @@ class OrionUpdateProvider extends ChangeNotifier {
 
     while (retryCount < maxRetries) {
       try {
-        final response = await http.get(Uri.parse(url));
+        final response = await http.get(Uri.parse(url)).timeout(_httpTimeout);
         if (response.statusCode == 200) {
           final jsonResponse = json.decode(response.body);
           final String tag = jsonResponse['tag_name'].replaceAll('v', '');
@@ -178,7 +195,7 @@ class OrionUpdateProvider extends ChangeNotifier {
     String url = 'https://api.github.com/repos/$repo/orion/releases';
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url)).timeout(_httpTimeout);
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body) as List;
         final releaseItem = jsonResponse.firstWhere(
@@ -189,7 +206,7 @@ class OrionUpdateProvider extends ChangeNotifier {
           final String commitSha = releaseItem['target_commitish'];
           final commitUrl =
               'https://api.github.com/repos/$repo/orion/commits/$commitSha';
-          final commitResponse = await http.get(Uri.parse(commitUrl));
+          final commitResponse = await http.get(Uri.parse(commitUrl)).timeout(_httpTimeout);
 
           if (commitResponse.statusCode == 200) {
             final commitJson = json.decode(commitResponse.body);
@@ -207,7 +224,7 @@ class OrionUpdateProvider extends ChangeNotifier {
             try {
               final pubspecUrl =
                   'https://raw.githubusercontent.com/$repo/orion/$commitSha/pubspec.yaml';
-              final pubspecResp = await http.get(Uri.parse(pubspecUrl));
+              final pubspecResp = await http.get(Uri.parse(pubspecUrl)).timeout(_httpTimeout);
               if (pubspecResp.statusCode == 200) {
                 final content = pubspecResp.body;
                 final match =
@@ -681,9 +698,15 @@ if [ -d "\$orion_folder" ]; then
   sudo rm -R "\$orion_folder"
 fi
 
-# Restore config file if present
-if [ -f "\$backup_folder/orion.cfg" ] && [ -d "\$new_orion_folder" ]; then
-  sudo cp "\$backup_folder/orion.cfg" "\$new_orion_folder"
+# Restore persistent state files (orion.cfg plus the leveling state that
+# lives beside it).  They were in the directory that was just replaced, so
+# only the backup copy exists now.
+if [ -d "\$new_orion_folder" ]; then
+  for state_file in ${persistedStateFiles.join(' ')}; do
+    if [ -f "\$backup_folder/\$state_file" ]; then
+      sudo cp "\$backup_folder/\$state_file" "\$new_orion_folder"
+    fi
+  done
 fi
 
 # Move the new Orion directory to the original location

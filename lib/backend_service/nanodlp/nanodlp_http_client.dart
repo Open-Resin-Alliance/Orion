@@ -27,6 +27,7 @@ import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_manual.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/helpers/nano_form_controls.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_machine.dart';
 import 'package:flutter/foundation.dart';
@@ -577,16 +578,83 @@ class NanoDlpHttpClient implements BackendClient {
       burnInCount: existing.burnInCount,
       waitAfterCure: existing.waitAfterCure,
       waitAfterLife: existing.waitAfterLife,
+      layerThicknessUm: existing.layerThicknessUm,
+      resinTemperature: existing.resinTemperature,
+      peelDetection: existing.peelDetection,
     );
 
     await saveResinSettings(profileId, merged);
   }
 
+  /// Fields rewritten by NanoDLP's simple edit endpoint that [ResinSettings]
+  /// does not model. The endpoint writes a value for every field it knows, so
+  /// anything missing from the body is stored as zero.
+  static const List<String> _simpleEditPreservedFields = [
+    'ZStepWait',
+    'WaitBeforePrint',
+    'LiftSpeed',
+    'RetractSpeed',
+  ];
+
   @override
   Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
     final backendFields =
         NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
+    await _echoSimpleEditFields(profileId, backendFields);
     await editProfile(profileId, backendFields);
+  }
+
+  @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/profile/edit/$profileId');
+    final client = _createClient();
+    try {
+      final form = await client.get(uri);
+      if (form.statusCode != 200) {
+        throw Exception(
+            'Advanced profile form returned ${form.statusCode} for $profileId');
+      }
+      // `GET /profile/edit/<id>` renders the profile's current values, and the
+      // endpoint stores a value for every control it knows, so the whole form
+      // is echoed back with the edited fields overridden on top. Anything left
+      // out would be written as zero/empty.
+      final body = NanoFormControls.parse(form.body);
+      if (body.isEmpty) {
+        throw Exception(
+            'Advanced profile form had no controls for profile $profileId');
+      }
+      final overrides =
+          NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
+      if (title != null && title.isNotEmpty) overrides['Title'] = title;
+      overrides.forEach((key, value) {
+        if (value != null) body[key] = '$value';
+      });
+      _log.info('NanoDLP saveResinAdvancedSettings -> $uri '
+          'overrides=${overrides.keys.toList()} controls=${body.length}');
+      await _postProfileForm(uri, body, 'saveResinAdvancedSettings');
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Copy the current values of [_simpleEditPreservedFields] into [fields]
+  /// when the caller doesn't set them, so saving exposure settings doesn't
+  /// zero the profile's speed fields.
+  Future<void> _echoSimpleEditFields(
+      int profileId, Map<String, dynamic> fields) async {
+    if (_simpleEditPreservedFields.every(fields.containsKey)) return;
+
+    final current = await getProfileJson(profileId);
+    if (current.isEmpty) {
+      throw StateError(
+          'Unable to load existing resin settings for profile $profileId');
+    }
+    for (final key in _simpleEditPreservedFields) {
+      final value = current[key];
+      if (!fields.containsKey(key) && value != null) fields[key] = value;
+    }
   }
 
   // --- Unimplemented / TODOs ---
@@ -1146,19 +1214,67 @@ class NanoDlpHttpClient implements BackendClient {
 
   @override
   Future<Map<String, dynamic>> emergencyStop() async {
+    // A hard stop is three commands, in this order:
+    //
+    //   1. M112 — the firmware halt. It also drops the Klipper link, so
+    //      anything after it is best-effort;
+    //   2. GET /printer/force-stop — NanoDLP's own stop, which lands even when
+    //      the firmware link is already gone;
+    //   3. FIRMWARE_STOP — leaves the board in a known stopped state.
+    //
+    // Every step is attempted even when an earlier one fails, since a stop is
+    // the one command that must not be abandoned half-issued. Only a run where
+    // all three failed is reported as a failure.
+    Object? firstError;
+    StackTrace? firstStack;
+    Map<String, dynamic>? result;
+
+    Future<void> step(String what, Future<void> Function() run) async {
+      try {
+        await run();
+      } catch (e, st) {
+        _log.warning('NanoDLP emergencyStop $what error', e, st);
+        firstError ??= e;
+        firstStack ??= st;
+      }
+    }
+
+    await step('M112', () async {
+      result = await manualCommand('M112');
+    });
+    await step('force-stop endpoint', () async {
+      // Always issued: it is the stop that lands when M112 already killed the
+      // firmware link. Its result is only the fallback for the return value.
+      final endpointResult = await _commandForceStopEndpoint();
+      result ??= endpointResult;
+    });
+    await step('FIRMWARE_STOP', () async {
+      await manualCommand('FIRMWARE_STOP');
+    });
+
+    final error = firstError;
+    if (result == null && error != null) {
+      Error.throwWithStackTrace(error, firstStack!);
+    }
+    return result ?? NanoManualResult(ok: true).toMap();
+  }
+
+  /// Command the backend's legacy `/printer/force-stop` endpoint, which hard
+  /// stops the printer without needing the firmware link.
+  ///
+  /// A non-200 response still means the stop was dispatched, so it is treated
+  /// as success rather than a failure.
+  Future<Map<String, dynamic>> _commandForceStopEndpoint() async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/printer/force-stop');
-    _log.info('NanoDLP emergencyStop commanded: $uri');
+    _log.info('NanoDLP force-stop endpoint commanded: $uri');
     final client = _createClient();
     try {
       final resp = await client.get(uri);
       if (resp.statusCode != 200) {
         _log.warning(
-            'NanoDLP emergencyStop failed as expected: ${resp.statusCode} ${resp.body}');
-        // throw Exception('NanoDLP emergencyStop failed: ${resp.statusCode}');
-        client.close();
-        return NanoManualResult(ok: true)
-            .toMap(); // treat non-200 as success, emergency stop should have occurred.
+            'NanoDLP force-stop endpoint status: ${resp.statusCode} ${resp.body}');
+        return NanoManualResult(ok: true).toMap();
       }
       try {
         final decoded = json.decode(resp.body);
@@ -1171,6 +1287,11 @@ class NanoDlpHttpClient implements BackendClient {
       client.close();
     }
   }
+
+  /// The same hard stop as [emergencyStop] — the caller means the harder stop,
+  /// and the emergency stop already runs the force-stop endpoint.
+  @override
+  Future<Map<String, dynamic>> forceStop() => emergencyStop();
 
   @override
   Future<Map<String, dynamic>> manualHome() async => () async {
@@ -1887,17 +2008,79 @@ class NanoDlpHttpClient implements BackendClient {
   Future<Map<String, dynamic>> editProfile(
       int id, Map<String, dynamic> fields) async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
-    final uri = Uri.parse('$baseNoSlash/profile/edit/simple/$id');
-    _log.info(
-        'NanoDLP editProfile POST -> $uri fields=${fields.keys.toList()}');
+    return _postProfileForm(
+      Uri.parse('$baseNoSlash/profile/edit/simple/$id'),
+      fields,
+      'editProfile',
+    );
+  }
+
+  /// Clone [sourceId] into a brand new profile with [fields] applied on top
+  /// of the source profile's form values.
+  ///
+  /// `GET /profile/clone/<id>` only renders the edit form, and the server
+  /// copies nothing from the source, so the whole form has to be echoed back
+  /// on the POST (see [NanoFormControls]). [fields] uses NanoDLP field names
+  /// and overrides individual controls — at minimum `Title`, which is how the
+  /// copy gets its name.
+  @override
+  Future<Map<String, dynamic>> cloneProfile(
+      int sourceId, Map<String, dynamic> fields) async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/profile/clone/$sourceId');
+    final existingIds = await _profileIds();
+
+    final client = _createClient();
+    try {
+      final form = await client.get(uri);
+      if (form.statusCode != 200) {
+        throw Exception(
+            'cloneProfile failed to load clone form: ${form.statusCode}');
+      }
+      final body = NanoFormControls.parse(form.body);
+      if (body.isEmpty) {
+        _log.warning('cloneProfile found no form controls at $uri');
+        throw Exception(
+            'cloneProfile found no form controls for profile $sourceId');
+      }
+      fields.forEach((key, value) {
+        if (value == null) return;
+        body[key] = '$value';
+      });
+      _log.info('NanoDLP cloneProfile -> $uri '
+          'overrides=${fields.keys.toList()} controls=${body.length}');
+
+      await _postProfileForm(uri, body, 'cloneProfile');
+    } finally {
+      client.close();
+    }
+
+    // NanoDLP assigns the new id server-side, so resolve it by diffing the
+    // profile list rather than guessing max+1.
+    final created = await _findCreatedProfile(existingIds);
+    if (created.isEmpty) {
+      _log.warning('cloneProfile: new profile not found in profiles.json');
+    } else {
+      _log.info('NanoDLP cloneProfile created profile '
+          'id=${created['ProfileID']} title=${created['Title']}');
+    }
+    return created;
+  }
+
+  /// POSTs a NanoDLP profile form and maps its redirect-on-success behaviour
+  /// onto a result map. Throws on HTTP or auth failures.
+  Future<Map<String, dynamic>> _postProfileForm(
+      Uri uri, Map<String, dynamic> fields, String operation) async {
+    _log.info('NanoDLP $operation POST -> $uri '
+        'fields=${fields.keys.toList()}');
     final client = _createClient();
     try {
       // Build application/x-www-form-urlencoded body.
       // Convert all field values to strings as expected by NanoDLP.
       final body = <String, String>{};
-      fields.forEach((k, v) {
-        if (v == null) return;
-        body[k] = '$v';
+      fields.forEach((key, value) {
+        if (value == null) return;
+        body[key] = '$value';
       });
 
       final resp = await client.post(uri, body: body);
@@ -1915,12 +2098,12 @@ class NanoDlpHttpClient implements BackendClient {
 
         if (looksLikeAuthRedirect) {
           _log.warning(
-              'editProfile failed auth redirect: $status location=$locationRaw');
-          throw Exception('editProfile failed: $status (auth redirect)');
+              '$operation failed auth redirect: $status location=$locationRaw');
+          throw Exception('$operation failed: $status (auth redirect)');
         }
 
         _log.info(
-            'editProfile redirect treated as success: $status location=$locationRaw');
+            '$operation redirect treated as success: $status location=$locationRaw');
         return {
           'status': status,
           if (locationRaw.isNotEmpty) 'location': locationRaw,
@@ -1928,8 +2111,8 @@ class NanoDlpHttpClient implements BackendClient {
       }
 
       if (status != 200 && status != 201 && status != 204) {
-        _log.warning('editProfile failed: $status ${resp.body}');
-        throw Exception('editProfile failed: $status');
+        _log.warning('$operation failed: $status ${resp.body}');
+        throw Exception('$operation failed: $status');
       }
 
       if (resp.body.trim().isEmpty) return {};
@@ -1940,6 +2123,65 @@ class NanoDlpHttpClient implements BackendClient {
       } catch (_) {
         return {};
       }
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Profile ids currently known to the backend (empty when unreadable).
+  Future<Set<int>> _profileIds() async {
+    final profiles = await _rawProfiles();
+    return profiles.map(_profileId).whereType<int>().toSet();
+  }
+
+  /// The profile created after [existingIds] was captured. NanoDLP assigns
+  /// the highest id to the newest profile.
+  Future<Map<String, dynamic>> _findCreatedProfile(Set<int> existingIds) async {
+    final profiles = await _rawProfiles();
+    Map<String, dynamic>? newest;
+    int? newestId;
+    for (final profile in profiles) {
+      final id = _profileId(profile);
+      if (id == null || existingIds.contains(id)) continue;
+      if (newestId == null || id > newestId) {
+        newestId = id;
+        newest = profile;
+      }
+    }
+    return newest == null ? const {} : Map<String, dynamic>.from(newest);
+  }
+
+  static int? _profileId(Map<String, dynamic> profile) {
+    for (final key in const ['ProfileID', 'ProfileId', 'profileId', 'id']) {
+      final value = profile[key];
+      if (value == null) continue;
+      final parsed = int.tryParse('$value');
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  /// Raw entries from `/json/db/profiles.json`, unlike the provider-shaped
+  /// mapping returned by [listItems].
+  Future<List<Map<String, dynamic>>> _rawProfiles() async {
+    final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.parse('$baseNoSlash/json/db/profiles.json');
+    final client = _createClient();
+    try {
+      final resp = await client.get(uri);
+      if (resp.statusCode != 200) {
+        _log.warning('NanoDLP profiles JSON returned ${resp.statusCode}');
+        return const [];
+      }
+      final decoded = json.decode(resp.body);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList(growable: false);
+    } catch (e, st) {
+      _log.warning('Failed to read NanoDLP profiles JSON', e, st);
+      return const [];
     } finally {
       client.close();
     }

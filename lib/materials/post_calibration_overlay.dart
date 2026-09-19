@@ -20,11 +20,13 @@ import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/backend_service.dart';
+import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
 import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/util/orion_config.dart';
+import 'package:orion/util/profile_name_prompt.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 /// Overlay shown after a calibration print completes
@@ -37,6 +39,10 @@ class PostCalibrationOverlay extends StatefulWidget {
   final int profileId;
   final int calibrationModelId;
   final String? evaluationGuideUrl;
+
+  /// True when [profileId] is a factory template. A template cannot be written
+  /// to, so the exposure is saved to a copy of it, named by the user.
+  final bool profileIsTemplate;
   final VoidCallback onComplete;
 
   const PostCalibrationOverlay({
@@ -48,6 +54,7 @@ class PostCalibrationOverlay extends StatefulWidget {
     required this.profileId,
     required this.calibrationModelId,
     this.evaluationGuideUrl,
+    this.profileIsTemplate = false,
     required this.onComplete,
   });
 
@@ -56,6 +63,11 @@ class PostCalibrationOverlay extends StatefulWidget {
 }
 
 class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
+  /// Set once a template has been copied, so every later save in this session
+  /// lands on the copy rather than on the template.
+  int? clonedProfileId;
+  String? clonedProfileName;
+
   final _logger = Logger('PostCalibrationOverlay');
   final _backendService = BackendService();
   final _config = OrionConfig();
@@ -119,7 +131,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       key: const ValueKey('step0'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Header ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+        // ── Header ──────────────────────────────────────────────
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -159,14 +171,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
         const SizedBox(height: 12),
 
-        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Body ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+        // ── Body ─────────────────────────────────────────────────
         Expanded(
           child: _buildQrCodeView(),
         ),
 
         const SizedBox(height: 16),
 
-        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Action buttons ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+        // ── Action buttons ────────────────────────────────────────
         _buildActionButtons(context),
       ],
     );
@@ -179,7 +191,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       key: const ValueKey('step1'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Header ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+        // ── Header ──────────────────────────────────────────────
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -219,14 +231,14 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
 
         const SizedBox(height: 12),
 
-        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Body ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+        // ── Body ─────────────────────────────────────────────────
         Expanded(
           child: _buildEvaluationView(),
         ),
 
         const SizedBox(height: 16),
 
-        // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Action buttons ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+        // ── Action buttons ────────────────────────────────────────
         _buildActionButtons(context),
       ],
     );
@@ -402,7 +414,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     switch (widget.calibrationModelId) {
       case 1:
         evaluationGuideUrl =
-            'https://docs.google.com/document/d/1aoMSE6GBGMcoYXNGfPP9s_Jg8vr1wQmmZuvqP3suago/edit?tab=t.0#heading=h.bvm0ca3vxmwr';
+            'https://help.concepts3d.ca/en-US/exposure-calibration-guide-8083022';
         break;
       case 2:
         evaluationGuideUrl =
@@ -421,7 +433,9 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
         final onSurface = Theme.of(context).colorScheme.onSurface;
 
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          // Both cards fill the body: the guide card used to shrink to its
+          // text and sit visibly shorter than the QR card beside it.
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
               child: GlassCard(
@@ -429,12 +443,52 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                 outlined: true,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
+                  // The header is an overlay, so the body centres on the card
+                  // as a whole rather than on the space the header leaves.
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    FlutterI18n.translate(
+                                        context, 'postCal.guideDesc'),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: onSurface.withValues(alpha: 0.75),
+                                      height: 1.55,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  _buildGuideItem(
+                                    context,
+                                    FlutterI18n.translate(
+                                        context, 'postCal.scanQr'),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _buildGuideItem(
+                                    context,
+                                    FlutterI18n.translate(
+                                        context, 'postCal.readGuide'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Text(
                           FlutterI18n.translate(
                               context, 'postCal.evaluationGuide'),
                           style: TextStyle(
@@ -444,27 +498,8 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                             letterSpacing: 1.2,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          FlutterI18n.translate(context, 'postCal.guideDesc'),
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: onSurface.withValues(alpha: 0.75),
-                            height: 1.55,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        _buildGuideItem(
-                          context,
-                          FlutterI18n.translate(context, 'postCal.scanQr'),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildGuideItem(
-                          context,
-                          FlutterI18n.translate(context, 'postCal.readGuide'),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -630,49 +665,172 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
     );
   }
 
+  /// The profile the exposure is written to.
+  ///
+  /// A factory template cannot be written to: the user names a copy of it, the
+  /// copy is created, and every later save lands on that copy instead.
+  Future<int?> _targetProfileId() async {
+    if (clonedProfileId != null) return clonedProfileId;
+    if (!widget.profileIsTemplate) return widget.profileId;
+
+    final name = await _askForProfileName();
+    if (name == null) return null;
+
+    try {
+      final created =
+          await _backendService.cloneProfile(widget.profileId, {'Title': name});
+      final id = created['ProfileID'];
+      if (id is! int) {
+        _logger.warning('Cloning template ${widget.profileId} gave no profile '
+            'id (got $created)');
+        _showCloneFailed();
+        return null;
+      }
+      _logger.info(
+          'Cloned template ${widget.profileId} to profile $id ("$name")');
+      if (mounted) {
+        setState(() {
+          clonedProfileId = id;
+          clonedProfileName = name;
+        });
+      }
+      return id;
+    } catch (e) {
+      _logger.warning('Failed to clone template ${widget.profileId}: $e');
+      _showCloneFailed();
+      return null;
+    }
+  }
+
+  /// Asks what the calibrated copy of a template should be called, with the
+  /// same on-screen keyboard field the resin editor uses.
+  Future<String?> _askForProfileName() {
+    return promptForProfileName(
+      context,
+      titleKey: 'postCal.cloneTitle',
+      hintKey: 'postCal.cloneNameLabel',
+      suggestedName: '${widget.resinProfileName ?? ''} (calibrated)',
+    );
+  }
+
+  void _showCloneFailed() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => GlassAlertDialog(
+        title: Text(FlutterI18n.translate(context, 'common.error'),
+            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+        content: Text(
+          FlutterI18n.translate(context, 'postCal.cloneFailed'),
+          style: const TextStyle(fontSize: 20),
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.positive,
+            style: ElevatedButton.styleFrom(minimumSize: const Size(120, 65)),
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(FlutterI18n.translate(context, 'common.done')),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _saveOptimalExposure() async {
     if (_selectedPieces.isEmpty) return;
     final nav = Navigator.of(context);
+
+    // Guard against unresolved profile ID — same as edit resin screen.
+    if (widget.profileId == 0) {
+      _logger.warning('Cannot save exposure: profileId is 0 (unresolved)');
+      widget.onComplete();
+      return;
+    }
 
     final pieceNumber = _selectedPieces.first;
     final optimalExposure =
         widget.startExposure + (widget.exposureIncrement * (pieceNumber - 1));
 
+    // A template is copied first, and the exposure goes to the copy.
+    final targetId = await _targetProfileId();
+    if (targetId == null) return;
+
     // Fetch current profile to get the actual previous exposure time
+    // and build a full settings merge so we can use saveResinSettings
+    // (the same reliable path the edit resin screen uses).
     double previousExposure = widget.startExposure;
+    bool saved = false;
     try {
-      final settings = await _backendService.getResinSettings(widget.profileId);
-      previousExposure = settings?.normalCureTime ?? widget.startExposure;
-    } catch (e) {
-      _logger.warning('Failed to fetch current profile for comparison: $e');
-      // Continue with widget.startExposure as fallback
-    }
-
-    try {
-      _logger.info(
-          'Saving optimal exposure ${optimalExposure}s to profile ${widget.profileId}');
-
-      await _backendService.saveResinExposure(
-          widget.profileId, optimalExposure);
-      _logger.info('Successfully saved optimal exposure to profile');
+      final settings = await _backendService.getResinSettings(targetId);
+      if (settings != null) {
+        previousExposure = settings.normalCureTime;
+        await _backendService.saveResinSettings(
+          targetId,
+          ResinSettings(
+            burnInCureTime: settings.burnInCureTime,
+            normalCureTime: optimalExposure,
+            liftAfterPrint: settings.liftAfterPrint,
+            burnInCount: settings.burnInCount,
+            waitAfterCure: settings.waitAfterCure,
+            waitAfterLife: settings.waitAfterLife,
+          ),
+        );
+        saved = true;
+        _logger.info('Successfully saved optimal exposure to profile');
+      } else {
+        // Fallback: try the single-field convenience method.
+        await _backendService.saveResinExposure(targetId, optimalExposure);
+        saved = true;
+        _logger.info('Saved via saveResinExposure fallback');
+      }
     } catch (e) {
       _logger.warning('Failed to save optimal exposure to profile: $e');
-      // Continue to show success dialog even if save fails
-      // The user can manually adjust settings if needed
     }
+
     final navCtx = nav.context;
     if (!navCtx.mounted) return;
+
+    if (!saved) {
+      showDialog(
+        context: navCtx,
+        builder: (context) => GlassAlertDialog(
+          title: Text(FlutterI18n.translate(context, 'common.error'),
+              style:
+                  const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+          content: Text(
+            'Could not save exposure to profile.\n'
+            'Please set it manually in Materials → Edit Resin.',
+            style: const TextStyle(fontSize: 20),
+          ),
+          actions: [
+            GlassButton(
+              tint: GlassButtonTint.positive,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(120, 65),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onComplete();
+              },
+              child: Text(FlutterI18n.translate(context, 'common.done')),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     showDialog(
       context: navCtx,
       builder: (context) => GlassAlertDialog(
         title: Text(FlutterI18n.translate(context, 'postCal.complete'),
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+            style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.resinProfileName ??
+              clonedProfileName ??
+                  widget.resinProfileName ??
                   FlutterI18n.translate(context, 'calibration.resinProfile'),
               style: TextStyle(
                 fontSize: 22,
@@ -737,11 +895,17 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
             ),
             const SizedBox(height: 16),
             Text(
-              FlutterI18n.translate(context, 'postCal.layerExposureUpdated'),
+              clonedProfileName == null
+                  ? FlutterI18n.translate(
+                      context, 'postCal.layerExposureUpdated')
+                  : FlutterI18n.translate(
+                      context, 'postCal.savedToNewProfile',
+                      translationParams: {'name': clonedProfileName!}),
               style: TextStyle(
                 fontSize: 20,
                 color: Colors.grey.shade500,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -785,7 +949,7 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
           return GlassAlertDialog(
             title: Text(
                 FlutterI18n.translate(context, 'postCal.fineTuneExposure'),
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -836,28 +1000,82 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                   final nav = Navigator.of(context);
                   nav.pop();
 
-                  // Fetch current profile to get the actual previous exposure time
-                  double previousExposure = widget.startExposure;
-                  try {
-                    final settings = await _backendService
-                        .getResinSettings(widget.profileId);
-                    previousExposure =
-                        settings?.normalCureTime ?? widget.startExposure;
-                  } catch (e) {
+                  // Guard against unresolved profile ID.
+                  if (widget.profileId == 0) {
                     _logger.warning(
-                        'Failed to fetch current profile for comparison: $e');
-                    // Continue with widget.startExposure as fallback
+                        'Cannot save fine-tuned exposure: profileId is 0');
+                    widget.onComplete();
+                    return;
                   }
 
-                  // Save the chosen fine-tuned exposure
+                  // A template is copied first, and the exposure goes to the
+                  // copy.
+                  final fineTuneTargetId = await _targetProfileId();
+                  if (fineTuneTargetId == null) return;
+
+                  // Fetch current profile and save via saveResinSettings
+                  // (the same reliable path the edit resin screen uses).
+                  double previousExposure = widget.startExposure;
+                  bool saved = false;
                   try {
-                    await _backendService.saveResinExposure(
-                        widget.profileId, value);
+                    final settings = await _backendService
+                        .getResinSettings(fineTuneTargetId);
+                    if (settings != null) {
+                      previousExposure = settings.normalCureTime;
+                      await _backendService.saveResinSettings(
+                        fineTuneTargetId,
+                        ResinSettings(
+                          burnInCureTime: settings.burnInCureTime,
+                          normalCureTime: value,
+                          liftAfterPrint: settings.liftAfterPrint,
+                          burnInCount: settings.burnInCount,
+                          waitAfterCure: settings.waitAfterCure,
+                          waitAfterLife: settings.waitAfterLife,
+                        ),
+                      );
+                      saved = true;
+                    } else {
+                      await _backendService.saveResinExposure(
+                          fineTuneTargetId, value);
+                      saved = true;
+                    }
                   } catch (e) {
                     _logger.warning('Failed to save fine-tuned exposure: $e');
                   }
                   final fineTuneCtx = nav.context;
                   if (!fineTuneCtx.mounted) return;
+
+                  if (!saved) {
+                    showDialog(
+                      context: fineTuneCtx,
+                      builder: (context) => GlassAlertDialog(
+                        title: Text(
+                            FlutterI18n.translate(context, 'common.error'),
+                            style: const TextStyle(
+                                fontSize: 24, fontWeight: FontWeight.bold)),
+                        content: const Text(
+                          'Could not save exposure to profile.\n'
+                          'Please set it manually in Materials → Edit Resin.',
+                          style: TextStyle(fontSize: 20),
+                        ),
+                        actions: [
+                          GlassButton(
+                            tint: GlassButtonTint.positive,
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size(120, 65),
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              widget.onComplete();
+                            },
+                            child: Text(
+                                FlutterI18n.translate(context, 'common.done')),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
 
                   showDialog(
                     context: fineTuneCtx,
@@ -865,12 +1083,13 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                       title: Text(
                           FlutterI18n.translate(context, 'postCal.complete'),
                           style: TextStyle(
-                              fontSize: 26, fontWeight: FontWeight.bold)),
+                              fontSize: 25, fontWeight: FontWeight.bold)),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            widget.resinProfileName ??
+                            clonedProfileName ??
+                                widget.resinProfileName ??
                                 FlutterI18n.translate(
                                     context, 'calibration.resinProfile'),
                             style: TextStyle(
@@ -940,12 +1159,19 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            FlutterI18n.translate(
-                                context, 'calibration.layerExposureUpdated'),
+                            clonedProfileName == null
+                                ? FlutterI18n.translate(
+                                    context, 'calibration.layerExposureUpdated')
+                                : FlutterI18n.translate(
+                                    context, 'postCal.savedToNewProfile',
+                                    translationParams: {
+                                      'name': clonedProfileName!
+                                    }),
                             style: TextStyle(
                               fontSize: 20,
                               color: Colors.grey.shade500,
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),

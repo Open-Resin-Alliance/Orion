@@ -80,6 +80,20 @@ abstract class BackendClient {
         'Saving resin settings is not supported by this backend.');
   }
 
+  /// Save settings the simple edit form cannot write.
+  ///
+  /// `POST /profile/edit/simple/<id>` only stores the handful of controls its
+  /// own form carries and silently drops anything else, so layer thickness
+  /// (`Depth`) and the `CustomValues`-backed settings (resin preheat, peel
+  /// detection) have to go through the full profile form. Because that
+  /// endpoint stores a value for every control it knows about, the whole form
+  /// is echoed back with [settings] applied on top.
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    throw UnsupportedError(
+        'Advanced resin profile editing is not supported by this backend.');
+  }
+
   // Status-related
   Future<Map<String, dynamic>> getStatus();
 
@@ -128,6 +142,14 @@ abstract class BackendClient {
   Future<Map<String, dynamic>> manualHome();
   Future<Map<String, dynamic>> manualCommand(String command);
   Future<Map<String, dynamic>> emergencyStop();
+
+  /// Hard stop the printer. Callers reach for this when they mean the harder
+  /// stop; it is the same halt as [emergencyStop], which already runs any
+  /// backend-specific force-stop path (NanoDLP's emergency stop issues M112,
+  /// GET /printer/force-stop and FIRMWARE_STOP). Backends may implement it as
+  /// a plain alias.
+  Future<Map<String, dynamic>> forceStop();
+
   Future<void> displayTest(String test);
 
   /// Fetch a specific 2D layer PNG from a NanoDLP-style plates endpoint.
@@ -158,6 +180,18 @@ abstract class BackendClient {
   /// as multipart/form-data. Implementations should return the parsed JSON
   /// response when available or an empty map on success/unsupported.
   Future<Map<String, dynamic>> editProfile(int id, Map<String, dynamic> fields);
+
+  /// Create a new profile by cloning [sourceId] and applying [fields], which
+  /// use the backend's own field names (e.g. NanoDLP's `Title`, `CureTime`).
+  ///
+  /// Returns the created profile's raw payload when the backend can report it
+  /// and an empty map otherwise. Implementations without profile cloning
+  /// should leave the default, which throws [UnsupportedError].
+  Future<Map<String, dynamic>> cloneProfile(
+      int sourceId, Map<String, dynamic> fields) async {
+    throw UnsupportedError(
+        'Cloning resin profiles is not supported by this backend.');
+  }
 
   /// Return the backend's notion of the default profile id when available.
   /// This abstracts parsing machine metadata (e.g. NanoDLP's machine.json)

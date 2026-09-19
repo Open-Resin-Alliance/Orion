@@ -28,6 +28,7 @@ class FakeBackendClient implements BackendClient {
   bool manualHomeCalled = false;
   bool manualCureCalled = false;
   bool displayTestCalled = false;
+  bool forceStopCalled = false;
   String? lastCommand;
 
   bool throwOnMove = false;
@@ -61,6 +62,12 @@ class FakeBackendClient implements BackendClient {
 
   @override
   Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
+    return;
+  }
+
+  @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
     return;
   }
 
@@ -171,6 +178,12 @@ class FakeBackendClient implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>> forceStop() async {
+    forceStopCalled = true;
+    return {};
+  }
+
+  @override
   Future<String> getBackendVersion() {
     return Future.value('0.0.0');
   }
@@ -254,6 +267,13 @@ class FakeBackendClient implements BackendClient {
   Future<Map<String, dynamic>> editProfile(
       int id, Map<String, dynamic> fields) {
     // CHORE: implement editProfile
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> cloneProfile(
+      int sourceId, Map<String, dynamic> fields) {
+    // CHORE: implement cloneProfile
     throw UnimplementedError();
   }
 
