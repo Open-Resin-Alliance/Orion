@@ -17,6 +17,7 @@
 
 // ignore_for_file: unused_field
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -133,7 +134,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
   // Add these to class variables
   final Random _random = Random();
   final List<WelcomeBubble> _welcomeBubbles = [];
-  late AnimationController _bubbleController;
+  final GlobalKey<WelcomeBubblesViewState> _bubblesKey =
+      GlobalKey<WelcomeBubblesViewState>();
 
   // Add title animation controller
   late AnimationController _titleAnimationController;
@@ -207,11 +209,6 @@ class OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _initializeAnimations() {
-    _bubbleController = AnimationController(
-      duration: const Duration(seconds: 30),
-      vsync: this,
-    )..repeat();
-
     _completeAnimationController = AnimationController(
       duration: const Duration(seconds: 1),
       vsync: this,
@@ -285,8 +282,9 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
       // Set initial speed and direction
       final angle = random.nextDouble() * 2 * pi;
-      final baseSpeed =
-          3.0 + random.nextDouble() * 3.0; // Much slower: 3-6 pixels/second
+      // Slow enough to read as drifting, quick enough to see: at the old
+      // 3-6 px/s a bubble took minutes to cross the screen.
+      final baseSpeed = 16.0 + random.nextDouble() * 14.0; // 16-30 px/s
 
       // Calculate initial velocity components
       final vx = cos(angle) * baseSpeed;
@@ -295,13 +293,18 @@ class OnboardingScreenState extends State<OnboardingScreen>
       _welcomeBubbles.add(
         WelcomeBubble(
           message: entry.value,
-          position: Offset(x, y),
+          x: x,
+          y: y,
           size: 24 + random.nextDouble() * 16,
-          velocity: Offset(vx, vy), // Initial velocity that will be maintained
+          velocityX: vx, // Initial velocity that will be maintained
+          velocityY: vy,
           mass: 4.0 + random.nextDouble() * 4.0, // Higher mass: 4-8
           bounciness:
               0.2 + random.nextDouble() * 0.2, // Lower bounciness: 0.2-0.4
           baseSpeed: baseSpeed,
+          // The bubbles lay their text out once, so the colour comes
+          // with them; a theme change re-runs this.
+          textColor: Theme.of(context).colorScheme.onPrimaryContainer,
         ),
       );
       index++;
@@ -365,7 +368,6 @@ class OnboardingScreenState extends State<OnboardingScreen>
   void dispose() {
     _backendService.dispose();
     _scrollController.dispose();
-    _bubbleController.dispose();
     _completeAnimationController.dispose();
     _titleAnimationController.dispose();
     _transitionController.dispose();
@@ -588,7 +590,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
               Positioned.fill(
                 child: OnboardingPages.buildWelcomePage(
                   context,
-                  _bubbleController,
+                  _bubblesKey,
                   _welcomeBubbles,
                   _holeAnimation,
                 ),
@@ -731,18 +733,19 @@ class OnboardingScreenState extends State<OnboardingScreen>
             });
           }
         });
-        OnboardingPages.startExitSequence(context, _welcomeBubbles,
-            stagger: const Duration(milliseconds: 60), onComplete: () {
-          if (mounted) {
-            // play page transition animations
-            _transitionController.forward();
-            setState(() {
-              _isAppBarTransparent = false;
-              _showWelcomeOverlay = false;
-              // FAB remains hidden on language page
-            });
-          }
-        });
+        // The bubble field runs its own exit; when it has faded out, the
+        // welcome overlay comes off and the page underneath is revealed.
+        final bubbles = _bubblesKey.currentState;
+        final gone = bubbles?.exit() ?? Future<void>.value();
+        unawaited(gone.then((_) {
+          if (!mounted) return;
+          _transitionController.forward();
+          setState(() {
+            _isAppBarTransparent = false;
+            _showWelcomeOverlay = false;
+            // FAB remains hidden on language page
+          });
+        }));
       } else {
         _handlePageChange(_currentPage + 1);
       }

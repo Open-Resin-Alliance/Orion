@@ -27,6 +27,7 @@ import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/home/onboarding/welcome_bubbles.dart';
 import 'package:orion/home/onboarding_screen.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/materials/calibration_screen.dart';
@@ -46,6 +47,7 @@ Future<void> pumpFor(WidgetTester tester, [int ms = 2000]) async {
 
 void main() {
   late FakeBackendClient backend;
+  late ThemeProvider theme;
 
   Future<void> pumpOnboarding(WidgetTester tester) async {
     // The printer's own surface: the walk taps the floating buttons, which the
@@ -67,10 +69,11 @@ void main() {
     );
     await delegate.load(const Locale('en'));
 
+    theme = ThemeProvider();
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider<ThemeProvider>.value(value: theme),
           ChangeNotifierProvider(create: (_) => LocaleProvider()),
           ChangeNotifierProvider(
               create: (_) => WiFiProvider(startPolling: false)),
@@ -80,11 +83,18 @@ void main() {
           ChangeNotifierProvider(create: (_) => ResinsProvider()),
           ChangeNotifierProvider(create: (_) => CalibrationContextProvider()),
         ],
-        child: MaterialApp(
+        child: Consumer<ThemeProvider>(
+          builder: (context, themeProvider, _) => MaterialApp(
           locale: const Locale('en'),
           localizationsDelegates: [delegate],
           supportedLocales: const [Locale('en')],
-          home: const OnboardingScreen(),
+          // The app's own themes: the welcome screen's dim follows the theme,
+          // so a bare MaterialApp would hide exactly that.
+          theme: theme.lightTheme,
+          darkTheme: theme.darkTheme,
+          themeMode: theme.themeMode,
+            home: const OnboardingScreen(),
+          ),
         ),
       ),
     );
@@ -135,6 +145,35 @@ void main() {
 
     expect(find.text(t('setup.verifyLevelingTitle')), findsOneWidget);
   }
+
+  testWidgets('the welcome dim follows the theme it is shown in',
+      (WidgetTester tester) async {
+    await pumpOnboarding(tester);
+    final before = theme.orionThemeMode;
+    addTearDown(() => theme.setThemeMode(before));
+
+    WelcomeRevealPainter reveal() => tester
+        .widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((widget) => widget.painter)
+        .whereType<WelcomeRevealPainter>()
+        .single;
+
+    final dark = reveal().tints;
+
+    theme.setThemeMode(OrionThemeMode.glass);
+    await pumpFor(tester, 400);
+    final glass = reveal().tints;
+
+    theme.setThemeMode(OrionThemeMode.light);
+    await pumpFor(tester, 400);
+    final light = reveal().tints;
+
+    // Each theme dims its own background: a single hard-coded gradient made the
+    // welcome look like the glass theme whatever was chosen.
+    expect(glass, isNot(equals(dark)));
+    expect(light, isNot(equals(dark)));
+    expect(reveal().tints, isNotEmpty);
+  });
 
   /// The leveling state the leveling menu guards Verify Leveling with, and that
   /// this step is guarded by.
