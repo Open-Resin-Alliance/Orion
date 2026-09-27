@@ -80,6 +80,9 @@ class NanoDlpSimulatedClient implements BackendClient {
   static const Duration _calibrationPreparationDuration = Duration(seconds: 2);
   static const int _calibrationPrintLayers = 10;
   static const double _calibrationPrintLayerSeconds = 0.8;
+
+  /// Resin the simulated job reports as used, per layer, in mL.
+  static const double _materialPerLayerMl = 0.05;
   static const String _persistedStateFile = 'simulated_backend_state.json';
 
   String? _stateFilePath() {
@@ -290,6 +293,10 @@ class NanoDlpSimulatedClient implements BackendClient {
         'name': _currentFileName,
         'path': _currentFilePath,
         'layer_count': _activeTotalLayers,
+        // The job's total estimate, which the status screen's Time Remaining
+        // card counts down from: layers * seconds per layer.
+        'print_time': _activeTotalLayers * _activeLayerSeconds,
+        'used_material': _activeTotalLayers * _materialPerLayerMl,
       },
       'calibration': {
         'model_id': _lastCalibrationModelId,

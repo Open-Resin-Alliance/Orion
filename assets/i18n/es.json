@@ -808,7 +808,7 @@
     "noFile": "Sin archivo",
     "currentZ": "Posición Z",
     "printLayers": "Capas",
-    "estimatedTime": "Tiempo estimado",
+    "timeRemaining": "Tiempo restante",
     "estimatedVolume": "Volumen estimado",
     "na": "-",
     "raisePlate": "Subir placa",

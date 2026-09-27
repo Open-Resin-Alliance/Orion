@@ -808,7 +808,7 @@
     "noFile": "无文件",
     "currentZ": "当前Z轴位置",
     "printLayers": "打印层数",
-    "estimatedTime": "预计打印时间",
+    "timeRemaining": "剩余时间",
     "estimatedVolume": "预计体积",
     "na": "-",
     "raisePlate": "抬升平台",

@@ -821,13 +821,15 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         } else if (isPaused || isPausing) {
           standbyContent = Center(child: _buildPausedIndicator(ctx, progress));
         } else if (isPrinting) {
-          standbyContent =
-              Center(child: _buildProgressIndicator(ctx, progress));
+          standbyContent = Center(
+              child: _buildProgressIndicator(
+                  ctx, progress, statusProvider.formattedRemainingPrintTime));
         } else if (isCancelingTransition) {
           // During cancel transition, keep showing the progress ring
           // so the UI doesn't flash the clock before the canceled overlay.
-          standbyContent =
-              Center(child: _buildProgressIndicator(ctx, progress));
+          standbyContent = Center(
+              child: _buildProgressIndicator(
+                  ctx, progress, statusProvider.formattedRemainingPrintTime));
         } else {
           standbyContent = standbySettings.standbyMode == 'logo'
               ? _buildLogoDisplay(ctx)
@@ -1074,7 +1076,18 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     );
   }
 
-  Widget _buildProgressIndicator(BuildContext context, double progress) {
+  // The percentage and the time left share the inside of the progress ring,
+  // split by a hairline rule. The countdown is set smaller and the rule wider
+  // than the percentage so the two lines read as equals: matched point sizes
+  // just let the longer string win.
+  static const double _ringPercentageFontSize = 60;
+  static const double _ringTimeFontSize = 46;
+  static const double _ringDividerGap = 14;
+  static const double _ringDividerWidth = 210;
+  static const double _ringDividerThickness = 2;
+
+  Widget _buildProgressIndicator(
+      BuildContext context, double progress, String? timeRemaining) {
     final percentage = (progress * 100).toStringAsFixed(0);
     final primaryColor = Theme.of(context).colorScheme.primary;
 
@@ -1092,23 +1105,48 @@ class _StandbyOverlayState extends State<StandbyOverlay>
             backgroundColor: Color.lerp(primaryColor, Colors.black, 0.9)!,
           ),
         ),
-        Text(
-          '$percentage%',
-          style: TextStyle(
-            fontFamily: 'AtkinsonHyperlegible',
-            fontSize: 100,
-            fontWeight: FontWeight.w500,
-            color: primaryColor,
-            decoration: TextDecoration.none,
-            fontFeatures: const [ui.FontFeature.tabularFigures()],
-            shadows: [
-              Shadow(
-                blurRadius: 8,
-                color: Colors.black.withAlpha((0.5 * 255).toInt()),
-                offset: const Offset(0, 2),
+        // Percentage and time left carry the same weight inside the ring,
+        // split by a hairline rule.
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$percentage%',
+              style: TextStyle(
+                fontFamily: 'AtkinsonHyperlegible',
+                fontSize: _ringPercentageFontSize,
+                height: 1.0,
+                fontWeight: FontWeight.w500,
+                color: primaryColor,
+                decoration: TextDecoration.none,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: _ringDividerGap),
+            Container(
+              width: _ringDividerWidth,
+              height: _ringDividerThickness,
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+            const SizedBox(height: _ringDividerGap),
+            // Empty while the job has no estimate to count down (e.g. a
+            // cancel already in flight): the rule stays so the percentage
+            // does not jump.
+            Text(
+              timeRemaining ?? '',
+              style: TextStyle(
+                fontFamily: 'AtkinsonHyperlegible',
+                fontSize: _ringTimeFontSize,
+                height: 1.0,
+                fontWeight: FontWeight.w500,
+                color: primaryColor,
+                decoration: TextDecoration.none,
+                fontFeatures: const [ui.FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
         ),
       ],
     );

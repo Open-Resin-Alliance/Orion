@@ -72,6 +72,16 @@ class StatusProvider extends ChangeNotifier {
   /// proxy while printing so existing UI bindings continue to work.
   Duration? _currentLayerDuration;
 
+  // Countdown to the end of the active print. The backends report the job's
+  // total estimate and layer counter, not a remaining time, so the countdown
+  // is anchored to the newest snapshot that carries layer information and the
+  // monotonic [_printTimingClock] is subtracted in between. See
+  // [_syncPrintTiming].
+  final Stopwatch _printTimingClock = Stopwatch();
+  int? _anchoredRemainingSeconds;
+  int? _anchoredLayer;
+  String? _anchoredJobId;
+
   // Track observed layer numbers and timestamps so we can compute a
   // previous-layer duration when the backend does not provide PrevLayerTime
   // reliably on every snapshot. When we detect the layer number increase we
@@ -112,6 +122,26 @@ class StatusProvider extends ChangeNotifier {
   double? get currentLayerSeconds => _currentLayerDuration == null
       ? null
       : _currentLayerDuration!.inMilliseconds / 1000.0;
+
+  /// Wall-clock countdown to the end of the active print, or null when no
+  /// print is running or the backend reported nothing to estimate from.
+  ///
+  /// The value is re-anchored from each snapshot that advances the layer
+  /// counter, and it ticks down between snapshots, so the UI does not have to
+  /// wait for the next snapshot to show a fresh number. Pauses do not consume
+  /// the countdown.
+  Duration? get remainingPrintTime {
+    final anchored = _anchoredRemainingSeconds;
+    if (anchored == null) return null;
+    final left = anchored - _printTimingClock.elapsed.inMilliseconds / 1000.0;
+    return Duration(seconds: left <= 0 ? 0 : left.round());
+  }
+
+  /// [remainingPrintTime] as zero-padded HH:MM:SS, null when unavailable.
+  String? get formattedRemainingPrintTime {
+    final remaining = remainingPrintTime;
+    return remaining == null ? null : StatusModel.formatDuration(remaining);
+  }
 
   // Note: MCU and UV/outside temperatures are provided via the NanoDLP
   // analytics time-series. Consumers should use `AnalyticsProvider` and
@@ -611,7 +641,7 @@ class StatusProvider extends ChangeNotifier {
             }
           }
 
-          _status = parsed;
+          _applyStatus(parsed);
           _error = null;
           _loading = false;
           _consecutiveErrors = 0;
@@ -1153,7 +1183,7 @@ class StatusProvider extends ChangeNotifier {
       // wait for an active job (printing/paused) so a reprint of the same file
       // still forces a clean spinner until the job restarts.
 
-      _status = parsed;
+      _applyStatus(parsed);
       // Kinematic status (Z position, offset, homed) is not polled
       // continuously to reduce backend load. Screens that need it should call
       // refreshKinematicStatus() explicitly (e.g. after button presses).
@@ -1471,6 +1501,60 @@ class StatusProvider extends ChangeNotifier {
     }
   }
 
+  /// Apply a freshly parsed snapshot, keeping the print countdown in sync.
+  void _applyStatus(StatusModel? status) {
+    _status = status;
+    _syncPrintTiming(status);
+  }
+
+  /// Re-anchor the countdown from [status] and run/stop its clock.
+  ///
+  /// Re-anchoring happens only when the layer counter advances (or when there
+  /// is no anchor yet): the estimate for the layer already in progress would
+  /// otherwise push the countdown back up on every snapshot of that layer.
+  void _syncPrintTiming(StatusModel? status) {
+    final jobId =
+        status?.printData?.fileData?.path ?? status?.printData?.fileData?.name;
+    if (status == null ||
+        jobId == null ||
+        !(status.isPrinting || status.isPaused)) {
+      _clearPrintTiming();
+      return;
+    }
+    if (jobId != _anchoredJobId) {
+      _anchoredJobId = jobId;
+      _anchoredRemainingSeconds = null;
+      _anchoredLayer = null;
+      _printTimingClock
+        ..stop()
+        ..reset();
+    }
+    if (_anchoredRemainingSeconds == null || status.layer != _anchoredLayer) {
+      final remaining = status.remainingPrintTime;
+      if (remaining != null) {
+        _anchoredRemainingSeconds = remaining.inSeconds;
+        _anchoredLayer = status.layer;
+        _printTimingClock.reset();
+      }
+    }
+    if (status.isPaused) {
+      _printTimingClock.stop();
+    } else if (_anchoredRemainingSeconds != null &&
+        !_printTimingClock.isRunning) {
+      _printTimingClock.start();
+    }
+  }
+
+  void _clearPrintTiming() {
+    if (_anchoredRemainingSeconds == null && _anchoredJobId == null) return;
+    _anchoredRemainingSeconds = null;
+    _anchoredLayer = null;
+    _anchoredJobId = null;
+    _printTimingClock
+      ..stop()
+      ..reset();
+  }
+
   /// initial thumbnail (bytes) and file path or plate id so the UI can
   /// immediately render a cached preview while the backend populates
   /// active job metadata. This is useful when starting a print from the
@@ -1483,7 +1567,7 @@ class StatusProvider extends ChangeNotifier {
     _log.fine('resetStatus called — purging stale status and thumbnails');
     // Purge cached status and transient state immediately so UI shows a
     // clean spinner instead of stale values while we fetch fresh status.
-    _status = null;
+    _applyStatus(null);
     _thumbnailBytes = initialThumbnailBytes;
     _thumbnailReady = initialThumbnailBytes != null;
     _error = null;

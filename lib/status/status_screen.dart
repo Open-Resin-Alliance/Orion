@@ -44,6 +44,7 @@ import 'package:orion/util/widgets/system_status_widget.dart';
 import 'package:orion/backend_service/providers/analytics_provider.dart';
 import 'package:orion/home/home_screen.dart';
 import 'package:orion/widgets/orion_app_bar.dart';
+import 'package:orion/util/widgets/time_remaining_text.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
 
@@ -85,7 +86,7 @@ class StatusScreenState extends State<StatusScreen> {
   bool get _isLandscape =>
       MediaQuery.of(context).orientation == Orientation.landscape;
 
-  // Duration formatting moved to StatusModel.formattedElapsedPrintTime
+  // Print countdown formatting lives in StatusModel.formatDuration.
 
   @override
   void initState() {
@@ -553,7 +554,6 @@ class StatusScreenState extends State<StatusScreen> {
           );
         }
 
-        final elapsedStr = status.formattedElapsedPrintTime;
         // Trigger a one-time prefetch of 3D and current 2D layer thumbnails
         // when we first observe a valid status with file metadata.
         if (!_prefetched && status.printData?.fileData != null) {
@@ -786,7 +786,6 @@ class StatusScreenState extends State<StatusScreen> {
                             context,
                             provider,
                             status,
-                            elapsedStr,
                             fileName,
                           ),
                         )
@@ -797,7 +796,6 @@ class StatusScreenState extends State<StatusScreen> {
                             context,
                             provider,
                             status,
-                            elapsedStr,
                             fileName,
                           ),
                         );
@@ -811,7 +809,7 @@ class StatusScreenState extends State<StatusScreen> {
   }
 
   Widget _buildPortraitLayout(BuildContext context, StatusProvider provider,
-      StatusModel? status, String elapsedStr, String fileName) {
+      StatusModel? status, String fileName) {
     final statusModel = status;
     final layerCurrent = statusModel?.layer;
     final layerTotal = statusModel?.printData?.layerCount;
@@ -844,9 +842,10 @@ class StatusScreenState extends State<StatusScreen> {
                     ),
                   ]),
                   const SizedBox(height: 5),
-                  _buildInfoCard(
-                      FlutterI18n.translate(context, 'status.estimatedTime'),
-                      elapsedStr),
+                  _buildInfoCardContent(
+                    FlutterI18n.translate(context, 'status.timeRemaining'),
+                    const TimeRemainingText(),
+                  ),
                   const SizedBox(height: 5),
                   _buildInfoCard(
                     FlutterI18n.translate(context, 'status.estimatedVolume'),
@@ -866,7 +865,7 @@ class StatusScreenState extends State<StatusScreen> {
   }
 
   Widget _buildLandscapeLayout(BuildContext context, StatusProvider provider,
-      StatusModel? status, String elapsedStr, String fileName) {
+      StatusModel? status, String fileName) {
     final statusModel = status;
     final layerCurrent = statusModel?.layer;
     final layerTotal = statusModel?.printData?.layerCount;
@@ -888,9 +887,10 @@ class StatusScreenState extends State<StatusScreen> {
                     ? '- / -'
                     : '$layerCurrent / $layerTotal',
               ),
-              _buildInfoCard(
-                  FlutterI18n.translate(context, 'status.estimatedTime'),
-                  elapsedStr),
+              _buildInfoCardContent(
+                FlutterI18n.translate(context, 'status.timeRemaining'),
+                const TimeRemainingText(),
+              ),
               _buildInfoCard(
                 FlutterI18n.translate(context, 'status.estimatedVolume'),
                 usedMaterial == null
@@ -917,6 +917,12 @@ class StatusScreenState extends State<StatusScreen> {
 
   // temperature is optional; default to 0.0 when not provided
   Widget _buildInfoCard(String title, String subtitle,
+          [double temperature = 0.0]) =>
+      _buildInfoCardContent(title, Text(subtitle), temperature);
+
+  /// [_buildInfoCard] with a live subtree as the body, for values that move
+  /// between status snapshots.
+  Widget _buildInfoCardContent(String title, Widget subtitle,
       [double temperature = 0.0]) {
     Provider.of<ThemeProvider>(context); // theming
     return GlassCard(
@@ -928,7 +934,7 @@ class StatusScreenState extends State<StatusScreen> {
       accentColor: temperature == 0 ? null : _colorForTemperature(temperature),
       child: ListTile(
         title: Text(title),
-        subtitle: Text(subtitle),
+        subtitle: subtitle,
       ),
     );
   }

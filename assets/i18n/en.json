@@ -808,7 +808,7 @@
         "noFile": "No file",
         "currentZ": "Current Z Position",
         "printLayers": "Print Layers",
-        "estimatedTime": "Estimated Print Time",
+        "timeRemaining": "Time Remaining",
         "estimatedVolume": "Estimated Volume",
         "na": "-",
         "raisePlate": "Raise Plate",

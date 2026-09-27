@@ -808,7 +808,7 @@
     "noFile": "Nessun file",
     "currentZ": "Posizione Z attuale",
     "printLayers": "Strati di stampa",
-    "estimatedTime": "Tempo di stampa stimato",
+    "timeRemaining": "Tempo rimanente",
     "estimatedVolume": "Volume stimato",
     "na": "-",
     "raisePlate": "Alza piattaforma",

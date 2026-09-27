@@ -808,7 +808,7 @@
     "noFile": "Aucun fichier",
     "currentZ": "Position Z",
     "printLayers": "Couches",
-    "estimatedTime": "Temps estimé",
+    "timeRemaining": "Temps restant",
     "estimatedVolume": "Volume estimé",
     "na": "-",
     "raisePlate": "Monter le plateau",
