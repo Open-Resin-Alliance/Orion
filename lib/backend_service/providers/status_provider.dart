@@ -591,8 +591,6 @@ class StatusProvider extends ChangeNotifier {
                   _currentLayerDuration = Duration(microseconds: micros);
                   // Proxy into prev-layer for UI simplicity during active print
                   _prevLayerDuration = _currentLayerDuration;
-                  _log.finer(
-                      'SSE LayerTime from analytics (ms): ${_currentLayerDuration!.inMilliseconds}');
                 }
               }
             } else {
@@ -1043,8 +1041,6 @@ class StatusProvider extends ChangeNotifier {
               // Only accept reasonable durations (e.g., >0s and <24h)
               if (delta.inSeconds > 0 && delta.inHours < 24) {
                 _prevLayerDuration = delta;
-                _log.finer(
-                    'Computed PrevLayerTime from layer change (ms): ${_prevLayerDuration!.inMilliseconds}');
               }
             }
             _lastObservedLayer = observedLayer;
