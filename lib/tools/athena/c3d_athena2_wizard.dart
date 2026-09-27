@@ -276,8 +276,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   @override
   void initState() {
     super.initState();
-    _engine = LevelingWorkflowEngine(skipParkFor: _skipParkForPrepare)
-      ..addListener(_handleEngineUpdate);
+    _engine = LevelingWorkflowEngine(
+      skipParkFor: _skipParkForPrepare,
+      // Verify leveling checks the plate's level; a fresh run seats it.
+      levelCheck: widget.recheck,
+    )..addListener(_handleEngineUpdate);
     _uvSafetyTimer = UvSafetyTimer(() {
       BackendService().turnOffSpecialScreens().then((_) {}).catchError((_) {});
     });
@@ -395,7 +398,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   /// starts from a known, clean state.
   ///
   /// Returns false (without throwing) if the backend call failed, so the
-  /// recheck can still attempt to proceed — `probe_screen` may recover.
+  /// recheck can still attempt to proceed — its level check may recover.
   Future<bool> _prepareForRecheck(BuildContext context) async {
     try {
       final response = await BackendService().runForceLevelingWorkflow(
@@ -544,8 +547,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         }
       }
 
-      // In recheck mode, probe_screen just calibrated the sensor.
-      // Now jump to corner probing — skip loosen/tighten intermediates.
+      // In recheck mode, the level check just ran. Now jump to corner
+      // probing — skip loosen/tighten intermediates.
       if (widget.recheck &&
           step != null &&
           step.id == 'probe_screen' &&
@@ -1242,9 +1245,9 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         _phase = _WizardPhase.workflow;
         _preFlightIndex = -1;
       });
-      // In recheck mode, run probe_screen first to calibrate the force
-      // sensor, then jump to corner probing.  The loosen/tighten
-      // intermediate screens are skipped via flags.
+      // In recheck mode, run the level check first, then jump to corner
+      // probing.  The loosen/tighten intermediate screens are skipped via
+      // flags.
       if (widget.recheck) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
@@ -1254,8 +1257,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _recheckHomeFuture = null;
           }
           if (!mounted) return;
-          // Jump to probe_screen (step 1) — calibrates screen position
-          // and force sensor limits before probing corners.
+          // Jump to the level check (step 1) before probing corners.
           _engine.jumpToStep(1);
           if (_engine.canRunCurrentStep) {
             _engine.runCurrentStep();
@@ -4740,6 +4742,7 @@ class _WorkflowPane extends StatelessWidget {
             FlutterI18n.translate(context, 'leveling.wizardMovingPark'),
           _ => switch (step.endpoint) {
               'probe_screen' ||
+              'levelcheck' ||
               'probe_levelcheck' ||
               'probe_standardarm' =>
                 FlutterI18n.translate(context, 'leveling.wizardMovingToScreen'),

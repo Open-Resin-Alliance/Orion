@@ -39,6 +39,7 @@ class LevelingWorkflowEngine extends ChangeNotifier {
   LevelingWorkflowEngine({
     ForceLevelingRunner? runner,
     this.skipParkFor,
+    this.levelCheck = false,
   }) : _runner = runner ??
             ((endpoint, {screenType, skipPark = false}) =>
                 BackendService().runForceLevelingWorkflow(
@@ -56,6 +57,11 @@ class LevelingWorkflowEngine extends ChangeNotifier {
   /// lowering back down is wasted motion, and a hazard to hands near the plate,
   /// when the spacer is already in place and a probe follows immediately.
   bool Function(LevelingWorkflowStep step)? skipParkFor;
+
+  /// Verify leveling: the initial step asks the printer for a level check
+  /// (`levelcheck`) rather than seating the plate with a screen probe. Set
+  /// before a variant is selected.
+  bool levelCheck;
   final _log = Logger('LevelingWorkflowEngine');
 
   /// Selected screen type (tempered glass vs. wave release film).  Passed
@@ -102,7 +108,7 @@ class LevelingWorkflowEngine extends ChangeNotifier {
 
   void selectVariant(LevelingVariant variant) {
     _variant = variant;
-    _steps = variant.buildSteps();
+    _steps = variant.buildSteps(levelCheck: levelCheck);
     _currentStepIndex = 0;
     _status = LevelingWorkflowStatus.idle;
     _lastResponse = null;

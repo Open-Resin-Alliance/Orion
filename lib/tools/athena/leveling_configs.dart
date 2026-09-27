@@ -140,7 +140,11 @@ class LevelingVariant {
     this.icon,
   });
 
-  List<LevelingWorkflowStep> buildSteps() {
+  /// [levelCheck] swaps the initial step onto the printer's level check
+  /// (`levelcheck`) instead of the screen probe. Verify leveling is what asks
+  /// for it: it wants to know whether the plate is level, not to seat it, and
+  /// that holds for either build arm.
+  List<LevelingWorkflowStep> buildSteps({bool levelCheck = false}) {
     // Stage 1 (initial seating) — common to all variants.
     // The initial offset calibration is only included for non-pro;
     // pro redoes it as the final step after corner leveling anyway.
@@ -150,11 +154,14 @@ class LevelingVariant {
         intermediateScreen: 'loosen',
       ),
       // 1: Initial leveling — shows tighten intermediate.
-      // Standard arm floors the Z to seat the plate instead of probing,
-      // since the arm can shift when screws are loose.
+      // A fresh run seats the plate: the pro arm probes the screen, the
+      // standard arm floors the Z instead, since the arm can shift while its
+      // screws are loose. The recheck has no seating to do.
       athena2BaseWorkflowSteps[1].copyWith(
-        endpoint: id != 'pro' ? 'probe_standardarm' : null,
-        skipBackend: id != 'pro' ? true : null,
+        endpoint: levelCheck
+            ? 'levelcheck'
+            : (id != 'pro' ? 'probe_standardarm' : null),
+        skipBackend: levelCheck ? false : (id != 'pro' ? true : null),
         stepTitle: 'Initial Leveling',
         stepInstruction: 'The plate will move towards the build plate.',
         intermediateScreen: 'tighten',

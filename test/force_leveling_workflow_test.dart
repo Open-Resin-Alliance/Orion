@@ -106,6 +106,29 @@ void main() {
       expect(regularSteps.last.endpoint, 'probe_standardarm');
     });
 
+    test('only the level check swaps the screen probe for levelcheck', () {
+      final config = getLevelingConfigForMachine('Athena2')!;
+      final regular = config.variants.firstWhere((v) => v.id == 'regular');
+      final pro = config.variants.firstWhere((v) => v.id == 'pro');
+
+      // A fresh run seats the plate: the pro arm probes the screen, the
+      // standard arm floors the Z and never reaches the backend.
+      expect(pro.buildSteps()[1].endpoint, 'probe_screen');
+      expect(pro.buildSteps()[1].skipBackend, isFalse);
+
+      final regularInitial = regular.buildSteps()[1];
+      expect(regularInitial.endpoint, 'probe_standardarm');
+      expect(regularInitial.skipBackend, isTrue);
+
+      // Verify leveling asks the printer whether the plate is level, on
+      // either arm, and actually calls the backend to find out.
+      for (final variant in [pro, regular]) {
+        final initial = variant.buildSteps(levelCheck: true)[1];
+        expect(initial.endpoint, 'levelcheck', reason: variant.id);
+        expect(initial.skipBackend, isFalse, reason: variant.id);
+      }
+    });
+
     test('fine prepare steps name their corner, others have none', () {
       final steps = getLevelingConfigForMachine('Athena2')!
           .variants
@@ -121,9 +144,11 @@ void main() {
       );
       // A corner probe and the initial prepare are not corner prepares, so
       // neither can ask for the parking to be skipped.
-      expect(finePrepareCorner(steps.firstWhere((s) => s.id == 'fine_corner_1')),
+      expect(
+          finePrepareCorner(steps.firstWhere((s) => s.id == 'fine_corner_1')),
           isNull);
-      expect(finePrepareCorner(steps.firstWhere((s) => s.id == 'probe_prepare')),
+      expect(
+          finePrepareCorner(steps.firstWhere((s) => s.id == 'probe_prepare')),
           isNull);
     });
   });
@@ -195,6 +220,32 @@ void main() {
       ]);
     });
 
+    test('the initial step sends the level check only when asked', () async {
+      Future<List<String>> initialCalls({required bool levelCheck}) async {
+        final calls = <String>[];
+        final engine = LevelingWorkflowEngine(
+          levelCheck: levelCheck,
+          runner: (endpoint, {screenType, skipPark = false}) async {
+            calls.add(endpoint);
+            return ForceLevelingWorkflowResponse.fromJson({
+              'result': true,
+              'error': '',
+            });
+          },
+        );
+        engine.selectVariant(getLevelingConfigForMachine('Athena2')!
+            .variants
+            .firstWhere((v) => v.id == 'pro'));
+        // Step 1 is the initial one; run it directly, as a recheck does.
+        engine.jumpToStep(1);
+        await engine.runCurrentStep();
+        return calls;
+      }
+
+      expect(await initialCalls(levelCheck: false), ['probe_screen']);
+      expect(await initialCalls(levelCheck: true), ['levelcheck']);
+    });
+
     test('keeps failed step retryable after busy response', () async {
       var attempts = 0;
       final engine = LevelingWorkflowEngine(
@@ -247,8 +298,7 @@ void main() {
       expect(engine.currentStepIndex, 0);
     });
 
-    test('surfaces an obstruction error code as a localized message',
-        () async {
+    test('surfaces an obstruction error code as a localized message', () async {
       final engine = LevelingWorkflowEngine(
         runner: (_, {screenType, skipPark = false}) async =>
             ForceLevelingWorkflowResponse.fromJson({
