@@ -24,6 +24,7 @@ import 'package:provider/provider.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/materials/post_calibration_overlay.dart';
 import 'package:orion/util/orion_kb/orion_textfield_spawn.dart';
 import 'package:orion/util/providers/theme_provider.dart';
@@ -69,6 +70,8 @@ Future<void> _pumpOverlay(
   WidgetTester tester,
   _RecordingBackend backend, {
   required bool isTemplate,
+  bool overStep = false,
+  bool launchedFromOnboarding = false,
 }) async {
   // A roomy surface: the test font is wider than the real one, and the
   // overlay's summary row is laid out for the printer's screen.
@@ -87,27 +90,46 @@ Future<void> _pumpOverlay(
   );
   await delegate.load(const Locale('en'));
 
+  final calibration = CalibrationContextProvider();
+  final overlay = PostCalibrationOverlay(
+    calibrationModelName: 'RERF',
+    resinProfileName: 'Factory Profile',
+    startExposure: 1.0,
+    exposureIncrement: 0.2,
+    profileId: 7,
+    calibrationModelId: 1,
+    profileIsTemplate: isTemplate,
+    launchedFromOnboarding: launchedFromOnboarding,
+    onComplete: () {},
+  );
+
   await tester.pumpWidget(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => ThemeProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider<CalibrationContextProvider>.value(
+            value: calibration),
+      ],
       child: MaterialApp(
         locale: const Locale('en'),
         localizationsDelegates: [delegate],
         supportedLocales: const [Locale('en')],
-        home: PostCalibrationOverlay(
-          calibrationModelName: 'RERF',
-          resinProfileName: 'Factory Profile',
-          startExposure: 1.0,
-          exposureIncrement: 0.2,
-          profileId: 7,
-          calibrationModelId: 1,
-          profileIsTemplate: isTemplate,
-          onComplete: () {},
-        ),
+        // Over a step, the way the status screen pushes it: popping back has
+        // somewhere to land.
+        home: overStep
+            ? const Scaffold(body: Center(child: Text('setup step')))
+            : overlay,
       ),
     ),
   );
+  // Localizations builds an empty subtree until its delegate load lands, so
+  // let that settle before reaching for the step underneath.
   await tester.pumpAndSettle();
+  if (overStep) {
+    Navigator.of(tester.element(find.text('setup step')))
+        .push(MaterialPageRoute<void>(builder: (_) => overlay));
+    await tester.pumpAndSettle();
+  }
 
   // The overlay opens on its summary; the piece picker is one step further in.
   await tester.tap(find.text('Next'));
@@ -176,5 +198,57 @@ void main() {
     expect(backend.clones, isEmpty);
     expect(backend.saves.single['profile'], 7);
     expect(backend.saves.single['exposure'], closeTo(1.2, 0.001));
+  });
+
+  testWidgets('discarding a run the setup started returns to that step',
+      (WidgetTester tester) async {
+    final backend = _RecordingBackend();
+    await _pumpOverlay(tester, backend,
+        isTemplate: false, overStep: true, launchedFromOnboarding: true);
+
+    await tester.tap(find.widgetWithText(GlassButton, 'Discard'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+      of: find.byType(GlassAlertDialog),
+      matching: find.widgetWithText(GlassButton, 'Discard'),
+    ));
+    await tester.pumpAndSettle();
+
+    // The setup step is what waits behind the run; the materials screen is not
+    // where this operator came from.
+    expect(find.text('setup step'), findsOneWidget);
+    expect(find.text('Select the piece matching the guide.'), findsNothing);
+    expect(
+      Provider.of<CalibrationContextProvider>(
+        tester.element(find.byType(Scaffold)),
+        listen: false,
+      ).runDiscarded,
+      isTrue,
+    );
+  });
+
+  testWidgets('discarding asks first, and cancelling keeps the run',
+      (WidgetTester tester) async {
+    final backend = _RecordingBackend();
+    await _pumpOverlay(tester, backend, isTemplate: false);
+
+    // The run is not thrown away on a single tap.
+    expect(find.text('Reconfigure'), findsNothing);
+    await tester.tap(find.widgetWithText(GlassButton, 'Discard'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Discard this calibration run?'), findsOneWidget);
+    expect(
+      find.text('The exposure you selected will be lost, and you will have '
+          'to print and evaluate the calibration plate again.'),
+      findsOneWidget,
+    );
+
+    // Backing out leaves the overlay where it was.
+    await tester.tap(find.widgetWithText(GlassButton, 'Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Discard this calibration run?'), findsNothing);
+    expect(find.text('Select the piece matching the guide.'), findsOneWidget);
   });
 }

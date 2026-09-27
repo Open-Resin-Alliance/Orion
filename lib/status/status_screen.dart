@@ -332,6 +332,8 @@ class StatusScreenState extends State<StatusScreen> {
                 calibrationModelId: calibrationContext.calibrationModelId,
                 evaluationGuideUrl: calibrationContext.evaluationGuideUrl,
                 profileIsTemplate: calibrationContext.profileIsTemplate,
+                launchedFromOnboarding:
+                    calibrationContext.launchedFromOnboarding,
                 onComplete: () {
                   // Pop everything: overlay, StatusScreen, CalibrationScreen, progress overlay
                   nav.popUntil((route) => route.isFirst);

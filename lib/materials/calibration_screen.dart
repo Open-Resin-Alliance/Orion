@@ -107,8 +107,13 @@ class CalibrationScreen extends StatelessWidget {
 }
 
 /// The calibration setup, presented over the shell by [CalibrationScreen].
+///
+/// [fromOnboarding] marks a run started by the setup wizard, so that
+/// discarding it returns to that step rather than to the materials screen.
 class CalibrationWizardScreen extends StatefulWidget {
-  const CalibrationWizardScreen({super.key});
+  const CalibrationWizardScreen({super.key, this.fromOnboarding = false});
+
+  final bool fromOnboarding;
 
   @override
   State<CalibrationWizardScreen> createState() =>
@@ -1151,6 +1156,7 @@ class _CalibrationWizardScreenState extends State<CalibrationWizardScreen> {
                   calibrationModelId: _selectedModel!.id,
                   evaluationGuideUrl: _selectedModel!.evaluationGuideUrl,
                   profileIsTemplate: _selectedResin?.locked ?? false,
+                  launchedFromOnboarding: widget.fromOnboarding,
                 ),
               );
         }

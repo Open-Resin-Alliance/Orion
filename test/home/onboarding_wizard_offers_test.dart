@@ -268,4 +268,36 @@ void main() {
     // Closing it carries onboarding on to the completion step.
     expect(find.textContaining(t('complete.completionMessage')), findsOneWidget);
   });
+
+  testWidgets('a discarded calibration puts the setup back on that step',
+      (WidgetTester tester) async {
+    setLeveled(false);
+    await pumpOnboarding(tester);
+    await walkToLevelingStep(tester);
+
+    String t(String key) =>
+        FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
+
+    // Past the calibration offer...
+    await tester.tap(find.widgetWithText(GlassButton, t('common.continue_')));
+    await pumpFor(tester, 2500);
+    expect(find.text(t('setup.calibrationIntro')), findsOneWidget);
+
+    // ...and on to the end, as the flow does while the print is evaluated.
+    await tester.tap(find.widgetWithText(GlassButton, t('common.decline')));
+    await pumpFor(tester, 2500);
+    expect(find.textContaining(t('complete.completionMessage')), findsOneWidget);
+
+    // Discarding that run belongs on the calibration step, not the end of
+    // setup: the operator asked to start over.
+    Provider.of<CalibrationContextProvider>(
+      tester.element(find.byType(OnboardingScreen)),
+      listen: false,
+    ).markRunDiscarded();
+    await pumpFor(tester, 2500);
+
+    expect(find.text(t('setup.calibrationIntro')), findsOneWidget);
+    expect(find.text(t('calibration.start')), findsOneWidget);
+    expect(find.textContaining(t('complete.completionMessage')), findsNothing);
+  });
 }

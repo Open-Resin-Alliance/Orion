@@ -35,6 +35,7 @@ import 'package:orion/home/onboarding/welcome_bubbles.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:orion/settings/wifi_screen.dart';
 import 'package:orion/tools/athena/c3d_athena2_wizard.dart';
+import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/materials/calibration_screen.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
 import 'package:orion/tools/athena/verify_leveling_screen.dart';
@@ -177,6 +178,27 @@ class OnboardingScreenState extends State<OnboardingScreen>
     _initializeSettings();
     _initializeSystemState();
     _initializeAnimations();
+    // The calibration flow sits over this screen, so a discarded run has to be
+    // signalled back: nothing else brings the step to the front again.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        final calibration = context.read<CalibrationContextProvider>();
+        _calibrationContext = calibration;
+        calibration.addListener(_onCalibrationRunDiscarded);
+      } catch (_) {
+        // The provider is not in the tree (tests that pump the screen bare).
+      }
+    });
+  }
+
+  CalibrationContextProvider? _calibrationContext;
+
+  void _onCalibrationRunDiscarded() {
+    final calibration = _calibrationContext;
+    if (calibration == null || !calibration.takeRunDiscarded()) return;
+    if (!mounted || _currentPage == _calibrationPage) return;
+    _handlePageChange(_calibrationPage);
   }
 
   void _initializeSystemState() async {
@@ -366,6 +388,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   void dispose() {
+    _calibrationContext?.removeListener(_onCalibrationRunDiscarded);
     _backendService.dispose();
     _scrollController.dispose();
     _completeAnimationController.dispose();
@@ -508,7 +531,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
           onDecline: () => _handlePageChange(_currentPage + 1),
           secondaryKey: canVerify ? 'common.decline' : 'common.continue_',
         );
-      case 8:
+      case _calibrationPage:
         return OnboardingPages.buildWizardOfferPage(
           context,
           headingKey: 'setup.calibrationIntro',
@@ -756,6 +779,10 @@ class OnboardingScreenState extends State<OnboardingScreen>
 
   /// Whether this machine has a leveling configuration to re-check. Without
   /// one the offer cannot be honoured, so the step explains itself instead.
+  /// The step that runs the resin calibration, and that a discarded run comes
+  /// back to. Next to [_startCalibration]'s own page change.
+  static const int _calibrationPage = 8;
+
   bool get _canRecheckLeveling =>
       getLevelingConfigForMachine(config.getMachineModelName()) != null;
 
@@ -783,7 +810,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
   /// step whichever way it ends.
   Future<void> _startCalibration() async {
     await Navigator.of(context).push(
-      buildOverlayRoute(const CalibrationWizardScreen()),
+      buildOverlayRoute(const CalibrationWizardScreen(fromOnboarding: true)),
     );
     if (!mounted) return;
     _handlePageChange(_currentPage + 1);

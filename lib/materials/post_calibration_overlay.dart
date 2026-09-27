@@ -24,6 +24,7 @@ import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:provider/provider.dart';
 import 'package:orion/util/providers/theme_provider.dart';
+import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/materials/materials_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/profile_name_prompt.dart';
@@ -43,6 +44,12 @@ class PostCalibrationOverlay extends StatefulWidget {
   /// True when [profileId] is a factory template. A template cannot be written
   /// to, so the exposure is saved to a copy of it, named by the user.
   final bool profileIsTemplate;
+
+  /// True when the run was started from the setup wizard, which waits behind
+  /// the whole calibration flow: discarding the run leaves the operator on that
+  /// step instead of dropping them into the materials screen.
+  final bool launchedFromOnboarding;
+
   final VoidCallback onComplete;
 
   const PostCalibrationOverlay({
@@ -55,6 +62,7 @@ class PostCalibrationOverlay extends StatefulWidget {
     required this.calibrationModelId,
     this.evaluationGuideUrl,
     this.profileIsTemplate = false,
+    this.launchedFromOnboarding = false,
     required this.onComplete,
   });
 
@@ -339,24 +347,16 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
           Expanded(
             child: GlassButton(
               tint: GlassButtonTint.negative,
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const MaterialsScreen(initialIndex: 2),
-                  ),
-                );
-              },
+              onPressed: _confirmDiscard,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 65),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(PhosphorIconsFill.arrowCounterClockwise, size: 20),
+                  Icon(PhosphorIcons.trash(), size: 20),
                   const SizedBox(width: 8),
-                  Text(FlutterI18n.translate(context, 'postCal.reconfigure'),
+                  Text(FlutterI18n.translate(context, 'postCal.discard'),
                       style: TextStyle(fontSize: 18)),
                 ],
               ),
@@ -700,6 +700,58 @@ class _PostCalibrationOverlayState extends State<PostCalibrationOverlay> {
       _showCloneFailed();
       return null;
     }
+  }
+
+  /// Confirms before throwing the run away.
+  ///
+  /// Discarding drops the exposure the operator picked and sends them back
+  /// to the calibration tab, so a mis-tap costs a whole print and
+  /// evaluation.
+  void _confirmDiscard() {
+    if (!mounted) return;
+    showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => GlassAlertDialog(
+        title: Text(
+          FlutterI18n.translate(dialogContext, 'postCal.discardTitle'),
+          style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          FlutterI18n.translate(dialogContext, 'postCal.discardMessage'),
+          style: const TextStyle(fontSize: 20),
+        ),
+        actions: [
+          GlassButton(
+            tint: GlassButtonTint.neutral,
+            style: ElevatedButton.styleFrom(minimumSize: const Size(120, 65)),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(FlutterI18n.translate(dialogContext, 'common.cancel')),
+          ),
+          GlassButton(
+            tint: GlassButtonTint.negative,
+            style: ElevatedButton.styleFrom(minimumSize: const Size(120, 65)),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child:
+                Text(FlutterI18n.translate(dialogContext, 'postCal.discard')),
+          ),
+        ],
+      ),
+    ).then((discard) {
+      if (discard != true || !mounted) return;
+      if (widget.launchedFromOnboarding) {
+        // The setup step owns this run: tell it the run was abandoned, and
+        // leave the operator on it rather than on the materials screen.
+        context.read<CalibrationContextProvider>().markRunDiscarded();
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        return;
+      }
+      Navigator.of(context).pop();
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const MaterialsScreen(initialIndex: 2),
+        ),
+      );
+    });
   }
 
   /// Asks what the calibrated copy of a template should be called, with the
