@@ -83,6 +83,7 @@
     "connectNow": "接続",
     "skipAnyway": "スキップ",
     "disconnectTitle": "WiFiを切断？",
+    "disconnect": "切断",
     "disconnectMessage": "現在のネットワークから切断しますか？",
     "stayConnected": "接続維持",
     "hiddenNetwork": "<隠しネットワーク>",

@@ -83,6 +83,7 @@
     "connectNow": "Nu verbinden",
     "skipAnyway": "Toch overslaan",
     "disconnectTitle": "Verbinding met WiFi verbreken?",
+    "disconnect": "Verbrechen",
     "disconnectMessage": "Verbinding met huidige WiFi verbreken?\nLopende afdrukken kunnen mislukken.",
     "stayConnected": "Verbonden blijven",
     "hiddenNetwork": "<Verborgen netwerk>",

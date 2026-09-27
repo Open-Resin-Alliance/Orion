@@ -83,6 +83,7 @@
     "connectNow": "Connecter",
     "skipAnyway": "Passer quand même",
     "disconnectTitle": "Couper le WiFi ?",
+    "disconnect": "Couper",
     "disconnectMessage": "Couper le WiFi ?\nLes impressions en cours pourraient échouer.",
     "stayConnected": "Rester connecté",
     "hiddenNetwork": "<Réseau masqué>",

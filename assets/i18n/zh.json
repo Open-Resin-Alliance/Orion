@@ -83,6 +83,7 @@
     "connectNow": "立即连接",
     "skipAnyway": "仍然跳过",
     "disconnectTitle": "断开WiFi？",
+    "disconnect": "断开",
     "disconnectMessage": "确定要断开当前网络？",
     "stayConnected": "保持连接",
     "hiddenNetwork": "<隐藏网络>",

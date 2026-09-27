@@ -83,6 +83,7 @@
     "connectNow": "Connetti ora",
     "skipAnyway": "Salta comunque",
     "disconnectTitle": "Disconnettersi dal WiFi?",
+    "disconnect": "Disconnetti",
     "disconnectMessage": "Disconnettersi dal WiFi attuale?\nLe stampe in corso potrebbero fallire.",
     "stayConnected": "Resta connesso",
     "hiddenNetwork": "<Rete nascosta>",

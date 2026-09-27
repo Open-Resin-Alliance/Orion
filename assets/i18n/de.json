@@ -83,6 +83,7 @@
     "connectNow": "Jetzt verbinden",
     "skipAnyway": "Trotzdem überspringen",
     "disconnectTitle": "WLAN-Verbindung trennen?",
+    "disconnect": "Trennen",
     "disconnectMessage": "Möchten Sie die Verbindung zum aktuellen WLAN-Netzwerk trennen?\nDies kann laufende Druckaufträge beeinträchtigen.",
     "stayConnected": "Verbunden bleiben",
     "hiddenNetwork": "<Verborgenes Netzwerk>",

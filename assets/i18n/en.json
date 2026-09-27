@@ -83,6 +83,7 @@
         "connectNow": "Connect Now",
         "skipAnyway": "Skip Anyway",
         "disconnectTitle": "Disconnect from WiFi?",
+        "disconnect": "Disconnect",
         "disconnectMessage": "Are you sure you want to disconnect from the current network?",
         "stayConnected": "Stay Connected",
         "hiddenNetwork": "<Hidden Network>",
