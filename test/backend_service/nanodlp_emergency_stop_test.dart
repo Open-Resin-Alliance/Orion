@@ -26,10 +26,10 @@ void main() {
   const expectedSequence = [
     'gcode M112',
     'GET /printer/force-stop',
-    'gcode FIRMWARE_STOP',
+    'gcode FIRMWARE_RESTART',
   ];
 
-  test('NanoDLP emergency stop issues M112, force-stop and FIRMWARE_STOP',
+  test('NanoDLP emergency stop issues M112, force-stop and FIRMWARE_RESTART',
       () async {
     final calls = <String>[];
 
@@ -47,7 +47,7 @@ void main() {
   });
 
   test('a step that fails does not abandon the ones after it', () async {
-    // M112 and FIRMWARE_STOP answer 500; the force-stop endpoint answers 200.
+    // M112 and FIRMWARE_RESTART answer 500; the force-stop endpoint answers 200.
     final calls = <String>[];
 
     await recordingClient(calls, status: 500).emergencyStop();

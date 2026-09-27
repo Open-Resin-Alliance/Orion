@@ -605,8 +605,8 @@ class NanoDlpHttpClient implements BackendClient {
   }
 
   @override
-  Future<void> saveResinAdvancedSettings(
-      int profileId, ResinSettings settings, {String? title}) async {
+  Future<void> saveResinAdvancedSettings(int profileId, ResinSettings settings,
+      {String? title}) async {
     final baseNoSlash = apiUrl.replaceAll(RegExp(r'/+$'), '');
     final uri = Uri.parse('$baseNoSlash/profile/edit/$profileId');
     final client = _createClient();
@@ -1220,7 +1220,7 @@ class NanoDlpHttpClient implements BackendClient {
     //      anything after it is best-effort;
     //   2. GET /printer/force-stop — NanoDLP's own stop, which lands even when
     //      the firmware link is already gone;
-    //   3. FIRMWARE_STOP — leaves the board in a known stopped state.
+    //   3. FIRMWARE_RESTART — leaves the board in a known fresh state.
     //
     // Every step is attempted even when an earlier one fails, since a stop is
     // the one command that must not be abandoned half-issued. Only a run where
@@ -1248,8 +1248,8 @@ class NanoDlpHttpClient implements BackendClient {
       final endpointResult = await _commandForceStopEndpoint();
       result ??= endpointResult;
     });
-    await step('FIRMWARE_STOP', () async {
-      await manualCommand('FIRMWARE_STOP');
+    await step('FIRMWARE_RESTART', () async {
+      await manualCommand('FIRMWARE_RESTART');
     });
 
     final error = firstError;
