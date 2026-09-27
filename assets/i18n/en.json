@@ -809,6 +809,7 @@
         "currentZ": "Current Z Position",
         "printLayers": "Print Layers",
         "timeRemaining": "Time Remaining",
+        "remaining": "Remaining",
         "estimatedVolume": "Estimated Volume",
         "na": "-",
         "raisePlate": "Raise Plate",

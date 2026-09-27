@@ -809,6 +809,7 @@
     "currentZ": "当前Z轴位置",
     "printLayers": "打印层数",
     "timeRemaining": "剩余时间",
+    "remaining": "剩余",
     "estimatedVolume": "预计体积",
     "na": "-",
     "raisePlate": "抬升平台",

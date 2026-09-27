@@ -20,6 +20,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -1078,10 +1079,18 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   }
 
   // The percentage and the time left share the inside of the progress ring,
-  // split by a hairline rule. Both lines are set at the same size and the
-  // countdown drops its seconds, so neither string outweighs the other.
-  static const double _ringValueFontSize = 60;
-  static const double _ringDividerGap = 14;
+  // split by a hairline rule. The percentage is set larger: it carries fewer
+  // glyphs, so an equal point size leaves it looking like the lesser value.
+  static const double _ringPercentageFontSize = 84;
+  static const double _ringTimeFontSize = 60;
+  static const double _ringLabelFontSize = 22;
+  // The rule is not given equal SizedBoxes: "24%" leaves no descender below
+  // its baseline, while the countdown's line box carries its ascent above the
+  // glyphs, so a symmetric pair of gaps puts the rule visibly nearer the
+  // countdown. These two land the ink about 24px clear on both sides.
+  static const double _ringGapAboveRule = 6;
+  static const double _ringGapBelowRule = 19;
+  static const double _ringLabelGap = 8;
   static const double _ringDividerWidth = 210;
   static const double _ringDividerThickness = 2;
 
@@ -1115,14 +1124,14 @@ class _StandbyOverlayState extends State<StandbyOverlay>
               '$percentage%',
               style: TextStyle(
                 fontFamily: 'AtkinsonHyperlegible',
-                fontSize: _ringValueFontSize,
+                fontSize: _ringPercentageFontSize,
                 height: 1.0,
                 fontWeight: FontWeight.w500,
                 color: primaryColor,
                 decoration: TextDecoration.none,
               ),
             ),
-            const SizedBox(height: _ringDividerGap),
+            const SizedBox(height: _ringGapAboveRule),
             Container(
               width: _ringDividerWidth,
               height: _ringDividerThickness,
@@ -1131,7 +1140,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
                 borderRadius: BorderRadius.circular(1),
               ),
             ),
-            const SizedBox(height: _ringDividerGap),
+            const SizedBox(height: _ringGapBelowRule),
             // Empty while the job has no estimate to count down (e.g. a
             // cancel already in flight): the rule stays so the percentage
             // does not jump.
@@ -1139,12 +1148,28 @@ class _StandbyOverlayState extends State<StandbyOverlay>
               timeRemaining,
               style: TextStyle(
                 fontFamily: 'AtkinsonHyperlegible',
-                fontSize: _ringValueFontSize,
+                fontSize: _ringTimeFontSize,
                 height: 1.0,
                 fontWeight: FontWeight.w500,
                 color: primaryColor,
                 decoration: TextDecoration.none,
                 fontFeatures: const [ui.FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(height: _ringLabelGap),
+            // Empty alongside the countdown it labels, so the percentage
+            // keeps its place when there is nothing to count down.
+            Text(
+              timeRemaining.isEmpty
+                  ? ''
+                  : FlutterI18n.translate(context, 'status.remaining'),
+              style: TextStyle(
+                fontFamily: 'AtkinsonHyperlegible',
+                fontSize: _ringLabelFontSize,
+                height: 1.0,
+                letterSpacing: 2,
+                color: primaryColor.withValues(alpha: 0.5),
+                decoration: TextDecoration.none,
               ),
             ),
           ],
