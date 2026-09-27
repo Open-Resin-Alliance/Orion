@@ -108,6 +108,13 @@ class StatusModel {
     return Duration(seconds: secondsLeft.round());
   }
 
+  /// Formats [duration] as zero-padded HH:MM, dropping the seconds.
+  static String formatHoursMinutes(Duration duration) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(duration.inHours)}:'
+        '${two(duration.inMinutes.remainder(60))}';
+  }
+
   /// Formats [duration] as zero-padded HH:MM:SS.
   static String formatDuration(Duration duration) {
     String two(int n) => n.toString().padLeft(2, '0');

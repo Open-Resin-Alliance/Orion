@@ -98,6 +98,20 @@ void main() {
         '04:05:06',
       );
     });
+
+    test('the standby ring drops the seconds', () {
+      expect(StatusModel.formatHoursMinutes(Duration.zero), '00:00');
+      expect(
+        StatusModel.formatHoursMinutes(
+            const Duration(hours: 4, minutes: 5, seconds: 6)),
+        '04:05',
+      );
+      expect(
+        StatusModel.formatHoursMinutes(
+            const Duration(minutes: 59, seconds: 59)),
+        '00:59',
+      );
+    });
   });
 
   group('StatusProvider.remainingPrintTime', () {

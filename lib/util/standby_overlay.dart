@@ -23,6 +23,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/lighting_provider.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
@@ -823,13 +824,13 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         } else if (isPrinting) {
           standbyContent = Center(
               child: _buildProgressIndicator(
-                  ctx, progress, statusProvider.formattedRemainingPrintTime));
+                  ctx, progress, statusProvider.remainingPrintTime));
         } else if (isCancelingTransition) {
           // During cancel transition, keep showing the progress ring
           // so the UI doesn't flash the clock before the canceled overlay.
           standbyContent = Center(
               child: _buildProgressIndicator(
-                  ctx, progress, statusProvider.formattedRemainingPrintTime));
+                  ctx, progress, statusProvider.remainingPrintTime));
         } else {
           standbyContent = standbySettings.standbyMode == 'logo'
               ? _buildLogoDisplay(ctx)
@@ -1077,18 +1078,18 @@ class _StandbyOverlayState extends State<StandbyOverlay>
   }
 
   // The percentage and the time left share the inside of the progress ring,
-  // split by a hairline rule. The countdown is set smaller and the rule wider
-  // than the percentage so the two lines read as equals: matched point sizes
-  // just let the longer string win.
-  static const double _ringPercentageFontSize = 60;
-  static const double _ringTimeFontSize = 46;
+  // split by a hairline rule. Both lines are set at the same size and the
+  // countdown drops its seconds, so neither string outweighs the other.
+  static const double _ringValueFontSize = 60;
   static const double _ringDividerGap = 14;
   static const double _ringDividerWidth = 210;
   static const double _ringDividerThickness = 2;
 
   Widget _buildProgressIndicator(
-      BuildContext context, double progress, String? timeRemaining) {
+      BuildContext context, double progress, Duration? remaining) {
     final percentage = (progress * 100).toStringAsFixed(0);
+    final timeRemaining =
+        remaining == null ? '' : StatusModel.formatHoursMinutes(remaining);
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Stack(
@@ -1114,7 +1115,7 @@ class _StandbyOverlayState extends State<StandbyOverlay>
               '$percentage%',
               style: TextStyle(
                 fontFamily: 'AtkinsonHyperlegible',
-                fontSize: _ringPercentageFontSize,
+                fontSize: _ringValueFontSize,
                 height: 1.0,
                 fontWeight: FontWeight.w500,
                 color: primaryColor,
@@ -1135,10 +1136,10 @@ class _StandbyOverlayState extends State<StandbyOverlay>
             // cancel already in flight): the rule stays so the percentage
             // does not jump.
             Text(
-              timeRemaining ?? '',
+              timeRemaining,
               style: TextStyle(
                 fontFamily: 'AtkinsonHyperlegible',
-                fontSize: _ringTimeFontSize,
+                fontSize: _ringValueFontSize,
                 height: 1.0,
                 fontWeight: FontWeight.w500,
                 color: primaryColor,
