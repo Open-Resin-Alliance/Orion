@@ -434,6 +434,21 @@ class BackendService implements BackendClient {
   static bool _isForceProbeEndpoint(String endpoint) =>
       endpoint.startsWith('probe_') && !endpoint.endsWith('_prepare');
 
+  /// Dim the UV LED for an exposure test run.
+  ///
+  /// NanoDLP's test images are meant to be read, not to cure: after the
+  /// projector comes on the LED is set to a low duty so the picture is not
+  /// blown out.  Backends without the command are left alone.
+  Future<void> applyExposureLedDuty({int intensityPercent = 30}) async {
+    if (!supportsCapability(BackendCapabilities.supportsUvLedDuty)) return;
+    try {
+      await _delegate.manualCommand(
+          'UVLED_ON PWM=${_cleaningPwm(intensityPercent)}');
+    } catch (e, st) {
+      _log.warning('Failed to set the exposure LED duty', e, st);
+    }
+  }
+
   /// Start a cleaning run: the full-white "blank" exposure with the UV LED on.
   ///
   /// NanoDLP needs this as a compound — put up the blank frame, turn the

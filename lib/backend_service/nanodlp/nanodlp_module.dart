@@ -81,6 +81,9 @@ class NanoDlpModule implements BackendModule {
       // Cleaning run (timed UV exposure at a set intensity): the blank frame
       // plus `UVLED_ON PWM=…`, timed by the Cleaning screen.
       BackendCapabilities.supportsCleaning: true,
+
+      // Exposure tests dim the UV LED with `UVLED_ON PWM=…`.
+      BackendCapabilities.supportsUvLedDuty: true,
     };
   }
 

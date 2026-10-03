@@ -80,6 +80,10 @@ class ExposureScreenState extends State<ExposureScreen> {
       }
 
       final okCure = await manual.manualCure(true);
+      if (okCure) {
+        // Readable test image rather than a full-power cure.
+        await _backendService.applyExposureLedDuty();
+      }
       if (!okCure) {
         setState(() {
           _apiErrorState = true;

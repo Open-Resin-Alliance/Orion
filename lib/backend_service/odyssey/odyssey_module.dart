@@ -82,6 +82,9 @@ class OdysseyModule implements BackendModule {
 
       // Cleaning run: the Odyssey command is not known yet.
       BackendCapabilities.supportsCleaning: false,
+
+      // No UV LED duty command.
+      BackendCapabilities.supportsUvLedDuty: false,
     };
   }
 

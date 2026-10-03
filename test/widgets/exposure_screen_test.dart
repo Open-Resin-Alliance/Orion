@@ -21,6 +21,9 @@ import 'package:flutter_i18n/loaders/decoders/json_decode_strategy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:orion/glasser/glasser.dart';
+
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
@@ -38,11 +41,16 @@ class _ConfigFake extends FakeBackendClient {
 }
 
 void main() {
+  // Capabilities come from the registry, which the app fills at startup.
+  setUpAll(() => BackendRegistry().registerBuiltInModules());
+
   Future<void> pumpForLocal(WidgetTester tester, [int ms = 1500]) async {
     for (var t = 0; t < ms; t += 250) {
       await tester.pump(const Duration(milliseconds: 250));
     }
   }
+
+  late FakeBackendClient backend;
 
   Future<void> pumpScreen(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -50,6 +58,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     final client = _ConfigFake();
+    backend = client;
     BackendService.debugSetSharedDelegate(client);
 
     final delegate = FlutterI18nDelegate(
@@ -111,5 +120,23 @@ void main() {
 
     // Let the toast retire so no timer outlives the test.
     await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('a run dims the UV LED on NanoDLP', (tester) async {
+    await pumpScreen(tester);
+
+    final hold = find.widgetWithText(HoldButton, 'Grid');
+    final gesture = await tester.startGesture(tester.getCenter(hold));
+    await pumpForLocal(tester, 500);
+    await gesture.up();
+    await pumpForLocal(tester, 500);
+
+    // The test image would be blown out at full power.
+    expect(backend.commands, ['UVLED_ON PWM=0.3']);
+
+    await tester.tap(find.widgetWithText(GlassButton, 'Stop Exposure'));
+    await pumpForLocal(tester, 1000);
+    // exposeScreen also arms the exposure timer; let it expire.
+    await tester.pump(const Duration(seconds: 4));
   });
 }
