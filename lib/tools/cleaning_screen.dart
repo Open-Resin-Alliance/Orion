@@ -177,14 +177,14 @@ class _CleaningScreenState extends State<CleaningScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                PhosphorIcon(icon, size: 30, color: primary),
+                PhosphorIcon(icon, size: 32, color: primary),
                 const SizedBox(width: 14),
                 Flexible(
                   child: Text(
                     FlutterI18n.translate(context, labelKey),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 24,
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
                     ),
@@ -216,8 +216,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
                 ),
                 child: Text(
                   FlutterI18n.translate(context, 'common.change'),
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
