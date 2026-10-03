@@ -177,15 +177,17 @@ class _CleaningScreenState extends State<CleaningScreen> {
       child: Padding(
         padding: OrionSpacing.cardPadding,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 PhosphorIcon(icon, size: 30, color: primary),
                 const SizedBox(width: 14),
-                Expanded(
+                Flexible(
                   child: Text(
                     FlutterI18n.translate(context, labelKey),
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -198,6 +200,7 @@ class _CleaningScreenState extends State<CleaningScreen> {
             const SizedBox(height: 10),
             Text(
               value,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 34,
                 fontWeight: FontWeight.w700,
@@ -207,6 +210,7 @@ class _CleaningScreenState extends State<CleaningScreen> {
             const SizedBox(height: 4),
             Text(
               FlutterI18n.translate(context, hintKey),
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
                 height: 1.2,
