@@ -812,6 +812,31 @@ class OrionConfig {
   void setZOffsetOverride(double value) =>
       setString('zOffsetOverride', value.toString(), category: 'leveling');
 
+  /// Cleaning run duration in seconds, as set on the Cleaning screen.
+  /// Persisted in `orion.cfg` under `cleaning`; defaults to [defaultCleaningSeconds].
+  int getCleaningSeconds() {
+    final s = getString('timeSeconds', category: 'cleaning');
+    return int.tryParse(s) ?? defaultCleaningSeconds;
+  }
+
+  void setCleaningSeconds(int value) =>
+      setString('timeSeconds', value.toString(), category: 'cleaning');
+
+  /// UV intensity for a cleaning run, as a percentage of full power.
+  /// Persisted alongside [getCleaningSeconds]; defaults to
+  /// [defaultCleaningIntensity].
+  int getCleaningIntensity() {
+    final s = getString('intensityPercent', category: 'cleaning');
+    return int.tryParse(s) ?? defaultCleaningIntensity;
+  }
+
+  void setCleaningIntensity(int value) =>
+      setString('intensityPercent', value.toString(), category: 'cleaning');
+
+  /// First-run cleaning defaults: 15 seconds at full UV power.
+  static const int defaultCleaningSeconds = 15;
+  static const int defaultCleaningIntensity = 100;
+
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.
   bool getFeatureFlag(String key, {bool defaultValue = false}) {

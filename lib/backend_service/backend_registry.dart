@@ -52,6 +52,7 @@ class BackendCapabilities {
   static const supportsCacheInvalidation = 'supportsCacheInvalidation';
   static const supportsSseStatusStream = 'supportsSseStatusStream';
   static const supportsRgbLighting = 'supportsRgbLighting';
+  static const supportsCleaning = 'supportsCleaning';
 }
 
 /// Canonical backend submodule identifiers.

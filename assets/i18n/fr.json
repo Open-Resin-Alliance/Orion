@@ -410,6 +410,7 @@
     "leveling": "Nivellement",
     "exposure": "Exposition",
     "forceSensor": "Capteur de force",
+    "cleaning": "Nettoyage",
     "tools": "Outils"
   },
   "exposure": {
@@ -427,6 +428,15 @@
     "seconds": "%s s",
     "persistent": "Continu",
     "unitSec": "s"
+  },
+  "cleaning": {
+    "section": "Nettoyage",
+    "time": "Durée de nettoyage",
+    "timeHint": "Durée de l'exposition UV.",
+    "intensity": "Intensité UV",
+    "intensityHint": "Pourcentage de la puissance UV totale.",
+    "start": "Démarrer le nettoyage",
+    "notAvailable": "Non disponible sur cette imprimante"
   },
   "force": {
     "resume": "Reprendre",

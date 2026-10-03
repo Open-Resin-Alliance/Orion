@@ -77,6 +77,10 @@ class NanoDlpModule implements BackendModule {
 
       // RGB / LED lighting
       BackendCapabilities.supportsRgbLighting: true,
+
+      // Cleaning run (timed UV exposure at a set intensity).  The command is
+      // not implemented yet; flip this on with the backend call.
+      BackendCapabilities.supportsCleaning: false,
     };
   }
 

@@ -23,6 +23,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/move_z_screen.dart';
+import 'package:orion/tools/cleaning_screen.dart';
 import 'package:orion/tools/exposure_screen.dart';
 import 'package:orion/tools/force_screen.dart';
 import 'package:orion/tools/leveling_screen.dart';
@@ -66,7 +67,7 @@ class ToolsScreenState extends State<ToolsScreen> {
                     ? const ExposureScreen()
                     : _selectedIndex == 3
                         ? const ForceSensorScreen()
-                        : const MoveZScreen(),
+                        : const CleaningScreen(),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           items: <BottomNavigationBarItem>[
@@ -101,6 +102,14 @@ class ToolsScreenState extends State<ToolsScreen> {
                 color: Theme.of(context).colorScheme.primary,
               ),
               label: FlutterI18n.translate(context, 'tools.forceSensor'),
+            ),
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.broom()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.broom,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              label: FlutterI18n.translate(context, 'tools.cleaning'),
             ),
             // TODO: Implement Self Test
             /*BottomNavigationBarItem(

@@ -434,6 +434,25 @@ class BackendService implements BackendClient {
   static bool _isForceProbeEndpoint(String endpoint) =>
       endpoint.startsWith('probe_') && !endpoint.endsWith('_prepare');
 
+  /// Start a cleaning run: a full-field UV exposure for [seconds] at
+  /// [intensityPercent] of full power.
+  ///
+  /// Gated on [BackendCapabilities.supportsCleaning], which no backend
+  /// advertises yet — the per-backend command is still to come, and its
+  /// dispatch belongs here once it exists.
+  Future<bool> startCleaning({
+    required int seconds,
+    required int intensityPercent,
+  }) async {
+    if (!supportsCapability(BackendCapabilities.supportsCleaning)) {
+      _log.info('Cleaning is not supported by this backend');
+      return false;
+    }
+    _log.warning('Cleaning requested (${seconds}s at $intensityPercent%) but '
+        'no backend command is implemented yet');
+    return false;
+  }
+
   /// Show a corner alignment pattern on the projector via special screens.
   ///
   /// [location] must be one of: front-left, front-right, back-left, back-right.

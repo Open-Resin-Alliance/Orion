@@ -79,6 +79,9 @@ class OdysseyModule implements BackendModule {
 
       // RGB / LED lighting
       BackendCapabilities.supportsRgbLighting: false,
+
+      // Cleaning run: the Odyssey command is not known yet.
+      BackendCapabilities.supportsCleaning: false,
     };
   }
 

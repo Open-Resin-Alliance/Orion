@@ -410,6 +410,7 @@
     "leveling": "Livellamento",
     "exposure": "Esposizione",
     "forceSensor": "Sensore di forza",
+    "cleaning": "Pulizia",
     "tools": "Strumenti"
   },
   "exposure": {
@@ -427,6 +428,15 @@
     "seconds": "%s s",
     "persistent": "Persistente",
     "unitSec": "s"
+  },
+  "cleaning": {
+    "section": "Pulizia",
+    "time": "Durata pulizia",
+    "timeHint": "Quanto dura l'esposizione UV.",
+    "intensity": "Intensità UV",
+    "intensityHint": "Percentuale della potenza UV totale.",
+    "start": "Avvia pulizia",
+    "notAvailable": "Non disponibile su questa stampante"
   },
   "force": {
     "resume": "Riprendi",

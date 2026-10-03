@@ -410,6 +410,7 @@
     "leveling": "Nivellierung",
     "exposure": "Belichtung",
     "forceSensor": "Kraftsensor",
+    "cleaning": "Reinigung",
     "tools": "Werkzeuge"
   },
   "exposure": {
@@ -427,6 +428,15 @@
     "seconds": "%s Sek",
     "persistent": "Dauerhaft",
     "unitSec": "Sek"
+  },
+  "cleaning": {
+    "section": "Reinigung",
+    "time": "Reinigungsdauer",
+    "timeHint": "Wie lange die UV-Belichtung läuft.",
+    "intensity": "UV-Intensität",
+    "intensityHint": "Prozent der vollen UV-Leistung.",
+    "start": "Reinigung starten",
+    "notAvailable": "Auf diesem Drucker nicht verfügbar"
   },
   "force": {
     "resume": "Fortsetzen",

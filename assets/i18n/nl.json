@@ -410,6 +410,7 @@
     "leveling": "Waterpas stellen",
     "exposure": "Belichting",
     "forceSensor": "Krachtsensor",
+    "cleaning": "Reiniging",
     "tools": "Gereedschap"
   },
   "exposure": {
@@ -427,6 +428,15 @@
     "seconds": "%s s",
     "persistent": "Permanent",
     "unitSec": "s"
+  },
+  "cleaning": {
+    "section": "Reiniging",
+    "time": "Reinigingstijd",
+    "timeHint": "Hoe lang de UV-belichting duurt.",
+    "intensity": "UV-intensiteit",
+    "intensityHint": "Percentage van het volledige UV-vermogen.",
+    "start": "Reiniging starten",
+    "notAvailable": "Niet beschikbaar op deze printer"
   },
   "force": {
     "resume": "Hervatten",
