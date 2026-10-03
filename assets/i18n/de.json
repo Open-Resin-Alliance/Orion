@@ -410,7 +410,7 @@
     "leveling": "Nivellierung",
     "exposure": "Belichtung",
     "forceSensor": "Kraftsensor",
-    "cleaning": "Reinigung",
+    "cleaning": "Wannenreinigung",
     "tools": "Werkzeuge"
   },
   "exposure": {
@@ -430,13 +430,13 @@
     "unitSec": "Sek"
   },
   "cleaning": {
-    "section": "Reinigung",
+    "section": "Wannenreinigung",
     "time": "Reinigungsdauer",
     "intensity": "UV-Intensität",
-    "start": "Reinigung starten",
-    "running": "Reinigung läuft…",
+    "start": "Wannenreinigung starten",
+    "running": "Wannenreinigung läuft…",
     "stop": "Stoppen",
-    "startFailed": "Die Reinigung konnte nicht gestartet werden.",
+    "startFailed": "Die Wannenreinigung konnte nicht gestartet werden.",
     "notAvailable": "Auf diesem Drucker nicht verfügbar"
   },
   "force": {

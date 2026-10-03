@@ -410,7 +410,7 @@
     "leveling": "レベリング",
     "exposure": "露光",
     "forceSensor": "フォースセンサー",
-    "cleaning": "クリーニング",
+    "cleaning": "タンククリーニング",
     "tools": "ツール"
   },
   "exposure": {
@@ -430,13 +430,13 @@
     "unitSec": "秒"
   },
   "cleaning": {
-    "section": "クリーニング",
+    "section": "タンククリーニング",
     "time": "クリーニング時間",
     "intensity": "UV強度",
-    "start": "クリーニングを開始",
-    "running": "クリーニング中…",
+    "start": "タンククリーニングを開始",
+    "running": "タンククリーニング中…",
     "stop": "停止",
-    "startFailed": "クリーニングを開始できませんでした。",
+    "startFailed": "タンククリーニングを開始できませんでした。",
     "notAvailable": "このプリンターでは利用できません"
   },
   "force": {

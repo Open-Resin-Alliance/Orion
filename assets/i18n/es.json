@@ -410,7 +410,7 @@
     "leveling": "Nivelación",
     "exposure": "Exposición",
     "forceSensor": "Sensor de fuerza",
-    "cleaning": "Limpieza",
+    "cleaning": "Limpieza de cuba",
     "tools": "Herramientas"
   },
   "exposure": {
@@ -430,13 +430,13 @@
     "unitSec": "s"
   },
   "cleaning": {
-    "section": "Limpieza",
+    "section": "Limpieza de cuba",
     "time": "Duración de limpieza",
     "intensity": "Intensidad UV",
-    "start": "Iniciar limpieza",
-    "running": "Limpiando…",
+    "start": "Iniciar limpieza de cuba",
+    "running": "Limpiando la cuba…",
     "stop": "Detener",
-    "startFailed": "No se pudo iniciar la limpieza.",
+    "startFailed": "No se pudo iniciar la limpieza de la cuba.",
     "notAvailable": "No disponible en esta impresora"
   },
   "force": {

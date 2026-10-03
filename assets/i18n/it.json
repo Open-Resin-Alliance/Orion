@@ -410,7 +410,7 @@
     "leveling": "Livellamento",
     "exposure": "Esposizione",
     "forceSensor": "Sensore di forza",
-    "cleaning": "Pulizia",
+    "cleaning": "Pulizia della vasca",
     "tools": "Strumenti"
   },
   "exposure": {
@@ -430,13 +430,13 @@
     "unitSec": "s"
   },
   "cleaning": {
-    "section": "Pulizia",
+    "section": "Pulizia della vasca",
     "time": "Durata pulizia",
     "intensity": "Intensità UV",
-    "start": "Avvia pulizia",
-    "running": "Pulizia in corso…",
+    "start": "Avvia pulizia della vasca",
+    "running": "Pulizia della vasca in corso…",
     "stop": "Interrompi",
-    "startFailed": "Impossibile avviare la pulizia.",
+    "startFailed": "Impossibile avviare la pulizia della vasca.",
     "notAvailable": "Non disponibile su questa stampante"
   },
   "force": {

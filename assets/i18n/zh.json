@@ -410,7 +410,7 @@
     "leveling": "调平",
     "exposure": "曝光",
     "forceSensor": "力传感器",
-    "cleaning": "清洁",
+    "cleaning": "料槽清洁",
     "tools": "工具"
   },
   "exposure": {
@@ -430,13 +430,13 @@
     "unitSec": "秒"
   },
   "cleaning": {
-    "section": "清洁",
+    "section": "料槽清洁",
     "time": "清洁时间",
     "intensity": "UV 强度",
-    "start": "开始清洁",
-    "running": "正在清洁…",
+    "start": "开始料槽清洁",
+    "running": "正在清洁料槽…",
     "stop": "停止",
-    "startFailed": "无法启动清洁。",
+    "startFailed": "无法启动料槽清洁。",
     "notAvailable": "此打印机不支持"
   },
   "force": {

@@ -410,7 +410,7 @@
     "leveling": "Waterpas stellen",
     "exposure": "Belichting",
     "forceSensor": "Krachtsensor",
-    "cleaning": "Reiniging",
+    "cleaning": "Vat reinigen",
     "tools": "Gereedschap"
   },
   "exposure": {
@@ -430,13 +430,13 @@
     "unitSec": "s"
   },
   "cleaning": {
-    "section": "Reiniging",
+    "section": "Vat reinigen",
     "time": "Reinigingstijd",
     "intensity": "UV-intensiteit",
-    "start": "Reiniging starten",
-    "running": "Reinigen…",
+    "start": "Vat reinigen starten",
+    "running": "Vat reinigen…",
     "stop": "Stoppen",
-    "startFailed": "Kon de reiniging niet starten.",
+    "startFailed": "Kon het vat reinigen niet starten.",
     "notAvailable": "Niet beschikbaar op deze printer"
   },
   "force": {

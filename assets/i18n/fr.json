@@ -410,7 +410,7 @@
     "leveling": "Nivellement",
     "exposure": "Exposition",
     "forceSensor": "Capteur de force",
-    "cleaning": "Nettoyage",
+    "cleaning": "Nettoyage du bac",
     "tools": "Outils"
   },
   "exposure": {
@@ -430,13 +430,13 @@
     "unitSec": "s"
   },
   "cleaning": {
-    "section": "Nettoyage",
+    "section": "Nettoyage du bac",
     "time": "Durée de nettoyage",
     "intensity": "Intensité UV",
-    "start": "Démarrer le nettoyage",
-    "running": "Nettoyage en cours…",
+    "start": "Démarrer le nettoyage du bac",
+    "running": "Nettoyage du bac en cours…",
     "stop": "Arrêter",
-    "startFailed": "Impossible de démarrer le nettoyage.",
+    "startFailed": "Impossible de démarrer le nettoyage du bac.",
     "notAvailable": "Non disponible sur cette imprimante"
   },
   "force": {

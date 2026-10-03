@@ -410,7 +410,7 @@
         "leveling": "Leveling",
         "exposure": "Exposure",
         "forceSensor": "Force Sensor",
-        "cleaning": "Cleaning",
+        "cleaning": "Tank Clean",
         "tools": "Tools"
     },
     "exposure": {
@@ -430,13 +430,13 @@
         "unitSec": "sec"
     },
     "cleaning": {
-        "section": "Cleaning",
-        "time": "Cleaning Time",
+        "section": "Tank Clean",
+        "time": "Clean Time",
         "intensity": "UV Intensity",
-        "start": "Start Cleaning",
-        "running": "Cleaning…",
+        "start": "Start Tank Clean",
+        "running": "Tank Cleaning…",
         "stop": "Stop",
-        "startFailed": "Could not start the cleaning run.",
+        "startFailed": "Could not start the tank clean.",
         "notAvailable": "Not available on this printer"
     },
     "force": {

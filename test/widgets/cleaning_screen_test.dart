@@ -123,7 +123,7 @@ void main() {
     OrionConfig().setCleaningIntensity(90);
     await pumpScreen(tester);
 
-    await tester.tap(find.widgetWithText(GlassButton, 'Start Cleaning'));
+    await tester.tap(find.widgetWithText(GlassButton, 'Start Tank Clean'));
     await _pumpFor(tester, 1000);
 
     // Blank the frame, put the projector on, then set the LED duty.
@@ -131,7 +131,7 @@ void main() {
     expect(backend.lastCommand, 'UVLED_ON PWM=0.9');
 
     // The run is held by a countdown the operator can end early.
-    expect(find.text('Cleaning\u2026'), findsOneWidget);
+    expect(find.text('Tank Cleaning\u2026'), findsOneWidget);
     await tester.tap(find.widgetWithText(GlassButton, 'Stop'));
     await _pumpFor(tester, 1000);
 
