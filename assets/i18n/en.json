@@ -432,9 +432,7 @@
     "cleaning": {
         "section": "Cleaning",
         "time": "Cleaning Time",
-        "timeHint": "How long the UV exposure runs.",
         "intensity": "UV Intensity",
-        "intensityHint": "Percentage of full UV power.",
         "start": "Start Cleaning",
         "notAvailable": "Not available on this printer"
     },

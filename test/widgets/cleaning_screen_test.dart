@@ -110,24 +110,20 @@ void main() {
     expect(find.text('10 %'), findsOneWidget);
   });
 
-  testWidgets('start is disabled until a backend supports cleaning',
+  testWidgets('start reads as unavailable until a backend supports cleaning',
       (tester) async {
     restoreCleaning();
     await pumpScreen(tester);
 
-    final start = tester.widget<GlassButton>(find.ancestor(
-        of: find.text(
-            FlutterI18n.translate(
-                tester.element(find.byType(CleaningScreen)),
-                'cleaning.start')),
-        matching: find.byType(GlassButton)));
-    expect(start.onPressed, isNull);
+    final context = tester.element(find.byType(CleaningScreen));
+    final unavailable =
+        FlutterI18n.translate(context, 'cleaning.notAvailable');
 
-    // ...and says why, rather than failing silently.
-    expect(
-        find.text(FlutterI18n.translate(
-            tester.element(find.byType(CleaningScreen)),
-            'cleaning.notAvailable')),
-        findsOneWidget);
+    // The button itself carries the reason, rather than a hint above it.
+    final start = tester.widget<GlassButton>(find.ancestor(
+        of: find.text(unavailable), matching: find.byType(GlassButton)));
+    expect(start.onPressed, isNull);
+    expect(find.text(FlutterI18n.translate(context, 'cleaning.start')),
+        findsNothing);
   });
 }

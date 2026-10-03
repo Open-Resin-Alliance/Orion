@@ -432,9 +432,7 @@
   "cleaning": {
     "section": "清洁",
     "time": "清洁时间",
-    "timeHint": "UV 曝光持续时间。",
     "intensity": "UV 强度",
-    "intensityHint": "占最大 UV 功率的百分比。",
     "start": "开始清洁",
     "notAvailable": "此打印机不支持"
   },

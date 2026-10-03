@@ -432,9 +432,7 @@
   "cleaning": {
     "section": "Nettoyage",
     "time": "Durée de nettoyage",
-    "timeHint": "Durée de l'exposition UV.",
     "intensity": "Intensité UV",
-    "intensityHint": "Pourcentage de la puissance UV totale.",
     "start": "Démarrer le nettoyage",
     "notAvailable": "Non disponible sur cette imprimante"
   },

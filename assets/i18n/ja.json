@@ -432,9 +432,7 @@
   "cleaning": {
     "section": "クリーニング",
     "time": "クリーニング時間",
-    "timeHint": "UV露光の実行時間。",
     "intensity": "UV強度",
-    "intensityHint": "最大UV出力に対する割合。",
     "start": "クリーニングを開始",
     "notAvailable": "このプリンターでは利用できません"
   },

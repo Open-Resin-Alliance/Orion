@@ -71,7 +71,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
     final result = await ZoomValueEditorDialog.show(
       context,
       title: FlutterI18n.translate(context, 'cleaning.time'),
-      description: FlutterI18n.translate(context, 'cleaning.timeHint'),
       currentValue: _seconds.toDouble(),
       min: _minSeconds.toDouble(),
       max: _maxSeconds.toDouble(),
@@ -90,7 +89,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
     final result = await ZoomValueEditorDialog.show(
       context,
       title: FlutterI18n.translate(context, 'cleaning.intensity'),
-      description: FlutterI18n.translate(context, 'cleaning.intensityHint'),
       currentValue: _intensity.toDouble(),
       min: _minIntensity.toDouble(),
       max: _maxIntensity.toDouble(),
@@ -145,7 +143,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
       context,
       icon: PhosphorIcons.timer(),
       labelKey: 'cleaning.time',
-      hintKey: 'cleaning.timeHint',
       value: '$_seconds ${FlutterI18n.translate(context, 'exposure.unitSec')}',
       onEdit: _editSeconds,
     );
@@ -156,7 +153,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
       context,
       icon: PhosphorIcons.lightbulbFilament(),
       labelKey: 'cleaning.intensity',
-      hintKey: 'cleaning.intensityHint',
       value: '$_intensity %',
       onEdit: _editIntensity,
     );
@@ -166,7 +162,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
     BuildContext context, {
     required IconData icon,
     required String labelKey,
-    required String hintKey,
     required String value,
     required VoidCallback onEdit,
   }) {
@@ -197,24 +192,17 @@ class _CleaningScreenState extends State<CleaningScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            // The value takes the middle of the card: header above, the
+            // Change button pinned below.
+            const Spacer(),
             Text(
               value,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 34,
+                fontSize: 46,
                 fontWeight: FontWeight.w700,
+                height: 1.1,
                 color: primary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              FlutterI18n.translate(context, hintKey),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.2,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const Spacer(),
@@ -240,54 +228,34 @@ class _CleaningScreenState extends State<CleaningScreen> {
   }
 
   Widget _buildStart(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        if (!_supported)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PhosphorIcon(PhosphorIcons.info(),
-                    size: 18,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    FlutterI18n.translate(context, 'cleaning.notAvailable'),
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        SizedBox(
-          width: double.infinity,
-          child: GlassButton(
-            tint: GlassButtonTint.positive,
-            onPressed: _supported ? _start : null,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 65),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PhosphorIcon(PhosphorIcons.sparkle(), size: 22),
-                const SizedBox(width: 10),
-                Text(
-                  FlutterI18n.translate(context, 'cleaning.start'),
-                  style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ),
+    return SizedBox(
+      width: double.infinity,
+      child: GlassButton(
+        tint: GlassButtonTint.positive,
+        onPressed: _supported ? _start : null,
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 65),
         ),
-      ],
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            PhosphorIcon(PhosphorIcons.sparkle(), size: 22),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                FlutterI18n.translate(
+                    context,
+                    _supported
+                        ? 'cleaning.start'
+                        : 'cleaning.notAvailable'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
