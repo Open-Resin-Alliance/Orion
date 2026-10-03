@@ -192,6 +192,7 @@ class _LevelingSettingsScreenState extends State<LevelingSettingsScreen> {
       suffix: 'mm',
       decimals: 3,
       step: 0.01,
+      keepValueOnOpen: true,
     );
     if (result == null || !mounted) return;
 

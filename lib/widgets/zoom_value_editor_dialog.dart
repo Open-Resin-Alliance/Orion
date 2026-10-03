@@ -30,6 +30,12 @@ class ZoomValueEditorDialog extends StatefulWidget {
   /// around the current value (31 points including the current).
   final int zoomPointsRadius;
 
+  /// Keep the current value in the display and pre-fill it on the numeric
+  /// keyboard when editing starts, instead of clearing to placeholder dashes.
+  /// Used where the operator adjusts from the value that is already set (the
+  /// leveling Z offset) rather than typing a fresh one.
+  final bool keepValueOnOpen;
+
   const ZoomValueEditorDialog({
     super.key,
     required this.title,
@@ -42,6 +48,7 @@ class ZoomValueEditorDialog extends StatefulWidget {
     this.step,
     this.disableZoomWhenDense = true,
     this.zoomPointsRadius = 15,
+    this.keepValueOnOpen = false,
   });
 
   static Future<double?> show(
@@ -56,6 +63,7 @@ class ZoomValueEditorDialog extends StatefulWidget {
     double? step,
     bool disableZoomWhenDense = true,
     int zoomPointsRadius = 15,
+    bool keepValueOnOpen = false,
   }) async {
     return showDialog<double>(
       context: context,
@@ -70,6 +78,7 @@ class ZoomValueEditorDialog extends StatefulWidget {
         step: step,
         disableZoomWhenDense: disableZoomWhenDense,
         zoomPointsRadius: zoomPointsRadius,
+        keepValueOnOpen: keepValueOnOpen,
       ),
     );
   }
@@ -111,9 +120,10 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
 
   Future<void> _editNumericValue() async {
     _exitZoom();
+    final keepValue = widget.keepValueOnOpen;
     setState(() {
       _isEditingNumeric = true;
-      _tempEditValue = '';
+      _tempEditValue = keepValue ? _editableValueString() : '';
     });
     _keyboardOpen.value = true;
 
@@ -122,7 +132,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
       initialValue: _currentValue,
       allowNegative: widget.min < 0,
       decimalPlaces: widget.decimals,
-      clearOnOpen: true,
+      clearOnOpen: !keepValue,
       maxIntegerDigits: _maxIntegerDigitsFromRange(widget.min, widget.max),
       onChanged: (text) {
         // Live update with unclamped temporary value
@@ -161,6 +171,11 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
     final floorVal = spanMax.floor();
     return floorVal.toString().length;
   }
+
+  /// The current value formatted exactly as the resting display shows it
+  /// (fixed decimals), so keeping it while editing looks identical to the
+  /// value before the edit started.
+  String _editableValueString() => _currentValue.toStringAsFixed(widget.decimals);
 
   void _resetHoldTimer() {
     _holdTimer?.cancel();
