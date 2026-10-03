@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter_i18n/loaders/decoders/json_decode_strategy.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:orion/util/providers/theme_provider.dart';
@@ -106,5 +107,22 @@ void main() {
     final shown = readout(tester);
     expect(shown.contains('0'), isFalse);
     expect(shown.contains('−'), isTrue);
+  });
+
+  testWidgets('backspace deletes one displayed digit', (tester) async {
+    await pumpEditor(tester, keep: true);
+
+    await tester.tap(find.byWidgetPredicate(
+        (w) => w is RichText && w.text.toPlainText().endsWith('mm')));
+    await _pumpFor(tester, 2000);
+
+    // The keyboard edits the text the readout shows (0.250), so one backspace
+    // removes the trailing zero.  Editing the stripped value (0.25) instead
+    // deleted a displayed digit the operator never touched.
+    await tester.tap(find.byWidgetPredicate((w) =>
+        w is PhosphorIcon && w.icon == PhosphorIconsFill.backspace));
+    await _pumpFor(tester, 400);
+
+    expect(readout(tester), '0.25−mm');
   });
 }

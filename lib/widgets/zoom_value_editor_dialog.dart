@@ -123,7 +123,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
     final keepValue = widget.keepValueOnOpen;
     setState(() {
       _isEditingNumeric = true;
-      _tempEditValue = keepValue ? _editableValueString() : '';
+      _tempEditValue = keepValue ? _keyboardValueString() : '';
     });
     _keyboardOpen.value = true;
 
@@ -133,6 +133,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
       allowNegative: widget.min < 0,
       decimalPlaces: widget.decimals,
       clearOnOpen: !keepValue,
+      initialText: keepValue ? _keyboardValueString() : null,
       maxIntegerDigits: _maxIntegerDigitsFromRange(widget.min, widget.max),
       onChanged: (text) {
         // Live update with unclamped temporary value
@@ -149,7 +150,9 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
       });
       if (result != null && result.isNotEmpty) {
         try {
-          final parsed = double.parse(result);
+          // The keyboard's minus glyph (U+2212) is not what double.parse
+          // accepts, so fold it back to a hyphen first.
+          final parsed = double.parse(result.replaceAll('−', '-'));
           final clamped = parsed.clamp(widget.min, widget.max);
           setState(() {
             _currentValue = clamped;
@@ -174,8 +177,11 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
 
   /// The current value formatted exactly as the resting display shows it
   /// (fixed decimals), so keeping it while editing looks identical to the
-  /// value before the edit started.
-  String _editableValueString() => _currentValue.toStringAsFixed(widget.decimals);
+  /// value before the edit started — and the numeric keyboard edits that same
+  /// string, so a backspace deletes the digit the operator sees.  The sign is
+  /// the keyboard's own minus glyph (U+2212), fixed up again when parsing.
+  String _keyboardValueString() =>
+      _currentValue.toStringAsFixed(widget.decimals).replaceFirst('-', '−');
 
   void _resetHoldTimer() {
     _holdTimer?.cancel();
