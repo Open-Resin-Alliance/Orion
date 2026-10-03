@@ -17,7 +17,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
@@ -165,7 +164,7 @@ class _CleaningScreenState extends State<CleaningScreen> {
             style: TextStyle(
               fontSize: 19,
               height: 1.4,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w700,
               color: warning,
             ),
           ),
@@ -174,14 +173,15 @@ class _CleaningScreenState extends State<CleaningScreen> {
     );
   }
 
-  /// Duration, in the shape of the heater's temperature slider.
+  /// Duration, in the shape of the heater's temperature slider — same padding,
+  /// same label row over a gradient track, so the two read the same.
   Widget _buildTimeCard(BuildContext context) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     return GlassCard(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: OrionSpacing.cardPadding,
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
@@ -291,45 +291,34 @@ class _CleaningScreenState extends State<CleaningScreen> {
       );
     }
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          FlutterI18n.translate(context, 'cleaning.holdHint'),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 15,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
+    return HoldButton(
+      duration: const Duration(milliseconds: 1500),
+      tint: GlassButtonTint.positive,
+      style: ElevatedButton.styleFrom(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
         ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: HoldButton(
-            duration: const Duration(milliseconds: 1500),
-            tint: GlassButtonTint.positive,
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              minimumSize: const Size(double.infinity, double.infinity),
-            ),
-            onPressed: _start,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PhosphorIcon(PhosphorIcons.sparkle(), size: 26),
-                const SizedBox(width: 12),
-                Text(
-                  FlutterI18n.translate(context, 'cleaning.start'),
-                  style:
-                      const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-                ),
-              ],
+        minimumSize: const Size(double.infinity, double.infinity),
+      ),
+      onPressed: _start,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            FlutterI18n.translate(context, 'cleaning.start'),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            FlutterI18n.translate(context, 'cleaning.holdHint'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 17,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
