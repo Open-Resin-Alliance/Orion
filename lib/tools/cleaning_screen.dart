@@ -141,7 +141,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
   Widget _buildTimeCard(BuildContext context) {
     return _buildSettingCard(
       context,
-      icon: PhosphorIcons.timer(),
       labelKey: 'cleaning.time',
       value: '$_seconds ${FlutterI18n.translate(context, 'exposure.unitSec')}',
       onEdit: _editSeconds,
@@ -151,7 +150,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
   Widget _buildIntensityCard(BuildContext context) {
     return _buildSettingCard(
       context,
-      icon: PhosphorIcons.lightbulbFilament(),
       labelKey: 'cleaning.intensity',
       value: '$_intensity %',
       onEdit: _editIntensity,
@@ -160,7 +158,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
 
   Widget _buildSettingCard(
     BuildContext context, {
-    required IconData icon,
     required String labelKey,
     required String value,
     required VoidCallback onEdit,
@@ -174,23 +171,14 @@ class _CleaningScreenState extends State<CleaningScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PhosphorIcon(icon, size: 32, color: primary),
-                const SizedBox(width: 14),
-                Flexible(
-                  child: Text(
-                    FlutterI18n.translate(context, labelKey),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              FlutterI18n.translate(context, labelKey),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
             // The value takes the middle of the card: header above, the
             // Change button pinned below.
@@ -212,7 +200,7 @@ class _CleaningScreenState extends State<CleaningScreen> {
                 tint: GlassButtonTint.neutral,
                 onPressed: onEdit,
                 style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 55),
+                  minimumSize: const Size(double.infinity, 60),
                 ),
                 child: Text(
                   FlutterI18n.translate(context, 'common.change'),
@@ -232,7 +220,7 @@ class _CleaningScreenState extends State<CleaningScreen> {
         tint: GlassButtonTint.positive,
         onPressed: _supported ? _start : null,
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 65),
+          minimumSize: const Size(double.infinity, 60),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
