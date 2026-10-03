@@ -435,7 +435,7 @@
     "start": "Wanne reinigen",
     "running": "Wannenreinigung läuft…",
     "explainer": "Belichtet den gesamten Bildschirm mit voller UV-Leistung und härtet dabei einen dünnen Film aus, sodass Verunreinigungen in einem Stück herausgezogen werden können.",
-    "uvWarning": "Warnung: Blicken Sie während der Wannenreinigung niemals in den Drucker — UV-Licht hoher Leistung kann Ihre Augen schädigen.",
+    "uvWarning": "WARNUNG: UV-Licht hoher Leistung! Schließen Sie die Haube und schützen Sie Ihre Augen.",
     "holdHint": "Zum Starten gedrückt halten",
     "stop": "Stoppen",
     "startFailed": "Die Wannenreinigung konnte nicht gestartet werden.",

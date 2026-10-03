@@ -134,9 +134,10 @@ class _CleaningScreenState extends State<CleaningScreen> {
           child: SingleChildScrollView(
             child: Text(
               FlutterI18n.translate(context, 'cleaning.explainer'),
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18,
-                height: 1.45,
+                fontSize: 19,
+                height: 1.4,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
             ),

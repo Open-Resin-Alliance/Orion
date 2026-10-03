@@ -435,7 +435,7 @@
         "start": "Clean Tank",
         "running": "Tank Cleaning…",
         "explainer": "Exposes the whole screen at full UV power, curing a thin film so debris lifts out in one piece.",
-        "uvWarning": "Warning: never look at the printer while a Tank Clean is running — high-power UV light can damage your eyes.",
+        "uvWarning": "WARNING: High-power UV light! Close the lid and protect your eyes.",
         "holdHint": "Press and hold to start",
         "stop": "Stop",
         "startFailed": "Could not start the tank clean.",
