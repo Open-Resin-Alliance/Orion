@@ -421,6 +421,7 @@
     "exposing": "Exposition",
     "testing_": "Test",
     "stop": "Stop",
+    "holdHint": "Maintenez le bouton appuyé pour lancer l'exposition.",
     "grid": "Grille",
     "logo": "Logo",
     "measure": "Mesurer",

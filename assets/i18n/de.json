@@ -421,6 +421,7 @@
     "exposing": "Belichten",
     "testing_": "Test",
     "stop": "Stopp",
+    "holdHint": "Halten Sie die Taste gedrückt, um die Belichtung zu starten.",
     "grid": "Gitter",
     "logo": "Logo",
     "measure": "Messen",

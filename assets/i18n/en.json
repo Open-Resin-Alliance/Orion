@@ -421,6 +421,7 @@
         "exposing": "Exposing",
         "testing_": "Testing",
         "stop": "Stop Exposure",
+        "holdHint": "Press and hold the button to start the exposure.",
         "grid": "Grid",
         "logo": "Logo",
         "measure": "Measure",

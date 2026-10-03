@@ -421,6 +421,7 @@
     "exposing": "曝光中",
     "testing_": "测试",
     "stop": "停止曝光",
+    "holdHint": "长按按钮以开始曝光。",
     "grid": "网格",
     "logo": "标志",
     "measure": "测量",

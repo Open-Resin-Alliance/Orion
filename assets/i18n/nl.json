@@ -421,6 +421,7 @@
     "exposing": "Belichten",
     "testing_": "Testen",
     "stop": "Stop",
+    "holdHint": "Houd de knop ingedrukt om de belichting te starten.",
     "grid": "Raster",
     "logo": "Logo",
     "measure": "Meten",

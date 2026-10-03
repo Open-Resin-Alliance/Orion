@@ -29,6 +29,8 @@ import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:toastification/toastification.dart';
+
 import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/widgets/exposure_countdown_dialog.dart';
@@ -234,6 +236,21 @@ class ExposureScreenState extends State<ExposureScreen> {
     );
   }
 
+  /// A tap that ended too soon: say what the button needs.
+  void _showHoldHint() {
+    Toastification().show(
+      context: context,
+      type: ToastificationType.info,
+      style: ToastificationStyle.fillColored,
+      autoCloseDuration: const Duration(seconds: 2),
+      alignment: Alignment.topCenter,
+      title: Text(
+        FlutterI18n.translate(context, 'exposure.holdHint'),
+        style: const TextStyle(fontSize: 18),
+      ),
+    );
+  }
+
   /// Every exposure run starts on a hold, so a stray tap cannot fire the
   /// projector.  While the API is down the button keeps its disabled look.
   Widget _buildHoldButton({
@@ -247,6 +264,7 @@ class ExposureScreenState extends State<ExposureScreen> {
     return HoldButton(
       duration: const Duration(milliseconds: 200),
       showHoldIcon: false,
+      onIncompleteHold: _showHoldHint,
       onPressed: onPressed,
       style: style,
       child: child,

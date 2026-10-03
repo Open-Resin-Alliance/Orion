@@ -95,4 +95,21 @@ void main() {
       expect(hold.showHoldIcon, isFalse);
     }
   });
+
+  testWidgets('a plain tap explains that the button must be held',
+      (tester) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.widgetWithText(HoldButton, 'Grid'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    final context = tester.element(find.byType(ExposureScreen));
+    expect(find.text(FlutterI18n.translate(context, 'exposure.holdHint')),
+        findsOneWidget);
+
+    // Let the toast retire so no timer outlives the test.
+    await tester.pump(const Duration(seconds: 3));
+  });
 }
