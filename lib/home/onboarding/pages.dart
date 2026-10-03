@@ -649,7 +649,7 @@ class OnboardingPages {
       child: Padding(
         // The Back / Complete Setup buttons float over the page's bottom
         // corners, so the group is centred above them.
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 96),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 124),
         child: Center(
           // Scale to fit rather than scroll: the step is a fixed message, and
           // a short window should shrink it, not cut it off.
