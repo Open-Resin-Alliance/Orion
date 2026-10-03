@@ -399,6 +399,7 @@
     "reuseCalPlate": "キャリブレーションプレートを再利用",
     "forceMechanicalSkew": "機械的な歪みを強制",
     "forceObstruction": "障害物を強制",
+    "alwaysAllowLevelVerification": "レベリング確認を常に許可",
     "releaseTagOverride": "リリースタグのオーバライド",
     "athenaOsVersion": "AthenaOS Version: %s"
   },
@@ -445,6 +446,7 @@
     "verifyDesc": "正常にレベリングが完了すると利用可能になります。",
     "verifyNoData": "レベリングデータが見つかりません",
     "verifyNoDataHint": "最初にアシストレベリングを完了してください。",
+    "verifyNoDataOverrideHint": "デバッグオーバーライドが有効です。既存のデータがなくてもレベリング確認を実行できます。",
     "verifyRecordMissing": "レベリング記録を利用できません",
     "verifyRecordMissingHint": "プリンターは引き続きレベリング済みとして扱われていますが、そのセッションのコーナー測定値はこのプリンターに残っていません。再チェックを実行してプレートを再度測定してください。",
     "verifyClearOffsetTitle": "現在のZオフセットをクリアしますか？",

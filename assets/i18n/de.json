@@ -399,6 +399,7 @@
     "reuseCalPlate": "Kalibrierungsplatte wiederverwenden",
     "forceMechanicalSkew": "Mechanische Schiefstellung erzwingen",
     "forceObstruction": "Hindernis erzwingen",
+    "alwaysAllowLevelVerification": "Nivellierungsprüfung immer zulassen",
     "releaseTagOverride": "Release-Tag-Überschreibung",
     "athenaOsVersion": "AthenaOS Version: %s"
   },
@@ -445,6 +446,7 @@
     "verifyDesc": "Verfügbar nach einer erfolgreichen Nivellierungssitzung.",
     "verifyNoData": "Keine Nivellierungsdaten gefunden",
     "verifyNoDataHint": "Führen Sie zuerst eine geführte Nivellierung durch.",
+    "verifyNoDataOverrideHint": "Debug-Übersteuerung aktiv. Sie können eine Nivellierungsprüfung ohne vorhandene Daten starten.",
     "verifyRecordMissing": "Nivellierungsdatensatz nicht verfügbar",
     "verifyRecordMissingHint": "Der Drucker gilt weiterhin als nivelliert, aber die Eckenmessungen dieser Sitzung sind auf diesem Drucker nicht mehr vorhanden. Führen Sie eine erneute Prüfung durch, um die Bauplatte erneut zu vermessen.",
     "verifyClearOffsetTitle": "Aktuellen Z-Offset löschen?",

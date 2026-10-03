@@ -25,7 +25,7 @@ import 'package:orion/util/overlay_route.dart';
 import 'package:orion/tools/athena/leveling_configs.dart';
 import 'package:orion/tools/athena/leveling_settings_screen.dart';
 import 'package:orion/tools/athena/verify_leveling_screen.dart'
-    show VerifyLevelingScreen, isPrinterLeveled;
+    show VerifyLevelingScreen, canVerifyLeveling;
 import 'package:orion/tools/manual_leveling_screen.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
@@ -96,7 +96,7 @@ class LevelingScreen extends StatelessWidget {
                           FlutterI18n.translate(context, 'leveling.verify'),
                       description: FlutterI18n.translate(
                           context, 'leveling.verifyDesc'),
-                      enabled: isPrinterLeveled(),
+                      enabled: canVerifyLeveling(),
                       tint: GlassButtonTint.neutral,
                       onPressed: () => Navigator.of(context).push(
                         buildOverlayRoute(const VerifyLevelingScreen()),

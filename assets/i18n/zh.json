@@ -399,6 +399,7 @@
     "reuseCalPlate": "重复使用校准板",
     "forceMechanicalSkew": "强制机械偏斜",
     "forceObstruction": "强制障碍物",
+    "alwaysAllowLevelVerification": "始终允许验证调平",
     "releaseTagOverride": "覆盖版本标签",
     "athenaOsVersion": "AthenaOS Version: %s"
   },
@@ -445,6 +446,7 @@
     "verifyDesc": "成功调平后可用。",
     "verifyNoData": "未找到调平数据",
     "verifyNoDataHint": "请先完成辅助调平。",
+    "verifyNoDataOverrideHint": "调试覆盖已启用。即使没有现有数据，您也可以运行调平检查。",
     "verifyRecordMissing": "调平记录不可用",
     "verifyRecordMissingHint": "打印机仍标记为已调平，但该次会话的角落测量数据已不在本打印机上。请执行重新检查以再次测量平台。",
     "verifyClearOffsetTitle": "要清除当前的 Z 偏移吗？",

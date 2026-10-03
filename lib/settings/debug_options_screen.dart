@@ -42,6 +42,7 @@ class _DebugOptionsScreenState extends State<DebugOptionsScreen> {
   late bool reuseCalibrationPlate;
   late bool forceMechanicalSkew;
   late bool forceObstruction;
+  late bool alwaysAllowLevelVerification;
 
   @override
   void initState() {
@@ -54,6 +55,9 @@ class _DebugOptionsScreenState extends State<DebugOptionsScreen> {
         config.getFlag('forceMechanicalSkew', category: 'developer');
     forceObstruction =
         config.getFlag('forceObstruction', category: 'developer');
+    alwaysAllowLevelVerification = config.getFlag(
+        'alwaysAllowLevelVerification',
+        category: 'developer');
   }
 
   @override
@@ -139,6 +143,21 @@ class _DebugOptionsScreenState extends State<DebugOptionsScreen> {
                             setState(() {
                               forceObstruction = value;
                               config.setFlag('forceObstruction', value,
+                                  category: 'developer');
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 20.0),
+                        OrionListTile(
+                          title: FlutterI18n.translate(context,
+                              'update.alwaysAllowLevelVerification'),
+                          icon: PhosphorIcons.ruler(),
+                          value: alwaysAllowLevelVerification,
+                          onChanged: (bool value) {
+                            setState(() {
+                              alwaysAllowLevelVerification = value;
+                              config.setFlag(
+                                  'alwaysAllowLevelVerification', value,
                                   category: 'developer');
                             });
                           },

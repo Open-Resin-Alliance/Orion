@@ -39,6 +39,17 @@ import 'package:provider/provider.dart';
 /// still verifiable, it just has nothing to show yet.
 bool isPrinterLeveled() => OrionConfig().isLeveled();
 
+/// Whether the Verify Leveling flow may be opened at all.
+///
+/// Normally the menu entry requires [isPrinterLeveled]; the
+/// `alwaysAllowLevelVerification` developer toggle (Debug Options) opens it
+/// with no leveling state on the printer, so the flow can be exercised in
+/// the field and on fresh hardware.
+bool canVerifyLeveling() =>
+    isPrinterLeveled() ||
+    OrionConfig()
+        .getFlag('alwaysAllowLevelVerification', category: 'developer');
+
 class VerifyLevelingScreen extends StatefulWidget {
   const VerifyLevelingScreen({super.key});
 
@@ -66,7 +77,11 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
         Provider.of<ThemeProvider>(context, listen: false).isGlassTheme;
     final primary = Theme.of(context).colorScheme.primary;
     final session = _session;
-    final leveled = OrionConfig().isLeveled();
+    final leveled = isPrinterLeveled();
+    // Reached through the debug override with no leveling state at all: unlike
+    // the leveled-but-no-record case there is nothing to show, but the check
+    // can still be run.
+    final forced = !leveled && canVerifyLeveling();
 
     return GlassApp(
       child: Scaffold(
@@ -84,7 +99,7 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
           child: Padding(
             padding: OrionSpacing.screenPaddingWithBottomNav,
             child: !leveled
-                ? _buildNoDataView(context, primary)
+                ? _buildNoDataView(context, primary, allowRecheck: forced)
                 : session != null
                     ? _buildSessionView(context, session, primary)
                     : _buildNoRecordView(context, primary),
@@ -450,43 +465,59 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
     );
   }
 
-  Widget _buildNoDataView(BuildContext context, Color primary) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: primary.withValues(alpha: 0.12),
+  Widget _buildNoDataView(BuildContext context, Color primary,
+      {bool allowRecheck = false}) {
+    final hintKey = allowRecheck
+        ? 'leveling.verifyNoDataOverrideHint'
+        : 'leveling.verifyNoDataHint';
+    return Column(
+      children: [
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primary.withValues(alpha: 0.12),
+                  ),
+                  child: Icon(PhosphorIcons.info(),
+                      size: 32, color: primary.withValues(alpha: 0.5)),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  FlutterI18n.translate(context, 'leveling.verifyNoData'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: primary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: OrionSpacing.screenHorizontal),
+                  child: Text(
+                    FlutterI18n.translate(context, hintKey),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: Icon(PhosphorIcons.info(),
-                size: 32, color: primary.withValues(alpha: 0.5)),
           ),
-          const SizedBox(height: 16),
-          Text(
-            FlutterI18n.translate(context, 'leveling.verifyNoData'),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: primary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            FlutterI18n.translate(context, 'leveling.verifyNoDataHint'),
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.5),
-            ),
-          ),
-        ],
-      ),
+        ),
+        if (allowRecheck) _buildRecheckButton(context),
+      ],
     );
   }
 }

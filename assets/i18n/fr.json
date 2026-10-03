@@ -399,6 +399,7 @@
     "reuseCalPlate": "Réutiliser la plaque d'étalonnage",
     "forceMechanicalSkew": "Forcer le désalignement mécanique",
     "forceObstruction": "Forcer une obstruction",
+    "alwaysAllowLevelVerification": "Toujours autoriser la vérification du nivellement",
     "releaseTagOverride": "Remplacement du tag de version",
     "athenaOsVersion": "AthenaOS Version: %s"
   },
@@ -445,6 +446,7 @@
     "verifyDesc": "Disponible après une séance de nivellement réussie.",
     "verifyNoData": "Aucune donnée de nivellement trouvée",
     "verifyNoDataHint": "Effectuez d'abord un nivellement assisté.",
+    "verifyNoDataOverrideHint": "Dérogation de débogage active. Vous pouvez lancer une vérification du nivellement sans données existantes.",
     "verifyRecordMissing": "Enregistrement de nivellement indisponible",
     "verifyRecordMissingHint": "L'imprimante est toujours considérée comme nivelée, mais les mesures des coins de cette session ne sont plus disponibles sur cette imprimante. Lancez une revérification pour mesurer à nouveau le plateau.",
     "verifyClearOffsetTitle": "Effacer le décalage Z actuel ?",

@@ -399,6 +399,7 @@
         "reuseCalPlate": "Reuse Calibration Plate",
         "forceMechanicalSkew": "Force Mechanical Skew",
         "forceObstruction": "Force Obstruction",
+        "alwaysAllowLevelVerification": "Always Allow Level Verification",
         "releaseTagOverride": "Release Tag Override",
         "athenaOsVersion": "AthenaOS Version"
     },
@@ -445,6 +446,7 @@
         "verifyDesc": "Available after a successful leveling session.",
         "verifyNoData": "No leveling data found",
         "verifyNoDataHint": "Complete an assisted leveling session first.",
+        "verifyNoDataOverrideHint": "Debug override active. You can run a leveling check without existing data.",
         "verifyRecordMissing": "Leveling record unavailable",
         "verifyRecordMissingHint": "The printer is still marked as leveled, but the corner measurements from that session are no longer on this printer. Run a re-check to measure the plate again.",
         "verifyClearOffsetTitle": "Clear Current Z Offset?",
