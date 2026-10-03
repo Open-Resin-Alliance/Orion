@@ -434,6 +434,9 @@
         "time": "Cleaning Time",
         "intensity": "UV Intensity",
         "start": "Start Cleaning",
+        "running": "Cleaning…",
+        "stop": "Stop",
+        "startFailed": "Could not start the cleaning run.",
         "notAvailable": "Not available on this printer"
     },
     "force": {

@@ -434,6 +434,9 @@
     "time": "クリーニング時間",
     "intensity": "UV強度",
     "start": "クリーニングを開始",
+    "running": "クリーニング中…",
+    "stop": "停止",
+    "startFailed": "クリーニングを開始できませんでした。",
     "notAvailable": "このプリンターでは利用できません"
   },
   "force": {

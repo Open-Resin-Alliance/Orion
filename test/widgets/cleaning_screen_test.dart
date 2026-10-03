@@ -21,6 +21,7 @@ import 'package:flutter_i18n/loaders/decoders/json_decode_strategy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/tools/cleaning_screen.dart';
@@ -36,6 +37,11 @@ Future<void> _pumpFor(WidgetTester tester, [int ms = 1000]) async {
 }
 
 void main() {
+  late FakeBackendClient backend;
+
+  // Capabilities come from the registry, which the app fills at startup.
+  setUpAll(() => BackendRegistry().registerBuiltInModules());
+
   /// The cleaning settings live in the shared `orion.cfg`; put them back.
   void restoreCleaning() {
     final config = OrionConfig();
@@ -52,7 +58,8 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    BackendService.debugSetSharedDelegate(FakeBackendClient());
+    backend = FakeBackendClient();
+    BackendService.debugSetSharedDelegate(backend);
 
     final delegate = FlutterI18nDelegate(
       translationLoader: FileTranslationLoader(
@@ -110,16 +117,40 @@ void main() {
     expect(find.text('10 %'), findsOneWidget);
   });
 
-  testWidgets('start reads as unavailable until a backend supports cleaning',
+  testWidgets('runs the NanoDLP compound and stops it on demand',
       (tester) async {
     restoreCleaning();
+    OrionConfig().setCleaningIntensity(90);
+    await pumpScreen(tester);
+
+    await tester.tap(find.widgetWithText(GlassButton, 'Start Cleaning'));
+    await _pumpFor(tester, 1000);
+
+    // Blank the frame, put the projector on, then set the LED duty.
+    expect(backend.displayTestCalled, isTrue);
+    expect(backend.lastCommand, 'UVLED_ON PWM=0.9');
+
+    // The run is held by a countdown the operator can end early.
+    expect(find.text('Cleaning\u2026'), findsOneWidget);
+    await tester.tap(find.widgetWithText(GlassButton, 'Stop'));
+    await _pumpFor(tester, 1000);
+
+    expect(backend.lastCommand, 'UVLED_OFF');
+  });
+
+  testWidgets('reports a backend without cleaning support', (tester) async {
+    restoreCleaning();
+    final config = OrionConfig();
+    final beforeBackend = config.getString('backend', category: 'advanced');
+    config.setString('backend', 'odyssey', category: 'advanced');
+    addTearDown(
+        () => config.setString('backend', beforeBackend, category: 'advanced'));
+
     await pumpScreen(tester);
 
     final context = tester.element(find.byType(CleaningScreen));
     final unavailable =
         FlutterI18n.translate(context, 'cleaning.notAvailable');
-
-    // The button itself carries the reason, rather than a hint above it.
     final start = tester.widget<GlassButton>(find.ancestor(
         of: find.text(unavailable), matching: find.byType(GlassButton)));
     expect(start.onPressed, isNull);

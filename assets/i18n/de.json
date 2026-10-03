@@ -434,6 +434,9 @@
     "time": "Reinigungsdauer",
     "intensity": "UV-Intensität",
     "start": "Reinigung starten",
+    "running": "Reinigung läuft…",
+    "stop": "Stoppen",
+    "startFailed": "Die Reinigung konnte nicht gestartet werden.",
     "notAvailable": "Auf diesem Drucker nicht verfügbar"
   },
   "force": {

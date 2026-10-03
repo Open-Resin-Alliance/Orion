@@ -434,6 +434,9 @@
     "time": "清洁时间",
     "intensity": "UV 强度",
     "start": "开始清洁",
+    "running": "正在清洁…",
+    "stop": "停止",
+    "startFailed": "无法启动清洁。",
     "notAvailable": "此打印机不支持"
   },
   "force": {

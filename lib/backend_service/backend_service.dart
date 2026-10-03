@@ -434,23 +434,63 @@ class BackendService implements BackendClient {
   static bool _isForceProbeEndpoint(String endpoint) =>
       endpoint.startsWith('probe_') && !endpoint.endsWith('_prepare');
 
-  /// Start a cleaning run: a full-field UV exposure for [seconds] at
-  /// [intensityPercent] of full power.
+  /// Start a cleaning run: the full-white "blank" exposure with the UV LED on
+  /// at [intensityPercent] of full power.
   ///
-  /// Gated on [BackendCapabilities.supportsCleaning], which no backend
-  /// advertises yet — the per-backend command is still to come, and its
-  /// dispatch belongs here once it exists.
-  Future<bool> startCleaning({
-    required int seconds,
-    required int intensityPercent,
-  }) async {
+  /// NanoDLP needs this as a compound — put up the blank frame, switch the
+  /// projector on, then set the LED duty with `UVLED_ON PWM=<0..1>`.  The run
+  /// is timed by the caller, which calls [stopCleaning] when it ends (and on
+  /// cancel), so an interrupted run cannot leave the LED lit.
+  Future<bool> startCleaning({required int intensityPercent}) async {
     if (!supportsCapability(BackendCapabilities.supportsCleaning)) {
       _log.info('Cleaning is not supported by this backend');
       return false;
     }
-    _log.warning('Cleaning requested (${seconds}s at $intensityPercent%) but '
-        'no backend command is implemented yet');
-    return false;
+    try {
+      await _delegate.displayTest('White');
+      await _delegate.manualCure(true);
+      await _delegate.manualCommand(
+          'UVLED_ON PWM=${_cleaningPwm(intensityPercent)}');
+      return true;
+    } catch (e, st) {
+      _log.warning('Failed to start the cleaning run', e, st);
+      // The LED may already be live; make sure it is not.
+      await _attemptStopCleaning();
+      return false;
+    }
+  }
+
+  /// Stop a cleaning run: UV LED off, then the projector blanked.
+  Future<bool> stopCleaning() async {
+    if (!supportsCapability(BackendCapabilities.supportsCleaning)) {
+      return false;
+    }
+    return _attemptStopCleaning();
+  }
+
+  Future<bool> _attemptStopCleaning() async {
+    var ok = true;
+    try {
+      await _delegate.manualCommand('UVLED_OFF');
+    } catch (e, st) {
+      _log.warning('Failed to switch the UV LED off', e, st);
+      ok = false;
+    }
+    try {
+      await _delegate.manualCure(false);
+    } catch (e, st) {
+      _log.warning('Failed to blank the projector after cleaning', e, st);
+      ok = false;
+    }
+    return ok;
+  }
+
+  /// UV LED duty for NanoDLP's `UVLED_ON PWM=`, e.g. 90% -> `0.9`.
+  static String _cleaningPwm(int percent) {
+    var text = ((percent.clamp(0, 100)) / 100).toStringAsFixed(2);
+    text = text.replaceAll(RegExp(r'0+$'), '');
+    if (text.endsWith('.')) text = text.substring(0, text.length - 1);
+    return text.isEmpty ? '0' : text;
   }
 
   /// Show a corner alignment pattern on the projector via special screens.

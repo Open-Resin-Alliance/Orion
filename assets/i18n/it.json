@@ -434,6 +434,9 @@
     "time": "Durata pulizia",
     "intensity": "Intensità UV",
     "start": "Avvia pulizia",
+    "running": "Pulizia in corso…",
+    "stop": "Interrompi",
+    "startFailed": "Impossibile avviare la pulizia.",
     "notAvailable": "Non disponibile su questa stampante"
   },
   "force": {

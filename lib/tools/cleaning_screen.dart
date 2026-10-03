@@ -15,6 +15,8 @@
 * limitations under the License.
 */
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -245,13 +247,134 @@ class _CleaningScreenState extends State<CleaningScreen> {
     );
   }
 
-  /// Kick off a cleaning run.  Only reachable once a backend advertises
-  /// [BackendCapabilities.supportsCleaning]; the command itself lands with
-  /// that backend support.
+  /// Kick off a cleaning run and hold the countdown until it finishes or the
+  /// operator stops it.  Either way the LED is switched off afterwards.
   Future<void> _start() async {
-    await _backend.startCleaning(
-      seconds: _seconds,
-      intensityPercent: _intensity,
+    final started = await _backend.startCleaning(intensityPercent: _intensity);
+    if (!started) {
+      if (mounted) _showStartFailed();
+      return;
+    }
+    if (!mounted) {
+      await _backend.stopCleaning();
+      return;
+    }
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _CleaningCountdownDialog(seconds: _seconds),
+      );
+    } finally {
+      await _backend.stopCleaning();
+    }
+  }
+
+  void _showStartFailed() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => GlassAlertDialog(
+        title: Text(FlutterI18n.translate(context, 'common.error')),
+        content: Text(
+          FlutterI18n.translate(context, 'cleaning.startFailed'),
+          style: const TextStyle(fontSize: 20),
+        ),
+        actions: [
+          GlassButton(
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(0, 60),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(FlutterI18n.translate(context, 'common.ok')),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The run's countdown: keeps the operator informed and offers a way out that
+/// stops the exposure early.
+class _CleaningCountdownDialog extends StatefulWidget {
+  const _CleaningCountdownDialog({required this.seconds});
+
+  final int seconds;
+
+  @override
+  State<_CleaningCountdownDialog> createState() =>
+      _CleaningCountdownDialogState();
+}
+
+class _CleaningCountdownDialogState extends State<_CleaningCountdownDialog> {
+  late int _remaining = widget.seconds;
+  Timer? _timer;
+  bool _closing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _remaining -= 1);
+      if (_remaining <= 0) _close();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _close() {
+    if (_closing) return;
+    _closing = true;
+    _timer?.cancel();
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.seconds;
+    final elapsed = total - _remaining;
+    return GlassAlertDialog(
+      title: Text(
+        FlutterI18n.translate(context, 'cleaning.running'),
+        style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w600),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 160,
+            width: 160,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: total <= 0 ? 1.0 : (elapsed / total).clamp(0.0, 1.0),
+                  strokeWidth: 8,
+                ),
+                Text(
+                  '${_remaining.clamp(0, total)}',
+                  style: const TextStyle(
+                      fontSize: 44, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        GlassButton(
+          tint: GlassButtonTint.negative,
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(0, 60),
+          ),
+          onPressed: _close,
+          child: Text(FlutterI18n.translate(context, 'cleaning.stop')),
+        ),
+      ],
     );
   }
 }
