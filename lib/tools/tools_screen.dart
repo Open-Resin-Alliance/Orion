@@ -66,8 +66,8 @@ class ToolsScreenState extends State<ToolsScreen> {
                 : _selectedIndex == 2
                     ? const ExposureScreen()
                     : _selectedIndex == 3
-                        ? const ForceSensorScreen()
-                        : const CleaningScreen(),
+                        ? const CleaningScreen()
+                        : const ForceSensorScreen(),
         bottomNavigationBar: GlassBottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           items: <BottomNavigationBarItem>[
@@ -96,20 +96,20 @@ class ToolsScreenState extends State<ToolsScreen> {
               label: FlutterI18n.translate(context, 'tools.exposure'),
             ),
             BottomNavigationBarItem(
-              icon: PhosphorIcon(PhosphorIcons.chartLineUp()),
-              activeIcon: PhosphorIcon(
-                PhosphorIconsFill.chartLineUp,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              label: FlutterI18n.translate(context, 'tools.forceSensor'),
-            ),
-            BottomNavigationBarItem(
               icon: PhosphorIcon(PhosphorIcons.broom()),
               activeIcon: PhosphorIcon(
                 PhosphorIconsFill.broom,
                 color: Theme.of(context).colorScheme.primary,
               ),
               label: FlutterI18n.translate(context, 'tools.cleaning'),
+            ),
+            BottomNavigationBarItem(
+              icon: PhosphorIcon(PhosphorIcons.chartLineUp()),
+              activeIcon: PhosphorIcon(
+                PhosphorIconsFill.chartLineUp,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              label: FlutterI18n.translate(context, 'tools.forceSensor'),
             ),
             // TODO: Implement Self Test
             /*BottomNavigationBarItem(
