@@ -245,7 +245,7 @@ class ExposureScreenState extends State<ExposureScreen> {
       return GlassButton(onPressed: null, style: style, child: child);
     }
     return HoldButton(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 200),
       showHoldIcon: false,
       onPressed: onPressed,
       style: style,

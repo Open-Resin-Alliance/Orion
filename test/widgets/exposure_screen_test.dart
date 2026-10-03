@@ -90,7 +90,7 @@ void main() {
     final holds = tester.widgetList<HoldButton>(find.byType(HoldButton));
     expect(holds.length, 4);
     for (final hold in holds) {
-      expect(hold.duration, const Duration(milliseconds: 500));
+      expect(hold.duration, const Duration(milliseconds: 200));
       // Secret: no hold-me finger on the edge.
       expect(hold.showHoldIcon, isFalse);
     }

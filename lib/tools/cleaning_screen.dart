@@ -293,7 +293,7 @@ class _CleaningScreenState extends State<CleaningScreen> {
     }
     final theme = Theme.of(context);
     return HoldButton(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1000),
       tint: GlassButtonTint.positive,
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
