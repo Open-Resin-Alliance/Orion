@@ -82,7 +82,8 @@ void main() {
     await pumpForLocal(tester);
   }
 
-  testWidgets('every exposure run starts on a short hold', (tester) async {
+  testWidgets('every exposure run starts on a short, unmarked hold',
+      (tester) async {
     await pumpScreen(tester);
 
     // Grid, Logo, Measure and White.
@@ -90,6 +91,8 @@ void main() {
     expect(holds.length, 4);
     for (final hold in holds) {
       expect(hold.duration, const Duration(milliseconds: 500));
+      // Secret: no hold-me finger on the edge.
+      expect(hold.showHoldIcon, isFalse);
     }
   });
 }

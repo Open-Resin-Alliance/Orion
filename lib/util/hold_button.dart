@@ -28,6 +28,10 @@ class HoldButton extends StatefulWidget {
   final Duration duration;
   final GlassButtonTint tint;
 
+  /// Show the little hold-me finger on the right edge.  Turn it off for
+  /// "secret" holds, where the label already says what to do.
+  final bool showHoldIcon;
+
   const HoldButton({
     super.key,
     required this.onPressed,
@@ -35,6 +39,7 @@ class HoldButton extends StatefulWidget {
     this.style,
     this.duration = const Duration(seconds: 3),
     this.tint = GlassButtonTint.none,
+    this.showHoldIcon = true,
   });
 
   @override
@@ -118,7 +123,9 @@ class HoldButtonState extends State<HoldButton> with TickerProviderStateMixin {
                   buttonChild,
                   // Show the animated hold icon only when the button is idle (not being pressed or held).
                   // The condition ensures the icon appears only when the animation is not running and the progress is at the start.
-                  if (!_controller.isAnimating && _controller.value == 0)
+                  if (widget.showHoldIcon &&
+                      !_controller.isAnimating &&
+                      _controller.value == 0)
                     Align(
                       alignment: Alignment.centerRight,
                       child: Padding(

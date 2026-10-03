@@ -246,6 +246,7 @@ class ExposureScreenState extends State<ExposureScreen> {
     }
     return HoldButton(
       duration: const Duration(milliseconds: 500),
+      showHoldIcon: false,
       onPressed: onPressed,
       style: style,
       child: child,
@@ -261,6 +262,7 @@ class ExposureScreenState extends State<ExposureScreen> {
             children: [
               Expanded(
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: _buildHoldButton(
@@ -334,6 +336,7 @@ class ExposureScreenState extends State<ExposureScreen> {
         const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: _buildHoldButton(
