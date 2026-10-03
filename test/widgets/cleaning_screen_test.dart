@@ -127,8 +127,8 @@ void main() {
     await _pumpFor(tester, 1000);
 
     // Blank the frame, put the projector on, then set the LED duty.
-    expect(backend.displayTestCalled, isTrue);
-    expect(backend.lastCommand, 'UVLED_ON PWM=0.9');
+    expect(backend.commands, ['[[Blank]]', 'UVLED_ON PWM=0.9']);
+    expect(backend.manualCureCalled, isTrue);
 
     // The run is held by a countdown the operator can end early.
     expect(find.text('Tank Cleaning\u2026'), findsOneWidget);

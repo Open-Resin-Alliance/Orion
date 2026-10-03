@@ -31,6 +31,9 @@ class FakeBackendClient implements BackendClient {
   bool forceStopCalled = false;
   String? lastCommand;
 
+  /// Every [manualCommand] in order, for asserting compound sequences.
+  final List<String> commands = [];
+
   bool throwOnMove = false;
 
   @override
@@ -117,6 +120,7 @@ class FakeBackendClient implements BackendClient {
   @override
   Future<Map<String, dynamic>> manualCommand(String command) async {
     lastCommand = command;
+    commands.add(command);
     return {};
   }
 
