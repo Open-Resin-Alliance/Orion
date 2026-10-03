@@ -100,6 +100,16 @@ void main() {
     expect(find.text('60 %'), findsOneWidget);
   });
 
+  testWidgets('clamps values outside 1-60 s and 10-100 %', (tester) async {
+    restoreCleaning();
+    OrionConfig().setCleaningSeconds(600);
+    OrionConfig().setCleaningIntensity(5);
+    await pumpScreen(tester);
+
+    expect(find.text('60 sec'), findsOneWidget);
+    expect(find.text('10 %'), findsOneWidget);
+  });
+
   testWidgets('start is disabled until a backend supports cleaning',
       (tester) async {
     restoreCleaning();

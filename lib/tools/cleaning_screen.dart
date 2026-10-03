@@ -47,17 +47,21 @@ class _CleaningScreenState extends State<CleaningScreen> {
   late int _intensity;
 
   // Duration bounds: long enough to strip a vat, short enough to be safe to
-  // leave running.  Intensity is a plain percentage of full UV power.
+  // leave running.  Intensity is a percentage of full UV power, floored at 10%
+  // so a run is still effective.
   static const int _minSeconds = 1;
-  static const int _maxSeconds = 600;
-  static const int _minIntensity = 1;
+  static const int _maxSeconds = 60;
+  static const int _minIntensity = 10;
   static const int _maxIntensity = 100;
 
   @override
   void initState() {
     super.initState();
-    _seconds = _config.getCleaningSeconds();
-    _intensity = _config.getCleaningIntensity();
+    // Clamp anything persisted before these bounds existed.
+    _seconds =
+        _config.getCleaningSeconds().clamp(_minSeconds, _maxSeconds);
+    _intensity =
+        _config.getCleaningIntensity().clamp(_minIntensity, _maxIntensity);
   }
 
   bool get _supported =>
