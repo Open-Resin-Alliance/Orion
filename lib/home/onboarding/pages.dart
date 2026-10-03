@@ -650,16 +650,17 @@ class OnboardingPages {
     return GlassApp(
       child: Padding(
         // The Back / Complete Setup buttons float over the page's bottom
-        // corners, so the column is lifted clear of them and kept narrow.
+        // corners, so the column is lifted clear of them (and stays compact
+        // enough to fit the app bar's body on a short window).
         padding: const EdgeInsets.only(
-            left: 24, right: 24, top: 16, bottom: 116),
+            left: 24, right: 24, top: 8, bottom: 92),
         child: Center(
           child: SingleChildScrollView(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _buildSuccessBadge(context),
-                const SizedBox(height: 26),
+                const SizedBox(height: 20),
                 SlideTransition(
                   position: completeAnimation,
                   child: Column(
@@ -668,7 +669,7 @@ class OnboardingPages {
                         printerName,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 34,
+                          fontSize: 30,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.2,
                           color: Theme.of(context).colorScheme.primary,
@@ -680,7 +681,7 @@ class OnboardingPages {
                             context, 'complete.completionMessage'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 21,
+                          fontSize: 20,
                           fontWeight: FontWeight.w400,
                           color: Theme.of(context)
                               .colorScheme
@@ -692,7 +693,7 @@ class OnboardingPages {
                   ),
                 ),
                 if (vendorUri != null) ...[
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 24),
                   _buildVendorLink(context, vendorUri),
                 ],
               ],
@@ -713,8 +714,8 @@ class OnboardingPages {
       curve: Curves.easeOutBack,
       builder: (context, t, child) => Transform.scale(scale: t, child: child),
       child: Container(
-        width: 96,
-        height: 96,
+        width: 84,
+        height: 84,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: primary.withValues(alpha: 0.12),
