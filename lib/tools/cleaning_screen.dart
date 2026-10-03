@@ -15,8 +15,6 @@
 * limitations under the License.
 */
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -26,6 +24,7 @@ import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/widgets/exposure_countdown_dialog.dart';
 import 'package:orion/widgets/zoom_value_editor_dialog.dart';
 
 /// Cleaning run: a full-field UV exposure for a set time and intensity.
@@ -49,11 +48,11 @@ class _CleaningScreenState extends State<CleaningScreen> {
   late int _intensity;
 
   // Duration bounds: long enough to strip a vat, short enough to be safe to
-  // leave running.  Intensity is a percentage of full UV power, floored at 10%
+  // leave running.  Intensity is a percentage of full UV power, floored at 25%
   // so a run is still effective.
   static const int _minSeconds = 1;
   static const int _maxSeconds = 60;
-  static const int _minIntensity = 10;
+  static const int _minIntensity = 25;
   static const int _maxIntensity = 100;
 
   @override
@@ -260,10 +259,12 @@ class _CleaningScreenState extends State<CleaningScreen> {
       return;
     }
     try {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => _CleaningCountdownDialog(seconds: _seconds),
+      // Same countdown the Exposure page shows.
+      await showExposureCountdownDialog(
+        context,
+        countdownSeconds: _seconds,
+        title: FlutterI18n.translate(context, 'cleaning.running'),
+        stopLabelKey: 'cleaning.stop',
       );
     } finally {
       await _backend.stopCleaning();
@@ -289,92 +290,6 @@ class _CleaningScreenState extends State<CleaningScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// The run's countdown: keeps the operator informed and offers a way out that
-/// stops the exposure early.
-class _CleaningCountdownDialog extends StatefulWidget {
-  const _CleaningCountdownDialog({required this.seconds});
-
-  final int seconds;
-
-  @override
-  State<_CleaningCountdownDialog> createState() =>
-      _CleaningCountdownDialogState();
-}
-
-class _CleaningCountdownDialogState extends State<_CleaningCountdownDialog> {
-  late int _remaining = widget.seconds;
-  Timer? _timer;
-  bool _closing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => _remaining -= 1);
-      if (_remaining <= 0) _close();
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _close() {
-    if (_closing) return;
-    _closing = true;
-    _timer?.cancel();
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final total = widget.seconds;
-    final elapsed = total - _remaining;
-    return GlassAlertDialog(
-      title: Text(
-        FlutterI18n.translate(context, 'cleaning.running'),
-        style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w600),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: 160,
-            width: 160,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: total <= 0 ? 1.0 : (elapsed / total).clamp(0.0, 1.0),
-                  strokeWidth: 8,
-                ),
-                Text(
-                  '${_remaining.clamp(0, total)}',
-                  style: const TextStyle(
-                      fontSize: 44, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        GlassButton(
-          tint: GlassButtonTint.negative,
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(0, 60),
-          ),
-          onPressed: _close,
-          child: Text(FlutterI18n.translate(context, 'cleaning.stop')),
-        ),
-      ],
     );
   }
 }
