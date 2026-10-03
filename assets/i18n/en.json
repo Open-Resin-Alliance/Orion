@@ -423,7 +423,7 @@
         "grid": "Grid",
         "logo": "Logo",
         "measure": "Measure",
-        "clean": "Clean",
+        "blank": "Blank",
         "seconds": "%s Seconds",
         "persistent": "Persistent",
         "unitSec": "sec"

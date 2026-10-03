@@ -423,7 +423,7 @@
     "grid": "グリッド",
     "logo": "ロゴ",
     "measure": "測定",
-    "clean": "掃除",
+    "blank": "ブランク",
     "seconds": "%s秒",
     "persistent": "持続",
     "unitSec": "秒"

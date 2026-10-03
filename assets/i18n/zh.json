@@ -423,7 +423,7 @@
     "grid": "网格",
     "logo": "标志",
     "measure": "测量",
-    "clean": "清洁",
+    "blank": "空白",
     "seconds": "%s秒",
     "persistent": "持续",
     "unitSec": "秒"

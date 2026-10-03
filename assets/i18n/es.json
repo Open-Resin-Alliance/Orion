@@ -423,7 +423,7 @@
     "grid": "Cuadrícula",
     "logo": "Logotipo",
     "measure": "Medir",
-    "clean": "Limpiar",
+    "blank": "Blanco",
     "seconds": "%s s",
     "persistent": "Continuo",
     "unitSec": "s"

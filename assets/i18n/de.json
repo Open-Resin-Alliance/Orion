@@ -423,7 +423,7 @@
     "grid": "Gitter",
     "logo": "Logo",
     "measure": "Messen",
-    "clean": "Reinigen",
+    "blank": "Blank",
     "seconds": "%s Sek",
     "persistent": "Dauerhaft",
     "unitSec": "Sek"

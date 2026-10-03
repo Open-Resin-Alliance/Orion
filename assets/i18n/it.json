@@ -423,7 +423,7 @@
     "grid": "Griglia",
     "logo": "Logo",
     "measure": "Misura",
-    "clean": "Pulisci",
+    "blank": "Bianco",
     "seconds": "%s s",
     "persistent": "Persistente",
     "unitSec": "s"

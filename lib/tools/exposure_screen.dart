@@ -454,13 +454,13 @@ class ExposureScreenState extends State<ExposureScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       PhosphorIcon(
-                        PhosphorIcons.broom(),
+                        PhosphorIcons.square(),
                         size: 40,
                         color: _apiErrorState ? Colors.grey : null,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        FlutterI18n.translate(context, 'exposure.clean'),
+                        FlutterI18n.translate(context, 'exposure.blank'),
                         style: TextStyle(
                           fontSize: 24,
                           color: _apiErrorState ? Colors.grey : null,

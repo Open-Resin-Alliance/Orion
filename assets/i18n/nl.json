@@ -423,7 +423,7 @@
     "grid": "Raster",
     "logo": "Logo",
     "measure": "Meten",
-    "clean": "Reinigen",
+    "blank": "Blanco",
     "seconds": "%s s",
     "persistent": "Permanent",
     "unitSec": "s"

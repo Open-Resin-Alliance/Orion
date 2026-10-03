@@ -423,7 +423,7 @@
     "grid": "Grille",
     "logo": "Logo",
     "measure": "Mesurer",
-    "clean": "Nettoyer",
+    "blank": "Blanc",
     "seconds": "%s s",
     "persistent": "Continu",
     "unitSec": "s"
