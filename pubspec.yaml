@@ -61,6 +61,7 @@ dependencies:
   flutter_markdown: ^0.7.6+2
   logging: ^1.2.0
   toastification: ^3.0.2
+  url_launcher: ^6.3.2
   async: ^2.11.0
   fading_edge_scrollview: ^4.1.1
   flex_seed_scheme: ^3.4.1

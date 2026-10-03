@@ -543,7 +543,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
         );
       case 9:
         return OnboardingPages.buildCompletePage(
-            context, _completeAnimation, _printerName);
+            context, _completeAnimation, _printerName,
+            vendorUrl: vendorUrl);
       default:
         return const SizedBox.shrink();
     }

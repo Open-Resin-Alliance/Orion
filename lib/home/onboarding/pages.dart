@@ -19,6 +19,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:country_flags/country_flags.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:toastification/toastification.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
@@ -641,26 +643,218 @@ class OnboardingPages {
   static Widget buildCompletePage(
     BuildContext context,
     Animation<Offset> completeAnimation,
-    String printerName,
-  ) {
+    String printerName, {
+    String? vendorUrl,
+  }) {
+    final vendorUri = _vendorUri(vendorUrl);
     return GlassApp(
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SlideTransition(
-              position: completeAnimation,
-              child: Text(
-                '$printerName ${FlutterI18n.translate(context, 'complete.completionMessage')}',
-                style: const TextStyle(
-                    fontSize: 30, fontWeight: FontWeight.normal),
-              ),
+      child: Padding(
+        // The Back / Complete Setup buttons float over the page's bottom
+        // corners, so the column is lifted clear of them and kept narrow.
+        padding: const EdgeInsets.only(
+            left: 24, right: 24, top: 16, bottom: 116),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildSuccessBadge(context),
+                const SizedBox(height: 26),
+                SlideTransition(
+                  position: completeAnimation,
+                  child: Column(
+                    children: [
+                      Text(
+                        printerName,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        FlutterI18n.translate(
+                            context, 'complete.completionMessage'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w400,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (vendorUri != null) ...[
+                  const SizedBox(height: 36),
+                  _buildVendorLink(context, vendorUri),
+                ],
+              ],
             ),
-            const SizedBox(height: kToolbarHeight),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  /// A soft glowing check that scales in as the step appears, so the end of
+  /// setup reads as a moment rather than a line of text.
+  static Widget _buildSuccessBadge(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 650),
+      curve: Curves.easeOutBack,
+      builder: (context, t, child) => Transform.scale(scale: t, child: child),
+      child: Container(
+        width: 96,
+        height: 96,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: primary.withValues(alpha: 0.12),
+          border: Border.all(color: primary.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: primary.withValues(alpha: 0.22),
+              blurRadius: 30,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: PhosphorIcon(
+          PhosphorIcons.checkCircle(),
+          size: 52,
+          color: primary,
+        ),
+      ),
+    );
+  }
+
+  /// The "For more information" line: a compact, tappable pill carrying the
+  /// vendor's address.  The machine has no browser of its own, so the tap hands
+  /// the link to the platform; the address is shown without its scheme so it
+  /// stays readable.
+  static Widget _buildVendorLink(BuildContext context, Uri vendorUri) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 1100),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child:
+            Transform.translate(offset: Offset(0, 16 * (1 - t)), child: child),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => _openVendorUrl(context, vendorUri),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: primary.withValues(alpha: 0.10),
+                border: Border.all(color: primary.withValues(alpha: 0.35)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PhosphorIcon(PhosphorIcons.globe(),
+                          size: 18, color: primary),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          FlutterI18n.translate(context, 'complete.moreInfo'),
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: onSurface.withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _readableVendorUrl(vendorUri),
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      PhosphorIcon(PhosphorIcons.arrowSquareOut(),
+                          size: 15, color: primary),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Parse the configured vendor URL, tolerating a missing scheme (`https://`
+  /// is assumed).  Returns null when there is no usable address, so a blank or
+  /// malformed value simply hides the card.
+  static Uri? _vendorUri(String? raw) {
+    final trimmed = raw?.trim() ?? '';
+    if (trimmed.isEmpty) return null;
+    final uri = Uri.tryParse(
+        trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    if (uri == null || uri.host.isEmpty) return null;
+    return uri;
+  }
+
+  /// The URL as a person would read it: without the `http(s)://` prefix.
+  static String _readableVendorUrl(Uri uri) {
+    var text = uri.toString();
+    text = text.replaceFirst(RegExp(r'^[a-zA-Z][\w+.-]*://'), '');
+    return text.endsWith('/') ? text.substring(0, text.length - 1) : text;
+  }
+
+  static Future<void> _openVendorUrl(BuildContext context, Uri uri) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && context.mounted) {
+      Toastification().show(
+        context: context,
+        type: ToastificationType.error,
+        style: ToastificationStyle.fillColored,
+        autoCloseDuration: const Duration(seconds: 3),
+        alignment: Alignment.topCenter,
+        title: Text(
+          FlutterI18n.translate(context, 'complete.visitFailed'),
+          style: const TextStyle(fontSize: 18),
+        ),
+      );
+    }
   }
 
   static Widget _buildTimezoneCard(

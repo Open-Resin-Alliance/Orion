@@ -28,6 +28,7 @@ import 'package:orion/backend_service/providers/resins_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/home/onboarding/welcome_bubbles.dart';
+import 'package:orion/home/onboarding/pages.dart';
 import 'package:orion/home/onboarding_screen.dart';
 import 'package:orion/materials/calibration_context_provider.dart';
 import 'package:orion/materials/calibration_screen.dart';
@@ -144,6 +145,50 @@ void main() {
     }
 
     expect(find.text(t('setup.verifyLevelingTitle')), findsOneWidget);
+  }
+
+  /// Pumps [OnboardingPages.buildCompletePage] directly.  The completion step's
+  /// vendor link is driven by the URL it is handed, and the shared config only
+  /// exposes the packaged `vendor.cfg`, which a test cannot vary.
+  Future<void> pumpCompletePage(WidgetTester tester,
+      {String? vendorUrl}) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final delegate = FlutterI18nDelegate(
+      translationLoader: FileTranslationLoader(
+        useCountryCode: false,
+        fallbackFile: 'en',
+        basePath: 'assets/i18n',
+        decodeStrategies: [JsonDecodeStrategy()],
+      ),
+    );
+    await delegate.load(const Locale('en'));
+
+    final completeTheme = ThemeProvider();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ThemeProvider>.value(
+        value: completeTheme,
+        child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: [delegate],
+          supportedLocales: const [Locale('en')],
+          theme: completeTheme.lightTheme,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: OnboardingPages.buildCompletePage(
+                context,
+                const AlwaysStoppedAnimation<Offset>(Offset.zero),
+                'Negotiator-Gourd',
+                vendorUrl: vendorUrl,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await pumpFor(tester);
   }
 
   testWidgets('the welcome dim follows the theme it is shown in',
@@ -299,5 +344,30 @@ void main() {
     expect(find.text(t('setup.calibrationIntro')), findsOneWidget);
     expect(find.text(t('calibration.start')), findsOneWidget);
     expect(find.textContaining(t('complete.completionMessage')), findsNothing);
+  });
+
+  testWidgets('the completion step points at the vendor site',
+      (WidgetTester tester) async {
+    await pumpCompletePage(tester, vendorUrl: 'https://concepts3d.ca');
+
+    String t(String key) =>
+        FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
+
+    expect(find.textContaining(t('complete.completionMessage')), findsOneWidget);
+    expect(find.text(t('complete.moreInfo')), findsOneWidget);
+    // Readable without the scheme; the tap target carries the full URL.
+    expect(find.text('concepts3d.ca'), findsOneWidget);
+    expect(find.textContaining('https://'), findsNothing);
+  });
+
+  testWidgets('no vendor URL keeps the completion step plain',
+      (WidgetTester tester) async {
+    await pumpCompletePage(tester, vendorUrl: null);
+
+    String t(String key) =>
+        FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
+
+    expect(find.textContaining(t('complete.completionMessage')), findsOneWidget);
+    expect(find.text(t('complete.moreInfo')), findsNothing);
   });
 }

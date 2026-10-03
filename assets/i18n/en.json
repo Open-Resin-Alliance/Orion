@@ -102,7 +102,9 @@
     },
     "complete": {
         "section": "Complete",
-        "completionMessage": "is ready to go!"
+        "completionMessage": "is ready to go!",
+        "moreInfo": "For more information",
+        "visitFailed": "Could not open the website."
     },
     "home": {
         "powerOptions": "Power Options",

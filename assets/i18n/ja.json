@@ -102,7 +102,9 @@
   },
   "complete": {
     "section": "完了",
-    "completionMessage": "の準備ができました！"
+    "completionMessage": "の準備ができました！",
+    "moreInfo": "詳細については",
+    "visitFailed": "ウェブサイトを開けませんでした。"
   },
   "home": {
     "powerOptions": "電源オプション",
