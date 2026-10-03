@@ -432,9 +432,11 @@
   "cleaning": {
     "section": "Limpieza de cuba",
     "time": "Duración de limpieza",
-    "intensity": "Intensidad UV",
-    "start": "Iniciar limpieza de cuba",
+    "start": "Limpiar cuba",
     "running": "Limpiando la cuba…",
+    "explainer": "Expone toda la pantalla a plena potencia UV durante el tiempo configurado, curando una fina película en la cuba para retirar los restos de una sola pieza.",
+    "uvWarning": "Nunca mire a la impresora mientras se ejecuta una limpieza de cuba: la luz UV de alta potencia puede dañar sus ojos.",
+    "holdHint": "Mantenga pulsado para iniciar",
     "stop": "Detener",
     "startFailed": "No se pudo iniciar la limpieza de la cuba.",
     "notAvailable": "No disponible en esta impresora"

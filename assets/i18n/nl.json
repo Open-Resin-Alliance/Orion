@@ -432,9 +432,11 @@
   "cleaning": {
     "section": "Vat reinigen",
     "time": "Reinigingstijd",
-    "intensity": "UV-intensiteit",
-    "start": "Vat reinigen starten",
+    "start": "Vat reinigen",
     "running": "Vat reinigen…",
+    "explainer": "Belicht het hele scherm op vol UV-vermogen gedurende de ingestelde tijd. Er hardt een dun laagje in het vat uit, zodat vuil in één stuk verwijderd kan worden.",
+    "uvWarning": "Kijk nooit in de printer tijdens het reinigen van het vat — UV-licht met hoog vermogen kan je ogen beschadigen.",
+    "holdHint": "Houd ingedrukt om te starten",
     "stop": "Stoppen",
     "startFailed": "Kon het vat reinigen niet starten.",
     "notAvailable": "Niet beschikbaar op deze printer"

@@ -432,9 +432,11 @@
   "cleaning": {
     "section": "料槽清洁",
     "time": "清洁时间",
-    "intensity": "UV 强度",
-    "start": "开始料槽清洁",
+    "start": "清洁料槽",
     "running": "正在清洁料槽…",
+    "explainer": "以最大 UV 功率对整块屏幕曝光设定的时间，使料槽内固化出一层薄膜，方便整片取出残留物。",
+    "uvWarning": "料槽清洁运行期间切勿直视打印机——高功率 UV 光可能损伤眼睛。",
+    "holdHint": "长按开始",
     "stop": "停止",
     "startFailed": "无法启动料槽清洁。",
     "notAvailable": "此打印机不支持"

@@ -432,9 +432,11 @@
   "cleaning": {
     "section": "Wannenreinigung",
     "time": "Reinigungsdauer",
-    "intensity": "UV-Intensität",
-    "start": "Wannenreinigung starten",
+    "start": "Wanne reinigen",
     "running": "Wannenreinigung läuft…",
+    "explainer": "Belichtet den gesamten Bildschirm für die eingestellte Zeit mit voller UV-Leistung. Dabei härtet ein dünner Film in der Wanne aus, sodass Verunreinigungen in einem Stück herausgezogen werden können.",
+    "uvWarning": "Blicken Sie während der Wannenreinigung niemals in den Drucker — UV-Licht hoher Leistung kann Ihre Augen schädigen.",
+    "holdHint": "Zum Starten gedrückt halten",
     "stop": "Stoppen",
     "startFailed": "Die Wannenreinigung konnte nicht gestartet werden.",
     "notAvailable": "Auf diesem Drucker nicht verfügbar"

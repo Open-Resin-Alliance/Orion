@@ -822,20 +822,8 @@ class OrionConfig {
   void setCleaningSeconds(int value) =>
       setString('timeSeconds', value.toString(), category: 'cleaning');
 
-  /// UV intensity for a cleaning run, as a percentage of full power.
-  /// Persisted alongside [getCleaningSeconds]; defaults to
-  /// [defaultCleaningIntensity].
-  int getCleaningIntensity() {
-    final s = getString('intensityPercent', category: 'cleaning');
-    return int.tryParse(s) ?? defaultCleaningIntensity;
-  }
-
-  void setCleaningIntensity(int value) =>
-      setString('intensityPercent', value.toString(), category: 'cleaning');
-
-  /// First-run cleaning defaults: 15 seconds at full UV power.
+  /// First-run cleaning default: 15 seconds.
   static const int defaultCleaningSeconds = 15;
-  static const int defaultCleaningIntensity = 100;
 
   /// Query a boolean feature flag from the vendor `featureFlags` section.
   /// Returns [defaultValue] when not present.

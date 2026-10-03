@@ -434,14 +434,14 @@ class BackendService implements BackendClient {
   static bool _isForceProbeEndpoint(String endpoint) =>
       endpoint.startsWith('probe_') && !endpoint.endsWith('_prepare');
 
-  /// Start a cleaning run: the full-white "blank" exposure with the UV LED on
-  /// at [intensityPercent] of full power.
+  /// Start a cleaning run: the full-white "blank" exposure with the UV LED on.
   ///
   /// NanoDLP needs this as a compound — put up the blank frame, turn the
-  /// projector on, then set the LED duty with `UVLED_ON PWM=<0..1>`.  The run
-  /// is timed by the caller, which calls [stopCleaning] when it ends (and on
-  /// cancel), so an interrupted run cannot leave the LED lit.
-  Future<bool> startCleaning({required int intensityPercent}) async {
+  /// projector on, then set the LED duty with `UVLED_ON PWM=<0..1>` (full power
+  /// by default).  The run is timed by the caller, which calls [stopCleaning]
+  /// when it ends (and on cancel), so an interrupted run cannot leave the LED
+  /// lit.
+  Future<bool> startCleaning({int intensityPercent = 100}) async {
     if (!supportsCapability(BackendCapabilities.supportsCleaning)) {
       _log.info('Cleaning is not supported by this backend');
       return false;

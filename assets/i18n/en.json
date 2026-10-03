@@ -432,9 +432,11 @@
     "cleaning": {
         "section": "Tank Clean",
         "time": "Clean Time",
-        "intensity": "UV Intensity",
-        "start": "Start Tank Clean",
+        "start": "Clean Tank",
         "running": "Tank Cleaning…",
+        "explainer": "Exposes the whole screen at full UV power for the time you set, curing a thin film across the vat so debris lifts out in one piece.",
+        "uvWarning": "Never look at the printer while a Tank Clean is running — high-power UV light can damage your eyes.",
+        "holdHint": "Press and hold to start",
         "stop": "Stop",
         "startFailed": "Could not start the tank clean.",
         "notAvailable": "Not available on this printer"

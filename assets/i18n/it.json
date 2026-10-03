@@ -432,9 +432,11 @@
   "cleaning": {
     "section": "Pulizia della vasca",
     "time": "Durata pulizia",
-    "intensity": "Intensità UV",
-    "start": "Avvia pulizia della vasca",
+    "start": "Pulisci vasca",
     "running": "Pulizia della vasca in corso…",
+    "explainer": "Espone tutto lo schermo a piena potenza UV per il tempo impostato, polimerizzando una pellicola sottile nella vasca per rimuovere i residui in un unico pezzo.",
+    "uvWarning": "Non guardare la stampante durante la pulizia della vasca: la luce UV ad alta potenza può danneggiare gli occhi.",
+    "holdHint": "Tieni premuto per avviare",
     "stop": "Interrompi",
     "startFailed": "Impossibile avviare la pulizia della vasca.",
     "notAvailable": "Non disponibile su questa stampante"

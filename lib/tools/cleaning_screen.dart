@@ -1,5 +1,5 @@
 /*
-* Orion - Cleaning Screen
+* Orion - Tank Clean Screen
 * Copyright (C) 2026 Open Resin Alliance
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,17 +22,16 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/backend_service.dart';
 import 'package:orion/glasser/glasser.dart';
+import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_config.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/widgets/exposure_countdown_dialog.dart';
-import 'package:orion/widgets/zoom_value_editor_dialog.dart';
 
-/// Cleaning run: a full-field UV exposure for a set time and intensity.
+/// Tank Clean: a full-screen UV exposure that cures a thin film across the vat
+/// so debris lifts out in one piece.
 ///
-/// The operator picks the duration and the UV power here; the values are
-/// remembered between visits.  The run itself needs a backend command that no
-/// backend serves yet, so Start stays disabled until one advertises
-/// [BackendCapabilities.supportsCleaning].
+/// The operator sets the duration on a slider and starts the run by holding the
+/// button down; the run itself needs [BackendCapabilities.supportsCleaning].
 class CleaningScreen extends StatefulWidget {
   const CleaningScreen({super.key});
 
@@ -45,124 +44,138 @@ class _CleaningScreenState extends State<CleaningScreen> {
   final BackendService _backend = BackendService();
 
   late int _seconds;
-  late int _intensity;
 
   // Duration bounds: long enough to strip a vat, short enough to be safe to
-  // leave running.  Intensity is a percentage of full UV power, floored at 25%
-  // so a run is still effective.
+  // leave running.
   static const int _minSeconds = 1;
   static const int _maxSeconds = 60;
-  static const int _minIntensity = 25;
-  static const int _maxIntensity = 100;
 
   @override
   void initState() {
     super.initState();
     // Clamp anything persisted before these bounds existed.
-    _seconds =
-        _config.getCleaningSeconds().clamp(_minSeconds, _maxSeconds);
-    _intensity =
-        _config.getCleaningIntensity().clamp(_minIntensity, _maxIntensity);
+    _seconds = _config.getCleaningSeconds().clamp(_minSeconds, _maxSeconds);
   }
 
   bool get _supported =>
       _backend.supportsCapability(BackendCapabilities.supportsCleaning);
 
-  Future<void> _editSeconds() async {
-    final result = await ZoomValueEditorDialog.show(
-      context,
-      title: FlutterI18n.translate(context, 'cleaning.time'),
-      currentValue: _seconds.toDouble(),
-      min: _minSeconds.toDouble(),
-      max: _maxSeconds.toDouble(),
-      suffix: FlutterI18n.translate(context, 'exposure.unitSec'),
-      decimals: 0,
-      step: 1,
-      keepValueOnOpen: true,
-    );
-    if (result == null) return;
-    final value = result.round().clamp(_minSeconds, _maxSeconds);
-    setState(() => _seconds = value);
-    _config.setCleaningSeconds(value);
-  }
-
-  Future<void> _editIntensity() async {
-    final result = await ZoomValueEditorDialog.show(
-      context,
-      title: FlutterI18n.translate(context, 'cleaning.intensity'),
-      currentValue: _intensity.toDouble(),
-      min: _minIntensity.toDouble(),
-      max: _maxIntensity.toDouble(),
-      suffix: '%',
-      decimals: 0,
-      step: 1,
-      keepValueOnOpen: true,
-    );
-    if (result == null) return;
-    final value = result.round().clamp(_minIntensity, _maxIntensity);
-    setState(() => _intensity = value);
-    _config.setCleaningIntensity(value);
+  void _setSeconds(int value) {
+    final clamped = value.clamp(_minSeconds, _maxSeconds);
+    setState(() => _seconds = clamped);
+    _config.setCleaningSeconds(clamped);
   }
 
   @override
   Widget build(BuildContext context) {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
+    // A 2x2 grid of equal cells: explainer and warning on the left, the time
+    // slider and the run button on the right.  Portrait stacks the same cells.
+    final explainer = _buildExplainer(context);
+    final warning = _buildWarning(context);
+    final timeCard = _buildTimeCard(context);
+    final action = _buildAction(context);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
         padding: OrionSpacing.screenPaddingWithBottomNav,
-        child: Column(
-          children: [
-            Expanded(
-              child: isLandscape
-                  ? Row(
+        child: isLandscape
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(child: _buildTimeCard(context)),
-                        const SizedBox(width: OrionSpacing.controlGap),
-                        Expanded(child: _buildIntensityCard(context)),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        Expanded(child: _buildTimeCard(context)),
+                        Expanded(child: explainer),
                         const SizedBox(height: OrionSpacing.controlGap),
-                        Expanded(child: _buildIntensityCard(context)),
+                        Expanded(child: warning),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: OrionSpacing.controlGap),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: timeCard),
+                        const SizedBox(height: OrionSpacing.controlGap),
+                        Expanded(child: action),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: explainer),
+                  const SizedBox(height: OrionSpacing.controlGap),
+                  Expanded(child: warning),
+                  const SizedBox(height: OrionSpacing.controlGap),
+                  Expanded(child: timeCard),
+                  const SizedBox(height: OrionSpacing.controlGap),
+                  Expanded(child: action),
+                ],
+              ),
+      ),
+    );
+  }
+
+  /// What the run does.
+  Widget _buildExplainer(BuildContext context) {
+    final theme = Theme.of(context);
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: OrionSpacing.cardPadding,
+        child: Center(
+          child: SingleChildScrollView(
+            child: Text(
+              FlutterI18n.translate(context, 'cleaning.explainer'),
+              style: TextStyle(
+                fontSize: 18,
+                height: 1.45,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              ),
             ),
-            const SizedBox(height: OrionSpacing.controlGap),
-            _buildStart(context),
-          ],
+          ),
         ),
       ),
     );
   }
 
+  /// The one thing the operator must not do while it is going.
+  Widget _buildWarning(BuildContext context) {
+    final warning = Colors.orangeAccent;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        color: warning.withValues(alpha: 0.12),
+        border: Border.all(color: warning.withValues(alpha: 0.45)),
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          child: Text(
+            FlutterI18n.translate(context, 'cleaning.uvWarning'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 19,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+              color: warning,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Duration, in the shape of the heater's temperature slider.
   Widget _buildTimeCard(BuildContext context) {
-    return _buildSettingCard(
-      context,
-      labelKey: 'cleaning.time',
-      value: '$_seconds ${FlutterI18n.translate(context, 'exposure.unitSec')}',
-      onEdit: _editSeconds,
-    );
-  }
-
-  Widget _buildIntensityCard(BuildContext context) {
-    return _buildSettingCard(
-      context,
-      labelKey: 'cleaning.intensity',
-      value: '$_intensity %',
-      onEdit: _editIntensity,
-    );
-  }
-
-  Widget _buildSettingCard(
-    BuildContext context, {
-    required String labelKey,
-    required String value,
-    required VoidCallback onEdit,
-  }) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
     return GlassCard(
@@ -170,42 +183,87 @@ class _CleaningScreenState extends State<CleaningScreen> {
       child: Padding(
         padding: OrionSpacing.cardPadding,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              FlutterI18n.translate(context, labelKey),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            // The value takes the middle of the card: header above, the
-            // Change button pinned below.
-            const Spacer(),
-            Text(
-              value,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 46,
-                fontWeight: FontWeight.w700,
-                height: 1.1,
-                color: primary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    FlutterI18n.translate(context, 'cleaning.time'),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$_seconds',
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -1,
+                      ),
+                    ),
+                    Text(
+                      ' ${FlutterI18n.translate(context, 'exposure.unitSec')}',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
             const Spacer(),
             SizedBox(
-              width: double.infinity,
-              child: GlassButton(
-                tint: GlassButtonTint.neutral,
-                onPressed: onEdit,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 60),
-                ),
-                child: Text(
-                  FlutterI18n.translate(context, 'common.change'),
-                ),
+              height: 30,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    height: 10,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      gradient: LinearGradient(
+                        colors: [
+                          primary.withValues(alpha: 0.25),
+                          primary,
+                        ],
+                      ),
+                    ),
+                  ),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: Colors.transparent,
+                      inactiveTrackColor: Colors.transparent,
+                      thumbColor: Colors.white,
+                      overlayColor: Colors.white.withValues(alpha: 0.2),
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 12.0,
+                      ),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 28.0,
+                      ),
+                      trackHeight: 48.0,
+                    ),
+                    child: Slider(
+                      value: _seconds.toDouble(),
+                      min: _minSeconds.toDouble(),
+                      max: _maxSeconds.toDouble(),
+                      divisions: _maxSeconds - _minSeconds,
+                      onChanged: (value) => _setSeconds(value.round()),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -214,42 +272,71 @@ class _CleaningScreenState extends State<CleaningScreen> {
     );
   }
 
-  Widget _buildStart(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: GlassButton(
-        tint: GlassButtonTint.positive,
-        onPressed: _supported ? _start : null,
+  Widget _buildAction(BuildContext context) {
+    if (!_supported) {
+      return GlassButton(
+        onPressed: null,
+        tint: GlassButtonTint.none,
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 60),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          minimumSize: const Size(double.infinity, double.infinity),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            PhosphorIcon(PhosphorIcons.sparkle(), size: 22),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                FlutterI18n.translate(
-                    context,
-                    _supported
-                        ? 'cleaning.start'
-                        : 'cleaning.notAvailable'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.w700),
+        child: Text(
+          FlutterI18n.translate(context, 'cleaning.notAvailable'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          FlutterI18n.translate(context, 'cleaning.holdHint'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: HoldButton(
+            duration: const Duration(milliseconds: 1500),
+            tint: GlassButtonTint.positive,
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
               ),
+              minimumSize: const Size(double.infinity, double.infinity),
             ),
-          ],
+            onPressed: _start,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                PhosphorIcon(PhosphorIcons.sparkle(), size: 26),
+                const SizedBox(width: 12),
+                Text(
+                  FlutterI18n.translate(context, 'cleaning.start'),
+                  style:
+                      const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
   /// Kick off a cleaning run and hold the countdown until it finishes or the
   /// operator stops it.  Either way the LED is switched off afterwards.
   Future<void> _start() async {
-    final started = await _backend.startCleaning(intensityPercent: _intensity);
+    final started = await _backend.startCleaning();
     if (!started) {
       if (mounted) _showStartFailed();
       return;
