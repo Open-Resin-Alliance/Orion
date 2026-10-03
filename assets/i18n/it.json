@@ -103,8 +103,7 @@
   "complete": {
     "section": "Impostazioni macchina",
     "completionMessage": "è pronto all'uso!",
-    "moreInfo": "Per ulteriori informazioni",
-    "visitFailed": "Impossibile aprire il sito web."
+    "supportInfo": "Supporto e risorse"
   },
   "home": {
     "powerOptions": "Opzioni di alimentazione",

@@ -103,8 +103,7 @@
   "complete": {
     "section": "完了",
     "completionMessage": "の準備ができました！",
-    "moreInfo": "詳細については",
-    "visitFailed": "ウェブサイトを開けませんでした。"
+    "supportInfo": "サポートとリソース"
   },
   "home": {
     "powerOptions": "電源オプション",

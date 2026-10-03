@@ -103,8 +103,7 @@
   "complete": {
     "section": "Réglages machine",
     "completionMessage": "est prêt !",
-    "moreInfo": "Pour plus d'informations",
-    "visitFailed": "Impossible d'ouvrir le site web."
+    "supportInfo": "Assistance et ressources"
   },
   "home": {
     "powerOptions": "Options d'alimentation",

@@ -354,7 +354,7 @@ void main() {
         FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
 
     expect(find.textContaining(t('complete.completionMessage')), findsOneWidget);
-    expect(find.text(t('complete.moreInfo')), findsOneWidget);
+    expect(find.text(t('complete.supportInfo')), findsOneWidget);
     // Readable without the scheme; the tap target carries the full URL.
     expect(find.text('concepts3d.ca'), findsOneWidget);
     expect(find.textContaining('https://'), findsNothing);
@@ -368,6 +368,6 @@ void main() {
         FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
 
     expect(find.textContaining(t('complete.completionMessage')), findsOneWidget);
-    expect(find.text(t('complete.moreInfo')), findsNothing);
+    expect(find.text(t('complete.supportInfo')), findsNothing);
   });
 }

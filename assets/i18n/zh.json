@@ -103,8 +103,7 @@
   "complete": {
     "section": "完成",
     "completionMessage": "已准备就绪！",
-    "moreInfo": "如需了解更多信息",
-    "visitFailed": "无法打开网站。"
+    "supportInfo": "支持与资源"
   },
   "home": {
     "powerOptions": "电源选项",

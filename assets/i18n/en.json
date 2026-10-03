@@ -103,8 +103,7 @@
     "complete": {
         "section": "Complete",
         "completionMessage": "is ready to go!",
-        "moreInfo": "For more information",
-        "visitFailed": "Could not open the website."
+        "supportInfo": "Support & Resources"
     },
     "home": {
         "powerOptions": "Power Options",

@@ -103,8 +103,7 @@
   "complete": {
     "section": "Machine-instellingen",
     "completionMessage": "is klaar voor gebruik!",
-    "moreInfo": "Voor meer informatie",
-    "visitFailed": "Kon de website niet openen."
+    "supportInfo": "Ondersteuning en bronnen"
   },
   "home": {
     "powerOptions": "Energie-opties",

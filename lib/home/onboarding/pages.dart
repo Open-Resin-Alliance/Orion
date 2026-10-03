@@ -19,8 +19,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:country_flags/country_flags.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:toastification/toastification.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
@@ -650,14 +648,15 @@ class OnboardingPages {
     return GlassApp(
       child: Padding(
         // The Back / Complete Setup buttons float over the page's bottom
-        // corners, so the column is lifted clear of them (and stays compact
-        // enough to fit the app bar's body on a short window).
-        padding: const EdgeInsets.only(
-            left: 24, right: 24, top: 8, bottom: 92),
+        // corners, so the group is centred above them.
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 96),
         child: Center(
-          child: SingleChildScrollView(
+          // Scale to fit rather than scroll: the step is a fixed message, and
+          // a short window should shrink it, not cut it off.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 _buildSuccessBadge(context),
                 const SizedBox(height: 20),
@@ -693,7 +692,19 @@ class OnboardingPages {
                   ),
                 ),
                 if (vendorUri != null) ...[
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: 220,
+                    child: Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.15),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   _buildVendorLink(context, vendorUri),
                 ],
               ],
@@ -723,8 +734,8 @@ class OnboardingPages {
           boxShadow: [
             BoxShadow(
               color: primary.withValues(alpha: 0.22),
-              blurRadius: 30,
-              spreadRadius: 2,
+              blurRadius: 18,
+              spreadRadius: 0,
             ),
           ],
         ),
@@ -737,10 +748,10 @@ class OnboardingPages {
     );
   }
 
-  /// The "For more information" line: a compact, tappable pill carrying the
-  /// vendor's address.  The machine has no browser of its own, so the tap hands
-  /// the link to the platform; the address is shown without its scheme so it
-  /// stays readable.
+  /// The support line at the end of setup: where to find the vendor's help
+  /// pages, shown large enough to read from across the room.  It is not a
+  /// button — the machine has no browser to open it with — so the address is
+  /// printed without its scheme for the operator to note down.
   static Widget _buildVendorLink(BuildContext context, Uri vendorUri) {
     final primary = Theme.of(context).colorScheme.primary;
     final onSurface = Theme.of(context).colorScheme.onSurface;
@@ -753,65 +764,41 @@ class OnboardingPages {
         child:
             Transform.translate(offset: Offset(0, 16 * (1 - t)), child: child),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => _openVendorUrl(context, vendorUri),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: primary.withValues(alpha: 0.10),
-                border: Border.all(color: primary.withValues(alpha: 0.35)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      PhosphorIcon(PhosphorIcons.globe(),
-                          size: 18, color: primary),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          FlutterI18n.translate(context, 'complete.moreInfo'),
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: onSurface.withValues(alpha: 0.75),
-                          ),
-                        ),
-                      ),
-                    ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PhosphorIcon(PhosphorIcons.lifebuoy(), size: 22, color: primary),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    FlutterI18n.translate(context, 'complete.supportInfo'),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 19,
+                      color: onSurface.withValues(alpha: 0.8),
+                    ),
                   ),
-                  const SizedBox(height: 3),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          _readableVendorUrl(vendorUri),
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      PhosphorIcon(PhosphorIcons.arrowSquareOut(),
-                          size: 15, color: primary),
-                    ],
-                  ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _readableVendorUrl(vendorUri),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                color: primary,
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -819,7 +806,7 @@ class OnboardingPages {
 
   /// Parse the configured vendor URL, tolerating a missing scheme (`https://`
   /// is assumed).  Returns null when there is no usable address, so a blank or
-  /// malformed value simply hides the card.
+  /// malformed value simply hides the line.
   static Uri? _vendorUri(String? raw) {
     final trimmed = raw?.trim() ?? '';
     if (trimmed.isEmpty) return null;
@@ -834,28 +821,6 @@ class OnboardingPages {
     var text = uri.toString();
     text = text.replaceFirst(RegExp(r'^[a-zA-Z][\w+.-]*://'), '');
     return text.endsWith('/') ? text.substring(0, text.length - 1) : text;
-  }
-
-  static Future<void> _openVendorUrl(BuildContext context, Uri uri) async {
-    var opened = false;
-    try {
-      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      opened = false;
-    }
-    if (!opened && context.mounted) {
-      Toastification().show(
-        context: context,
-        type: ToastificationType.error,
-        style: ToastificationStyle.fillColored,
-        autoCloseDuration: const Duration(seconds: 3),
-        alignment: Alignment.topCenter,
-        title: Text(
-          FlutterI18n.translate(context, 'complete.visitFailed'),
-          style: const TextStyle(fontSize: 18),
-        ),
-      );
-    }
   }
 
   static Widget _buildTimezoneCard(
