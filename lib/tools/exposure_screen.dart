@@ -29,6 +29,7 @@ import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_spacing.dart';
 import 'package:orion/widgets/exposure_countdown_dialog.dart';
 
@@ -233,6 +234,24 @@ class ExposureScreenState extends State<ExposureScreen> {
     );
   }
 
+  /// Every exposure run starts on a hold, so a stray tap cannot fire the
+  /// projector.  While the API is down the button keeps its disabled look.
+  Widget _buildHoldButton({
+    required VoidCallback onPressed,
+    required ButtonStyle style,
+    required Widget child,
+  }) {
+    if (_apiErrorState) {
+      return GlassButton(onPressed: null, style: style, child: child);
+    }
+    return HoldButton(
+      duration: const Duration(milliseconds: 500),
+      onPressed: onPressed,
+      style: style,
+      child: child,
+    );
+  }
+
   Widget buildExposureButtons(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -244,9 +263,8 @@ class ExposureScreenState extends State<ExposureScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: GlassButton(
-                        onPressed:
-                            _apiErrorState ? null : () => exposeScreen('Grid'),
+                      child: _buildHoldButton(
+                        onPressed: () => exposeScreen('Grid'),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -277,9 +295,8 @@ class ExposureScreenState extends State<ExposureScreen> {
                     ),
                     const SizedBox(width: OrionSpacing.controlGap),
                     Expanded(
-                      child: GlassButton(
-                        onPressed:
-                            _apiErrorState ? null : () => exposeScreen('Logo'),
+                      child: _buildHoldButton(
+                        onPressed: () => exposeScreen('Logo'),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -319,9 +336,8 @@ class ExposureScreenState extends State<ExposureScreen> {
           child: Row(
             children: [
               Expanded(
-                child: GlassButton(
-                  onPressed:
-                      _apiErrorState ? null : () => exposeScreen('Measure'),
+                child: _buildHoldButton(
+                  onPressed: () => exposeScreen('Measure'),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -351,9 +367,8 @@ class ExposureScreenState extends State<ExposureScreen> {
               ),
               const SizedBox(width: OrionSpacing.controlGap),
               Expanded(
-                child: GlassButton(
-                  onPressed:
-                      _apiErrorState ? null : () => exposeScreen('White'),
+                child: _buildHoldButton(
+                  onPressed: () => exposeScreen('White'),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
