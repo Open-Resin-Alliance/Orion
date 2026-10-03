@@ -59,7 +59,7 @@ class LevelingWorkflowEngine extends ChangeNotifier {
   bool Function(LevelingWorkflowStep step)? skipParkFor;
 
   /// Verify leveling: the initial step asks the printer for a level check
-  /// (`levelcheck`) rather than seating the plate with a screen probe. Set
+  /// (`probe_levelcheck`) rather than seating the plate with a screen probe. Set
   /// before a variant is selected.
   bool levelCheck;
   final _log = Logger('LevelingWorkflowEngine');

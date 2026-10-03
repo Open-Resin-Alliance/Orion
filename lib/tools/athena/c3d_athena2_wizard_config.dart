@@ -30,8 +30,8 @@ const athena2BaseWorkflowSteps = [
   LevelingWorkflowStep(
     // The template both variants specialise: the pro arm probes the screen
     // here, the standard arm overrides it to a floor move (skipBackend).
-    // The verify-leveling recheck is the one run that asks for `levelcheck`
-    // instead — see LevelingVariant.buildSteps(levelCheck:).
+    // The verify-leveling recheck is the one run that asks for
+    // `probe_levelcheck` instead — see LevelingVariant.buildSteps(levelCheck:).
     id: 'probe_screen',
     endpoint: 'probe_screen',
     titleKey: 'levelingWorkflow.screenTitle',

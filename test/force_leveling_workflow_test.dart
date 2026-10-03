@@ -106,7 +106,7 @@ void main() {
       expect(regularSteps.last.endpoint, 'probe_standardarm');
     });
 
-    test('only the level check swaps the screen probe for levelcheck', () {
+    test('only the level check swaps the screen probe for probe_levelcheck', () {
       final config = getLevelingConfigForMachine('Athena2')!;
       final regular = config.variants.firstWhere((v) => v.id == 'regular');
       final pro = config.variants.firstWhere((v) => v.id == 'pro');
@@ -124,7 +124,7 @@ void main() {
       // either arm, and actually calls the backend to find out.
       for (final variant in [pro, regular]) {
         final initial = variant.buildSteps(levelCheck: true)[1];
-        expect(initial.endpoint, 'levelcheck', reason: variant.id);
+        expect(initial.endpoint, 'probe_levelcheck', reason: variant.id);
         expect(initial.skipBackend, isFalse, reason: variant.id);
       }
     });
@@ -243,7 +243,7 @@ void main() {
       }
 
       expect(await initialCalls(levelCheck: false), ['probe_screen']);
-      expect(await initialCalls(levelCheck: true), ['levelcheck']);
+      expect(await initialCalls(levelCheck: true), ['probe_levelcheck']);
     });
 
     test('keeps failed step retryable after busy response', () async {

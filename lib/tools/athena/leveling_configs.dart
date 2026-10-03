@@ -141,9 +141,9 @@ class LevelingVariant {
   });
 
   /// [levelCheck] swaps the initial step onto the printer's level check
-  /// (`levelcheck`) instead of the screen probe. Verify leveling is what asks
-  /// for it: it wants to know whether the plate is level, not to seat it, and
-  /// that holds for either build arm.
+  /// (`probe_levelcheck`) instead of the screen probe. Verify leveling is what
+  /// asks for it: it wants to know whether the plate is level, not to seat it,
+  /// and that holds for either build arm.
   List<LevelingWorkflowStep> buildSteps({bool levelCheck = false}) {
     // Stage 1 (initial seating) — common to all variants.
     // The initial offset calibration is only included for non-pro;
@@ -159,7 +159,7 @@ class LevelingVariant {
       // screws are loose. The recheck has no seating to do.
       athena2BaseWorkflowSteps[1].copyWith(
         endpoint: levelCheck
-            ? 'levelcheck'
+            ? 'probe_levelcheck'
             : (id != 'pro' ? 'probe_standardarm' : null),
         skipBackend: levelCheck ? false : (id != 'pro' ? true : null),
         stepTitle: 'Initial Leveling',

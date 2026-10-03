@@ -4742,7 +4742,6 @@ class _WorkflowPane extends StatelessWidget {
             FlutterI18n.translate(context, 'leveling.wizardMovingPark'),
           _ => switch (step.endpoint) {
               'probe_screen' ||
-              'levelcheck' ||
               'probe_levelcheck' ||
               'probe_standardarm' =>
                 FlutterI18n.translate(context, 'leveling.wizardMovingToScreen'),
