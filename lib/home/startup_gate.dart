@@ -31,6 +31,19 @@ import 'package:orion/util/providers/athena_update_provider.dart';
 
 /// Blocks initial app content until the backend reports a successful
 /// initial connection. While waiting, shows the branded [StartupScreen].
+/// Awaits [check] for at most [budget], swallowing any error or timeout.
+///
+/// Startup runs the update check through this so a stalled or unreachable
+/// update server can never leave the app sitting on the splash screen: the
+/// check either answers in time or the app starts without update information.
+Future<void> awaitBounded(Duration budget, Future<void> Function() check) async {
+  try {
+    await check().timeout(budget);
+  } catch (_) {
+    // No result this boot; the caller carries on without it.
+  }
+}
+
 class StartupGate extends StatefulWidget {
   const StartupGate({super.key});
 
@@ -84,23 +97,14 @@ class _StartupGateState extends State<StartupGate> {
     }
   }
 
+  /// Startup waits this long for the update check before going on without it.
+  static const Duration _updateCheckBudget = Duration(seconds: 6);
+
   Future<void> _checkForUpdates() async {
     final updateManager = Provider.of<UpdateManager>(context, listen: false);
-    // Retry logic: try up to 5 times with increasing backoff
-    // (1s, 2s, 4s, 8s, 16s) = ~31s total wait time max
-    const maxAttempts = 5;
-    for (var attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        await updateManager.checkForUpdates();
-        // If we successfully checked (even if no update found), break
-        break;
-      } catch (_) {
-        // If it failed (e.g. no network), wait and retry
-        if (attempt < maxAttempts - 1) {
-          await Future.delayed(Duration(seconds: 1 << attempt));
-        }
-      }
-    }
+    // The update check is a nicety, not a prerequisite: a slow or unreachable
+    // update server must never hold the splash screen.
+    await awaitBounded(_updateCheckBudget, updateManager.checkForUpdates);
 
     if (mounted) {
       setState(() {

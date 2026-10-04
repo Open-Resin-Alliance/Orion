@@ -29,6 +29,7 @@ Future<String?> showOrionNumericKeyboard(
   int decimalPlaces = 2,
   void Function(String)? onChanged,
   bool clearOnOpen = false,
+  String? initialText,
   int? maxIntegerDigits,
 }) {
   // Decimals are allowed whenever decimalPlaces > 0
@@ -38,6 +39,10 @@ Future<String?> showOrionNumericKeyboard(
   String formattedValue;
   if (clearOnOpen) {
     formattedValue = '';
+  } else if (initialText != null) {
+    // Caller supplies the exact text to edit (e.g. the value as displayed),
+    // so backspace deletes what the operator sees.
+    formattedValue = initialText;
   } else {
     formattedValue = initialValue.toStringAsFixed(decimalPlaces);
     if (allowDecimal && decimalPlaces > 0) {

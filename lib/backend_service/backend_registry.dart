@@ -44,6 +44,7 @@ class BackendCapabilities {
   static const supportsAthena = 'supportsAthena';
   static const supportsAthenaUpdates = 'supportsAthenaUpdates';
   static const supportsAthenaFeatureFlags = 'supportsAthenaFeatureFlags';
+  static const supportsForceLeveling = 'supportsForceLeveling';
   static const supportsVatTemperature = 'supportsVatTemperature';
   static const supportsChamberTemperature = 'supportsChamberTemperature';
   static const supportsNotifications = 'supportsNotifications';
@@ -51,6 +52,8 @@ class BackendCapabilities {
   static const supportsCacheInvalidation = 'supportsCacheInvalidation';
   static const supportsSseStatusStream = 'supportsSseStatusStream';
   static const supportsRgbLighting = 'supportsRgbLighting';
+  static const supportsCleaning = 'supportsCleaning';
+  static const supportsUvLedDuty = 'supportsUvLedDuty';
 }
 
 /// Canonical backend submodule identifiers.

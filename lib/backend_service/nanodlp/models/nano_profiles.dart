@@ -28,11 +28,21 @@ class NanoProfile {
   /// NanoDLP commonly uses short uppercase bracket prefixes like "[AFP]"
   /// to indicate vendor-locked profiles. We treat short (2-5 uppercase
   /// chars) bracket tokens as a lock. Backends may also provide an explicit
-  /// signal in the raw map (e.g. `locked: true`) — prefer that when present.
+  /// signal in the raw map — prefer that when present. NanoDLP's
+  /// `profiles.json` marks manufacturer profiles with
+  /// `ManufacturerLock: true`.
   bool get locked {
     try {
       final lm = raw['locked'];
       if (lm is bool) return lm;
+      final ml = raw['ManufacturerLock'];
+      if (ml is bool) return ml;
+      if (ml is num) return ml != 0;
+      if (ml is String) {
+        final v = ml.trim().toLowerCase();
+        if (v == 'true' || v == '1') return true;
+        if (v == 'false' || v == '0') return false;
+      }
     } catch (_) {}
 
     final name = (title ?? '').trim();
@@ -201,22 +211,17 @@ class NanoProfile {
 
     if (normalized.containsKey('burn_in_cure_time')) {
       final v = (normalized['burn_in_cure_time'] as num?)?.toDouble();
-      if (v != null) out['SupportCureTime'] = v;
+      if (v != null) out['SupportCureTime'] = _backendNumber(v);
     }
 
     if (normalized.containsKey('normal_cure_time')) {
       final v = (normalized['normal_cure_time'] as num?)?.toDouble();
-      if (v != null) out['CureTime'] = v;
+      if (v != null) out['CureTime'] = _backendNumber(v);
     }
 
     if (normalized.containsKey('lift_after_print')) {
       final v = (normalized['lift_after_print'] as num?)?.toDouble();
-      if (v != null) {
-        // Different NanoDLP variants expose this as TopDistance and/or
-        // WaitHeight. Send both to maximize compatibility.
-        out['TopDistance'] = v;
-        out['WaitHeight'] = v;
-      }
+      if (v != null) out['WaitHeight'] = _backendNumber(v);
     }
 
     if (normalized.containsKey('burn_in_count')) {
@@ -226,16 +231,56 @@ class NanoProfile {
 
     if (normalized.containsKey('wait_after_cure')) {
       final v = (normalized['wait_after_cure'] as num?)?.toDouble();
-      if (v != null) out['TopWait'] = v;
+      if (v != null) out['WaitAfterPrint'] = _backendNumber(v);
     }
 
     if (normalized.containsKey('wait_after_life')) {
       final v = (normalized['wait_after_life'] as num?)?.toDouble();
-      if (v != null) out['WaitAfterPrint'] = v;
+      if (v != null) out['TopWait'] = _backendNumber(v);
+    }
+
+    // Layer thickness (µm) — only the full profile form exposes `Depth`, but
+    // the field name is shared by both endpoints.
+    if (normalized.containsKey('layer_thickness_um')) {
+      final v = (normalized['layer_thickness_um'] as num?)?.toDouble();
+      if (v != null) out['Depth'] = _backendNumber(v);
+    }
+
+    // `CustomValues`-backed settings. Flags are stored as 0/1 - the print
+    // templates compare them with `== 1`.
+    if (normalized.containsKey('resin_temperature')) {
+      final v = (normalized['resin_temperature'] as num?)?.toDouble();
+      if (v != null) out['ResinPreheatTemperature'] = _backendNumber(v);
+    }
+    if (normalized.containsKey('peel_detection')) {
+      final v = normalized['peel_detection'];
+      if (v is bool) out['FssEnablePeeldetection'] = v ? 1 : 0;
+    }
+
+    if (normalized.containsKey('bottom_lift_after_print')) {
+      final v = (normalized['bottom_lift_after_print'] as num?)?.toDouble();
+      if (v != null) out['SupportWaitHeight'] = _backendNumber(v);
+    }
+    if (normalized.containsKey('lift_speed')) {
+      final v = (normalized['lift_speed'] as num?)?.toDouble();
+      if (v != null) out['LiftSpeed'] = _backendNumber(v);
+    }
+    if (normalized.containsKey('retract_speed')) {
+      final v = (normalized['retract_speed'] as num?)?.toDouble();
+      if (v != null) out['RetractSpeed'] = _backendNumber(v);
     }
 
     return out;
   }
+
+  /// Whole numbers are emitted without a decimal point.
+  ///
+  /// NanoDLP validates every control on the full profile form and **rejects
+  /// the entire submission** when an integer-typed one carries a decimal
+  /// (`LiftSpeed=120.0` silently saved nothing, `LiftSpeed=120` stuck), while
+  /// fractionals are kept as numbers for the fields that are real.
+  static dynamic _backendNumber(double value) =>
+      value == value.roundToDouble() ? value.toStringAsFixed(0) : value;
 
   /// Normalize common resin edit fields into a canonical map used by the
   /// Edit UI. This overlays `CustomValues` and then maps a variety of
@@ -280,74 +325,75 @@ class NanoProfile {
         return pd ?? fallback;
       }
 
+      /// NanoDLP stores flags as 0/1 (or, for a checkbox rendered without a
+      /// value, as the bare string "on" when set).
+      bool toBool(dynamic v, bool fallback) {
+        if (v == null) return fallback;
+        if (v is bool) return v;
+        if (v is num) return v != 0;
+        final s = '$v'.trim().toLowerCase();
+        if (s.isEmpty) return fallback;
+        if (s == '1' || s == 'true' || s == 'on' || s == 'yes') return true;
+        if (s == '0' || s == 'false' || s == 'off' || s == 'no') return false;
+        return fallback;
+      }
+
       // Normal (per-layer) cure time — preserve fractional seconds when present
-      out['normal_cure_time'] = toDouble(
-          pick([
-            'normal_cure_time',
-            'normal_time',
-            'CureTime',
-            'cure_time',
-            'Cure',
-          ]),
-          8.0);
+      out['normal_cure_time'] =
+          toDouble(pick(['normal_cure_time', 'CureTime']), 8.0);
 
       // Burn-in layer cure time — preserve fractional seconds when present
-      out['burn_in_cure_time'] = toDouble(
-          pick([
-            'burn_in_cure_time',
-            'burnin_time',
-            'BurnInCureTime',
-            'SupportCureTime',
-          ]),
-          10.0);
+      out['burn_in_cure_time'] =
+          toDouble(pick(['burn_in_cure_time', 'SupportCureTime']), 10.0);
 
-      // Lift after print (mm)
-      out['lift_after_print'] = toDouble(
-          pick([
-            'lift_after_print',
-            'lift_after',
-            'ZLiftDistance',
-            'PdPeelMinLiftDistance',
-            'LiftAfterPrint',
-            'TopDistance',
-            'WaitHeight',
-          ]),
-          5.0);
+      // Lift distance after normal layers (mm). NanoDLP/Athena store this in
+      // `WaitHeight` ("Lift After Print", "Normal Lift Distance"). It is not
+      // `PdPeelMinLiftDistance`, which is the floor of the peel-detection
+      // lift, and not `ZLiftDistance`, which is a runtime gcode placeholder
+      // that never appears in a stored profile.
+      out['lift_after_print'] =
+          toDouble(pick(['lift_after_print', 'WaitHeight']), 5.0);
 
-      // Burn-in count (number of top/burn layers)
-      // Prefer explicit NanoDLP support layer fields before transitional
-      // or generic fields which may be present but set to 0.
-      out['burn_in_count'] = toInt(
-          pick([
-            'burn_in_count',
-            'burnin_count',
-            'SupportLayerNumber',
-            'SupportLayerCount',
-            'TransitionalLayer',
-            'transitional_layer',
-          ]),
-          3);
+      // Burn-in count (number of burn-in layers). `TransitionalLayer` is a
+      // 0/1 enable flag, not a count, so it must not be used here.
+      out['burn_in_count'] =
+          toInt(pick(['burn_in_count', 'SupportLayerNumber']), 3);
 
-      // Wait after cure (seconds) — preserve fractional seconds when present
-      out['wait_after_cure'] = toDouble(
-          pick([
-            'wait_after_cure',
-            'wait_after_cure_time',
-            'WaitAfterPrint',
-            'TopWait',
-          ]),
-          2.0);
+      // Wait after cure (seconds) — NanoDLP's `WaitAfterPrint`, the pause
+      // after layer exposure and before the lift.
+      out['wait_after_cure'] =
+          toDouble(pick(['wait_after_cure', 'WaitAfterPrint']), 2.0);
 
-      // Wait after lift (seconds) — fall back to WaitAfterPrint if nothing else
-      // Preserve fractional seconds when present
-      out['wait_after_life'] = toDouble(
-          pick([
-            'wait_after_life',
-            'wait_after_life_time',
-            'WaitAfterPrint',
-            'WaitBeforePrint',
-          ]),
-          2.0);
+      // Wait after lift (seconds) — NanoDLP's `TopWait`, the pause after the
+      // normal-layer lift that lets resin flow back.
+      out['wait_after_life'] =
+          toDouble(pick(['wait_after_life', 'TopWait']), 2.0);
+
+      // Printed layer thickness in microns — NanoDLP's `Depth`. Null (rather
+      // than a default) when the profile doesn't carry one, because writing a
+      // guess back would change how the profile prints.
+      final depth = pick(['layer_thickness_um', 'Depth']);
+      out['layer_thickness_um'] = depth == null ? null : toDouble(depth, 0.0);
+
+      // Resin preheat temperature (°C) and peel detection both live inside
+      // `CustomValues` on NanoDLP.
+      final preheat = pick(['resin_temperature', 'ResinPreheatTemperature']);
+      out['resin_temperature'] =
+          preheat == null ? null : toDouble(preheat, 0.0);
+      final peel = pick(['peel_detection', 'FssEnablePeeldetection']);
+      out['peel_detection'] = peel == null ? null : toBool(peel, false);
+
+      // Burn-in ("bottom") lift distance is a separate field from the normal
+      // one: `SupportWaitHeight` vs `WaitHeight`.
+      final bottomLift = pick(['bottom_lift_after_print', 'SupportWaitHeight']);
+      out['bottom_lift_after_print'] =
+          bottomLift == null ? null : toDouble(bottomLift, 0.0);
+
+      final liftSpeed = pick(['lift_speed', 'LiftSpeed']);
+      out['lift_speed'] = liftSpeed == null ? null : toDouble(liftSpeed, 0.0);
+      final retractSpeed = pick(['retract_speed', 'RetractSpeed']);
+      out['retract_speed'] =
+          retractSpeed == null ? null : toDouble(retractSpeed, 0.0);
     } catch (_) {
       // On any failure return reasonable defaults
       return {

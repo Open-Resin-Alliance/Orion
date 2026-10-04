@@ -15,12 +15,13 @@
 * limitations under the License.
 */
 
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/athena_iot/athena_iot_client.dart';
 import 'package:orion/backend_service/athena_iot/models/athena_feature_flags.dart';
 import 'package:orion/backend_service/athena_iot/models/athena_printer_data.dart';
+import 'package:orion/backend_service/athena_iot/models/force_leveling_workflow.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/backend_registry.dart';
 import 'package:orion/backend_service/odyssey/odyssey_http_client.dart';
@@ -38,6 +39,9 @@ import 'package:orion/util/orion_config.dart';
 class BackendService implements BackendClient {
   static final _log = Logger('BackendService');
   static BackendService? _sharedInstance;
+
+  /// Simulated corner probe index, cycles 0..3 on each `probe_corner` call.
+  static int _simCornerIndex = -1;
   static bool _sharedListenerRegistered = false;
 
   BackendClient _delegate;
@@ -71,6 +75,20 @@ class BackendService implements BackendClient {
     if (registerSharedConfigListener) {
       _registerConfigListener();
     }
+  }
+
+  /// Replaces the delegate backing the shared instance ([BackendService]).
+  ///
+  /// Test-only hook: widget tests need the screens that call `BackendService()`
+  /// directly to talk to a fake backend. Production code always selects the
+  /// delegate from configuration.
+  @visibleForTesting
+  static void debugSetSharedDelegate(BackendClient delegate) {
+    _sharedInstance ??= BackendService._internal(
+      delegate: delegate,
+      registerSharedConfigListener: false,
+    );
+    _sharedInstance!._delegate = delegate;
   }
 
   // Automatically reload the delegate when the on-disk config is updated.
@@ -242,6 +260,11 @@ class BackendService implements BackendClient {
   Future<void> saveResinSettings(int profileId, ResinSettings settings) =>
       _delegate.saveResinSettings(profileId, settings);
 
+  @override
+  Future<void> saveResinAdvancedSettings(
+          int profileId, ResinSettings settings, {String? title}) =>
+      _delegate.saveResinAdvancedSettings(profileId, settings, title: title);
+
   /// Convenience method to check if the current backend supports a capability.
   /// Returns false if capability is not found or backend is not registered.
   bool supportsCapability(String capabilityName) {
@@ -319,6 +342,216 @@ class BackendService implements BackendClient {
     }
   }
 
+  Future<ForceLevelingWorkflowResponse> runForceLevelingWorkflow(
+    String endpoint, {
+    String? screenType,
+    bool skipPark = false,
+    Duration? requestTimeout,
+  }) async {
+    // Simulated mode: return fake success data so devs can skip through the
+    // workflow without a real printer or Athena connection.
+    try {
+      final cfg = OrionConfig();
+      // Developer fault injection: make the probe report an obstruction so
+      // the failure path can be exercised without physically blocking the
+      // plate.  Checked before simulated mode so it wins when both are on.
+      if (cfg.getFlag('forceObstruction', category: 'developer') &&
+          _isForceProbeEndpoint(endpoint)) {
+        _log.info('Forcing obstruction failure: endpoint=$endpoint');
+        return const ForceLevelingWorkflowResponse(
+          result: false,
+          error: 'Force-monitored approach triggered before probe start',
+          errorCode: ForceLevelingWorkflowResponse.errorCodeObstruction,
+          machineHomed: true,
+        );
+      }
+      if (cfg.getFlag('simulated', category: 'developer')) {
+        _log.info('Simulated force leveling workflow: endpoint=$endpoint');
+        // Cycle through different Z values for corner probes so the deviation
+        // is large enough (>0.1mm) to trigger the adjustment mode.
+        const cornerZValues = [5.000, 5.030, 5.180, 5.210];
+        late final double secondZ;
+        if (endpoint == 'probe_corner') {
+          // Use a static counter that cycles 0..3 so each of the 4 corner
+          // probes gets a different Z value.
+          _simCornerIndex = (_simCornerIndex + 1) % 4;
+          secondZ = cornerZValues[_simCornerIndex];
+        } else {
+          secondZ = 5.0;
+        }
+        return ForceLevelingWorkflowResponse(
+          result: true,
+          error: '',
+          machineHomed: true,
+          measurements: ForceProbeMeasurements(
+            firstStageTriggerZ: 10.0,
+            firstStageTriggerForce: -15.0,
+            firstStagePeakForce: -18.0,
+            secondStageTriggerZ: secondZ,
+            secondStageTriggerForce: -20.0,
+            secondStagePeakForce: -22.0,
+          ),
+          zOffsetApplied:
+              endpoint == 'probe_offset' || endpoint == 'probe_standardarm'
+                  ? 0.5
+                  : null,
+          parkHeightMm: 150.0,
+        );
+      }
+    } catch (_) {
+      // Fall through to real backend if config can't be read.
+    }
+
+    if (!supportsCapability(BackendCapabilities.supportsForceLeveling)) {
+      return const ForceLevelingWorkflowResponse(
+        result: false,
+        error: 'Force leveling is not supported by this backend.',
+      );
+    }
+
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) {
+        return const ForceLevelingWorkflowResponse(
+          result: false,
+          error: 'Athena IoT client is not available.',
+        );
+      }
+      return await client.runForceLevelingWorkflow(endpoint,
+          screenType: screenType, skipPark: skipPark);
+    } catch (e, st) {
+      _log.warning('Failed to run force leveling workflow: $endpoint', e, st);
+      return ForceLevelingWorkflowResponse(
+        result: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  /// Whether [endpoint] drives the force-monitored approach — the only steps
+  /// an obstruction can stop.  Prepare/setup steps never lower the plate
+  /// under force monitoring, so they are excluded.
+  static bool _isForceProbeEndpoint(String endpoint) =>
+      endpoint.startsWith('probe_') && !endpoint.endsWith('_prepare');
+
+  /// Dim the UV LED for an exposure test run.
+  ///
+  /// NanoDLP's test images are meant to be read, not to cure: after the
+  /// projector comes on the LED is set to a low duty so the picture is not
+  /// blown out.  Backends without the command are left alone.
+  Future<void> applyExposureLedDuty({int intensityPercent = 30}) async {
+    if (!supportsCapability(BackendCapabilities.supportsUvLedDuty)) return;
+    try {
+      await _delegate.manualCommand(
+          'UVLED_ON PWM=${_cleaningPwm(intensityPercent)}');
+    } catch (e, st) {
+      _log.warning('Failed to set the exposure LED duty', e, st);
+    }
+  }
+
+  /// Start a cleaning run: the full-white "blank" exposure with the UV LED on.
+  ///
+  /// NanoDLP needs this as a compound — put up the blank frame, turn the
+  /// projector on, then set the LED duty with `UVLED_ON PWM=<0..1>` (full power
+  /// by default).  The run is timed by the caller, which calls [stopCleaning]
+  /// when it ends (and on cancel), so an interrupted run cannot leave the LED
+  /// lit.
+  Future<bool> startCleaning({int intensityPercent = 100}) async {
+    if (!supportsCapability(BackendCapabilities.supportsCleaning)) {
+      _log.info('Cleaning is not supported by this backend');
+      return false;
+    }
+    try {
+      await _delegate.displayTest('White');
+      await _delegate.manualCure(true);
+      await _delegate.manualCommand(
+          'UVLED_ON PWM=${_cleaningPwm(intensityPercent)}');
+      return true;
+    } catch (e, st) {
+      _log.warning('Failed to start the cleaning run', e, st);
+      // The LED may already be live; make sure it is not.
+      await _attemptStopCleaning();
+      return false;
+    }
+  }
+
+  /// Stop a cleaning run: UV LED off, then the projector blanked.
+  Future<bool> stopCleaning() async {
+    if (!supportsCapability(BackendCapabilities.supportsCleaning)) {
+      return false;
+    }
+    return _attemptStopCleaning();
+  }
+
+  Future<bool> _attemptStopCleaning() async {
+    var ok = true;
+    try {
+      await _delegate.manualCommand('UVLED_OFF');
+    } catch (e, st) {
+      _log.warning('Failed to switch the UV LED off', e, st);
+      ok = false;
+    }
+    try {
+      await _delegate.manualCure(false);
+    } catch (e, st) {
+      _log.warning('Failed to blank the projector after cleaning', e, st);
+      ok = false;
+    }
+    return ok;
+  }
+
+  /// UV LED duty for NanoDLP's `UVLED_ON PWM=`, e.g. 90% -> `0.9`.
+  static String _cleaningPwm(int percent) {
+    var text = ((percent.clamp(0, 100)) / 100).toStringAsFixed(2);
+    text = text.replaceAll(RegExp(r'0+$'), '');
+    if (text.endsWith('.')) text = text.substring(0, text.length - 1);
+    return text.isEmpty ? '0' : text;
+  }
+
+  /// Show a corner alignment pattern on the projector via special screens.
+  ///
+  /// [location] must be one of: front-left, front-right, back-left, back-right.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> showSpecialScreenCorner(
+    String location, {
+    Duration? requestTimeout,
+  }) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.showCornerScreen(location);
+    } catch (e, st) {
+      _log.warning('Failed to show special screen corner: $location', e, st);
+      return false;
+    }
+  }
+
+  /// Show the center alignment pattern on the projector via special screens.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> showSpecialScreenCenter({Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.showCenterScreen();
+    } catch (e, st) {
+      _log.warning('Failed to show special screen center', e, st);
+      return false;
+    }
+  }
+
+  /// Turn off the projector's UV LED, hiding any active special screen.
+  /// Returns `true` on success, `false` on failure or when Athena is unavailable.
+  Future<bool> turnOffSpecialScreens({Duration? requestTimeout}) async {
+    try {
+      final client = _createAthenaClient(requestTimeout: requestTimeout);
+      if (client == null) return false;
+      return await client.uvledOff();
+    } catch (e, st) {
+      _log.warning('Failed to turn off special screens', e, st);
+      return false;
+    }
+  }
+
   @override
   Future<Map<String, dynamic>> getStatus() => _delegate.getStatus();
 
@@ -380,6 +613,9 @@ class BackendService implements BackendClient {
   Future<Map<String, dynamic>> emergencyStop() => _delegate.emergencyStop();
 
   @override
+  Future<Map<String, dynamic>> forceStop() => _delegate.forceStop();
+
+  @override
   Future<void> displayTest(String test) => _delegate.displayTest(test);
 
   @override
@@ -409,6 +645,14 @@ class BackendService implements BackendClient {
       return {};
     }
   }
+
+  /// Clone a profile. Failures are propagated on purpose: creating a profile
+  /// is a user-visible action and the UI must be able to report a failure
+  /// rather than claim success.
+  @override
+  Future<Map<String, dynamic>> cloneProfile(
+          int sourceId, Map<String, dynamic> fields) =>
+      _delegate.cloneProfile(sourceId, fields);
 
   @override
   Future<Map<String, dynamic>> getProfileJson(int id) async {

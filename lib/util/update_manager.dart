@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -342,15 +341,17 @@ class UpdateManager extends ChangeNotifier {
     if (isMasterBranch) {
       // Triple confirmation for development firmware
       if (!await _showAthenaDevWarning(context)) {
-        await _offerAthenaResetChannel(context);
+        if (context.mounted) await _offerAthenaResetChannel(context);
         return;
       }
+      if (!context.mounted) return;
       if (!await _showAthenaSecondWarning(context)) {
-        await _offerAthenaResetChannel(context);
+        if (context.mounted) await _offerAthenaResetChannel(context);
         return;
       }
+      if (!context.mounted) return;
       if (!await _showAthenaFinalWarning(context)) {
-        await _offerAthenaResetChannel(context);
+        if (context.mounted) await _offerAthenaResetChannel(context);
         return;
       }
       confirmed = true;
@@ -432,9 +433,11 @@ class UpdateManager extends ChangeNotifier {
     try {
       final backend = BackendService();
       await backend.updateBackend();
+      if (!context.mounted) return;
       messageNotifier.value =
           FlutterI18n.translate(context, 'update.athenaUpdateInitiated');
     } catch (e) {
+      if (!context.mounted) return;
       messageNotifier.value =
           FlutterI18n.translate(context, 'update.athenaUpdateReboot');
     }
@@ -469,7 +472,7 @@ class UpdateManager extends ChangeNotifier {
             ),
             content: Text(
               FlutterI18n.translate(ctx, 'update.devWarningDetailed'),
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
             ),
             actions: [
               GlassButton(
@@ -515,7 +518,7 @@ class UpdateManager extends ChangeNotifier {
             ),
             content: Text(
               FlutterI18n.translate(ctx, 'update.confirmDevMsg'),
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
             ),
             actions: [
               GlassButton(
@@ -561,7 +564,7 @@ class UpdateManager extends ChangeNotifier {
             ),
             content: Text(
               FlutterI18n.translate(ctx, 'update.finalWarningMsgDetailed'),
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
             ),
             actions: [
               GlassButton(
@@ -608,7 +611,7 @@ class UpdateManager extends ChangeNotifier {
             ),
             content: Text(
               FlutterI18n.translate(ctx, 'update.resetChannelMsg'),
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
             ),
             actions: [
               GlassButton(

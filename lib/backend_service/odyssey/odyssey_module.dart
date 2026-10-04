@@ -59,6 +59,7 @@ class OdysseyModule implements BackendModule {
       BackendCapabilities.supportsAthena: false,
       BackendCapabilities.supportsAthenaUpdates: false,
       BackendCapabilities.supportsAthenaFeatureFlags: false,
+      BackendCapabilities.supportsForceLeveling: false,
 
       // Temperature/vat control
       BackendCapabilities.supportsVatTemperature: false,
@@ -78,6 +79,12 @@ class OdysseyModule implements BackendModule {
 
       // RGB / LED lighting
       BackendCapabilities.supportsRgbLighting: false,
+
+      // Cleaning run: the Odyssey command is not known yet.
+      BackendCapabilities.supportsCleaning: false,
+
+      // No UV LED duty command.
+      BackendCapabilities.supportsUvLedDuty: false,
     };
   }
 

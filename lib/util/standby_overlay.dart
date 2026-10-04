@@ -20,9 +20,11 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:orion/backend_service/odyssey/models/status_models.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:orion/backend_service/providers/lighting_provider.dart';
 import 'package:orion/backend_service/providers/standby_settings_provider.dart';
@@ -240,11 +242,14 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         Provider.of<StandbySettingsProvider>(context, listen: false);
 
     if (!_isStandbyActive && widget.enabled && standbySettings.standbyEnabled) {
+      // Don't activate standby while a leveling workflow is in progress
+      final statusProvider =
+          Provider.of<StatusProvider>(context, listen: false);
+      if (statusProvider.isLevelingWorkflowActive) return;
+
       // Block RGB commands if there's been print activity since the last
       // explicit wake — otherwise we'd disrupt the printer's internal LED
       // control during/after a print.
-      final statusProvider =
-          Provider.of<StatusProvider>(context, listen: false);
       final isActiveJob = (statusProvider.status?.isPrinting ?? false) ||
           (statusProvider.status?.isPaused ?? false) ||
           statusProvider.isPausing ||
@@ -818,13 +823,15 @@ class _StandbyOverlayState extends State<StandbyOverlay>
         } else if (isPaused || isPausing) {
           standbyContent = Center(child: _buildPausedIndicator(ctx, progress));
         } else if (isPrinting) {
-          standbyContent =
-              Center(child: _buildProgressIndicator(ctx, progress));
+          standbyContent = Center(
+              child: _buildProgressIndicator(
+                  ctx, progress, statusProvider.remainingPrintTime));
         } else if (isCancelingTransition) {
           // During cancel transition, keep showing the progress ring
           // so the UI doesn't flash the clock before the canceled overlay.
-          standbyContent =
-              Center(child: _buildProgressIndicator(ctx, progress));
+          standbyContent = Center(
+              child: _buildProgressIndicator(
+                  ctx, progress, statusProvider.remainingPrintTime));
         } else {
           standbyContent = standbySettings.standbyMode == 'logo'
               ? _buildLogoDisplay(ctx)
@@ -1071,8 +1078,27 @@ class _StandbyOverlayState extends State<StandbyOverlay>
     );
   }
 
-  Widget _buildProgressIndicator(BuildContext context, double progress) {
+  // The percentage and the time left share the inside of the progress ring,
+  // split by a hairline rule. The percentage is set larger: it carries fewer
+  // glyphs, so an equal point size leaves it looking like the lesser value.
+  static const double _ringPercentageFontSize = 84;
+  static const double _ringTimeFontSize = 60;
+  static const double _ringLabelFontSize = 22;
+  // The rule is not given equal SizedBoxes: "24%" leaves no descender below
+  // its baseline, while the countdown's line box carries its ascent above the
+  // glyphs, so a symmetric pair of gaps puts the rule visibly nearer the
+  // countdown. These two land the ink about 24px clear on both sides.
+  static const double _ringGapAboveRule = 6;
+  static const double _ringGapBelowRule = 19;
+  static const double _ringLabelGap = 8;
+  static const double _ringDividerWidth = 210;
+  static const double _ringDividerThickness = 2;
+
+  Widget _buildProgressIndicator(
+      BuildContext context, double progress, Duration? remaining) {
     final percentage = (progress * 100).toStringAsFixed(0);
+    final timeRemaining =
+        remaining == null ? '' : StatusModel.formatHoursMinutes(remaining);
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Stack(
@@ -1089,23 +1115,64 @@ class _StandbyOverlayState extends State<StandbyOverlay>
             backgroundColor: Color.lerp(primaryColor, Colors.black, 0.9)!,
           ),
         ),
-        Text(
-          '$percentage%',
-          style: TextStyle(
-            fontFamily: 'AtkinsonHyperlegible',
-            fontSize: 100,
-            fontWeight: FontWeight.w500,
-            color: primaryColor,
-            decoration: TextDecoration.none,
-            fontFeatures: const [ui.FontFeature.tabularFigures()],
-            shadows: [
-              Shadow(
-                blurRadius: 8,
-                color: Colors.black.withAlpha((0.5 * 255).toInt()),
-                offset: const Offset(0, 2),
+        // Percentage and time left carry the same weight inside the ring,
+        // split by a hairline rule.
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$percentage%',
+              style: TextStyle(
+                fontFamily: 'AtkinsonHyperlegible',
+                fontSize: _ringPercentageFontSize,
+                height: 1.0,
+                fontWeight: FontWeight.w500,
+                color: primaryColor,
+                decoration: TextDecoration.none,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: _ringGapAboveRule),
+            Container(
+              width: _ringDividerWidth,
+              height: _ringDividerThickness,
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+            const SizedBox(height: _ringGapBelowRule),
+            // Empty while the job has no estimate to count down (e.g. a
+            // cancel already in flight): the rule stays so the percentage
+            // does not jump.
+            Text(
+              timeRemaining,
+              style: TextStyle(
+                fontFamily: 'AtkinsonHyperlegible',
+                fontSize: _ringTimeFontSize,
+                height: 1.0,
+                fontWeight: FontWeight.w500,
+                color: primaryColor,
+                decoration: TextDecoration.none,
+                fontFeatures: const [ui.FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(height: _ringLabelGap),
+            // Empty alongside the countdown it labels, so the percentage
+            // keeps its place when there is nothing to count down.
+            Text(
+              timeRemaining.isEmpty
+                  ? ''
+                  : FlutterI18n.translate(context, 'status.remaining'),
+              style: TextStyle(
+                fontFamily: 'AtkinsonHyperlegible',
+                fontSize: _ringLabelFontSize,
+                height: 1.0,
+                letterSpacing: 2,
+                color: primaryColor.withValues(alpha: 0.5),
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ],
         ),
       ],
     );
