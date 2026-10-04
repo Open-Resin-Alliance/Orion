@@ -4647,7 +4647,10 @@ class _WorkflowPane extends StatelessWidget {
     final instruction = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Text(
-        FlutterI18n.translate(context, 'leveling.loosenInstruction'),
+        engine.variant?.id == 'pro'
+            ? FlutterI18n.translate(
+                context, 'leveling.loosenInstructionPro')
+            : FlutterI18n.translate(context, 'leveling.loosenInstruction'),
         textAlign: TextAlign.center,
         style: TextStyle(
           fontSize: 20,
