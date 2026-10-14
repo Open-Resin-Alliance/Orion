@@ -410,6 +410,12 @@ class OnboardingScreenState extends State<OnboardingScreen>
       }
     }
 
+    // Skip the Level Check step (7) for the standard arm: the check
+    // measures the Pro arm's four corners, which that arm cannot run.
+    if (targetPage == 7 && !canRunLevelCheck()) {
+      targetPage = targetPage > _currentPage ? 8 : 6;
+    }
+
     if (targetPage >= 0 && targetPage <= 9) {
       // Store previous page before updating current
       _previousPage = _currentPage;
@@ -835,9 +841,9 @@ class OnboardingScreenState extends State<OnboardingScreen>
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                setState(() {
-                  _currentPage++;
-                });
+                // Through _handlePageChange, not a bare increment: the
+                // step skip rules (custom name, level check) live there.
+                _handlePageChange(_currentPage + 1);
               },
               child: I18nText('wifi.skipAnyway'),
             ),

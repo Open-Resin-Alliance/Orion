@@ -50,6 +50,14 @@ bool canVerifyLeveling() =>
     OrionConfig()
         .getFlag('alwaysAllowLevelVerification', category: 'developer');
 
+/// Whether a level check may be run at all.
+///
+/// The check measures the plate at the Pro arm's four corners, so the
+/// standard arm — which has no corner procedure — neither offers nor re-runs
+/// it, and onboarding skips its step.  An unset variant counts as available,
+/// since the arm is chosen inside the wizard itself.
+bool canRunLevelCheck() => OrionConfig().getLevelingVariant() != 'regular';
+
 class VerifyLevelingScreen extends StatefulWidget {
   const VerifyLevelingScreen({super.key});
 
@@ -234,7 +242,8 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
       ),
     ),
         ),
-        _buildRecheckButton(context),
+        // The check needs the Pro arm's corner procedure.
+        if (canRunLevelCheck()) _buildRecheckButton(context),
       ],
     );
   }
@@ -412,7 +421,8 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
             ),
           ),
         ),
-        _buildRecheckButton(context),
+        // The check needs the Pro arm's corner procedure.
+        if (canRunLevelCheck()) _buildRecheckButton(context),
       ],
     );
   }
@@ -516,7 +526,7 @@ class _VerifyLevelingScreenState extends State<VerifyLevelingScreen> {
             ),
           ),
         ),
-        if (allowRecheck) _buildRecheckButton(context),
+        if (allowRecheck && canRunLevelCheck()) _buildRecheckButton(context),
       ],
     );
   }

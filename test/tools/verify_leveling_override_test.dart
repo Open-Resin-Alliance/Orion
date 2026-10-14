@@ -62,6 +62,15 @@ void main() {
     });
   }
 
+  /// The arm the check belongs to. The standard arm has no corner
+  /// procedure, so it is offered no re-run.
+  void setArm(String id) {
+    final config = OrionConfig();
+    final before = config.getLevelingVariant();
+    config.setLevelingVariant(id);
+    addTearDown(() => config.setLevelingVariant(before));
+  }
+
   Future<void> pumpScreen(WidgetTester tester, Widget widget) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -112,6 +121,7 @@ void main() {
 
   testWidgets('the override alone opens the verify entry',
       (WidgetTester tester) async {
+    setArm('pro');
     setLeveling(leveled: false, override: false);
     expect(canVerifyLeveling(), isFalse);
 
@@ -121,6 +131,7 @@ void main() {
 
   testWidgets('the menu verify entry follows the override',
       (WidgetTester tester) async {
+    setArm('pro');
     setLeveling(leveled: false, override: false);
     await pumpScreen(tester, const LevelingScreen());
 
@@ -139,6 +150,7 @@ void main() {
 
   testWidgets('with no data the override still offers the re-check',
       (WidgetTester tester) async {
+    setArm('pro');
     setLeveling(leveled: false, override: true);
     await pumpScreen(tester, const VerifyLevelingScreen());
 
@@ -150,11 +162,24 @@ void main() {
 
   testWidgets('without the override no data stays a dead end',
       (WidgetTester tester) async {
+    setArm('pro');
     setLeveling(leveled: false, override: false);
     await pumpScreen(tester, const VerifyLevelingScreen());
 
     expect(find.text(tr(tester, 'leveling.verifyNoData')), findsOneWidget);
     expect(find.text(tr(tester, 'leveling.verifyNoDataHint')), findsOneWidget);
+    expect(find.text(tr(tester, 'leveling.recheckLeveling')), findsNothing);
+  });
+
+  testWidgets('the standard arm is offered no re-run',
+      (WidgetTester tester) async {
+    setArm('regular');
+    setLeveling(leveled: false, override: true);
+    await pumpScreen(tester, const VerifyLevelingScreen());
+
+    // The state still reads out, but the check itself is not on offer: it
+    // measures the Pro arm's four corners.
+    expect(find.text(tr(tester, 'leveling.verifyNoData')), findsOneWidget);
     expect(find.text(tr(tester, 'leveling.recheckLeveling')), findsNothing);
   });
 }

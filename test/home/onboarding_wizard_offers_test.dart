@@ -103,8 +103,8 @@ void main() {
   }
 
   /// Runs the welcome hand-off and then follows whatever each step offers until
-  /// the leveling step is on screen.
-  Future<void> walkToLevelingStep(WidgetTester tester) async {
+  /// the step titled [stopKey] is on screen.
+  Future<void> walkToStep(WidgetTester tester, String stopKey) async {
     String t(String key) =>
         FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
 
@@ -114,7 +114,7 @@ void main() {
 
     for (var i = 0; i < 14; i++) {
       // The step's title is on the app bar whichever body it shows.
-      if (find.text(t('setup.verifyLevelingTitle')).evaluate().isNotEmpty) break;
+      if (find.text(t(stopKey)).evaluate().isNotEmpty) break;
       final hasNext = find.text(t('common.next')).evaluate().isNotEmpty;
       final hasSkip = find.text(t('common.skip')).evaluate().isNotEmpty;
       // The first three steps hide their floating button, so drive them by the
@@ -144,8 +144,12 @@ void main() {
       await pumpFor(tester, 2500);
     }
 
-    expect(find.text(t('setup.verifyLevelingTitle')), findsOneWidget);
+    expect(find.text(t(stopKey)), findsOneWidget);
   }
+
+  /// The level-check step, which the standard arm skips.
+  Future<void> walkToLevelingStep(WidgetTester tester) =>
+      walkToStep(tester, 'setup.verifyLevelingTitle');
 
   /// Pumps [OnboardingPages.buildCompletePage] directly.  The completion step's
   /// vendor link is driven by the URL it is handed, and the shared config only
@@ -220,6 +224,15 @@ void main() {
     expect(reveal().tints, isNotEmpty);
   });
 
+  /// The arm the level-check step belongs to. The standard arm has no corner
+  /// procedure, so its onboarding skips that step.
+  void setArm(String id) {
+    final config = OrionConfig();
+    final before = config.getLevelingVariant();
+    config.setLevelingVariant(id);
+    addTearDown(() => config.setLevelingVariant(before));
+  }
+
   /// The leveling state the leveling menu guards Verify Leveling with, and that
   /// this step is guarded by.
   void setLeveled(bool value) {
@@ -231,6 +244,7 @@ void main() {
 
   testWidgets('with no leveling data the step explains itself',
       (WidgetTester tester) async {
+    setArm('pro');
     setLeveled(false);
     await pumpOnboarding(tester);
     await walkToLevelingStep(tester);
@@ -266,6 +280,7 @@ void main() {
 
   testWidgets('a leveled printer is offered the re-check',
       (WidgetTester tester) async {
+    setArm('pro');
     setLeveled(true);
     await pumpOnboarding(tester);
     await walkToLevelingStep(tester);
@@ -292,6 +307,7 @@ void main() {
 
   testWidgets('the calibration offer opens the calibration wizard',
       (WidgetTester tester) async {
+    setArm('pro');
     setLeveled(false);
     await pumpOnboarding(tester);
     await walkToLevelingStep(tester);
@@ -316,6 +332,7 @@ void main() {
 
   testWidgets('a discarded calibration puts the setup back on that step',
       (WidgetTester tester) async {
+    setArm('pro');
     setLeveled(false);
     await pumpOnboarding(tester);
     await walkToLevelingStep(tester);
@@ -346,6 +363,22 @@ void main() {
     expect(find.textContaining(t('complete.completionMessage')), findsNothing);
   });
 
+  testWidgets('the standard arm skips the level-check step',
+      (WidgetTester tester) async {
+    setArm('regular');
+    setLeveled(true);
+    await pumpOnboarding(tester);
+    await walkToStep(tester, 'setup.calibrationTitle');
+
+    String t(String key) =>
+        FlutterI18n.translate(tester.element(find.byType(Scaffold).first), key);
+
+    // Straight from Wi-Fi to the calibration offer: the check measures the
+    // Pro arm's four corners, which this arm cannot run.
+    expect(find.text(t('setup.verifyLevelingTitle')), findsNothing);
+    expect(find.text(t('setup.levelingIntro')), findsNothing);
+    expect(find.text(t('setup.calibrationIntro')), findsOneWidget);
+  });
   testWidgets('the completion step points at the vendor site',
       (WidgetTester tester) async {
     await pumpCompletePage(tester, vendorUrl: 'https://concepts3d.ca');
