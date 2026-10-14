@@ -115,6 +115,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   bool _tightenScrewsDone = false;
   bool _alignDone = false;
   bool _hexLongEndDone = false;
+  bool _handOnPlateDone = false;
 
   // Prevents the home-after-leveling command from firing more than once
   bool _homeAfterCompleteFired = false;
@@ -320,8 +321,10 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         if (savedVariant != null) {
           _engine.selectVariant(savedVariant);
           _resetCornerResults();
+          // Standard arm: no align-plate and no hex-key long-end prompt.
           _alignDone = savedVariant.id == 'regular';
-          _hexLongEndDone = false;
+          _hexLongEndDone = savedVariant.id == 'regular';
+          _handOnPlateDone = savedVariant.id != 'regular';
           _levelingSessionId = _uuid4();
           _recheckNumber = 0;
           _probeConfigCaptured = false;
@@ -359,6 +362,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
     _engine.selectVariant(proVariant);
     _loosenScrewsDone = true;
     _tightenScrewsDone = true;
+    _handOnPlateDone = true;
     _levelingSessionId = _uuid4();
     _recheckNumber = 0;
     _probeConfigCaptured = false;
@@ -438,10 +442,14 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       _holdingRunning = false;
       _loosenScrewsDone = false;
       _tightenScrewsDone = false;
-      // Standard arm is rigidly fixed — the plate can't be misaligned,
-      // so the align-plate intermediate screen is never needed for it.
+      // Standard arm is rigidly fixed — the plate can't be misaligned and
+      // its screws are turned from the same side, so neither the
+      // align-plate nor the hex-key long-end intermediate screen is
+      // needed for it. Its tighten pass opens with the hand-on-plate
+      // screen instead.
       _alignDone = _engine.variant?.id == 'regular';
-      _hexLongEndDone = false;
+      _hexLongEndDone = _engine.variant?.id == 'regular';
+      _handOnPlateDone = _engine.variant?.id != 'regular';
     } else if (_engine.status == LevelingWorkflowStatus.stepComplete) {
       final step = _engine.currentStep;
       if (step != null) {
@@ -1472,9 +1480,11 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
             _engine.selectVariant(variant);
             OrionConfig().setLevelingVariant(variant.id);
             _resetCornerResults();
-            // Standard arm is forcibly aligned — skip the align plate screen.
+            // Standard arm is forcibly aligned and needs no hex-key
+            // long-end prompt — skip both intermediate screens.
             _alignDone = variant.id == 'regular';
-            _hexLongEndDone = false;
+            _hexLongEndDone = variant.id == 'regular';
+            _handOnPlateDone = variant.id != 'regular';
             // Generate a new session ID for each leveling attempt
             _levelingSessionId = _uuid4();
             _recheckNumber = 0;
@@ -1523,6 +1533,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
           tightenScrewsDone: _tightenScrewsDone,
           alignDone: _alignDone,
           hexLongEndDone: _hexLongEndDone,
+          handOnPlateDone: _handOnPlateDone,
           cornerResults: _cornerResults,
           cornerZs: _rawCornerZs,
           preAdjustmentDeviation: _preAdjustmentDeviation,
@@ -1928,11 +1939,67 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
       );
     }
 
+    // Hand-on-plate prompt (standard arm, between the probe and the screw
+    // order): Cancel | Done
+    if (status == LevelingWorkflowStatus.stepComplete &&
+        _engine.currentStep?.intermediateScreen == 'tighten' &&
+        _alignDone &&
+        _hexLongEndDone &&
+        !_handOnPlateDone) {
+      return Row(
+        children: [
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.negative,
+              onPressed: _cancelLeveling,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(PhosphorIcons.x(), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    FlutterI18n.translate(context, 'common.cancel'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: OrionSpacing.controlGap),
+          Expanded(
+            child: GlassButton(
+              tint: GlassButtonTint.positive,
+              onPressed: () => setState(() => _handOnPlateDone = true),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 65),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    FlutterI18n.translate(context, 'common.continue_'),
+                    style: const TextStyle(
+                        fontSize: 21, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(PhosphorIcons.arrowRight(), size: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     // Tighten-screws prompt (after alignment): Cancel | Done → auto-run offset
     if (status == LevelingWorkflowStatus.stepComplete &&
         _engine.currentStep?.intermediateScreen == 'tighten' &&
         _alignDone &&
-        _hexLongEndDone) {
+        _hexLongEndDone &&
+        _handOnPlateDone) {
       return Row(
         children: [
           Expanded(
@@ -3653,6 +3720,10 @@ Widget _buildHighlightedInstruction(
 class _ScrewSequenceDiagram extends StatelessWidget {
   const _ScrewSequenceDiagram({this.clockwise = false});
 
+  /// Unscaled size of the pictogram; the callers fit it into the space
+  /// they have.
+  static const naturalSize = Size(254, 192);
+
   final bool clockwise;
 
   /// Screw centres as fractions of the 254×192 SVG viewBox (top 5/6
@@ -3672,9 +3743,8 @@ class _ScrewSequenceDiagram extends StatelessWidget {
     final lineArt =
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.32);
     final primary = Theme.of(context).colorScheme.primary;
-    return SizedBox(
-      width: 254,
-      height: 192,
+    return SizedBox.fromSize(
+      size: naturalSize,
       child: Stack(
         children: [
           ShaderMask(
@@ -3891,6 +3961,302 @@ class _ScrewSequencePainter extends CustomPainter {
       old.primary != primary ||
       old.onPrimary != onPrimary ||
       old.clockwise != clockwise;
+}
+
+/// One numbered callout on the standard arm's plate line art: a dot on
+/// the screw head and a lead line out to a circled number. Coordinates
+/// are `a2_standard.svg` viewBox units.
+class _ScrewCallout {
+  const _ScrewCallout(this.number, this.screw, this.label, {this.dot = true});
+
+  final int number;
+
+  /// Screw head centre.
+  final Offset screw;
+
+  /// Circled number centre.
+  final Offset label;
+
+  /// False when the screw head is hidden behind the plate: the lead line
+  /// then just points at where the head sits, with nothing to mark.
+  final bool dot;
+}
+
+/// Standard-arm loosen pictogram.
+///
+/// The Pro screen can lean on its top-view crop, where all three screw
+/// heads are drawn, and paint the sequence straight onto the line art.
+/// The standard arm's isometric plate art leaves its two back screws
+/// behind the plate edge, so the four heads are called out the way the
+/// Athena II plate illustration does it: a dot on each head and a lead
+/// line out to its loosening-order number.
+class _StandardArmScrewDiagram extends StatelessWidget {
+  const _StandardArmScrewDiagram({this.reverse = false});
+
+  /// True on the tighten screen, where the screws are worked back from
+  /// the last one loosened.
+  final bool reverse;
+
+  static const _assetPath =
+      'assets/images/concepts_3d/levelingsystem/standardarm/a2_standard.svg';
+
+  /// The asset's own viewBox.
+  static const _viewBox = Size(1191, 842);
+
+  /// Framing crop around the block, its four screw heads, the leveling
+  /// knob on top of it and the callout numbers — the standard-arm twin
+  /// of the Pro screen's top 5/6 crop. The pictogram paints its own
+  /// viewBox coordinates into this window, so the line art is clipped
+  /// rather than re-fitted. Wide enough to show the plate the block
+  /// stands on; the callouts carry the eye.
+  static const _cropL = 300.0;
+  static const _cropT = 265.0;
+  static const _cropR = 890.0;
+  static const _cropB = 630.0;
+  static const crop = Rect.fromLTRB(_cropL, _cropT, _cropR, _cropB);
+
+  /// Uniform viewBox-units-to-logical-pixels scale for the crop.
+  static const scale = 0.62;
+
+  /// Unscaled size of the pictogram; the caller fits it into the space
+  /// it has.
+  static const naturalSize = Size(
+    (_cropR - _cropL) * scale,
+    (_cropB - _cropT) * scale,
+  );
+
+  /// Loosening order. 1 and 3 are the pair on the block's near face
+  /// (front-right and front-left); 2 and 4 are the back pair, hidden
+  /// behind the plate edge — 4 sits in the lobe that peeks past the
+  /// edge, 2 one screw-head higher up the same edge, with no head of its
+  /// own to mark.
+  static const callouts = <_ScrewCallout>[
+    _ScrewCallout(1, Offset(592, 505), Offset(631, 591)),
+    _ScrewCallout(2, Offset(488, 388), Offset(438, 348), dot: false),
+    _ScrewCallout(3, Offset(652, 470), Offset(792, 514)),
+    _ScrewCallout(4, Offset(487, 450), Offset(364, 454)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox.fromSize(
+      size: naturalSize,
+      child: _LineArtFade(
+        child: ClipRect(
+          child: Stack(
+            children: [
+              Positioned(
+                left: -_cropL * scale,
+                top: -_cropT * scale,
+                width: _viewBox.width * scale,
+                height: _viewBox.height * scale,
+                child: SvgPicture.asset(
+                  _assetPath,
+                  fit: BoxFit.fill,
+                  // Line art is dimmed so the callouts (full primary)
+                  // read as the foreground layer.
+                  colorFilter: ColorFilter.mode(
+                    scheme.onSurface.withValues(alpha: 0.32),
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _ScrewCalloutPainter(
+                    primary: scheme.primary,
+                    onPrimary: scheme.onPrimary,
+                    reverse: reverse,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Softens the outer band of a line-art pictogram, so its edges ease out
+/// instead of ending mid-stroke. Two nested `dstIn` masks multiply into a
+/// vignette on all four sides — the counterpart of the bottom fade the Pro
+/// screen applies to its pre-cropped top view.
+class _LineArtFade extends StatelessWidget {
+  const _LineArtFade({required this.child});
+
+  final Widget child;
+
+  /// How wide a soft band each edge fades out over, at the pictogram's
+  /// own scale (the parent may scale the whole thing up).
+  static const _fadeBand = 18.0;
+
+  @override
+  Widget build(BuildContext context) {
+    ShaderMask edgeFade(Axis axis, Widget inner) => ShaderMask(
+          shaderCallback: (Rect bounds) {
+            // A fixed-width band, so all four edges fade the same distance
+            // whatever the pictogram's aspect works out to.
+            final extent = axis == Axis.vertical ? bounds.height : bounds.width;
+            final band = (_fadeBand / extent).clamp(0.0, 0.45);
+            return LinearGradient(
+              begin: axis == Axis.vertical
+                  ? Alignment.topCenter
+                  : Alignment.centerLeft,
+              end: axis == Axis.vertical
+                  ? Alignment.bottomCenter
+                  : Alignment.centerRight,
+              colors: const [
+                Colors.transparent,
+                Colors.black,
+                Colors.black,
+                Colors.transparent,
+              ],
+              stops: [0.0, band, 1.0 - band, 1.0],
+            ).createShader(bounds);
+          },
+          blendMode: BlendMode.dstIn,
+          child: inner,
+        );
+    return edgeFade(Axis.vertical, edgeFade(Axis.horizontal, child));
+  }
+}
+
+/// Hand-on-plate instruction pictogram for the standard arm's tighten
+/// pass: the plate is held down by one hand while the screws go in.
+class _HandOnPlateDiagram extends StatelessWidget {
+  const _HandOnPlateDiagram();
+
+  static const _assetPath =
+      'assets/images/concepts_3d/levelingsystem/standardarm/'
+      'a2_standard_hand_on_plate.svg';
+
+  /// The asset's own viewBox.
+  static const _viewBox = Size(1232, 1277);
+
+  /// Framing crop around the hand, the block and the plate it presses on —
+  /// the arm's mounting bracket and the empty corners are dropped so the
+  /// artwork fills the wide strip the screen gives it.
+  static const _cropL = 50.0;
+  static const _cropT = 310.0;
+  static const _cropR = 1180.0;
+  static const _cropB = 1190.0;
+
+  /// Uniform viewBox-units-to-logical-pixels scale for the crop.
+  static const _scale = 0.4;
+
+  /// Unscaled size of the pictogram; the caller fits it into the space
+  /// it has.
+  static const naturalSize = Size(
+    (_cropR - _cropL) * _scale,
+    (_cropB - _cropT) * _scale,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.fromSize(
+      size: naturalSize,
+      child: _LineArtFade(
+        child: ClipRect(
+          child: Stack(
+            children: [
+              Positioned(
+                left: -_cropL * _scale,
+                top: -_cropT * _scale,
+                width: _viewBox.width * _scale,
+                height: _viewBox.height * _scale,
+                child: SvgPicture.asset(
+                  _assetPath,
+                  fit: BoxFit.fill,
+                  colorFilter: ColorFilter.mode(
+                    Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.45),
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Paints the standard arm's numbered screw callouts on top of the
+/// dimmed plate line art.
+class _ScrewCalloutPainter extends CustomPainter {
+  _ScrewCalloutPainter({
+    required this.primary,
+    required this.onPrimary,
+    this.reverse = false,
+  });
+
+  final Color primary;
+  final Color onPrimary;
+
+  /// Numbers the callouts back to front, for the tighten pass.
+  final bool reverse;
+
+  /// Radius of the dot marking a screw head.
+  static const _dotRadius = 4.0;
+
+  /// Radius of the circled order number.
+  static const _badgeRadius = 12.0;
+
+  /// Keeps the lead line clear of the badge rim.
+  static const _badgeClearance = 2.0;
+
+  /// Size of the order number inside the badge.
+  static const _badgeFontSize = 14.0;
+
+  Offset _toCanvas(Offset viewBox) =>
+      (viewBox - _StandardArmScrewDiagram.crop.topLeft) *
+      _StandardArmScrewDiagram.scale;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final dot = Paint()..color = primary;
+    final line = Paint()
+      ..color = primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+    for (final callout in _StandardArmScrewDiagram.callouts) {
+      final order = _StandardArmScrewDiagram.callouts.length;
+      final screw = _toCanvas(callout.screw);
+      final label = _toCanvas(callout.label);
+      final direction = label - screw;
+      final unit = direction / direction.distance;
+      canvas.drawLine(
+          screw, label - unit * (_badgeRadius + _badgeClearance), line);
+      if (callout.dot) {
+        canvas.drawCircle(screw, _dotRadius, dot);
+      }
+      canvas.drawCircle(label, _badgeRadius, dot);
+      final number = TextPainter(
+        text: TextSpan(
+          text: '${reverse ? order + 1 - callout.number : callout.number}',
+          style: TextStyle(
+            fontSize: _badgeFontSize,
+            fontWeight: FontWeight.bold,
+            color: onPrimary,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      number.paint(canvas, label - Offset(number.width / 2, number.height / 2));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScrewCalloutPainter old) =>
+      old.primary != primary ||
+      old.onPrimary != onPrimary ||
+      old.reverse != reverse;
 }
 
 /// ISO 7010 W024 "hand crushing" warning pictogram for machine-movement
@@ -4505,6 +4871,7 @@ class _WorkflowPane extends StatelessWidget {
     required this.tightenScrewsDone,
     required this.alignDone,
     required this.hexLongEndDone,
+    required this.handOnPlateDone,
     required this.cornerResults,
     required this.cornerZs,
     this.preAdjustmentDeviation,
@@ -4516,6 +4883,7 @@ class _WorkflowPane extends StatelessWidget {
   final bool tightenScrewsDone;
   final bool alignDone;
   final bool hexLongEndDone;
+  final bool handOnPlateDone;
   final List<ForceLevelingWorkflowResponse?> cornerResults;
 
   /// values the wizard actually levels with; the results view must
@@ -4543,10 +4911,19 @@ class _WorkflowPane extends StatelessWidget {
     final isAlignPlate = isComplete && intermediate == 'tighten' && !alignDone;
     final isHexLongEnd =
         isComplete && intermediate == 'tighten' && alignDone && !hexLongEndDone;
+    // Standard arm, between the leveling probe and the screw order: hold
+    // the plate down. The Pro arm leaves the flag set (it has the
+    // align-plate and hex-key screens in this slot instead).
+    final isHandOnPlate = isComplete &&
+        intermediate == 'tighten' &&
+        alignDone &&
+        hexLongEndDone &&
+        !handOnPlateDone;
     final isTightenScrews = isComplete &&
         intermediate == 'tighten' &&
         alignDone &&
         hexLongEndDone &&
+        handOnPlateDone &&
         !tightenScrewsDone;
     final isAllCornersMeasured = isComplete && intermediate == 'allCorners';
     final isRemovePuck = isComplete && intermediate == 'removePuck';
@@ -4571,13 +4948,15 @@ class _WorkflowPane extends StatelessWidget {
     } else if (effectivelyRunning) {
       content = _buildRunningView(context, primary, step);
     } else if (isLoosenScrews) {
-      content = _buildLoosenScrewsView(context, primary);
+      content = _buildLoosenScrewsView(context);
     } else if (isAlignPlate) {
       content = _buildAlignPlateView(context, primary);
     } else if (isHexLongEnd) {
       content = _buildHexLongEndView(context, primary);
+    } else if (isHandOnPlate) {
+      content = _buildHandOnPlateView(context);
     } else if (isTightenScrews) {
-      content = _buildTightenScrewsView(context, primary);
+      content = _buildTightenScrewsView(context);
     } else if (isAllCornersMeasured) {
       content = _buildAllCornersMeasuredView(context, primary);
     } else if (isRemovePuck) {
@@ -4596,6 +4975,8 @@ class _WorkflowPane extends StatelessWidget {
       viewId = 'align';
     } else if (isHexLongEnd) {
       viewId = 'hexLong';
+    } else if (isHandOnPlate) {
+      viewId = 'handOnPlate';
     } else if (isTightenScrews) {
       viewId = 'tighten';
     } else if (isAllCornersMeasured) {
@@ -4628,12 +5009,14 @@ class _WorkflowPane extends StatelessWidget {
     );
   }
 
-  Widget _buildLoosenScrewsView(BuildContext context, Color primary) {
+  Widget _buildLoosenScrewsView(BuildContext context) {
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
-    // The 3-screw sequence diagram is Pro-Arm-specific; the standard
-    // arm's screw layout differs, so it keeps the icon-only screen.
-    final showDiagram = engine.variant?.id == 'pro';
+    final isPro = engine.variant?.id == 'pro';
+    // Natural (unscaled) pictogram size for the arm's own line art.
+    final naturalSize = isPro
+        ? _ScrewSequenceDiagram.naturalSize
+        : _StandardArmScrewDiagram.naturalSize;
     final title = Text(
       FlutterI18n.translate(context, 'leveling.loosenTitle'),
       textAlign: TextAlign.center,
@@ -4647,9 +5030,8 @@ class _WorkflowPane extends StatelessWidget {
     final instruction = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Text(
-        engine.variant?.id == 'pro'
-            ? FlutterI18n.translate(
-                context, 'leveling.loosenInstructionPro')
+        isPro
+            ? FlutterI18n.translate(context, 'leveling.loosenInstructionPro')
             : FlutterI18n.translate(context, 'leveling.loosenInstruction'),
         textAlign: TextAlign.center,
         style: TextStyle(
@@ -4661,67 +5043,47 @@ class _WorkflowPane extends StatelessWidget {
     );
 
     // Pictogram layout: title and subtitle sit in the app-bar header
-    // position; the diagram scales up into the remaining space.
-    if (showDiagram) {
-      return Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 8),
-            child: Column(
-              children: [
-                title,
-                const SizedBox(height: OrionSpacing.compactListGap),
-                instruction,
-              ],
-            ),
-          ),
-          // FittedBox under loose constraints would render at the
-          // diagram's natural 254×192 size, so compute the scale here
-          // and hand it a tight box instead. Capped for a slight bump.
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final scale = min(
-                  (constraints.maxWidth - 24) / 254,
-                  (constraints.maxHeight - 16) / 192,
-                ).clamp(1.0, 1.35);
-                return Center(
-                  child: SizedBox(
-                    width: 254 * scale,
-                    height: 192 * scale,
-                    child: const FittedBox(
-                      fit: BoxFit.contain,
-                      child: _ScrewSequenceDiagram(),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      );
-    }
-
+    // position; the diagram scales up into the remaining space. Both
+    // arms get the line-art pictogram — the Pro arm's three screws are
+    // drawn in its top-view crop, the standard arm's four are called
+    // out on its isometric plate.
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: primary.withValues(alpha: 0.12),
-          ),
-          child: Icon(
-            PhosphorIcons.wrench(),
-            size: 52,
-            color: primary,
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 8),
+          child: Column(
+            children: [
+              title,
+              const SizedBox(height: OrionSpacing.compactListGap),
+              instruction,
+            ],
           ),
         ),
-        const SizedBox(height: 20),
-        title,
-        const SizedBox(height: 8),
-        instruction,
+        // FittedBox under loose constraints would render at the
+        // diagram's natural size, so compute the scale here and hand it
+        // a tight box instead. Capped for a slight bump.
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final scale = min(
+                (constraints.maxWidth - 24) / naturalSize.width,
+                (constraints.maxHeight - 16) / naturalSize.height,
+              ).clamp(1.0, 1.35);
+              return Center(
+                child: SizedBox(
+                  width: naturalSize.width * scale,
+                  height: naturalSize.height * scale,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: isPro
+                        ? const _ScrewSequenceDiagram()
+                        : const _StandardArmScrewDiagram(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -4913,11 +5275,16 @@ class _WorkflowPane extends StatelessWidget {
     );
   }
 
-  Widget _buildTightenScrewsView(BuildContext context, Color primary) {
+  Widget _buildTightenScrewsView(BuildContext context) {
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
-    // Same 3-screw diagram as loosen, but tightening is clockwise.
-    final showDiagram = engine.variant?.id == 'pro';
+    final isPro = engine.variant?.id == 'pro';
+    // Same screws as the loosen screen, with the order reversed: the Pro
+    // arm's three in its top-view crop, the standard arm's four called out
+    // on its isometric plate.
+    final naturalSize = isPro
+        ? _ScrewSequenceDiagram.naturalSize
+        : _StandardArmScrewDiagram.naturalSize;
     final title = Text(
       FlutterI18n.translate(context, 'leveling.tightenTitle'),
       textAlign: TextAlign.center,
@@ -4930,7 +5297,7 @@ class _WorkflowPane extends StatelessWidget {
     final instruction = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Text(
-        engine.variant?.id == 'pro'
+        isPro
             ? FlutterI18n.translate(context, 'leveling.tightenInstructionPro')
             : FlutterI18n.translate(
                 context, 'leveling.tightenInstructionStandard'),
@@ -4942,63 +5309,106 @@ class _WorkflowPane extends StatelessWidget {
         ),
       ),
     );
-    if (showDiagram) {
-      return Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 8),
-            child: Column(
-              children: [
-                title,
-                const SizedBox(height: OrionSpacing.compactListGap),
-                instruction,
-              ],
-            ),
-          ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final scale = min(
-                  min((constraints.maxWidth - 24) / 254,
-                      (constraints.maxHeight - 16) / 192),
-                  1.35,
-                );
-                return Center(
-                  child: SizedBox(
-                    width: 254 * scale,
-                    height: 192 * scale,
-                    child: const FittedBox(
-                      fit: BoxFit.contain,
-                      child: _ScrewSequenceDiagram(clockwise: true),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      );
-    }
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: primary.withValues(alpha: 0.12),
-          ),
-          child: Icon(
-            PhosphorIcons.clockClockwise(),
-            size: 52,
-            color: primary,
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 8),
+          child: Column(
+            children: [
+              title,
+              const SizedBox(height: OrionSpacing.compactListGap),
+              instruction,
+            ],
           ),
         ),
-        const SizedBox(height: 20),
-        title,
-        const SizedBox(height: 8),
-        instruction,
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final scale = min(
+                min((constraints.maxWidth - 24) / naturalSize.width,
+                    (constraints.maxHeight - 16) / naturalSize.height),
+                1.35,
+              );
+              return Center(
+                child: SizedBox(
+                  width: naturalSize.width * scale,
+                  height: naturalSize.height * scale,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: isPro
+                        ? const _ScrewSequenceDiagram(clockwise: true)
+                        : const _StandardArmScrewDiagram(reverse: true),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Standard arm, between the leveling probe and the screw order: the
+  /// plate has to be held down while the screws go in.
+  Widget _buildHandOnPlateView(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 8),
+          child: Column(
+            children: [
+              Text(
+                FlutterI18n.translate(context, 'leveling.holdDownTitle'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: OrionSpacing.compactListGap),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  FlutterI18n.translate(context, 'leveling.holdDownInstruction'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    height: 1.4,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // No lower clamp: the hand pictogram is portrait, so it has
+              // to be able to shrink into a short window.
+              final scale = min(
+                min(
+                    (constraints.maxWidth - 24) /
+                        _HandOnPlateDiagram.naturalSize.width,
+                    (constraints.maxHeight - 16) /
+                        _HandOnPlateDiagram.naturalSize.height),
+                1.35,
+              );
+              return Center(
+                child: SizedBox(
+                  width: _HandOnPlateDiagram.naturalSize.width * scale,
+                  height: _HandOnPlateDiagram.naturalSize.height * scale,
+                  child: const FittedBox(
+                    fit: BoxFit.contain,
+                    child: _HandOnPlateDiagram(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }

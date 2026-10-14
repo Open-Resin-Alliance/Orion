@@ -114,6 +114,8 @@ flutter:
     - assets/images/concepts_3d/a2_pro_arm.svg
     - assets/images/concepts_3d/a2_standard_arm.svg
     - assets/images/concepts_3d/levelingsystem/a2_pro_arm_solo_leveling_screws_top.svg
+    - assets/images/concepts_3d/levelingsystem/standardarm/a2_standard.svg
+    - assets/images/concepts_3d/levelingsystem/standardarm/a2_standard_hand_on_plate.svg
     - assets/images/concepts_3d/levelingsystem/a2_lcd_pro_arm_align_plate_bottom.svg
     - assets/images/concepts_3d/levelingsystem/a2_lcd_ui_top_view.svg
     - assets/images/concepts_3d/levelingsystem/a2_hex_key_arm_long_end_top_layer1.svg
