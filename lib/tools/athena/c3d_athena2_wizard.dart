@@ -503,7 +503,15 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         if (step.intermediateScreen == 'tighten' &&
             step.skipBackend &&
             _engine.variant?.id == 'regular') {
-          safeFloor(context).then((_) {}).catchError((_) {});
+          // This step has no backend call of its own, so the engine goes
+          // straight to stepComplete.  Hold the keep-clear screen for the
+          // floor move and its settle poll, the way a probe endpoint
+          // would — otherwise the plate is still travelling when the
+          // tighten screen comes up.
+          _waitingForSettle = true;
+          safeFloor(context).catchError((_) => false).whenComplete(() {
+            if (mounted) setState(() => _waitingForSettle = false);
+          });
         }
 
         // While showing the remove-puck prompt, run the prepare endpoint
