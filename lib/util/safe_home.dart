@@ -16,9 +16,20 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:orion/backend_service/athena_iot/models/athena_kinematic_status.dart';
 import 'package:orion/backend_service/providers/manual_provider.dart';
 import 'package:orion/backend_service/providers/status_provider.dart';
 import 'package:provider/provider.dart';
+
+/// How often the settle poll samples the controller's Z position.
+const _settleInterval = Duration(milliseconds: 400);
+
+/// How many samples the settle poll takes before giving up (about 16 s).
+const _settleAttempts = 40;
+
+/// Two consecutive position reads closer than this mean the axis has
+/// stopped travelling.
+const _settleToleranceMm = 0.05;
 
 /// Homes the Z axis and waits until the controller confirms the axis has
 /// physically stopped moving.
@@ -34,15 +45,48 @@ Future<bool> safeHome(BuildContext context) async {
   return safeHomePoll(context);
 }
 
-/// Polls [StatusProvider]'s kinematic status after a home command has
+/// Polls [StatusProvider]'s kinematic status after a move command has
 /// already been issued (e.g. by a backend prepare step).  Use this when
 /// you only need to wait for the axis to settle, without triggering a
-/// new home.
+/// new move.
+///
+/// A single successful read only proves the API answered — the axis can
+/// still be travelling.  This samples the reported position until two
+/// fresh reads agree, which is what actually says the plate has stopped.
+/// Backends that never report a fresh reading (no kinematic endpoint)
+/// return straight away, exactly as before.
 Future<bool> safeHomePoll(BuildContext context) async {
   final statusProvider =
       Provider.of<StatusProvider>(context, listen: false);
-  await statusProvider.refreshKinematicStatus(maxAttempts: 10);
-  return true;
+  AthenaKinematicStatus? previous;
+  var freshReads = 0;
+  for (var attempt = 0; attempt < _settleAttempts; attempt++) {
+    if (attempt > 0) {
+      await Future.delayed(_settleInterval);
+      if (!context.mounted) return false;
+    }
+    final status = await statusProvider.refreshKinematicStatus(maxAttempts: 1);
+    if (status == null) {
+      // Nothing to compare against.
+      return true;
+    }
+    // The provider hands back the same instance when a fetch failed, so a
+    // new object is the proof that this sample came off the controller.
+    final fresh = !identical(status, previous);
+    if (fresh && previous != null) {
+      if ((status.position - previous.position).abs() <= _settleToleranceMm) {
+        return true;
+      }
+    }
+    if (!fresh && freshReads == 0) {
+      // This backend answers with a cached reading; polling it further
+      // cannot tell us anything new.
+      return true;
+    }
+    if (fresh) freshReads++;
+    previous = status;
+  }
+  return false;
 }
 
 /// Moves the Z axis to the floor and waits until the controller confirms
