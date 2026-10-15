@@ -121,6 +121,12 @@ int? finePrepareCorner(LevelingWorkflowStep step) {
   return cornerNum == null ? null : cornerNum - 1;
 }
 
+/// Pre-flight item asking for the leveling disc.
+///
+/// The Pro arm's corner procedure measures against it; the standard arm has
+/// no corner procedure, so it never asks.
+const String kLevelingDiscChecklistKey = 'leveling.checkLevelingDisc';
+
 class LevelingVariant {
   final String id;
   final String label;
@@ -130,6 +136,10 @@ class LevelingVariant {
   final String finalEndpoint;
   final String successKey;
 
+  /// Pre-flight items this arm adds, each keyed by the shared item it
+  /// follows. The Pro arm fetches the leveling disc right after the hex key.
+  final Map<String, String> extraChecklist;
+
   const LevelingVariant({
     required this.id,
     required this.label,
@@ -138,6 +148,7 @@ class LevelingVariant {
     required this.successKey,
     this.assetPath,
     this.icon,
+    this.extraChecklist = const {},
   });
 
   /// [levelCheck] swaps the initial step onto the printer's level check
@@ -287,6 +298,19 @@ class LevelingConfig {
     required this.checklistKeys,
     required this.variants,
   });
+
+  /// The pre-flight list for [variant]: the shared items with that arm's own
+  /// items spliced in after the items they follow.
+  List<String> checklistFor(LevelingVariant? variant) {
+    final extra = variant?.extraChecklist ?? const <String, String>{};
+    if (extra.isEmpty) return checklistKeys;
+    return [
+      for (final key in checklistKeys) ...[
+        key,
+        if (extra[key] != null) extra[key]!,
+      ],
+    ];
+  }
 }
 
 const List<LevelingConfig> levelingConfigs = [

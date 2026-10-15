@@ -478,6 +478,7 @@
     "loading": "加载中…",
     "removeVat": "取出树脂料槽",
     "checkHexKeys": "找到一把3毫米六角扳手",
+    "checkLevelingDisc": "找到调平垫块",
     "checkLcdClean": "确认LCD和构建板干净",
     "checkInstallPlate": "安装构建板并固定",
     "failedMoveToTop": "上升失败",

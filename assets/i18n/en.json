@@ -478,6 +478,7 @@
         "loading": "Loading...",
         "removeVat": "Remove the resin vat and safely set it aside",
         "checkHexKeys": "Locate a 3 mm hex key",
+        "checkLevelingDisc": "Locate the Leveling Disc",
         "checkLcdClean": "Confirm the LCD and build plate are clean",
         "checkInstallPlate": "Install the build plate and ensure it is fully secured",
         "failedMoveToTop": "Failed to start move-to-top",

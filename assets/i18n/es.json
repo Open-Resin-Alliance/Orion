@@ -478,6 +478,7 @@
     "loading": "Cargando licencias…",
     "removeVat": "Retirar la cubeta de resina",
     "checkHexKeys": "Localizar una llave hexagonal de 3 mm",
+    "checkLevelingDisc": "Localizar el separador de nivelación",
     "checkLcdClean": "Confirmar que la LCD y la placa de construcción estén limpios",
     "checkInstallPlate": "Instalar la placa de construcción",
     "failedMoveToTop": "Error al subir",

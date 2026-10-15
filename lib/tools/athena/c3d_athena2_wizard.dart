@@ -1252,7 +1252,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
   }
 
   void _advancePreFlight() {
-    final keys = widget.config.checklistKeys;
+    final keys = widget.config.checklistFor(_engine.variant);
     if (_preFlightIndex < keys.length - 1) {
       setState(() => _preFlightIndex += 1);
     } else {
@@ -1477,7 +1477,7 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
         }
         return _PreFlightGuidePane(
           key: ValueKey('preflight-$_preFlightIndex'),
-          config: widget.config,
+          checklistKeys: widget.config.checklistFor(_engine.variant),
           stepIndex: _preFlightIndex,
         );
       case _WizardPhase.variant:
@@ -1563,7 +1563,8 @@ class _Athena2LevelingWizardState extends State<Athena2LevelingWizard> {
 
     if (_phase == _WizardPhase.introAndChecklist && _preFlightIndex >= 0) {
       // Pre-flight step: (Back or Cancel) | Next/Done
-      final isLast = _preFlightIndex >= widget.config.checklistKeys.length - 1;
+      final isLast =
+          _preFlightIndex >= widget.config.checklistFor(_engine.variant).length - 1;
       final isFirstRecheck = widget.recheck && _preFlightIndex == 0;
       return Row(
         children: [
@@ -3383,22 +3384,72 @@ class _PreLevelingPane extends StatelessWidget {
 // Pre-Flight Step-through Guide
 // ================================================================================================================================================================================================
 
+/// The leveling disc (spacer) seen from above, for the pre-flight step that
+/// asks for it.
+///
+/// The asset is the disc's top view inside the plate's full frame; this crops
+/// to the disc and tints it like the other pictograms.
+class _LevelingDiscGlyph extends StatelessWidget {
+  const _LevelingDiscGlyph();
+
+  static const _assetPath =
+      'assets/images/concepts_3d/levelingsystem/a2_leveling_spacer_ui_top_view.svg';
+
+  /// The asset's own viewBox, and the disc's window inside it.
+  static const _viewBox = Size(1191, 842);
+  static const _crop = Rect.fromLTWH(489, 250, 240, 240);
+
+  /// Drawn size; the circle it sits in is 100 px across.
+  static const _size = 72.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = _size / _crop.width;
+    return SizedBox(
+      width: _size,
+      height: _size,
+      child: ClipRect(
+        child: Stack(
+          children: [
+            Positioned(
+              left: -_crop.left * scale,
+              top: -_crop.top * scale,
+              width: _viewBox.width * scale,
+              height: _viewBox.height * scale,
+              child: SvgPicture.asset(
+                _assetPath,
+                fit: BoxFit.fill,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(context).colorScheme.primary,
+                  BlendMode.srcIn,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PreFlightGuidePane extends StatelessWidget {
   const _PreFlightGuidePane({
     super.key,
-    required this.config,
+    required this.checklistKeys,
     required this.stepIndex,
   });
 
-  final LevelingConfig config;
+  /// The arm's own pre-flight list, already resolved by the caller.
+  final List<String> checklistKeys;
   final int stepIndex;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
-    final keys = config.checklistKeys;
-    final label = FlutterI18n.translate(context, keys[stepIndex]);
+    final keys = checklistKeys;
+    final key = keys[stepIndex];
+    final label = FlutterI18n.translate(context, key);
     final total = keys.length;
 
     return Center(
@@ -3413,11 +3464,15 @@ class _PreFlightGuidePane extends StatelessWidget {
               shape: BoxShape.circle,
               color: primary.withValues(alpha: 0.12),
             ),
-            child: Icon(
-              PhosphorIcons.listChecks(),
-              size: 52,
-              color: primary,
-            ),
+            // The disc step shows the disc; every other step is a plain
+            // "have this ready" tick.
+            child: key == kLevelingDiscChecklistKey
+                ? const Center(child: _LevelingDiscGlyph())
+                : Icon(
+                    PhosphorIcons.listChecks(),
+                    size: 52,
+                    color: primary,
+                  ),
           ),
           const SizedBox(height: 20),
           Padding(
