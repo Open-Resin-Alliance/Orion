@@ -3384,18 +3384,18 @@ class _PreLevelingPane extends StatelessWidget {
 // Pre-Flight Step-through Guide
 // ================================================================================================================================================================================================
 
-/// The leveling disc (spacer) seen from above, for the pre-flight step that
+/// The leveling spacer seen from above, for the pre-flight step that
 /// asks for it.
 ///
-/// The asset is the disc's top view inside the plate's full frame; this crops
-/// to the disc and tints it like the other pictograms.
-class _LevelingDiscGlyph extends StatelessWidget {
-  const _LevelingDiscGlyph();
+/// The asset is the spacer's top view inside the plate's full frame; this
+/// crops to the spacer and tints it like the other pictograms.
+class _LevelingSpacerGlyph extends StatelessWidget {
+  const _LevelingSpacerGlyph();
 
   static const _assetPath =
       'assets/images/concepts_3d/levelingsystem/a2_leveling_spacer_ui_top_view.svg';
 
-  /// The asset's own viewBox, and the disc's window inside it.
+  /// The asset's own viewBox, and the spacer's window inside it.
   static const _viewBox = Size(1191, 842);
   static const _crop = Rect.fromLTWH(489, 250, 240, 240);
 
@@ -3464,10 +3464,10 @@ class _PreFlightGuidePane extends StatelessWidget {
               shape: BoxShape.circle,
               color: primary.withValues(alpha: 0.12),
             ),
-            // The disc step shows the disc; every other step is a plain
+            // The spacer step shows the spacer; every other step is a plain
             // "have this ready" tick.
-            child: key == kLevelingDiscChecklistKey
-                ? const Center(child: _LevelingDiscGlyph())
+            child: key == kLevelingSpacerChecklistKey
+                ? const Center(child: _LevelingSpacerGlyph())
                 : Icon(
                     PhosphorIcons.listChecks(),
                     size: 52,

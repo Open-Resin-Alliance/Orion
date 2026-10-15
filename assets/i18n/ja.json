@@ -478,7 +478,7 @@
     "loading": "読み込み中…",
     "removeVat": "レジンバットを取り外す",
     "checkHexKeys": "3 mmの六角レンチを用意してください",
-    "checkLevelingDisc": "レベリングスペーサーを用意してください",
+    "checkLevelingSpacer": "レベリングスペーサーを用意してください",
     "checkLcdClean": "LCDとビルドプレートが清潔であることを確認してください",
     "checkInstallPlate": "ビルドプレートを取り付けて固定",
     "failedMoveToTop": "上昇失敗",

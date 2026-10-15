@@ -88,9 +88,9 @@ const athena2LevelingConfig = LevelingConfig(
       icon: PhosphorIconsFill.star,
       finalEndpoint: 'probe_offset',
       successKey: 'levelingWorkflow.offsetSuccess',
-      // The corner procedure measures against the disc; the standard arm
+      // The corner procedure measures against the spacer; the standard arm
       // has no corners to check.
-      extraChecklist: {'leveling.checkHexKeys': kLevelingDiscChecklistKey},
+      extraChecklist: {'leveling.checkHexKeys': kLevelingSpacerChecklistKey},
     ),
   ],
 );

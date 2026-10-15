@@ -478,7 +478,7 @@
     "loading": "Chargement des licences…",
     "removeVat": "Retirer la cuve de résine",
     "checkHexKeys": "Trouver une clé Allen de 3 mm",
-    "checkLevelingDisc": "Trouver l'entretoise de nivellement",
+    "checkLevelingSpacer": "Trouver l'entretoise de nivellement",
     "checkLcdClean": "Confirmer que l'écran LCD et le plateau sont propres",
     "checkInstallPlate": "Installer le plateau de construction",
     "failedMoveToTop": "Montée impossible",

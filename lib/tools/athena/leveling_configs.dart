@@ -121,11 +121,11 @@ int? finePrepareCorner(LevelingWorkflowStep step) {
   return cornerNum == null ? null : cornerNum - 1;
 }
 
-/// Pre-flight item asking for the leveling disc.
+/// Pre-flight item asking for the leveling spacer.
 ///
 /// The Pro arm's corner procedure measures against it; the standard arm has
 /// no corner procedure, so it never asks.
-const String kLevelingDiscChecklistKey = 'leveling.checkLevelingDisc';
+const String kLevelingSpacerChecklistKey = 'leveling.checkLevelingSpacer';
 
 class LevelingVariant {
   final String id;
@@ -137,7 +137,7 @@ class LevelingVariant {
   final String successKey;
 
   /// Pre-flight items this arm adds, each keyed by the shared item it
-  /// follows. The Pro arm fetches the leveling disc right after the hex key.
+  /// follows. The Pro arm fetches the leveling spacer right after the hex key.
   final Map<String, String> extraChecklist;
 
   const LevelingVariant({

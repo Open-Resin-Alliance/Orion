@@ -106,21 +106,22 @@ void main() {
       expect(regularSteps.last.endpoint, 'probe_standardarm');
     });
 
-    test('the leveling disc is asked for on the pro arm only', () {
+    test('the leveling spacer is asked for on the pro arm only', () {
       final config = getLevelingConfigForMachine('Athena2')!;
       final regular = config.variants.firstWhere((v) => v.id == 'regular');
       final pro = config.variants.firstWhere((v) => v.id == 'pro');
 
-      // The corner procedure measures against the disc, so the pro arm
+      // The corner procedure measures against the spacer, so the pro arm
       // fetches it with the hex key; the standard arm has no corners.
       expect(config.checklistFor(pro), [
         'leveling.removeVat',
         'leveling.checkHexKeys',
-        kLevelingDiscChecklistKey,
+        kLevelingSpacerChecklistKey,
         'leveling.checkInstallPlate',
         'leveling.checkLcdClean',
       ]);
-      expect(config.checklistFor(regular), isNot(contains(kLevelingDiscChecklistKey)));
+      expect(config.checklistFor(regular),
+          isNot(contains(kLevelingSpacerChecklistKey)));
     });
 
     test('only the level check swaps the screen probe for probe_levelcheck', () {
