@@ -98,6 +98,12 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
   }
 
   @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    return;
+  }
+
+  @override
   Future<Map<String, dynamic>> getStatus() {
     throw UnimplementedError();
   }
@@ -170,10 +176,13 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
     throw UnimplementedError();
   }
 
-  void main() {}
-
   @override
   Future<Map<String, dynamic>> emergencyStop() {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> forceStop() {
     throw UnimplementedError();
   }
 
@@ -208,6 +217,13 @@ class FakeBackendClientForThumbnailTest implements BackendClient {
   Future<Map<String, dynamic>> editProfile(
       int id, Map<String, dynamic> fields) {
     // CHORE: implement editProfile
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>> cloneProfile(
+      int sourceId, Map<String, dynamic> fields) {
+    // CHORE: implement cloneProfile
     throw UnimplementedError();
   }
 

@@ -20,7 +20,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orion/util/sl1_thumbnail.dart';
-import 'fakes/fake_odyssey_client_for_thumbnail_test.dart';
+import 'fakes/fake_odyssey_client_for_thumbnail.dart';
 
 void main() {
   test('ThumbnailUtil.extractThumbnail writes bytes to temp file', () async {

@@ -593,8 +593,23 @@ class OrionMainAppState extends State<OrionMainApp> {
                   if (!_statusListenerAttached && navCtx != null) {
                     final statusProv =
                         Provider.of<StatusProvider>(navCtx, listen: false);
+                    final lightingProv =
+                        Provider.of<LightingProvider>(navCtx, listen: false);
+                    // Keep the lighting provider told whether a job owns the
+                    // RGB lighting right now.
+                    void syncPrintActive() {
+                      final s = statusProv.status;
+                      lightingProv.setPrintActive(
+                          (s?.isPrinting == true) ||
+                              (s?.isPaused == true) ||
+                              statusProv.isPausing ||
+                              statusProv.isCanceling);
+                    }
+
+                    syncPrintActive();
                     statusProv.addListener(() {
                       try {
+                        syncPrintActive();
                         final s = statusProv.status;
                         final active =
                             (s?.isPrinting == true) || (s?.isPaused == true);

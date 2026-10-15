@@ -25,6 +25,25 @@ import 'package:orion/util/orion_config.dart';
 class CalibrationContextProvider extends ChangeNotifier {
   CalibrationContext? _context;
 
+  /// Set when the operator abandons a run the setup wizard started. The step
+  /// that launched it waits behind the whole calibration flow, so it has to be
+  /// told to come back to the front rather than read the abandoned run as one
+  /// that finished.
+  bool _runDiscarded = false;
+  bool get runDiscarded => _runDiscarded;
+
+  void markRunDiscarded() {
+    _runDiscarded = true;
+    notifyListeners();
+  }
+
+  /// Reads the signal and clears it, so it only steers the launch that set it.
+  bool takeRunDiscarded() {
+    final discarded = _runDiscarded;
+    _runDiscarded = false;
+    return discarded;
+  }
+
   CalibrationContextProvider() {
     _loadFromConfig();
   }
@@ -48,6 +67,8 @@ class CalibrationContextProvider extends ChangeNotifier {
   /// Store calibration context when starting a calibration print
   void setContext(CalibrationContext context) {
     _context = context;
+    // A new run cannot have been discarded yet.
+    _runDiscarded = false;
     _saveToConfig();
     notifyListeners();
   }
@@ -55,6 +76,7 @@ class CalibrationContextProvider extends ChangeNotifier {
   /// Clear context after post-calibration evaluation is complete
   void clearContext() {
     _context = null;
+    _runDiscarded = false;
     _clearConfig();
     notifyListeners();
   }
@@ -111,6 +133,15 @@ class CalibrationContext {
   final int calibrationModelId;
   final String? evaluationGuideUrl;
 
+  /// True when [profileId] is a factory template, which cannot be written to:
+  /// the calibrated exposure is saved to a copy of it instead.
+  final bool profileIsTemplate;
+
+  /// True when the run was started from the setup wizard, which has to be
+  /// returned to if the run is discarded: the materials screen is not where
+  /// that operator came from.
+  final bool launchedFromOnboarding;
+
   CalibrationContext({
     required this.calibrationModelName,
     required this.resinProfileName,
@@ -119,6 +150,8 @@ class CalibrationContext {
     required this.profileId,
     required this.calibrationModelId,
     this.evaluationGuideUrl,
+    this.profileIsTemplate = false,
+    this.launchedFromOnboarding = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -130,6 +163,8 @@ class CalibrationContext {
       'profileId': profileId,
       'calibrationModelId': calibrationModelId,
       'evaluationGuideUrl': evaluationGuideUrl,
+      'profileIsTemplate': profileIsTemplate,
+      'launchedFromOnboarding': launchedFromOnboarding,
     };
   }
 
@@ -142,7 +177,8 @@ class CalibrationContext {
       profileId: json['profileId'] ?? 0,
       calibrationModelId: json['calibrationModelId'] ?? 0,
       evaluationGuideUrl: json['evaluationGuideUrl'],
+      profileIsTemplate: json['profileIsTemplate'] == true,
+      launchedFromOnboarding: json['launchedFromOnboarding'] == true,
     );
   }
 }
-

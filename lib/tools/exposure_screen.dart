@@ -29,7 +29,11 @@ import 'package:provider/provider.dart';
 import 'package:orion/backend_service/providers/config_provider.dart';
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/error_handling/error_dialog.dart';
+import 'package:toastification/toastification.dart';
+
+import 'package:orion/util/hold_button.dart';
 import 'package:orion/util/orion_spacing.dart';
+import 'package:orion/widgets/exposure_countdown_dialog.dart';
 
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -76,6 +80,10 @@ class ExposureScreenState extends State<ExposureScreen> {
       }
 
       final okCure = await manual.manualCure(true);
+      if (okCure) {
+        // Readable test image rather than a full-power cure.
+        await _backendService.applyExposureLedDuty();
+      }
       if (!okCure) {
         setState(() {
           _apiErrorState = true;
@@ -112,39 +120,30 @@ class ExposureScreenState extends State<ExposureScreen> {
     }
   }
 
-  void showExposureDialog(
+  Future<void> showExposureDialog(
       BuildContext context, int countdownTime, int delayTime,
-      {String? type}) {
+      {String? type}) async {
     _logger.info('Showing countdown dialog');
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return StreamBuilder<int>(
-          stream: (() async* {
-            await Future.delayed(Duration(seconds: delayTime));
-            yield* Stream.periodic(const Duration(milliseconds: 1),
-                    (i) => countdownTime * 1000 - i)
-                .take((countdownTime * 1000) + 1);
-          })(),
-          initialData:
-              countdownTime * 1000, // Provide an initial countdown value
-          builder: (context, snapshot) {
-            if (snapshot.data == 0) {
-              Future.delayed(Duration.zero, () {
-                // ignore: use_build_context_synchronously
-                Navigator.of(context, rootNavigator: true).pop(true);
-              });
-              return Container(); // Return an empty container when the countdown is over
-            } else {
-              return SafeArea(
-                child: _buildExposureDialog(
-                    context, snapshot, countdownTime, type),
-              );
-            }
-          },
-        );
+    final title = type == 'White'
+        ? FlutterI18n.translate(context, 'exposure.cleaning')
+        : type != null
+            ? '${FlutterI18n.translate(context, 'exposure.testing')} ${_translateExposureType(context, type)}'
+            : FlutterI18n.translate(context, 'exposure.exposing');
+
+    await showExposureCountdownDialog(
+      context,
+      countdownSeconds: countdownTime,
+      delaySeconds: delayTime,
+      title: title,
+      idleLabel: FlutterI18n.translate(context, 'exposure.testing_'),
+      onStop: () {
+        try {
+          _exposureOperation?.cancel();
+          _exposureCompleter?.complete();
+        } catch (e) {
+          _logger.severe('Failed to stop exposure: $e');
+        }
       },
     );
   }
@@ -160,87 +159,6 @@ class ExposureScreenState extends State<ExposureScreen> {
       default:
         return type;
     }
-  }
-
-  GlassDialog _buildExposureDialog(BuildContext context,
-      AsyncSnapshot<int> snapshot, int countdownTime, String? type) {
-    return GlassDialog(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 20.0), // Padding inside the dialog
-        child: Column(
-          mainAxisSize:
-              MainAxisSize.min, // To make the dialog as big as its children
-          children: [
-            Text(
-              type == 'White'
-                  ? FlutterI18n.translate(context, 'exposure.cleaning')
-                  : type != null
-                      ? '${FlutterI18n.translate(context, 'exposure.testing')} ${_translateExposureType(context, type)}'
-                      : FlutterI18n.translate(context, 'exposure.exposing'),
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'AtkinsonHyperlegible',
-              ),
-            ),
-            const SizedBox(
-                height:
-                    20), // Space between the title and the progress indicator
-            Padding(
-              padding: const EdgeInsets.only(
-                  left: 20.0, right: 20.0, top: 15.0, bottom: 20.0),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    height: 180, // Make the progress indicator larger
-                    width: 180, // Make the progress indicator larger
-                    child: CircularProgressIndicator(
-                      backgroundColor: Colors.grey.shade800,
-                      value: snapshot.data! / (countdownTime * 1000),
-                      strokeWidth: 12, // Make the progress indicator thicker
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: (snapshot.data! / 1000) < 999
-                        ? Text(
-                            (snapshot.data! / 1000).toStringAsFixed(0),
-                            style: const TextStyle(fontSize: 50),
-                          )
-                        : Text(
-                            FlutterI18n.translate(context, 'exposure.testing_'),
-                            style: TextStyle(fontSize: 30),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            GlassButton(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(250, 70),
-                maximumSize: const Size(250, 70),
-              ),
-              onPressed: () {
-                try {
-                  _exposureOperation?.cancel();
-                  _exposureCompleter?.complete();
-                } catch (e) {
-                  _logger.severe('Failed to stop exposure: $e');
-                }
-                Navigator.of(context, rootNavigator: true).pop(true);
-              },
-              child: Text(
-                FlutterI18n.translate(context, 'exposure.stop'),
-                style: const TextStyle(fontSize: 24),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -322,6 +240,41 @@ class ExposureScreenState extends State<ExposureScreen> {
     );
   }
 
+  /// A tap that ended too soon: say what the button needs.
+  void _showHoldHint() {
+    Toastification().show(
+      context: context,
+      type: ToastificationType.info,
+      style: ToastificationStyle.fillColored,
+      autoCloseDuration: const Duration(seconds: 2),
+      alignment: Alignment.topCenter,
+      title: Text(
+        FlutterI18n.translate(context, 'exposure.holdHint'),
+        style: const TextStyle(fontSize: 18),
+      ),
+    );
+  }
+
+  /// Every exposure run starts on a hold, so a stray tap cannot fire the
+  /// projector.  While the API is down the button keeps its disabled look.
+  Widget _buildHoldButton({
+    required VoidCallback onPressed,
+    required ButtonStyle style,
+    required Widget child,
+  }) {
+    if (_apiErrorState) {
+      return GlassButton(onPressed: null, style: style, child: child);
+    }
+    return HoldButton(
+      duration: const Duration(milliseconds: 200),
+      showHoldIcon: false,
+      onIncompleteHold: _showHoldHint,
+      onPressed: onPressed,
+      style: style,
+      child: child,
+    );
+  }
+
   Widget buildExposureButtons(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -331,11 +284,11 @@ class ExposureScreenState extends State<ExposureScreen> {
             children: [
               Expanded(
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
-                      child: GlassButton(
-                        onPressed:
-                            _apiErrorState ? null : () => exposeScreen('Grid'),
+                      child: _buildHoldButton(
+                        onPressed: () => exposeScreen('Grid'),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -366,9 +319,8 @@ class ExposureScreenState extends State<ExposureScreen> {
                     ),
                     const SizedBox(width: OrionSpacing.controlGap),
                     Expanded(
-                      child: GlassButton(
-                        onPressed:
-                            _apiErrorState ? null : () => exposeScreen('Logo'),
+                      child: _buildHoldButton(
+                        onPressed: () => exposeScreen('Logo'),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -406,11 +358,11 @@ class ExposureScreenState extends State<ExposureScreen> {
         const SizedBox(height: OrionSpacing.controlGap),
         Expanded(
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: GlassButton(
-                  onPressed:
-                      _apiErrorState ? null : () => exposeScreen('Measure'),
+                child: _buildHoldButton(
+                  onPressed: () => exposeScreen('Measure'),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -440,9 +392,8 @@ class ExposureScreenState extends State<ExposureScreen> {
               ),
               const SizedBox(width: OrionSpacing.controlGap),
               Expanded(
-                child: GlassButton(
-                  onPressed:
-                      _apiErrorState ? null : () => exposeScreen('White'),
+                child: _buildHoldButton(
+                  onPressed: () => exposeScreen('White'),
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
@@ -454,13 +405,13 @@ class ExposureScreenState extends State<ExposureScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       PhosphorIcon(
-                        PhosphorIcons.broom(),
+                        PhosphorIcons.square(),
                         size: 40,
                         color: _apiErrorState ? Colors.grey : null,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        FlutterI18n.translate(context, 'exposure.clean'),
+                        FlutterI18n.translate(context, 'exposure.blank'),
                         style: TextStyle(
                           fontSize: 24,
                           color: _apiErrorState ? Colors.grey : null,

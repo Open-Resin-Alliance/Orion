@@ -115,6 +115,8 @@ class OrionTextFieldState extends State<OrionTextField>
                                 ? isKeyboardOpen
                                     ? Colors.white.withValues(alpha: 0.8)
                                     : Colors.white.withValues(alpha: 0.3)
+                                // A solid theme colour here reads as a harsh
+                                // white outline around the field.
                                 : isKeyboardOpen
                                     ? Theme.of(context)
                                         .colorScheme
@@ -122,7 +124,8 @@ class OrionTextFieldState extends State<OrionTextField>
                                     : Theme.of(context)
                                         .textTheme
                                         .bodyLarge!
-                                        .color!,
+                                        .color!
+                                        .withValues(alpha: 0.8),
                             width: isGlassTheme
                                 ? (isKeyboardOpen ? 2.0 : 1.0)
                                 : 1.0,

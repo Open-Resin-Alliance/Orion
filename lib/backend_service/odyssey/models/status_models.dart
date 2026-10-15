@@ -86,15 +86,41 @@ class StatusModel {
     return completed / total;
   }
 
-  /// Elapsed print time as reported by backend (converted to [Duration]).
-  Duration get elapsedPrintTime =>
-      Duration(seconds: (printData?.printTimeSeconds ?? 0));
+  /// Print time still to go as of this snapshot.
+  ///
+  /// The backend reports the whole job's estimate (`print_data.print_time`)
+  /// and the current [layer], never a remaining time, so the remainder is the
+  /// untouched share of that estimate: the layers not started yet plus the one
+  /// being exposed. Null when the payload carries no usable estimate — no
+  /// print, no print time, or no layer information.
+  ///
+  /// This is the snapshot value; `StatusProvider.remainingPrintTime` ticks it
+  /// down between snapshots.
+  Duration? get remainingPrintTime {
+    final totalLayers = printData?.layerCount ?? 0;
+    final totalSeconds = printData?.printTimeSeconds ?? 0;
+    final currentLayer = layer;
+    if (totalLayers <= 0 || totalSeconds <= 0 || currentLayer == null) {
+      return null;
+    }
+    final completed = (currentLayer - 1).clamp(0, totalLayers);
+    final secondsLeft = totalSeconds * (totalLayers - completed) / totalLayers;
+    return Duration(seconds: secondsLeft.round());
+  }
 
-  /// Formatted elapsed print time as HH:MM:SS (zero-padded).
-  String get formattedElapsedPrintTime {
-    final d = elapsedPrintTime;
+  /// Formats [duration] as zero-padded HH:MM, dropping the seconds.
+  static String formatHoursMinutes(Duration duration) {
     String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(d.inHours)}:${two(d.inMinutes.remainder(60))}:${two(d.inSeconds.remainder(60))}';
+    return '${two(duration.inHours)}:'
+        '${two(duration.inMinutes.remainder(60))}';
+  }
+
+  /// Formats [duration] as zero-padded HH:MM:SS.
+  static String formatDuration(Duration duration) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(duration.inHours)}:'
+        '${two(duration.inMinutes.remainder(60))}:'
+        '${two(duration.inSeconds.remainder(60))}';
   }
 
   /// Human friendly label factoring in backend state and transitional UI flags.

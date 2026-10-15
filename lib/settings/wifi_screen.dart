@@ -53,6 +53,7 @@ class WifiScreenState extends State<WifiScreen> {
   bool _connectionFailed = false;
   Map<String, String>? _lastNetworkDetails;
   late Future<Map<String, String>> _networkDetailsFuture;
+  Future<Map<String, String>>? _detailsFetch;
   // Keep a reference to the provider so we can remove the listener on dispose.
   WiFiProvider? _providerListener;
 
@@ -69,9 +70,7 @@ class WifiScreenState extends State<WifiScreen> {
       }
     });
     // Initialize cached future with a single fetch. We'll refresh on provider changes.
-    _networkDetailsFuture =
-        (widget.networkDetailsFetcher?.call() ?? getNetworkDetails())
-            .then((net) {
+    _networkDetailsFuture = _fetchNetworkDetails().then((net) {
       _lastNetworkDetails = Map<String, String>.from(net);
       return net;
     });
@@ -100,15 +99,14 @@ class WifiScreenState extends State<WifiScreen> {
         provider.connectionType == 'ethernet';
 
     if (isConnected) {
-      // We're connected â€” do not refresh network details on every provider
+      // We're connected — do not refresh network details on every provider
       // notification. This keeps the UI stable. If we previously didn't have
       // details, keep the cached ones.
       return;
     }
 
     // Not connected: refresh network details and update UI only if values changed.
-    final fetcher = widget.networkDetailsFetcher ?? getNetworkDetails;
-    fetcher().then((net) {
+    _fetchNetworkDetails().then((net) {
       if (!_mapsEqual(net, _lastNetworkDetails)) {
         if (mounted) {
           setState(() {
@@ -156,6 +154,50 @@ class WifiScreenState extends State<WifiScreen> {
         widget.isConnected.value = false; // Set isConnected to false
       });
       return FlutterI18n.translate(context, 'wifi.failedIp');
+    }
+  }
+
+  /// How long to wait before re-reading network details after a failure.
+  static const Duration _networkDetailsRetryDelay = Duration(milliseconds: 600);
+
+  /// Reads the network details, retrying until they load.
+  ///
+  /// The platform can raise a socket error while an interface is still coming
+  /// up as the page opens - the same read a moment later succeeds, which is
+  /// why leaving and re-entering used to be the workaround. The caller's
+  /// FutureBuilder shows a spinner while this is outstanding, so the retry is
+  /// invisible rather than an error the user has to clear.
+  ///
+  /// Concurrent callers share one attempt loop: the provider notifies
+  /// repeatedly while disconnected, and each notification would otherwise
+  /// start its own.
+  Future<Map<String, String>> _fetchNetworkDetails() {
+    final pending = _detailsFetch;
+    if (pending != null) return pending;
+
+    final future = _readNetworkDetails();
+    _detailsFetch = future;
+    return future.whenComplete(() {
+      if (identical(_detailsFetch, future)) _detailsFetch = null;
+    });
+  }
+
+  Future<Map<String, String>> _readNetworkDetails() async {
+    final fetcher = widget.networkDetailsFetcher ?? getNetworkDetails;
+    var attempt = 0;
+    while (true) {
+      try {
+        return await fetcher();
+      } catch (e, st) {
+        attempt++;
+        _logger.warning(
+            'Failed to read network details (attempt $attempt), retrying in '
+            '${_networkDetailsRetryDelay.inMilliseconds}ms: $e',
+            st);
+        // Nothing left to update once the page is gone.
+        if (!mounted) rethrow;
+        await Future.delayed(_networkDetailsRetryDelay);
+      }
     }
   }
 
@@ -300,12 +342,12 @@ class WifiScreenState extends State<WifiScreen> {
             return FutureBuilder<Map<String, String>>(
               future: _networkDetailsFuture,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                if (snapshot.connectionState == ConnectionState.waiting ||
+                    snapshot.hasError) {
+                  // Errors are retried by _fetchNetworkDetails and it only
+                  // gives up once the page is gone, so anything the builder
+                  // sees here is still "loading".
                   return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(
-                      child: Text(
-                          '${FlutterI18n.translate(context, 'common.error')}: ${snapshot.error}'));
                 } else {
                   final Map<String, String> net = snapshot.data ??
                       {'ip': '', 'mac': '', 'speed': '', 'iface': ''};
@@ -360,12 +402,22 @@ class WifiScreenState extends State<WifiScreen> {
                   itemCount: networks.length,
                   itemBuilder: (context, index) {
                     final network = networks[index];
+                    // `nmcli` prints `--` in the SSID column for a hidden
+                    // network (and the legacy backend can hand over an empty
+                    // one): neither is a name to show the user.
+                    final rawSsid = network['SSID'] ?? '';
+                    final isHidden = rawSsid.isEmpty || rawSsid == '--';
+                    final ssidLabel = isHidden
+                        ? FlutterI18n.translate(context, 'wifi.hiddenNetwork')
+                        : rawSsid;
                     return GlassCard(
                       elevation: 1,
                       outlined: true,
                       child: ListTile(
-                        key: ValueKey(network['SSID']),
-                        title: Text(network['SSID'] ?? '',
+                        // Hidden networks share their raw SSID, so the index
+                        // is what keeps the keys unique.
+                        key: ValueKey('$index:$rawSsid'),
+                        title: Text(ssidLabel,
                             style: const TextStyle(fontSize: 22)),
                         subtitle: Text(
                             '${FlutterI18n.translate(context, 'wifi.signalStrength')}: ${network['SIGNAL']} dBm',
@@ -381,8 +433,7 @@ class WifiScreenState extends State<WifiScreen> {
                                 title: Center(
                                     child: Text(FlutterI18n.translate(
                                             context, 'wifi.connectTo')
-                                        .replaceAll(
-                                            '%s', network['SSID'] ?? ''))),
+                                        .replaceAll('%s', ssidLabel))),
                                 content: SizedBox(
                                   width:
                                       MediaQuery.of(context).size.width * 0.5,

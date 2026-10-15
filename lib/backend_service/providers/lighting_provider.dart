@@ -73,6 +73,12 @@ class LightingProvider extends ChangeNotifier {
 
   bool _temporarilyDisabled = false;
 
+  /// A print owns the RGB lighting: the firmware drives it, so while a job is
+  /// active we must not send brightness/effect commands at all.
+  bool _printActive = false;
+
+  bool get printActive => _printActive;
+
   bool get standbyLedDimmingEnabled => _standbyLedDimmingEnabled;
   bool get hasLedCommandTemplate => _activeProgressTemplate.isNotEmpty;
   int get ledMaxBrightness => _ledMaxBrightness;
@@ -164,7 +170,22 @@ class LightingProvider extends ChangeNotifier {
     _ledStandbyMinBrightness = minRaw.clamp(0, _ledMaxBrightness);
   }
 
+  /// Told by the app shell whenever a job is printing/paused/canceling.
+  void setPrintActive(bool value) {
+    if (_printActive == value) return;
+    _printActive = value;
+    if (value) {
+      // Drop anything queued so nothing fires mid-print.
+      _flushTimer?.cancel();
+      _flushTimer = null;
+      _queuedBrightness = null;
+      _standbyEffectStarted = false;
+    }
+    _log.info('RGB control ${value ? 'suspended' : 'resumed'} for print');
+  }
+
   Future<void> applyStandbyProgress(double progress) async {
+    if (_printActive) return;
     if (!_standbyLedDimmingEnabled || _temporarilyDisabled) return;
     if (_activeProgressTemplate.isEmpty) return;
 
@@ -188,6 +209,7 @@ class LightingProvider extends ChangeNotifier {
   }
 
   Future<void> setFullBrightness() async {
+    if (_printActive) return;
     if (_temporarilyDisabled) return;
     _standbyEffectStarted = false;
 
@@ -253,6 +275,8 @@ class LightingProvider extends ChangeNotifier {
     required double progress,
     bool force = false,
   }) async {
+    // Last line of defence: never touch the LEDs during a job.
+    if (_printActive) return;
     if (template.isEmpty) return;
     if (!force && target == _lastSentBrightness) return;
 

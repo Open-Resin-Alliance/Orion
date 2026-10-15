@@ -9,7 +9,7 @@ Pod::Spec.new do |s|
   # Use the stable apple SDK from GitHub releases instead of broken SourceForge nightly
   s.source           = { :http => 'https://github.com/wang-bin/mdk-sdk/releases/download/v0.35.0/mdk-sdk-apple.tar.xz' }
   
-  s.osx.deployment_target = '10.13'
+  s.osx.deployment_target = '12.0'
   
   s.vendored_frameworks = 'mdk-sdk/lib/mdk.xcframework'
   

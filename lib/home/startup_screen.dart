@@ -668,15 +668,21 @@ class _StartupScreenState extends State<StartupScreen>
                                     ),
                                   ),
                                   ShaderMask(
+                                    // Same gradient as the "Resin 3D Printing"
+                                    // hero on openresin.org --brand-gradient:
+                                    // linear-gradient(100deg, violet 0%,
+                                    // pink 52%, orange 100%).
                                     shaderCallback: (bounds) =>
                                         const LinearGradient(
                                       colors: [
-                                        Color(0xFFFF9D7A), // Pastel orange
-                                        Color(0xFFFF7A85), // Pastel red
-                                        Color(0xFFC49FE8), // Pastel purple
+                                        Color(0xFF9333EA), // brand violet
+                                        Color(0xFFEC4899), // brand pink
+                                        Color(0xFFF59E0B), // brand orange
                                       ],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
+                                      stops: [0.0, 0.52, 1.0],
+                                      // 100deg: left to right, 10 deg down.
+                                      begin: Alignment(-1.0, -0.18),
+                                      end: Alignment(1.0, 0.18),
                                     ).createShader(bounds),
                                     child: Text(
                                       FlutterI18n.translate(

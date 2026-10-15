@@ -28,6 +28,14 @@ class HoldButton extends StatefulWidget {
   final Duration duration;
   final GlassButtonTint tint;
 
+  /// Show the little hold-me finger on the right edge.  Turn it off for
+  /// "secret" holds, where the label already says what to do.
+  final bool showHoldIcon;
+
+  /// Called when the press ends before the hold completes — a plain tap — so
+  /// the caller can say the button has to be held.
+  final VoidCallback? onIncompleteHold;
+
   const HoldButton({
     super.key,
     required this.onPressed,
@@ -35,6 +43,8 @@ class HoldButton extends StatefulWidget {
     this.style,
     this.duration = const Duration(seconds: 3),
     this.tint = GlassButtonTint.none,
+    this.showHoldIcon = true,
+    this.onIncompleteHold,
   });
 
   @override
@@ -64,15 +74,20 @@ class HoldButtonState extends State<HoldButton> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _onTapDown(TapDownDetails details) {
+  // Raw pointer events rather than a tap recogniser: the button's own child is
+  // an interactive GlassButton, and the arena would hand a quick tap to it —
+  // leaving the hold (and the "you have to hold this" hint) unseen.
+  void _onPointerDown(PointerDownEvent _) {
     _controller.forward();
   }
 
-  void _onTapUp(TapUpDetails details) {
+  void _onPointerUp(PointerUpEvent _) {
+    final incomplete = _controller.value < 1.0;
     _controller.reverse();
+    if (incomplete) widget.onIncompleteHold?.call();
   }
 
-  void _onTapCancel() {
+  void _onPointerCancel(PointerCancelEvent _) {
     _controller.fling(velocity: -1);
   }
 
@@ -103,10 +118,10 @@ class HoldButtonState extends State<HoldButton> with TickerProviderStateMixin {
       ),
     );
 
-    return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapCancel,
+    return Listener(
+      onPointerDown: _onPointerDown,
+      onPointerUp: _onPointerUp,
+      onPointerCancel: _onPointerCancel,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
@@ -118,7 +133,9 @@ class HoldButtonState extends State<HoldButton> with TickerProviderStateMixin {
                   buttonChild,
                   // Show the animated hold icon only when the button is idle (not being pressed or held).
                   // The condition ensures the icon appears only when the animation is not running and the progress is at the start.
-                  if (!_controller.isAnimating && _controller.value == 0)
+                  if (widget.showHoldIcon &&
+                      !_controller.isAnimating &&
+                      _controller.value == 0)
                     Align(
                       alignment: Alignment.centerRight,
                       child: Padding(

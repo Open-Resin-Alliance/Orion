@@ -1,4 +1,25 @@
+/*
+* Orion - WiFi / Ethernet Screen Test
+* Copyright (C) 2026 Open Resin Alliance
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_i18n/flutter_i18n.dart';
+import 'package:flutter_i18n/loaders/decoders/json_decode_strategy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -46,33 +67,91 @@ class FakeEthernetProvider extends WiFiProvider {
   }
 }
 
-void main() {
-  testWidgets('Ethernet UI shows MAC, speed and disconnect button',
-      (WidgetTester tester) async {
-    final fake = FakeEthernetProvider();
-    final isConnected = ValueNotifier<bool>(true);
+/// Disconnected provider whose scan result stands in for a real one.
+class FakeScanProvider extends WiFiProvider {
+  FakeScanProvider() : super(startPolling: false);
 
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<WiFiProvider>.value(value: fake),
-          ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ],
-        child: MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(size: Size(400, 800)),
-            child: WifiScreen(
-              isConnected: isConnected,
-              networkDetailsFetcher: () async => {
-                'ip': '192.168.1.42',
-                'mac': '02:00:00:00:00:01',
-                'speed': '1000/1000',
-                'iface': 'eth0'
-              },
-            ),
+  @override
+  String get connectionType => 'none';
+
+  @override
+  String? get currentSSID => null;
+
+  @override
+  bool get isConnected => false;
+
+  @override
+  bool get isScanning => false;
+
+  @override
+  String get platform => 'linux';
+
+  @override
+  Future<List<Map<String, String>>> scanNetworks() async => _networks;
+
+  @override
+  List<Map<String, String>> get availableNetworks => _networks;
+
+  // `nmcli` reports a hidden network's SSID as `--`.
+  static const _networks = [
+    {'SSID': 'HomeNet', 'SIGNAL': '80', 'SECURITY': '(WPA2)'},
+    {'SSID': '--', 'SIGNAL': '40', 'SECURITY': '(WPA2)'},
+  ];
+}
+
+/// Pumps the Ethernet view. The screen reads its strings through
+/// [FlutterI18n], so the delegate has to be in the tree.
+Future<void> _pumpEthernet(
+  WidgetTester tester, {
+  required FakeEthernetProvider provider,
+  required Future<Map<String, String>> Function() fetcher,
+}) async {
+  final delegate = FlutterI18nDelegate(
+    translationLoader: FileTranslationLoader(
+      useCountryCode: false,
+      fallbackFile: 'en',
+      basePath: 'assets/i18n',
+      decodeStrategies: [JsonDecodeStrategy()],
+    ),
+  );
+  await delegate.load(const Locale('en'));
+
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<WiFiProvider>.value(value: provider),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
+      child: MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: [delegate],
+        supportedLocales: const [Locale('en')],
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(400, 800)),
+          child: WifiScreen(
+            isConnected: ValueNotifier<bool>(true),
+            networkDetailsFetcher: fetcher,
           ),
         ),
       ),
+    ),
+  );
+}
+
+void main() {
+  testWidgets('Ethernet UI shows the interface details',
+      (WidgetTester tester) async {
+    final fake = FakeEthernetProvider();
+
+    await _pumpEthernet(
+      tester,
+      provider: fake,
+      fetcher: () async => {
+        'ip': '192.168.1.42',
+        'mac': '02:00:00:00:00:01',
+        'speed': '1000/1000',
+        'iface': 'eth0',
+      },
     );
 
     // Allow FutureBuilders and async operations to complete
@@ -81,18 +160,101 @@ void main() {
     expect(find.text('Connected to Ethernet'), findsOneWidget);
     expect(find.text('MAC Address'), findsOneWidget);
     expect(find.text('Link Speed'), findsOneWidget);
-    // The exact button widget can vary by Flutter version/theme; assert on
-    // the visible label instead.
-    expect(find.text('Disconnect'), findsWidgets);
 
-    // Tap disconnect
-    await tester.tap(find.text('Disconnect').first);
+    // Ethernet only offers a disconnect action on macOS; on Linux the HMI
+    // cannot take the interface down, so the button is deliberately absent.
+    if (Platform.isMacOS) {
+      expect(find.text('Disconnect'), findsWidgets);
+
+      await tester.tap(find.text('Disconnect').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Disconnect').last);
+      await tester.pumpAndSettle();
+
+      expect(fake.disconnectCalled, isTrue);
+    } else {
+      expect(find.text('Disconnect'), findsNothing);
+    }
+  });
+
+  testWidgets('a transient socket error retries instead of erroring out',
+      (WidgetTester tester) async {
+    final fake = FakeEthernetProvider();
+    var attempts = 0;
+
+    await _pumpEthernet(
+      tester,
+      provider: fake,
+      // The platform raises a socket error while the interface is still
+      // coming up, then answers normally.
+      fetcher: () async {
+        attempts++;
+        if (attempts <= 2) {
+          throw const SocketException('Network is unreachable');
+        }
+        return {
+          'ip': '192.168.1.42',
+          'mac': '02:00:00:00:00:01',
+          'speed': '1000/1000',
+          'iface': 'eth0',
+        };
+      },
+    );
+
+    // First attempt fails: the page keeps loading rather than reporting an
+    // error the user would have to clear by leaving and re-entering.
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.textContaining('Error'), findsNothing);
+
+    // Second attempt (after the retry delay) fails too.
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.textContaining('Error'), findsNothing);
+
+    // Third attempt succeeds and the details render.
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+    expect(attempts, 3);
+    expect(find.text('Connected to Ethernet'), findsOneWidget);
+    expect(find.text('MAC Address'), findsOneWidget);
+  });
+
+  testWidgets('a hidden network is listed by name, not as --',
+      (WidgetTester tester) async {
+    final fake = FakeScanProvider();
+
+    final delegate = FlutterI18nDelegate(
+      translationLoader: FileTranslationLoader(
+        useCountryCode: false,
+        fallbackFile: 'en',
+        basePath: 'assets/i18n',
+        decodeStrategies: [JsonDecodeStrategy()],
+      ),
+    );
+    await delegate.load(const Locale('en'));
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WiFiProvider>.value(value: fake),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: [delegate],
+          supportedLocales: const [Locale('en')],
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(400, 800)),
+            child: WifiScreen(isConnected: ValueNotifier<bool>(false)),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    // Confirm disconnect in the dialog.
-    await tester.tap(find.text('Disconnect').last);
-    await tester.pumpAndSettle();
-
-    expect(fake.disconnectCalled, isTrue);
+    expect(find.text('HomeNet'), findsOneWidget);
+    expect(find.text('<Hidden Network>'), findsOneWidget);
+    expect(find.text('--'), findsNothing);
   });
 }

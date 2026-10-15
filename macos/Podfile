@@ -1,4 +1,5 @@
-platform :macos, '11.0'
+# Xcode 27 only supports deployment targets >= macOS 12.0.
+platform :macos, '12.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -37,8 +38,20 @@ target 'Runner' do
   pod 'mdk', :podspec => 'LocalPods/mdk/mdk.podspec'
 end
 
+# Plugins still declare deployment targets as low as 10.11, and Flutter's helper
+# only deletes targets below 10.15 so they inherit from the Pods project. Force
+# every pod target (and the Pods project itself) to 12.0, the minimum Xcode 27
+# accepts. Runs after flutter_additional_macos_build_settings so it wins.
 post_install do |installer|
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '12.0'
+  end
+
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+
+    target.build_configurations.each do |config|
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '12.0'
+    end
   end
 end
