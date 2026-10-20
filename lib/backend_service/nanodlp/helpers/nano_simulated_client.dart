@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:orion/backend_service/backend_client.dart';
 import 'package:orion/backend_service/domain/models.dart';
 import 'package:orion/backend_service/nanodlp/helpers/nano_thumbnail_generator.dart';
+import 'package:orion/backend_service/nanodlp/models/nano_profiles.dart';
 import 'package:orion/backend_service/nanodlp/models/nano_status.dart';
 import 'package:orion/backend_service/nanodlp/nanodlp_mappers.dart';
 import 'package:orion/util/orion_config.dart';
@@ -79,6 +80,9 @@ class NanoDlpSimulatedClient implements BackendClient {
   static const Duration _calibrationPreparationDuration = Duration(seconds: 2);
   static const int _calibrationPrintLayers = 10;
   static const double _calibrationPrintLayerSeconds = 0.8;
+
+  /// Resin the simulated job reports as used, per layer, in mL.
+  static const double _materialPerLayerMl = 0.05;
   static const String _persistedStateFile = 'simulated_backend_state.json';
 
   String? _stateFilePath() {
@@ -289,6 +293,10 @@ class NanoDlpSimulatedClient implements BackendClient {
         'name': _currentFileName,
         'path': _currentFilePath,
         'layer_count': _activeTotalLayers,
+        // The job's total estimate, which the status screen's Time Remaining
+        // card counts down from: layers * seconds per layer.
+        'print_time': _activeTotalLayers * _activeLayerSeconds,
+        'used_material': _activeTotalLayers * _materialPerLayerMl,
       },
       'calibration': {
         'model_id': _lastCalibrationModelId,
@@ -457,6 +465,17 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
+    // The simulated backend has no form to echo, so the overrides are merged
+    // straight onto the stored profile.
+    final fields =
+        NanoProfile.denormalizeForBackend(settings.toNormalizedMap());
+    if (title != null && title.isNotEmpty) fields['Title'] = title;
+    await editProfile(profileId, fields);
+  }
+
+  @override
   Future<Map<String, dynamic>> getStatus() async => _mappedStatus();
 
   @override
@@ -562,6 +581,9 @@ class NanoDlpSimulatedClient implements BackendClient {
   }
 
   @override
+  Future<Map<String, dynamic>> forceStop() => emergencyStop();
+
+  @override
   Future<void> displayTest(String test) async {}
 
   @override
@@ -655,6 +677,28 @@ class NanoDlpSimulatedClient implements BackendClient {
 
   @override
   Future<int?> getDefaultProfileId() async => _defaultProfileId;
+
+  @override
+  Future<Map<String, dynamic>> cloneProfile(
+      int sourceId, Map<String, dynamic> fields) async {
+    final clone = Map<String, dynamic>.from(await getProfileJson(sourceId));
+    final nextId = _profiles.keys.isEmpty ? 1 : _profiles.keys.reduce(max) + 1;
+    clone['ProfileID'] = nextId;
+    clone['ManufacturerLock'] = false;
+
+    final custom = clone['CustomValues'] is Map
+        ? Map<String, dynamic>.from(clone['CustomValues'] as Map)
+        : <String, dynamic>{};
+    fields.forEach((key, value) {
+      clone[key] = value;
+      custom[key] = '$value';
+    });
+    clone['CustomValues'] = custom;
+
+    _profiles[nextId] = clone;
+    _persistState();
+    return clone;
+  }
 
   @override
   Future<void> setDefaultProfileId(int id) async {

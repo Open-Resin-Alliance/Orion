@@ -30,6 +30,12 @@ class ZoomValueEditorDialog extends StatefulWidget {
   /// around the current value (31 points including the current).
   final int zoomPointsRadius;
 
+  /// Keep the current value in the display and pre-fill it on the numeric
+  /// keyboard when editing starts, instead of clearing to placeholder dashes.
+  /// Used where the operator adjusts from the value that is already set (the
+  /// leveling Z offset) rather than typing a fresh one.
+  final bool keepValueOnOpen;
+
   const ZoomValueEditorDialog({
     super.key,
     required this.title,
@@ -42,6 +48,7 @@ class ZoomValueEditorDialog extends StatefulWidget {
     this.step,
     this.disableZoomWhenDense = true,
     this.zoomPointsRadius = 15,
+    this.keepValueOnOpen = false,
   });
 
   static Future<double?> show(
@@ -56,6 +63,7 @@ class ZoomValueEditorDialog extends StatefulWidget {
     double? step,
     bool disableZoomWhenDense = true,
     int zoomPointsRadius = 15,
+    bool keepValueOnOpen = false,
   }) async {
     return showDialog<double>(
       context: context,
@@ -70,6 +78,7 @@ class ZoomValueEditorDialog extends StatefulWidget {
         step: step,
         disableZoomWhenDense: disableZoomWhenDense,
         zoomPointsRadius: zoomPointsRadius,
+        keepValueOnOpen: keepValueOnOpen,
       ),
     );
   }
@@ -111,9 +120,10 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
 
   Future<void> _editNumericValue() async {
     _exitZoom();
+    final keepValue = widget.keepValueOnOpen;
     setState(() {
       _isEditingNumeric = true;
-      _tempEditValue = '';
+      _tempEditValue = keepValue ? _keyboardValueString() : '';
     });
     _keyboardOpen.value = true;
 
@@ -122,7 +132,8 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
       initialValue: _currentValue,
       allowNegative: widget.min < 0,
       decimalPlaces: widget.decimals,
-      clearOnOpen: true,
+      clearOnOpen: !keepValue,
+      initialText: keepValue ? _keyboardValueString() : null,
       maxIntegerDigits: _maxIntegerDigitsFromRange(widget.min, widget.max),
       onChanged: (text) {
         // Live update with unclamped temporary value
@@ -139,7 +150,9 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
       });
       if (result != null && result.isNotEmpty) {
         try {
-          final parsed = double.parse(result);
+          // The keyboard's minus glyph (U+2212) is not what double.parse
+          // accepts, so fold it back to a hyphen first.
+          final parsed = double.parse(result.replaceAll('−', '-'));
           final clamped = parsed.clamp(widget.min, widget.max);
           setState(() {
             _currentValue = clamped;
@@ -161,6 +174,14 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
     final floorVal = spanMax.floor();
     return floorVal.toString().length;
   }
+
+  /// The current value formatted exactly as the resting display shows it
+  /// (fixed decimals), so keeping it while editing looks identical to the
+  /// value before the edit started — and the numeric keyboard edits that same
+  /// string, so a backspace deletes the digit the operator sees.  The sign is
+  /// the keyboard's own minus glyph (U+2212), fixed up again when parsing.
+  String _keyboardValueString() =>
+      _currentValue.toStringAsFixed(widget.decimals).replaceFirst('-', '−');
 
   void _resetHoldTimer() {
     _holdTimer?.cancel();
@@ -265,7 +286,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
 
     return GlassAlertDialog(
       title: Text(widget.title,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+          style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w600)),
       content: SizedBox(
         width: 400,
         child: Column(
@@ -288,7 +309,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                             child: Text(
                               widget.description!,
                               style: TextStyle(
-                                fontSize: 19,
+                                fontSize: 20,
                                 color: Colors.grey.shade400,
                                 height: 1.4,
                               ),
@@ -332,7 +353,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                         // Empty: show just integer placeholder dashes
                         final intPlaces =
                             widget.max.toString().split('.')[0].length;
-                        valueStr = 'Ã¢Ë†â€™' * intPlaces;
+                        valueStr = '−' * intPlaces;
                       } else {
                         valueStr = _tempEditValue!;
                         // Only add decimal placeholder if user has entered decimal point
@@ -341,7 +362,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                           if (parts[1].length < activeDecimals) {
                             // Has decimal but incomplete, pad with dashes
                             valueStr +=
-                                'Ã¢Ë†â€™' * (activeDecimals - parts[1].length);
+                                '−' * (activeDecimals - parts[1].length);
                           }
                         }
                       }
@@ -378,7 +399,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                         int currentExp = digitsBeforeDecimal - 1;
                         for (var i = 0; i < valueStr.length; i++) {
                           final ch = valueStr[i];
-                          if (ch == '-' || ch == 'Ã¢Ë†â€™') {
+                          if (ch == '-' || ch == '−') {
                             spans.add(TextSpan(
                                 text: ch,
                                 style: baseStyle.copyWith(color: dimColor)));
@@ -414,7 +435,7 @@ class _ZoomValueEditorDialogState extends State<ZoomValueEditorDialog>
                       for (var i = 0; i < valueStr.length; i++) {
                         final ch = valueStr[i];
                         // Make placeholder dashes blink based on editing position
-                        if (showCursor && ch == 'Ã¢Ë†â€™') {
+                        if (showCursor && ch == '−') {
                           // Find if we're before or after decimal point
                           bool isBeforeDecimal = true;
                           for (var j = 0; j < i; j++) {

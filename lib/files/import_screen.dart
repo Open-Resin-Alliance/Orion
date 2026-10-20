@@ -23,6 +23,7 @@ import 'package:flutter_i18n/flutter_i18n.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'package:orion/glasser/glasser.dart';
 import 'package:orion/util/widgets/system_status_widget.dart';
@@ -162,11 +163,15 @@ class ImportScreenState extends State<ImportScreen> {
         orElse: () => resins.first,
       );
 
-      // Extract profile ID from the resin profile key.
-      final profileKey = selectedResin.path ?? selectedResin.name;
-      final profileId = int.tryParse(profileKey);
+      // Resolve the numeric profile ID from the backend metadata. `path` is
+      // a URL like `/profile/edit/simple/10001`, so it cannot be parsed
+      // directly as an int.
+      final profileId =
+          ResinsProvider.resolveProfileIdFromMeta(selectedResin.meta) ??
+              int.tryParse(selectedResin.path?.split('/').last ?? '');
       if (profileId == null) {
-        throw Exception('Invalid profile ID: $profileKey');
+        throw Exception(
+            'Unable to resolve profile ID for ${selectedResin.name}');
       }
 
       // Create a backend service instance to import the file
@@ -440,19 +445,19 @@ class ImportScreenState extends State<ImportScreen> {
           title: Text(FlutterI18n.translate(context, 'common.back')),
         ),
         body: Padding(
-          padding: OrionSpacing.screenPadding,
+          padding: OrionSpacing.screenPaddingWithBottomNav,
           child: Column(
             children: [
               Expanded(
                 flex: 1,
                 child: _buildJobNameField(context),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: OrionSpacing.controlGap),
               Expanded(
                 flex: 1,
                 child: _buildMaterialSelector(context),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: OrionSpacing.controlGap),
               _buildActionButtons(context),
             ],
           ),
@@ -464,13 +469,12 @@ class ImportScreenState extends State<ImportScreen> {
   Widget _buildJobNameField(BuildContext context) {
     return GlassCard(
       outlined: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: OrionSpacing.cardPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: SpawnOrionTextField(
@@ -482,12 +486,10 @@ class ImportScreenState extends State<ImportScreen> {
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: OrionKbExpander(textFieldKey: _jobNameKey),
-          ),
-        ],
+            const SizedBox(height: OrionSpacing.listGap),
+            OrionKbExpander(textFieldKey: _jobNameKey),
+          ],
+        ),
       ),
     );
   }
@@ -511,7 +513,7 @@ class ImportScreenState extends State<ImportScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(FlutterI18n.translate(context, 'import.failedLoadMaterials')),
-            const SizedBox(height: 16),
+            const SizedBox(height: OrionSpacing.controlGap),
             GlassButton(
               onPressed: provider.refresh,
               child: Text(FlutterI18n.translate(context, 'common.retry')),
@@ -531,10 +533,10 @@ class ImportScreenState extends State<ImportScreen> {
             children: [
               Text(FlutterI18n.translate(context, 'import.materialProfile'),
                   style: TextStyle(fontSize: 16)),
-              const SizedBox(height: 8),
+              const SizedBox(height: OrionSpacing.listGap),
               Text(FlutterI18n.translate(context, 'import.noProfilesFound'),
                   style: TextStyle(fontSize: 14, color: Colors.grey)),
-              const SizedBox(height: 16),
+              const SizedBox(height: OrionSpacing.controlGap),
               GlassButton(
                 onPressed: provider.refresh,
                 child: Text(FlutterI18n.translate(context, 'common.retry')),
@@ -567,54 +569,46 @@ class ImportScreenState extends State<ImportScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () => _selectResinProfile(resins),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Text(
+        child: Padding(
+          padding: OrionSpacing.cardPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
                 FlutterI18n.translate(context, 'import.materialProfile'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AutoSizeText(
-                              selectedResin.name,
-                              maxLines: 2,
-                              minFontSize: 14,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+              const SizedBox(height: OrionSpacing.listGap),
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AutoSizeText(
+                            selectedResin.name,
+                            maxLines: 2,
+                            minFontSize: 14,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
-                        ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      Icon(Icons.chevron_right,
-                          color: Colors.grey.shade400, size: 24),
-                    ],
-                  ),
+                    ),
+                    Icon(Icons.chevron_right,
+                        color: Colors.grey.shade400, size: 24),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -642,47 +636,64 @@ class ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final isStl = _isStlFile();
     return Row(
       children: [
         Expanded(
           flex: 1,
           child: GlassButton(
             tint: GlassButtonTint.negative,
-            wantIcon: false,
-            onPressed: () {
-              _deleteLocalFile();
-            },
+            onPressed: _deleteLocalFile,
             style: ElevatedButton.styleFrom(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
               minimumSize: const Size(0, 65),
             ),
-            child: Text(
-              FlutterI18n.translate(context, 'common.delete'),
-              style: const TextStyle(fontSize: 20),
-              textAlign: TextAlign.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PhosphorIcons.trash(), size: 20),
+                const SizedBox(width: OrionSpacing.listGap),
+                Text(
+                  FlutterI18n.translate(context, 'common.delete'),
+                  style: const TextStyle(fontSize: 20),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: OrionSpacing.controlGap),
         Expanded(
           flex: 1,
           child: GlassButton(
             tint: GlassButtonTint.positive,
-            onPressed: _isStlFile() ? _sliceFile : _importFile,
+            onPressed: isStl ? _sliceFile : _importFile,
             style: ElevatedButton.styleFrom(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
               minimumSize: const Size(0, 65),
             ),
-            child: Text(
-              _isStlFile()
-                  ? FlutterI18n.translate(context, 'common.slice')
-                  : FlutterI18n.translate(context, 'common.import_'),
-              style: const TextStyle(fontSize: 22),
-              textAlign: TextAlign.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isStl ? PhosphorIcons.knife() : PhosphorIcons.uploadSimple(),
+                  size: 20,
+                ),
+                const SizedBox(width: OrionSpacing.listGap),
+                Text(
+                  isStl
+                      ? FlutterI18n.translate(context, 'common.slice')
+                      : FlutterI18n.translate(context, 'common.import_'),
+                  style: const TextStyle(fontSize: 20),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
         ),

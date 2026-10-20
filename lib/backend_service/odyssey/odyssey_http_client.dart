@@ -259,6 +259,11 @@ class OdysseyHttpClient implements BackendClient {
     return await manualCommand('M112');
   }
 
+  /// Odyssey exposes no dedicated force-stop endpoint, so the firmware-level
+  /// halt issued by [emergencyStop] is the closest equivalent.
+  @override
+  Future<Map<String, dynamic>> forceStop() => emergencyStop();
+
   @override
   Future<Uint8List> getFileThumbnail(
       String location, String filePath, String size) async {
@@ -330,6 +335,13 @@ class OdysseyHttpClient implements BackendClient {
 
   @override
   Future<void> saveResinSettings(int profileId, ResinSettings settings) async {
+    throw UnsupportedError(
+        'Saving resin settings is not supported by Odyssey backend.');
+  }
+
+  @override
+  Future<void> saveResinAdvancedSettings(
+      int profileId, ResinSettings settings, {String? title}) async {
     throw UnsupportedError(
         'Saving resin settings is not supported by Odyssey backend.');
   }
@@ -488,6 +500,18 @@ class OdysseyHttpClient implements BackendClient {
     // Implement as a no-op that returns an empty map to indicate unsupported.
     _log.fine('editProfile called on OdysseyHttpClient (unsupported) id=$id');
     return {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> cloneProfile(
+      int sourceId, Map<String, dynamic> fields) async {
+    // Odyssey has no profile create/clone endpoint. Throwing (rather than
+    // returning an empty map) keeps the UI from reporting a clone that never
+    // happened.
+    _log.fine('cloneProfile called on OdysseyHttpClient (unsupported) '
+        'source=$sourceId');
+    throw UnsupportedError(
+        'Cloning resin profiles is not supported by Odyssey backend.');
   }
 
   @override

@@ -57,6 +57,7 @@ class NanoDlpModule implements BackendModule {
       BackendCapabilities.supportsAthena: true,
       BackendCapabilities.supportsAthenaUpdates: true,
       BackendCapabilities.supportsAthenaFeatureFlags: true,
+      BackendCapabilities.supportsForceLeveling: true,
 
       // Temperature/vat control
       BackendCapabilities.supportsVatTemperature: true,
@@ -76,6 +77,13 @@ class NanoDlpModule implements BackendModule {
 
       // RGB / LED lighting
       BackendCapabilities.supportsRgbLighting: true,
+
+      // Cleaning run (timed UV exposure at a set intensity): the blank frame
+      // plus `UVLED_ON PWM=…`, timed by the Cleaning screen.
+      BackendCapabilities.supportsCleaning: true,
+
+      // Exposure tests dim the UV LED with `UVLED_ON PWM=…`.
+      BackendCapabilities.supportsUvLedDuty: true,
     };
   }
 
